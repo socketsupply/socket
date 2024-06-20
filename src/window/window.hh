@@ -1,8 +1,6 @@
 #ifndef SOCKET_RUNTIME_WINDOW_WINDOW_H
 #define SOCKET_RUNTIME_WINDOW_WINDOW_H
 
-#include <iostream>
-
 #include "../core/env.hh"
 #include "../core/config.hh"
 #include "../core/webview.hh"
@@ -372,8 +370,6 @@ namespace SSC {
       bool isDragInvokedInsideWindow;
       GdkPoint initialLocation;
     #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
-      static LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
-      bool usingCustomEdgeRuntimeDirectory = false;
       ICoreWebView2Controller *controller = nullptr;
       HMENU menubar;
       HMENU menutray;
@@ -382,7 +378,7 @@ namespace SSC {
       double dragLastX = 0;
       double dragLastY = 0;
       bool shouldDrag;
-      DragDrop* drop;
+      SharedPointer<DragDrop> drop;
 
       POINT minimumSize = POINT {0, 0};
       POINT maximumSize = POINT {0, 0};
@@ -393,7 +389,6 @@ namespace SSC {
       HWND window;
       std::map<int, String> menuMap;
       std::map<int, String> menuTrayMap;
-      Path modulePath;
 
       void resize (HWND window);
     #elif SOCKET_RUNTIME_PLATFORM_ANDROID
@@ -548,57 +543,12 @@ namespace SSC {
       SharedPointer<ManagedWindow> getOrCreateWindow (int index, const Window::Options& options);
       WindowStatus getWindowStatus (int index);
 
-      void destroyWindow (int index);
-
       SharedPointer<ManagedWindow> createWindow (const Window::Options& options);
       SharedPointer<ManagedWindow> createDefaultWindow (const Window::Options& options);
 
+      void destroyWindow (int index);
+
       JSON::Array json (const Vector<int>& indices);
   };
-
-#if SOCKET_RUNTIME_PLATFORM_WINDOWS
-  using IEnvHandler = ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler;
-  using IConHandler = ICoreWebView2CreateCoreWebView2ControllerCompletedHandler;
-  using INavHandler = ICoreWebView2NavigationCompletedEventHandler;
-  using IRecHandler = ICoreWebView2WebMessageReceivedEventHandler;
-  using IArgs = ICoreWebView2WebMessageReceivedEventArgs;
-
-  enum WINDOWCOMPOSITIONATTRIB {
-    WCA_UNDEFINED = 0,
-    WCA_NCRENDERING_ENABLED = 1,
-    WCA_NCRENDERING_POLICY = 2,
-    WCA_TRANSITIONS_FORCEDISABLED = 3,
-    WCA_ALLOW_NCPAINT = 4,
-    WCA_CAPTION_BUTTON_BOUNDS = 5,
-    WCA_NONCLIENT_RTL_LAYOUT = 6,
-    WCA_FORCE_ICONIC_REPRESENTATION = 7,
-    WCA_EXTENDED_FRAME_BOUNDS = 8,
-    WCA_HAS_ICONIC_BITMAP = 9,
-    WCA_THEME_ATTRIBUTES = 10,
-    WCA_NCRENDERING_EXILED = 11,
-    WCA_NCADORNMENTINFO = 12,
-    WCA_EXCLUDED_FROM_LIVEPREVIEW = 13,
-    WCA_VIDEO_OVERLAY_ACTIVE = 14,
-    WCA_FORCE_ACTIVEWINDOW_APPEARANCE = 15,
-    WCA_DISALLOW_PEEK = 16,
-    WCA_CLOAK = 17,
-    WCA_CLOAKED = 18,
-    WCA_ACCENT_POLICY = 19,
-    WCA_FREEZE_REPRESENTATION = 20,
-    WCA_EVER_UNCLOAKED = 21,
-    WCA_VISUAL_OWNER = 22,
-    WCA_HOLOGRAPHIC = 23,
-    WCA_EXCLUDED_FROM_DDA = 24,
-    WCA_PASSIVEUPDATEMODE = 25,
-    WCA_USEDARKMODECOLORS = 26,
-    WCA_LAST = 27
-  };
-
-  struct WINDOWCOMPOSITIONATTRIBDATA {
-    WINDOWCOMPOSITIONATTRIB Attrib;
-    PVOID pvData;
-    SIZE_T cbData;
-  };
-#endif
 }
 #endif

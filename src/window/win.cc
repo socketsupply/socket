@@ -1,3 +1,4 @@
+#include "../app/app.hh"
 #include "window.hh"
 
 #ifndef CHECK_FAILURE
@@ -7,11 +8,11 @@
 using namespace Microsoft::WRL;
 
 namespace SSC {
-  static inline void alert (const SSC::WString &ws) {
-    MessageBoxA(nullptr, SSC::convertWStringToString(ws).c_str(), _TEXT("Alert"), MB_OK | MB_ICONSTOP);
+  static inline void alert (const WString &ws) {
+    MessageBoxA(nullptr, convertWStringToString(ws).c_str(), _TEXT("Alert"), MB_OK | MB_ICONSTOP);
   }
 
-  static inline void alert (const SSC::String &s) {
+  static inline void alert (const String &s) {
     MessageBoxA(nullptr, s.c_str(), _TEXT("Alert"), MB_OK | MB_ICONSTOP);
   }
 
@@ -142,7 +143,7 @@ namespace SSC {
   }
 
   HRESULT __stdcall CDataObject::GetCanonicalFormatEtc (FORMATETC *pFormatEct, FORMATETC *pFormatEtcOut) {
-    pFormatEtcOut->ptd = NULL;
+    pFormatEtcOut->ptd = nullptr;
     return E_NOTIMPL;
   }
 
@@ -255,7 +256,7 @@ namespace SSC {
   }
 
   class DragDrop : public IDropTarget {
-    SSC::Vector<SSC::String> draggablePayload;
+    Vector<String> draggablePayload;
     unsigned int refCount;
 
     public:
@@ -277,7 +278,7 @@ namespace SSC {
         AddRef();
         return S_OK;
       }
-      *ppv = NULL;
+      *ppv = nullptr;
       return E_NOINTERFACE;
     };
 
@@ -310,7 +311,7 @@ namespace SSC {
       *dragEffect = DROPEFFECT_MOVE;
 
       format.cfFormat = CF_TEXT;
-      format.ptd      = NULL;
+      format.ptd      = nullptr;
       format.dwAspect = DVASPECT_CONTENT;
       format.lindex   = -1;
       format.tymed    = TYMED_HGLOBAL;
@@ -323,10 +324,10 @@ namespace SSC {
       this->draggablePayload.clear();
 
       if (list != 0) {
-        draggablePayload = SSC::split(SSC::String(list), ';');
+        draggablePayload = split(String(list), ';');
 
 
-        SSC::String json = (
+        String json = (
           "{"
           "  \"count\":" + std::to_string(this->draggablePayload.size()) + ","
           "  \"inbound\": true,"
@@ -335,7 +336,7 @@ namespace SSC {
           "}"
         );
 
-        auto payload = SSC::getEmitToRenderProcessJavaScript("drag", json);
+        auto payload = getEmitToRenderProcessJavaScript("drag", json);
         this->window->eval(payload);
       }
 
@@ -381,7 +382,7 @@ namespace SSC {
       point.x = dragPoint.x - position.x;
       point.y = dragPoint.y - position.y;
 
-      SSC::String json = (
+      String json = (
         "{"
         "  \"count\":" + std::to_string(this->draggablePayload.size()) + ","
         "  \"inbound\": false,"
@@ -390,7 +391,7 @@ namespace SSC {
         "}"
       );
 
-      auto payload = SSC::getEmitToRenderProcessJavaScript("drag", json);
+      auto payload = getEmitToRenderProcessJavaScript("drag", json);
       this->window->eval(payload);
 
       return S_OK;
@@ -411,7 +412,7 @@ namespace SSC {
       STGMEDIUM medium = { TYMED_HGLOBAL, { 0 }, 0 };
       UINT len = 0;
 
-      SSC::Vector<SSC::String> files = this->draggablePayload;
+      Vector<String> files = this->draggablePayload;
 
       for (auto &file : files) {
         file = file.substr(12);
@@ -421,14 +422,14 @@ namespace SSC {
       globalMemory = GlobalAlloc(GHND, sizeof(DROPFILES) + len + 1);
 
       if (!globalMemory) {
-        return NULL;
+        return nullptr;
       }
 
       dropFiles = (DROPFILES*) GlobalLock(globalMemory);
 
       if (!dropFiles) {
         GlobalFree(globalMemory);
-        return NULL;
+        return nullptr;
       }
 
       dropFiles->fNC = TRUE;
@@ -437,8 +438,8 @@ namespace SSC {
       GetCursorPos(&(dropFiles->pt));
 
       char *dropFilePtr = (char *) &dropFiles[1];
-      for (SSC::Vector<SSC::String>::size_type i = 0; i < files.size(); ++i) {
-        SSC::String &file = files[i];
+      for (Vector<String>::size_type i = 0; i < files.size(); ++i) {
+        String &file = files[i];
 
         len = (file.length() + 1);
 
@@ -507,7 +508,7 @@ namespace SSC {
       HDROP drop;
       int count;
 
-      SSC::StringStream filesStringArray;
+      StringStream filesStringArray;
 
       GetClientRect(child, &rect);
       position = { rect.left, rect.top };
@@ -520,7 +521,7 @@ namespace SSC {
       format.cfFormat = CF_HDROP;
       format.lindex = -1;
       format.tymed = TYMED_HGLOBAL;
-      format.ptd = NULL;
+      format.ptd = nullptr;
 
       if (
         SUCCEEDED(dataObject->QueryGetData(&format)) &&
@@ -529,10 +530,10 @@ namespace SSC {
         *dragEffect = DROPEFFECT_COPY;
 
         drop = (HDROP) GlobalLock(medium.hGlobal);
-        count = DragQueryFile(drop, 0xFFFFFFFF, NULL, 0);
+        count = DragQueryFile(drop, 0xFFFFFFFF, nullptr, 0);
 
         for (int i = 0; i < count; i++) {
-          int size = DragQueryFile(drop, i, NULL, 0);
+          int size = DragQueryFile(drop, i, nullptr, 0);
 
           TCHAR* buf = new TCHAR[size + 1];
           DragQueryFile(drop, i, buf, size + 1);
@@ -540,7 +541,7 @@ namespace SSC {
           // append escaped file path with wrapped quotes ('"')
           filesStringArray
             << '"'
-            << SSC::replace(SSC::String(buf), "\\\\", "\\\\")
+            << replace(String(buf), "\\\\", "\\\\")
             << '"';
 
           if (i < count - 1) {
@@ -571,7 +572,7 @@ namespace SSC {
         ) {
           *dragEffect = DROPEFFECT_MOVE;
           for (auto &src : this->draggablePayload) {
-            SSC::String json = (
+            String json = (
               "{"
               "  \"src\": \"" + src + "\","
               "  \"x\":" + std::to_string(point.x) + ","
@@ -579,17 +580,17 @@ namespace SSC {
               "}"
             );
 
-            this->window->eval(SSC::getEmitToRenderProcessJavaScript("drop", json));
+            this->window->eval(getEmitToRenderProcessJavaScript("drop", json));
           }
 
-          SSC::String json = (
+          String json = (
             "{"
             "  \"x\":" + std::to_string(point.x) + ","
             "  \"y\":" + std::to_string(point.y) + ""
             "}"
           );
 
-          this->window->eval(SSC::getEmitToRenderProcessJavaScript("dragend", json));
+          this->window->eval(getEmitToRenderProcessJavaScript("dragend", json));
         }
       }
 
@@ -602,53 +603,88 @@ namespace SSC {
     };
   };
 
-  Window::Window (App& app, Window::Options opts)
-    : app(app),
-      opts(opts),
-      hotkey(this)
+  Window::Window (SharedPointer<Core> core, const Window::Options& options)
+    : core(core),
+      options(options),
+      bridge(core, IPC::Bridge::Options {
+        options.userConfig,
+        options.as<IPC::Preload::Options>()
+      }),
+      hotkey(this),
+      dialog(this)
   {
-    static auto userConfig = SSC::getUserConfig();
-    const bool isAgent = userConfig["application_agent"] == "true" && opts.index == 0;
+    // this may be an "empty" path if not available
+    static const auto edgeRuntimePath = FileResource::getMicrosoftEdgeRuntimePath();
+    static auto app = App::sharedApplication();
 
-    app.isReady = false;
+    if (!edgeRuntimePath.empty()) {
+      const auto string = convertWStringToString(edgeRuntimePath.string());
+      const auto value = replace(string, "\\\\", "\\\\")
+      // inject the `EDGE_RUNTIME_DIRECTORY` environment variable directly into
+      // the userConfig so it is available as an env var in the webview runtime
+      this->bridge.userConfig["env_EDGE_RUNTIME_DIRECTORY"] = value;
+      this->options.userConfig["env_EDGE_RUNTIME_DIRECTORY"] = value;
+      debug("Microsoft Edge Runtime directory set to '%ls'", edgeRuntimePath.c_str());
+    }
 
-    this->index = opts.index;
-    if (isAgent && opts.index == 0) {
-      window = CreateWindowEx(
+    auto userConfig = this->bridge.userConfig;
+    auto webviewEnvironmentOptions = Microsoft::WRL::Make<CoreWebView2EnvironmentOptions>();
+    webviewEnvironmentOptions->put_AdditionalBrowserArguments(L"--enable-features=msWebView2EnableDraggableRegions");
+
+    Microsoft::WRL::ComPtr<ICoreWebView2EnvironmentOptions4> webviewEnvironmentOptions4;
+    if (webviewEnvironmentOptions.As(&webviewEnvironmentOptions4) != S_OK) {
+      throw std::runtime_error(
+        "Unable to resolve 'ICoreWebView2EnvironmentOptions4'"
+      );
+    }
+
+    // only the root window can handle "agent" tasks
+    const bool isAgent = (
+      userConfig["application_agent"] == "true" &&
+      options.index == 0
+    );
+
+    if (isAgent) {
+      this->window = CreateWindowEx(
         WS_EX_TOOLWINDOW,
         userConfig["meta_bundle_identifier"].c_str(),
         userConfig["meta_title"].c_str(),
         WS_OVERLAPPEDWINDOW,
         100000,
         100000,
-        opts.width,
-        opts.height,
-        NULL,
-        NULL,
-        app.hInstance,
-        NULL
+        options.width,
+        options.height,
+        nullptr,
+        nullptr,
+        app->hInstance,
+        nullptr
       );
     } else {
       DWORD style = WS_THICKFRAME;
 
-      if (!opts.frameless) {
-        style |= WS_OVERLAPPED;
-
-        if (opts.titlebarStyle == "hidden" || opts.titlebarStyle == "hiddenInset") {
-          // Windows does not have the ability to reposition the decorations
-          // In this case, we can assume that the user will draw their own controls.
-        } else if (opts.closable) {
-          style |= WS_CAPTION | WS_SYSMENU;
-
-          if (opts.minimizable) style |= WS_MINIMIZEBOX;
-          if (opts.maximizable) style |= WS_MAXIMIZEBOX;
-        }
-      } else {
+      if (options.frameless) {
         style |= WS_POPUP;
+      } else {
+        style |= WS_OVERLAPPED;
+        // Windows does not have the ability to reposition the decorations
+        // In this case, we can assume that the user will draw their own controls.
+        if (options.titlebarStyle != "hidden" && options.titlebarStyle != "hiddenInset") {
+          if (options.closable) {
+            style |= WS_CAPTION | WS_SYSMENU;
+
+            if (options.minimizable) {
+              style |= WS_MINIMIZEBOX;
+            }
+
+            if (options.maximizable) {
+              style |= WS_MAXIMIZEBOX;
+            }
+          }
+        }
       }
 
-      window = CreateWindowEx(
-        opts.headless
+      this->window = CreateWindowEx(
+        options.headless
           ? WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE
           : WS_EX_APPWINDOW | WS_EX_ACCEPTFILES,
         userConfig["meta_bundle_identifier"].c_str(),
@@ -656,26 +692,32 @@ namespace SSC {
         style,
         100000,
         100000,
-        opts.width,
-        opts.height,
-        NULL,
-        NULL,
-        app.hInstance,
-        NULL
+        options.width,
+        options.height,
+        nullptr,
+        nullptr,
+        app->hInstance,
+        nullptr
       );
     }
 
-    HRESULT initResult = OleInitialize(NULL);
+    this->drop = std::make_shared<DragDrop>(this);
+    this->bridge.navigateFunction = [this] (const auto url) {
+      this->navigate(url);
+    };
 
-    this->drop = new DragDrop(this);
+    this->bridge.evaluateJavaScriptFunction = [this] (const auto source) {
+      this->eval(source);
+    };
 
-    this->bridge = new IPC::Bridge(app.core, opts.userConfig);
-    opts.clientId = this->bridge->id;
+    this->bridge.client.preload = IPC::Preload::compile({
+      .client = this->bridge.client,
+      .index = options.index,
+      .userScript = options.userScript
+    });
 
-    this->hotkey.init(this->bridge);
-
-    if (this->opts.aspectRatio.size() > 0) {
-      auto parts = split(this->opts.aspectRatio, ':');
+    if (options.aspectRatio.size() > 0) {
+      auto parts = split(options.aspectRatio, ':');
       double aspectRatio = 0;
 
       try {
@@ -686,782 +728,382 @@ namespace SSC {
 
       if (aspectRatio > 0) {
         RECT rect;
-        GetClientRect(window, &rect);
-        // SetWindowAspectRatio(window, MAKELONG((long)(rect.bottom * aspectRatio), rect.bottom), NULL);
+        GetClientRect(this->window, &rect);
+        // SetWindowAspectRatio(window, MAKELONG((long)(rect.bottom * aspectRatio), rect.bottom), nullptr);
       }
     }
 
-    this->bridge->router.dispatchFunction = [&app] (auto callback) {
-      app.dispatch([callback] { callback(); });
-    };
+    // in theory these allow you to do drop files in elevated mode
+    ChangeWindowMessageFilterEx(this->window, WM_DROPFILES, MSGFLT_ALLOW, nullptr);
+    ChangeWindowMessageFilterEx(this->window, WM_COPYDATA, MSGFLT_ALLOW, nullptr);
+    ChangeWindowMessageFilterEx(this->window, 0x0049, MSGFLT_ALLOW, nullptr);
 
-    this->bridge->router.evaluateJavaScriptFunction = [this] (auto js) {
-      this->eval(js);
-    };
+    UpdateWindow(this->window);
+    ShowWindow(this->window, isAgent ? SW_HIDE : SW_SHOWNORMAL);
 
-    //
-    // In theory these allow you to do drop files in elevated mode
-    //
-    ChangeWindowMessageFilter(WM_DROPFILES, MSGFLT_ADD);
-    ChangeWindowMessageFilter(WM_COPYDATA, MSGFLT_ADD);
-    ChangeWindowMessageFilter(0x0049, MSGFLT_ADD);
+    // make this `Window` instance as `GWLP_USERDATA`
+    SetWindowLongPtr(this->window, GWLP_USERDATA, (LONG_PTR) this);
 
-    UpdateWindow(window);
-    ShowWindow(window, isAgent ? SW_HIDE : SW_SHOWNORMAL);
-    SetWindowLongPtr(window, GWLP_USERDATA, (LONG_PTR) this);
+    this->hotkey.init();
+    this->bridge.init();
+    this->bridge.configureWebView(this->webview);
 
-    // this is something like "C:\\Users\\josep\\AppData\\Local\\Microsoft\\Edge SxS\\Application\\123.0.2386.0"
-    auto EDGE_RUNTIME_DIRECTORY = convertStringToWString(trim(Env::get("SOCKET_EDGE_RUNTIME_DIRECTORY")));
+    static const auto APPDATA = Path(convertStringToWString(Env::get("APPDATA")));
 
-    if (EDGE_RUNTIME_DIRECTORY.size() > 0 && fs::exists(EDGE_RUNTIME_DIRECTORY)) {
-      usingCustomEdgeRuntimeDirectory = true;
-      opts.userConfig["env_EDGE_RUNTIME_DIRECTORY"] = replace(convertWStringToString(EDGE_RUNTIME_DIRECTORY), "\\\\", "\\\\");
-      debug("Using Edge Runtime Directory: %ls", EDGE_RUNTIME_DIRECTORY.c_str());
-    } else {
-      EDGE_RUNTIME_DIRECTORY = L"";
+    if (APPDATA.empty() || !fs::exists(APPDATA)) {
+      throw std::runtime_error(
+        "Environment is in an invalid state: Could not determine 'APPDATA' path"
+      );
     }
 
-    wchar_t modulefile[MAX_PATH];
-    GetModuleFileNameW(NULL, modulefile, MAX_PATH);
-    auto file = (fs::path { modulefile }).filename();
-    auto filename = SSC::convertStringToWString(file.string());
-    auto path = SSC::convertStringToWString(Env::get("APPDATA"));
-    this->modulePath = fs::path(modulefile);
-
-    auto options = Microsoft::WRL::Make<CoreWebView2EnvironmentOptions>();
-    options->put_AdditionalBrowserArguments(L"--enable-features=msWebView2EnableDraggableRegions");
-
-    Microsoft::WRL::ComPtr<ICoreWebView2EnvironmentOptions4> options4;
-    HRESULT oeResult = options.As(&options4);
-    if (oeResult != S_OK) {
-      // UNREACHABLE - cannot continue
-    }
-
-    this->bridge->router.configureHandlers({
-      options
+    static const auto edgeRuntimeUserDataPath = ({
+      wchar_t modulefile[MAX_PATH];
+      GetModuleFileNameW(nullptr, modulefile, MAX_PATH);
+      auto file = (fs::path { modulefile }).filename();
+      auto filename = convertStringToWString(file.string());
+      APPDATA / filename;
     });
 
-    auto init = [&, opts]() -> HRESULT {
-      return CreateCoreWebView2EnvironmentWithOptions(
-        EDGE_RUNTIME_DIRECTORY.size() > 0 ? EDGE_RUNTIME_DIRECTORY.c_str() : nullptr,
-        (path + L"\\" + filename).c_str(),
-        options.Get(),
-        Microsoft::WRL::Callback<IEnvHandler>(
-          [&, opts](HRESULT result, ICoreWebView2Environment* env) -> HRESULT {
-            env->CreateCoreWebView2Controller(
-              window,
-              Microsoft::WRL::Callback<IConHandler>(
-                [&, opts](HRESULT result, ICoreWebView2Controller* c) -> HRESULT {
-                  static auto userConfig = SSC::getUserConfig();
-                  if (c != nullptr) {
-                    controller = c;
-                    controller->get_CoreWebView2(&webview);
+    this->bridge.configureSchemeHandlers({
+      .webview = webviewEnvironmentOptions
+    });
 
-                    RECT bounds;
-                    GetClientRect(window, &bounds);
-                    controller->put_Bounds(bounds);
-                    controller->AddRef();
-                    controller->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
+    CreateCoreWebView2EnvironmentWithOptions(
+      edgeRuntimePath.empty() ? nullptr : edgeRuntimePath.string(),
+      edgeRuntimeUserDataPath,
+      webviewEnvironmentOptions.Get(),
+      Microsoft::WRL::Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>([=, this](
+        HRESULT result,
+        ICoreWebView2Environment* webviewEnvironment
+      ) -> HRESULT {
+        return env->CreateCoreWebView2Controller(
+          this->window,
+          Microsoft::WRL::Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>([=, this](
+            HRESULT result,
+            ICoreWebView2Controller* controller
+          ) -> HRESULT {
+            const auto bundleIdentifier = userConfig["meta_bundle_identifier"];
+
+            if (result != S_OK) {
+              return result;
+            }
+
+            if (controller == nullptr) {
+              return E_HANDLE;
+            }
+
+            // configure the webview controller
+            do {
+              RECT bounds;
+              GetClientRect(this->window, &bounds);
+              this->controller = controller;
+              this->controller->get_CoreWebView2(&this->webview);
+              this->controller->put_Bounds(bounds);
+              this->controller->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
+              this->controller->AddRef();
+            } while (0);
+
+            // configure the webview settings
+            do {
+              ICoreWebView2Settings* settings = nullptr;
+              ICoreWebView2Settings3* settings3 = nullptr;
+              ICoreWebView2Settings6* settings6 = nullptr;
+
+              this->webview->get_Settings(&settings);
+
+              settings3 = reinterpret_cast<ICoreWebView2Settings3*>(settings);
+              settings6 = reinterpret_cast<ICoreWebView2Settings6*>(settings);
+
+              settings->put_IsScriptEnabled(true);
+              settings->put_IsStatusBarEnabled(false);
+              settings->put_IsWebMessageEnabled(true);
+              settings->put_AreHostObjectsAllowed(true);
+              settings->put_IsZoomControlEnabled(false);
+              settings->put_IsBuiltInErrorPageEnabled(false);
+              settings->put_AreDefaultContextMenusEnabled(true);
+              settings->put_AreDefaultScriptDialogsEnabled(true);
+
+              settings6->put_IsPinchZoomEnabled(false);
+              settings6->put_IsSwipeNavigationEnabled(false);
+
+              if (this->options.debug || isDebugEnabled()) {
+                settings->put_AreDevToolsEnabled(true);
+                settings3->put_AreBrowserAcceleratorKeysEnabled(true);
+              } else {
+                settings->put_AreDevToolsEnabled(false);
+                settings3->put_AreBrowserAcceleratorKeysEnabled(false);
+              }
+            } while (0);
+
+            // enumerate all child windows to re-register drag/drop
+            EnumChildWindows(
+              this->window,
+              [](HWND handle, LPARAM param) -> BOOL {
+                const auto length = GetWindowTextLengthW(handle);
+                const auto pointer = GetWindowLongPtr(reinterpret_cast<HWND>(param), GWLP_USERDATA);
+                auto window = reinterpret_cast<Window*>(pointer);
+
+                if (length > 0) {
+                  auto buffer = std::make_shared<wchar_t[]>(length + 1);
+                  auto text = convertWStringToString(buffer.get());
+                  GetWindowTextW(handle, buffer.get(), length + 1);
+
+                  if (text.find("Chrome") != String::npos) {
+                    RevokeDragDrop(handle);
+                    RegisterDragDrop(handle, window->drop);
+                    window->drop->childWindow = handle;
                   }
-
-                  ICoreWebView2Settings* Settings;
-                  webview->get_Settings(&Settings);
-                  Settings->put_IsScriptEnabled(TRUE);
-                  Settings->put_AreDefaultScriptDialogsEnabled(TRUE);
-                  Settings->put_IsWebMessageEnabled(TRUE);
-                  Settings->put_AreHostObjectsAllowed(TRUE);
-                  Settings->put_IsStatusBarEnabled(FALSE);
-
-                  Settings->put_AreDefaultContextMenusEnabled(TRUE);
-                  if (opts.debug || isDebugEnabled()) {
-                    Settings->put_AreDevToolsEnabled(TRUE);
-                  } else {
-                    Settings->put_AreDevToolsEnabled(FALSE);
-                  }
-
-                  Settings->put_IsBuiltInErrorPageEnabled(FALSE);
-                  Settings->put_IsZoomControlEnabled(FALSE);
-
-                  auto settings3 = (ICoreWebView2Settings3*) Settings;
-                  if (!isDebugEnabled()) {
-                    settings3->put_AreBrowserAcceleratorKeysEnabled(FALSE);
-                  }
-
-                  auto settings6 = (ICoreWebView2Settings6*) Settings;
-                  settings6->put_IsPinchZoomEnabled(FALSE);
-                  settings6->put_IsSwipeNavigationEnabled(FALSE);
-
-                  EnumChildWindows(window, [](HWND hWnd, LPARAM window) -> BOOL {
-                    int l = GetWindowTextLengthW(hWnd);
-
-                    if (l > 0) {
-                      wchar_t* buf = new wchar_t[l+1];
-                      GetWindowTextW(hWnd, buf, l+1);
-
-                      if (SSC::convertWStringToString(buf).find("Chrome") != SSC::String::npos) {
-                        RevokeDragDrop(hWnd);
-                        Window* w = reinterpret_cast<Window*>(GetWindowLongPtr((HWND)window, GWLP_USERDATA));
-                        w->drop->childWindow = hWnd;
-                        RegisterDragDrop(hWnd, w->drop);
-                      }
-                    }
-                    return TRUE;
-                  }, (LPARAM)window);
-
-                  reinterpret_cast<ICoreWebView2_3*>(webview)->SetVirtualHostNameToFolderMapping(
-                    convertStringToWString(userConfig["meta_bundle_identifier"]).c_str(),
-                    this->modulePath.parent_path().c_str(),
-                    COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW
-                  );
-
-                  EventRegistrationToken tokenSchemaFilter;
-                  webview->AddWebResourceRequestedFilter(L"*", COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL);
-
-                  ICoreWebView2_22* webview22 = nullptr;
-                  webview->QueryInterface(IID_PPV_ARGS(&webview22));
-
-                  if (webview22 != nullptr) {
-                    webview22->AddWebResourceRequestedFilterWithRequestSourceKinds(
-                      L"*",
-                      COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL,
-                      COREWEBVIEW2_WEB_RESOURCE_REQUEST_SOURCE_KINDS_ALL
-                    );
-
-                    debug("Configured CoreWebView2 (ICoreWebView2_22) request filter with all request source kinds");
-                  }
-
-                  webview->add_WebResourceRequested(
-                    Microsoft::WRL::Callback<ICoreWebView2WebResourceRequestedEventHandler>(
-                      [&, opts](ICoreWebView2*, ICoreWebView2WebResourceRequestedEventArgs* event) {
-                        ICoreWebView2WebResourceRequest* platformRequest  = nullptr;
-                        ICoreWebView2HttpRequestHeaders* headers = nullptr;
-                        ICoreWebView2Environment* env = nullptr;
-                        ICoreWebView2_2* webview2 = nullptr;
-
-
-                        LPWSTR method;
-                        LPWSTR uri;
-
-                        webview->QueryInterface(IID_PPV_ARGS(&webview2));
-                        webview2->get_Environment(&env);
-                        event->get_Request(&platformRequest);
-
-                        platformRequest->get_Headers(&headers);
-                        platformRequest->get_Method(&method);
-                        platformRequest->get_Uri(&uri);
-
-                        auto request = IPC::SchemeHandlers::Request::Builder(this->bridge->router->schemeHandlers, platformRequest);
-
-                        request.setMethod(convertWStringToString(method));
-
-                        do {
-                          ComPtr<ICoreWebView2HttpHeadersCollectionIterator> iterator;
-                          BOOL hasCurrent = FALSE;
-                          CHECK_FAILURE(headers->GetIterator(&iterator));
-                          while (SUCCEEDED(iterator->get_HasCurrentHeader(&hasCurrent)) && hasCurrent) {
-                            LPWSTR name;
-                            LPWSTR value;
-
-                            if (iterator->GetCurrentHeader(&name, &value) == S_OK) {
-                              request.setHeader(convertWStringToString(name), convertWStringToString(value));
-                            }
-                          }
-                        } while (0);
-
-
-                        String method;
-                        String uri;
-
-                        webview->QueryInterface(IID_PPV_ARGS(&webview2));
-                        webview2->get_Environment(&env);
-                        args->get_Request(&req);
-
-                        req->get_Uri(&req_uri);
-                        uri = convertWStringToString(req_uri);
-                        CoTaskMemFree(req_uri);
-
-                        req->get_Method(&req_method);
-                        method = convertWStringToString(req_method);
-                        CoTaskMemFree(req_method);
-
-                        bool ipc_scheme = false;
-                        bool socket_scheme = false;
-                        bool handled = false;
-
-                        if (uri.compare(0, 4, "ipc:") == 0) {
-                          ipc_scheme = true;
-                        } else if (uri.compare(0, 7, "socket:") == 0) {
-                          socket_scheme = true;
-                        } else {
-                          return S_OK;
-                        }
-
-                        // Handle CORS preflight request.
-                        if (method.compare("OPTIONS") == 0) {
-                          ICoreWebView2WebResourceResponse* res = nullptr;
-                          env->CreateWebResourceResponse(
-                            nullptr,
-                            204,
-                            L"OK",
-                            L"Connection: keep-alive\n"
-                            L"Cache-Control: no-cache\n"
-                            L"Access-Control-Allow-Headers: *\n"
-                            L"Access-Control-Allow-Origin: *\n"
-                            L"Access-Control-Allow-Methods: GET, POST, PUT, HEAD\n",
-                            &res
-                          );
-                          args->put_Response(res);
-
-                          return S_OK;
-                        }
-
-
-                        ICoreWebView2Deferral* deferral;
-                        HRESULT hr = args->GetDeferral(&deferral);
-
-                        char* body_ptr = nullptr;
-                        size_t body_length = 0;
-
-                        if (ipc_scheme) {
-                          if (method.compare("POST") == 0 || method.compare("PUT") == 0) {
-                            IStream* body_data;
-                            DWORD actual;
-                            HRESULT r;
-                            auto msg = IPC::Message(uri);
-                            msg.isHTTP = true;
-                            // TODO(heapwolf): Make sure index and seq are set.
-                            if (w->bridge->router.hasMappedBuffer(msg.index, msg.seq)) {
-                              IPC::MessageBuffer buf = w->bridge->router.getMappedBuffer(msg.index, msg.seq);
-                              ICoreWebView2SharedBuffer* shared_buf = buf.shared_buf;
-                              size_t size = buf.size;
-                              char* data = new char[size];
-                              w->bridge->router.removeMappedBuffer(msg.index, msg.seq);
-                              shared_buf->OpenStream(&body_data);
-                              r = body_data->Read(data, size, &actual);
-                              if (r == S_OK || r == S_FALSE) {
-                                body_ptr = data;
-                                body_length = actual;
-                              } else {
-                                delete[] data;
-                              }
-                              shared_buf->Close();
-                            }
-                          }
-
-                          handled = w->bridge->route(uri, body_ptr, body_length, [&, args, deferral, env, body_ptr](auto result) {
-                            String headers;
-                            char* body;
-                            size_t length;
-
-                            if (body_ptr != nullptr) {
-                              delete[] body_ptr;
-                            }
-
-                            if (result.post.body != nullptr) {
-                              length = result.post.length;
-                              body = new char[length];
-                              memcpy(body, result.post.body, length);
-                              headers = "Content-Type: application/octet-stream\n";
-                            } else {
-                              length = result.str().size();
-                              body = new char[length];
-                              memcpy(body, result.str().c_str(), length);
-                              headers = "Content-Type: application/json\n";
-                            }
-
-                            headers += "Connection: keep-alive\n";
-                            headers += "Cache-Control: no-cache\n";
-                            headers += "Access-Control-Allow-Headers: *\n";
-                            headers += "Access-Control-Allow-Origin: *\n";
-                            headers += "Content-Length: ";
-                            headers += std::to_string(length);
-                            headers += "\n";
-
-                            // Completing the response in the call to dispatch because the
-                            // put_Response() must be called from the same thread that made
-                            // the request. This assumes that the request was made from the
-                            // main thread, since that's where dispatch() will call its cb.
-                            app.dispatch([&, body, length, headers, args, deferral, env] {
-                              ICoreWebView2WebResourceResponse* res = nullptr;
-                              IStream* bytes = SHCreateMemStream((const BYTE*)body, length);
-                              env->CreateWebResourceResponse(
-                                bytes,
-                                200,
-                                L"OK",
-                                convertStringToWString(headers).c_str(),
-                                &res
-                              );
-                              args->put_Response(res);
-                              deferral->Complete();
-                              delete[] body;
-                            });
-                          });
-                        }
-
-                        if (socket_scheme) {
-                          if (method.compare("GET") == 0 || method.compare("HEAD") == 0) {
-                            if (uri.starts_with("socket:///")) {
-                              uri = uri.substr(10);
-                            } else if (uri.starts_with("socket://")) {
-                              uri = uri.substr(9);
-                            } else if (uri.starts_with("socket:")) {
-                              uri = uri.substr(7);
-                            }
-
-                            auto path = String(
-                              uri.starts_with(bundleIdentifier)
-                                ? uri.substr(bundleIdentifier.size())
-                                : "socket/" + uri
-                            );
-
-                            const auto parts = split(path, '?');
-                            const auto query = parts.size() > 1 ? String("?") + parts[1] : "";
-                            path = parts[0];
-
-                            auto ext = fs::path(path).extension().string();
-
-                            if (ext.size() > 0 && !ext.starts_with(".")) {
-                              ext = "." + ext;
-                            }
-
-                            if (!uri.starts_with(bundleIdentifier)) {
-                              if (path.ends_with("/")) {
-                                path = path.substr(0, path.size() - 1);
-                              }
-
-                              if (ext.size() == 0 && !path.ends_with(".js")) {
-                                path += ".js";
-                              }
-
-                              if (path == "/") {
-                                uri = "socket://" + bundleIdentifier + "/";
-                              } else {
-                                uri = "socket://" + bundleIdentifier + "/" + path;
-                              }
-
-                              String headers;
-
-                              auto moduleUri = replace(uri, "\\\\", "/");
-                              auto moduleSource = trim(tmpl(
-                                moduleTemplate,
-                                Map { {"url", String(moduleUri)} }
-                              ));
-
-                              auto length = moduleSource.size();
-
-                              headers = "Content-Type: text/javascript\n";
-                              headers += "Cache-Control: no-cache\n";
-                              headers += "Connection: keep-alive\n";
-                              headers += "Access-Control-Allow-Headers: *\n";
-                              headers += "Access-Control-Allow-Origin: *\n";
-                              headers += "Content-Length: ";
-                              headers += std::to_string(length);
-                              headers += "\n";
-                              headers += userConfig["webview_headers"];
-
-                              handled = true;
-
-                              if (method.compare("HEAD") == 0) {
-                                ICoreWebView2WebResourceResponse* res = nullptr;
-                                env->CreateWebResourceResponse(
-                                  nullptr,
-                                  200,
-                                  L"OK",
-                                  convertStringToWString(headers).c_str(),
-                                  &res
-                                );
-                                args->put_Response(res);
-                                deferral->Complete();
-                              } else {
-                                auto body = new char[length];
-                                memcpy(body, moduleSource.c_str(), length);
-
-                                app.dispatch([&, body, length, headers, args, deferral, env] {
-                                  ICoreWebView2WebResourceResponse* res = nullptr;
-                                  IStream* bytes = SHCreateMemStream((const BYTE*)body, length);
-                                  env->CreateWebResourceResponse(
-                                    bytes,
-                                    200,
-                                    L"OK",
-                                    convertStringToWString(headers).c_str(),
-                                    &res
-                                  );
-                                  args->put_Response(res);
-                                  deferral->Complete();
-                                  delete[] body;
-                                });
-                              }
-                            } else {
-                              if (path.ends_with("//")) {
-                                path = path.substr(0, path.size() - 2);
-                              }
-
-                              auto parsedPath = IPC::Router::parseURLComponents(path);
-                              auto rootPath = this->modulePath.parent_path();
-                              auto resolved = IPC::Router::resolveURLPathForWebView(parsedPath.path, rootPath.string());
-                              auto mount = IPC::Router::resolveNavigatorMountForWebView(parsedPath.path);
-                              path = resolved.path;
-
-                              if (mount.path.size() > 0) {
-                                if (mount.resolution.redirect) {
-                                  auto redirectURL = mount.resolution.path;
-                                  if (parsedPath.queryString.size() > 0) {
-                                    redirectURL += "?" + parsedPath.queryString;
-                                  }
-
-                                  if (parsedPath.fragment.size() > 0) {
-                                    redirectURL += "#" + parsedPath.fragment;
-                                  }
-
-                                  ICoreWebView2WebResourceResponse* res = nullptr;
-                                  auto contentLocation = replace(redirectURL, "socket://" + bundleIdentifier, "");
-                                  env->CreateWebResourceResponse(
-                                    nullptr,
-                                    301,
-                                    L"Moved Permanently",
-                                    WString(
-                                      convertStringToWString("Location: ") + convertStringToWString(redirectURL) + L"\n" +
-                                      convertStringToWString("Content-Location: ") + convertStringToWString(contentLocation) + L"\n"
-                                      ).c_str(),
-                                    &res
-                                  );
-
-                                  args->put_Response(res);
-                                  deferral->Complete();
-                                  return S_OK;
-                                }
-                              } else if (path.size() == 0 && userConfig.contains("webview_default_index")) {
-                                path = userConfig["webview_default_index"];
-                              } else if (resolved.redirect) {
-                                auto redirectURL = resolved.path;
-                                if (parsedPath.queryString.size() > 0) {
-                                  redirectURL += "?" + parsedPath.queryString;
-                                }
-
-                                if (parsedPath.fragment.size() > 0) {
-                                  redirectURL += "#" + parsedPath.fragment;
-                                }
-
-                                auto contentLocation = replace(redirectURL, "socket://" + bundleIdentifier, "");
-                                ICoreWebView2WebResourceResponse* res = nullptr;
-                                env->CreateWebResourceResponse(
-                                  nullptr,
-                                  301,
-                                  L"Moved Permanently",
-                                  WString(
-                                    convertStringToWString("Location: ") + convertStringToWString(redirectURL) + L"\n" +
-                                    convertStringToWString("Content-Location: ") + convertStringToWString(contentLocation) + L"\n"
-                                    ).c_str(),
-                                  &res
-                                  );
-
-                                args->put_Response(res);
-                                deferral->Complete();
-                                return S_OK;
-                              }
-
-                              if (mount.path.size() > 0) {
-                                path = mount.path;
-                              } else if (path.size() > 0) {
-                                path = fs::absolute(rootPath / path.substr(1)).string();
-                              }
-
-                              LARGE_INTEGER fileSize;
-                              auto handle = CreateFile(path.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, NULL, NULL);
-                              auto getSizeResult = GetFileSizeEx(handle, &fileSize);
-
-                              if (handle) {
-                                CloseHandle(handle);
-                              }
-
-                              if (getSizeResult) {
-                                handled = true;
-                                app.dispatch([&, path, args, deferral, env] {
-                                  ICoreWebView2WebResourceResponse* res = nullptr;
-                                  LPWSTR mimeType = (wchar_t*) L"application/octet-stream";
-                                  IStream* stream = nullptr;
-                                  String headers = "";
-
-                                  if (path.ends_with(".js") || path.ends_with(".mjs") || path.ends_with(".cjs")) {
-                                    mimeType = (wchar_t*) L"text/javascript";
-                                  } else if (path.ends_with(".wasm")) {
-                                    mimeType = (wchar_t*) L"application/wasm";
-                                  } else if (path.ends_with(".ts")) {
-                                    mimeType = (wchar_t*) L"application/typescript";
-                                  } else if (path.ends_with(".html")) {
-                                    mimeType = (wchar_t*) L"text/html";
-                                  } else if (path.ends_with(".css")) {
-                                    mimeType = (wchar_t*) L"text/css";
-                                  } else if (path.ends_with(".png")) {
-                                    mimeType = (wchar_t*) L"image/png";
-                                  } else if (path.ends_with(".jpg") || path.ends_with(".jpeg")) {
-                                    mimeType = (wchar_t*) L"image/jpeg";
-                                  } else if (path.ends_with(".json")) {
-                                    mimeType = (wchar_t*) L"application/json";
-                                  } else if (path.ends_with(".jsonld")) {
-                                    mimeType = (wchar_t*) L"application/ld+json";
-                                  } else if (path.ends_with(".opus")) {
-                                    mimeType = (wchar_t*) L"audio/opus";
-                                  } else if (path.ends_with(".oga")) {
-                                    mimeType = (wchar_t*) L"audio/ogg";
-                                  } else if (path.ends_with(".mp3")) {
-                                    mimeType = (wchar_t*) L"audio/mp3";
-                                  } else if (path.ends_with(".mp4")) {
-                                    mimeType = (wchar_t*) L"video/mp4";
-                                  } else if (path.ends_with(".mpeg")) {
-                                    mimeType = (wchar_t*) L"video/mpeg";
-                                  } else if (path.ends_with(".ogv")) {
-                                    mimeType = (wchar_t*) L"video/ogg";
-                                  } else {
-                                    FindMimeFromData(0, convertStringToWString(path).c_str(), 0, 0, 0, 0, &mimeType, 0);
-                                  }
-
-                                  headers = "Content-Type: ";
-                                  headers += convertWStringToString(mimeType) + "\n";
-                                  headers += "Connection: keep-alive\n";
-                                  headers += "Cache-Control: no-cache\n";
-                                  headers += "Access-Control-Allow-Headers: *\n";
-                                  headers += "Access-Control-Allow-Origin: *\n";
-                                  headers += "Content-Length: ";
-                                  headers += std::to_string(fileSize.QuadPart);
-                                  headers += "\n";
-                                  headers += userConfig["webview_headers"];
-
-                                  if (SHCreateStreamOnFileA(path.c_str(), STGM_READ, &stream) == S_OK) {
-                                    env->CreateWebResourceResponse(
-                                      stream,
-                                      200,
-                                      L"OK",
-                                      convertStringToWString(headers).c_str(),
-                                      &res
-                                    );
-                                  } else {
-                                    env->CreateWebResourceResponse(
-                                      nullptr,
-                                      404,
-                                      L"Not Found",
-                                      L"Access-Control-Allow-Origin: *",
-                                      &res
-                                    );
-                                  }
-                                  args->put_Response(res);
-                                  deferral->Complete();
-                                });
-                              }
-                            }
-                          }
-                        }
-
-                        if (!handled) {
-                          ICoreWebView2WebResourceResponse* res = nullptr;
-                          env->CreateWebResourceResponse(
-                            nullptr,
-                            404,
-                            L"Not Found",
-                            L"Access-Control-Allow-Origin: *",
-                            &res
-                          );
-                          args->put_Response(res);
-                          deferral->Complete();
-                        }
-
-                        return S_OK;
-                      }
-                    ).Get(),
-                    &tokenSchemaFilter
-                  );
-
-                  EventRegistrationToken tokenNewWindow;
-
-                  webview->add_NewWindowRequested(
-                    Microsoft::WRL::Callback<ICoreWebView2NewWindowRequestedEventHandler>(
-                      [&](ICoreWebView2* wv, ICoreWebView2NewWindowRequestedEventArgs* e) {
-                        // TODO(heapwolf): Called when window.open() is called in JS, but the new
-                        // window won't have all the setup and request interception. This setup should
-                        // be moved to another location where it can be run for any new window. Right
-                        // now ipc won't work for any new window.
-                        e->put_Handled(true);
-                        return S_OK;
-                      }
-                    ).Get(),
-                    &tokenNewWindow
-                  );
-
-                  webview->QueryInterface(IID_PPV_ARGS(&webview22));
-                  this->bridge->userConfig["env_COREWEBVIEW2_22_AVAILABLE"] = webview22 != nullptr ? "true" : "";
-                  this->bridge->preload = createPreload(opts, {
-                    .module = true,
-                    .wrap = true,
-                    .userScript = opts.userScript
-                  });
-
-                  EventRegistrationToken tokenMessage;
-
-                  webview->add_WebMessageReceived(
-                    Microsoft::WRL::Callback<IRecHandler>([&](ICoreWebView2* webview, IArgs* args) -> HRESULT {
-                      LPWSTR messageRaw;
-                      args->TryGetWebMessageAsString(&messageRaw);                      
-                      SSC::WString message_w(messageRaw);
-                      CoTaskMemFree(messageRaw);
-                      if (onMessage != nullptr) {
-                        SSC::String message = SSC::convertWStringToString(message_w);
-                        auto msg = IPC::Message{message};
-                        Window* w = reinterpret_cast<Window*>(GetWindowLongPtr((HWND)window, GWLP_USERDATA));
-                        ICoreWebView2_2* webview2 = nullptr;
-                        ICoreWebView2Environment* env = nullptr;
-                        ICoreWebView2_18* webView18 = nullptr;
-                        ICoreWebView2Environment12* environment = nullptr;
-
-                        webview->QueryInterface(IID_PPV_ARGS(&webview2));
-                        webview2->get_Environment(&env);
-                        env->QueryInterface(IID_PPV_ARGS(&environment));
-
-                        webview->QueryInterface(IID_PPV_ARGS(&webView18));
-
-                        // this should only come from `postMessage()`
-                        if (msg.name == "buffer.create") {
-                          auto seq = msg.seq;
-                          auto size = std::stoull(msg.get("size", "0"));
-                          auto index = msg.index;
-                          ICoreWebView2SharedBuffer* sharedBuffer = nullptr;
-                          // TODO(heapwolf): What to do if creation fails, or size == 0?
-                          HRESULT cshr = environment->CreateSharedBuffer(size, &sharedBuffer);
-                          String additionalData = "{\"seq\":\"";
-                          additionalData += seq;
-                          additionalData += "\",\"index\":";
-                          additionalData += std::to_string(index);
-                          additionalData += "}";
-                          cshr = webView18->PostSharedBufferToScript(
-                            sharedBuffer,
-                            COREWEBVIEW2_SHARED_BUFFER_ACCESS_READ_WRITE,
-                            convertStringToWString(additionalData).c_str()
-                          );
-                          IPC::MessageBuffer msg_buf(sharedBuffer, size);
-                          // TODO(heapwolf): This will leak memory if the buffer is created and
-                          // placed on the map then never removed. Since there's no Window cleanup
-                          // that will remove unused buffers when the window is closed.
-                          w->bridge->router.setMappedBuffer(index, seq, msg_buf);
-                          return S_OK;
-                        }
-
-                        if (!w->bridge->route(message, nullptr, 0)) {
-                          onMessage(message);
-                        }
-                      }
-
-                      return S_OK;
-                    }).Get(),
-                    &tokenMessage
-                  );
-
-                  EventRegistrationToken tokenPermissionRequested;
-                  webview->add_PermissionRequested(
-                    Microsoft::WRL::Callback<ICoreWebView2PermissionRequestedEventHandler>([&](
-                      ICoreWebView2 *webview,
-                      ICoreWebView2PermissionRequestedEventArgs *args
-                    ) -> HRESULT {
-                      static auto userConfig = SSC::getUserConfig();
-                      COREWEBVIEW2_PERMISSION_KIND kind;
-                      args->get_PermissionKind(&kind);
-
-                      if (kind == COREWEBVIEW2_PERMISSION_KIND_MICROPHONE)  {
-                        if (
-                          userConfig["permissions_allow_microphone"] == "false" ||
-                          userConfig["permissions_allow_user_media"] == "false"
-                          ) {
-                          args->put_State(COREWEBVIEW2_PERMISSION_STATE_DENY);
-                        } else {
-                          args->put_State(COREWEBVIEW2_PERMISSION_STATE_ALLOW);
-                        }
-                      }
-
-                      if (kind == COREWEBVIEW2_PERMISSION_KIND_CAMERA)  {
-                        if (
-                          userConfig["permissions_allow_camera"] == "false" ||
-                          userConfig["permissions_allow_user_media"] == "false"
-                        ) {
-                          args->put_State(COREWEBVIEW2_PERMISSION_STATE_DENY);
-                        } else {
-                          args->put_State(COREWEBVIEW2_PERMISSION_STATE_ALLOW);
-                        }
-                      }
-
-                      if (kind == COREWEBVIEW2_PERMISSION_KIND_GEOLOCATION)  {
-                        if (userConfig["permissions_allow_geolocation"] == "false") {
-                          args->put_State(COREWEBVIEW2_PERMISSION_STATE_DENY);
-                        } else {
-                          args->put_State(COREWEBVIEW2_PERMISSION_STATE_ALLOW);
-                        }
-                      }
-
-                      if (kind == COREWEBVIEW2_PERMISSION_KIND_NOTIFICATIONS)  {
-                        if (userConfig["permissions_allow_notifications"] == "false") {
-                          args->put_State(COREWEBVIEW2_PERMISSION_STATE_DENY);
-                        } else {
-                          args->put_State(COREWEBVIEW2_PERMISSION_STATE_ALLOW);
-                        }
-                      }
-
-                      if (kind == COREWEBVIEW2_PERMISSION_KIND_OTHER_SENSORS)  {
-                        if (userConfig["permissions_allow_sensors"] == "false") {
-                          args->put_State(COREWEBVIEW2_PERMISSION_STATE_DENY);
-                        } else {
-                          args->put_State(COREWEBVIEW2_PERMISSION_STATE_ALLOW);
-                        }
-                      }
-
-                      if (kind == COREWEBVIEW2_PERMISSION_KIND_CLIPBOARD_READ) {
-                        if (userConfig["permissions_allow_clipboard"] == "false") {
-                          args->put_State(COREWEBVIEW2_PERMISSION_STATE_DENY);
-                        } else {
-                          args->put_State(COREWEBVIEW2_PERMISSION_STATE_ALLOW);
-                        }
-                      }
-
-                      if (kind == COREWEBVIEW2_PERMISSION_KIND_AUTOPLAY) {
-                        if (userConfig["permissions_allow_autoplay"] == "false") {
-                          args->put_State(COREWEBVIEW2_PERMISSION_STATE_DENY);
-                        } else {
-                          args->put_State(COREWEBVIEW2_PERMISSION_STATE_ALLOW);
-                        }
-                      }
-
-                      if (kind == COREWEBVIEW2_PERMISSION_KIND_LOCAL_FONTS) {
-                        if (userConfig["permissions_allow_local_fonts"] == "false") {
-                          args->put_State(COREWEBVIEW2_PERMISSION_STATE_DENY);
-                        } else {
-                          args->put_State(COREWEBVIEW2_PERMISSION_STATE_ALLOW);
-                        }
-                      }
-
-                      return S_OK;
-                    }).Get(),
-                    &tokenPermissionRequested
-                  );
-
-                  app.isReady = true;
-
-                  return S_OK;
                 }
-              ).Get()
+
+                return true;
+              },
+              reinterpret_cast<LPARAM>(this->window)
             );
 
+            // configure webview
+            do {
+              ICoreWebView2_22* webview22 = nullptr;
+              ICoreWebView2_3* webview3 = reinterpret_cast<ICoreWebView2_3*>(this->webview);
+
+              this->webview->QueryInterface(IID_PPV_ARGS(&webview22));
+              this->webview->AddWebResourceRequestedFilter(L"*", COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL);
+
+              if (webview22 != nullptr) {
+                this->bridge.userConfig["env_COREWEBVIEW2_22_AVAILABLE"] = "true";
+                this->options.userConfig["env_COREWEBVIEW2_22_AVAILABLE"] = "true";
+
+                webview22->AddWebResourceRequestedFilterWithRequestSourceKinds(
+                  L"*",
+                  COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL,
+                  COREWEBVIEW2_WEB_RESOURCE_REQUEST_SOURCE_KINDS_ALL
+                );
+
+                debug("Configured CoreWebView2 (ICoreWebView2_22) request filter with all request source kinds");
+              }
+
+              webview3->SetVirtualHostNameToFolderMapping(
+                convertStringToWString(bundleIdentifier).c_str(),
+                FileResource::getResourcesPath().c_str(),
+                COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW
+              );
+            } while (0);
+
+            // configure webview permission request handler
+            do {
+              EventRegistrationToken token;
+              this->webview->add_PermissionRequested(
+                Microsoft::WRL::Callback<ICoreWebView2PermissionRequestedEventHandler>([=, this](
+                  ICoreWebView2 *webview,
+                  ICoreWebView2PermissionRequestedEventArgs *args
+                ) -> HRESULT {
+                  COREWEBVIEW2_PERMISSION_KIND kind;
+                  args->get_PermissionKind(&kind);
+
+                  if (kind == COREWEBVIEW2_PERMISSION_KIND_MICROPHONE)  {
+                    if (
+                      userConfig["permissions_allow_microphone"] == "false" ||
+                      userConfig["permissions_allow_user_media"] == "false"
+                    ) {
+                      args->put_State(COREWEBVIEW2_PERMISSION_STATE_DENY);
+                    } else {
+                      args->put_State(COREWEBVIEW2_PERMISSION_STATE_ALLOW);
+                    }
+                  }
+
+                  if (kind == COREWEBVIEW2_PERMISSION_KIND_CAMERA)  {
+                    if (
+                      userConfig["permissions_allow_camera"] == "false" ||
+                      userConfig["permissions_allow_user_media"] == "false"
+                    ) {
+                      args->put_State(COREWEBVIEW2_PERMISSION_STATE_DENY);
+                    } else {
+                      args->put_State(COREWEBVIEW2_PERMISSION_STATE_ALLOW);
+                    }
+                  }
+
+                  if (kind == COREWEBVIEW2_PERMISSION_KIND_GEOLOCATION)  {
+                    if (userConfig["permissions_allow_geolocation"] == "false") {
+                      args->put_State(COREWEBVIEW2_PERMISSION_STATE_DENY);
+                    } else {
+                      args->put_State(COREWEBVIEW2_PERMISSION_STATE_ALLOW);
+                    }
+                  }
+
+                  if (kind == COREWEBVIEW2_PERMISSION_KIND_NOTIFICATIONS)  {
+                    if (userConfig["permissions_allow_notifications"] == "false") {
+                      args->put_State(COREWEBVIEW2_PERMISSION_STATE_DENY);
+                    } else {
+                      args->put_State(COREWEBVIEW2_PERMISSION_STATE_ALLOW);
+                    }
+                  }
+
+                  if (kind == COREWEBVIEW2_PERMISSION_KIND_OTHER_SENSORS)  {
+                    if (userConfig["permissions_allow_sensors"] == "false") {
+                      args->put_State(COREWEBVIEW2_PERMISSION_STATE_DENY);
+                    } else {
+                      args->put_State(COREWEBVIEW2_PERMISSION_STATE_ALLOW);
+                    }
+                  }
+
+                  if (kind == COREWEBVIEW2_PERMISSION_KIND_CLIPBOARD_READ) {
+                    if (userConfig["permissions_allow_clipboard"] == "false") {
+                      args->put_State(COREWEBVIEW2_PERMISSION_STATE_DENY);
+                    } else {
+                      args->put_State(COREWEBVIEW2_PERMISSION_STATE_ALLOW);
+                    }
+                  }
+
+                  if (kind == COREWEBVIEW2_PERMISSION_KIND_AUTOPLAY) {
+                    if (userConfig["permissions_allow_autoplay"] == "false") {
+                      args->put_State(COREWEBVIEW2_PERMISSION_STATE_DENY);
+                    } else {
+                      args->put_State(COREWEBVIEW2_PERMISSION_STATE_ALLOW);
+                    }
+                  }
+
+                  if (kind == COREWEBVIEW2_PERMISSION_KIND_LOCAL_FONTS) {
+                    if (userConfig["permissions_allow_local_fonts"] == "false") {
+                      args->put_State(COREWEBVIEW2_PERMISSION_STATE_DENY);
+                    } else {
+                      args->put_State(COREWEBVIEW2_PERMISSION_STATE_ALLOW);
+                    }
+                  }
+
+                  return S_OK;
+                }).Get(),
+                &token
+              );
+            } while (0);
+
+            // configure webview callback for `window.open()`
+            do {
+              EventRegistrationToken token;
+              this->webview->add_NewWindowRequested(
+                Microsoft::WRL::Callback<ICoreWebView2NewWindowRequestedEventHandler>(
+                  [&](ICoreWebView2* webview, ICoreWebView2NewWindowRequestedEventArgs* args) {
+                    // TODO(@jwerle): handle 'window.open()'
+                    args->put_Handled(true);
+                    return S_OK;
+                  }
+                ).Get(),
+                &token
+              );
+            } while (0);
+
+            // configure webview message handler
+            do {
+              EventRegistrationToken token;
+              this->webview->add_WebMessageReceived(
+                Microsoft::WRL::Callback<ICoreWebView2WebMessageReceivedEventHandler>([=](
+                  ICoreWebView2* webview,
+                  ICoreWebView2WebMessageReceivedEventArgs* args
+                ) -> HRESULT {
+                  if (this->onMessage == nullptr) {
+                    return S_OK;
+                  }
+
+                  ICoreWebView2Environment12* environment12 = nullptr;
+                  ICoreWebView2Environment* environment = nullptr;
+                  ICoreWebView2_18* webview18 = nullptr;
+                  ICoreWebView2_2* webview2 = nullptr;
+
+                  LPWSTR string;
+                  args->TryGetWebMessageAsString(&string);
+                  const auto message = IPC::Message(convertWStringToString(string));
+                  CoTaskMemFree(string);
+
+                  webview2->get_Environment(&environment);
+                  environment->QueryInterface(IID_PPV_ARGS(&environment12));
+                  this->webview->QueryInterface(IID_PPV_ARGS(&webview2));
+                  this->webview->QueryInterface(IID_PPV_ARGS(&webview18));
+
+                  if (!this->bridge.route(message, nullptr, 0)) {
+                    onMessage(message);
+                  }
+
+                  return S_OK;
+                }).Get(),
+                &token
+              );
+            } while (0);
+
+            // configure webview web resource requested callback
+            do {
+              EventRegistrationToken token;
+              webview->add_WebResourceRequested(
+                Microsoft::WRL::Callback<ICoreWebView2WebResourceRequestedEventHandler>([=, this](
+                  ICoreWebView2* webview,
+                  ICoreWebView2WebResourceRequestedEventArgs* args
+                ) {
+                  ICoreWebView2WebResourceRequest* platformRequest = nullptr;
+                  ICoreWebView2Environment* env = nullptr;
+                  ICoreWebView2Deferral* deferral = nullptr;
+
+                  if (auto result = args->GetDeferral(&deferral)) {
+                    return result;
+                  }
+
+                  // get platform request and environment from event args
+                  do {
+                    ICoreWebView2_2* webview2 = nullptr;
+                    webview->QueryInterface(IID_PPV_ARGS(&webview2));
+                    webview2->get_Environment(&env);
+                    args->get_Request(&platformRequest);
+                  } while (0);
+
+                  auto request = IPC::SchemeHandlers::Request::Builder(&this->bridge.schemeHandlers, platformRequest);
+
+                  // get and set HTTP method
+                  do {
+                    LPWSTR method;
+                    platformRequest->get_Method(&method);
+                    request.setMethod(convertWStringToString(method));
+                  } while (0);
+
+                  // iterator all HTTP headers and set them
+                  do {
+                    ICoreWebView2HttpRequestHeaders* headers = nullptr;
+                    platformRequest->get_Headers(&headers);
+                    ComPtr<ICoreWebView2HttpHeadersCollectionIterator> iterator;
+                    BOOL hasCurrent = FALSE;
+                    CHECK_FAILURE(headers->GetIterator(&iterator));
+                    while (SUCCEEDED(iterator->get_HasCurrentHeader(&hasCurrent)) && hasCurrent) {
+                      LPWSTR name;
+                      LPWSTR value;
+                      if (iterator->GetCurrentHeader(&name, &value) == S_OK) {
+                        request.setHeader(convertWStringToString(name), convertWStringToString(value));
+                      }
+                    }
+                  } while (0);
+
+                  const auto handled = this->bridge.schemeHandlers.handleRequest(request.build(), [=](const auto& response) mutable {
+                    args->put_Response(response.platformResponse);
+                    deferral->Complete();
+                  });
+
+                  if (!handled) {
+                    auto response = IPC::SchemeHandlers::Response(request, 404);
+                    response.finish();
+                    args->put_Response(response.platformResponse);
+                    deferral->Complete();
+                  }
+
+                  return S_OK;
+                }).Get(),
+                &token
+              );
+            } while (0);
+
+            // notify app is ready
+            app->isReady = true;
             return S_OK;
-          }
-        ).Get()
-      );
-    };
-
-    auto res = init();
-
-    if (!SUCCEEDED(res)) {
-      std::cerr << "Webview2 failed to initialize: " << std::to_string(res) << std::endl;
-    }
+          }).Get()
+        );
+      }).Get()
+    );
   }
 
   Window::~Window () {
-    delete this->drop;
-    delete this->bridge;
   }
 
   ScreenSize Window::getScreenSize () {
@@ -1472,22 +1114,23 @@ namespace SSC {
   }
 
   void Window::about () {
-    auto text = SSC::String(
-      app.userConfig["build_name"] + " " +
-      "v" + app.userConfig["meta_version"] + "\n" +
-      "Built with ssc v" + SSC::VERSION_FULL_STRING + "\n" +
-      app.userConfig["meta_copyright"]
+    auto app = App::sharedApplication();
+    auto text = String(
+      this->options.userConfig["build_name"] + " " +
+      "v" + this->options.userConfig["meta_version"] + "\n" +
+      "Built with ssc v" + VERSION_FULL_STRING + "\n" +
+      this->options.userConfig["meta_copyright"]
     );
 
     MSGBOXPARAMS mbp;
     mbp.cbSize = sizeof(MSGBOXPARAMS);
-    mbp.hwndOwner = window;
-    mbp.hInstance = app.hInstance;
+    mbp.hwndOwner = this->window;
+    mbp.hInstance = app->hInstance;
     mbp.lpszText = text.c_str();
-    mbp.lpszCaption = app.userConfig["build_name"].c_str();
+    mbp.lpszCaption = this->options.userConfig["build_name"].c_str();
     mbp.dwStyle = MB_USERICON;
     mbp.dwLanguageId = MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT);
-    mbp.lpfnMsgBoxCallback = NULL;
+    mbp.lpfnMsgBoxCallback = nullptr;
     mbp.dwContextHelpId = 0;
 
     MessageBoxIndirect(&mbp);
@@ -1496,8 +1139,8 @@ namespace SSC {
   void Window::kill () {
     if (this->controller != nullptr) this->controller->Close();
     if (this->window != nullptr) {
-      if (menubar != NULL) DestroyMenu(menubar);
-      if (menutray != NULL) DestroyMenu(menutray);
+      if (menubar != nullptr) DestroyMenu(menubar);
+      if (menutray != nullptr) DestroyMenu(menutray);
       DestroyWindow(this->window);
     }
   }
@@ -1509,8 +1152,8 @@ namespace SSC {
   void Window::exit (int code) {
     if (this->onExit != nullptr) {
       std::cerr << "WARNING: Window#" << index << " exiting with code " << code << std::endl;
-      if (menubar != NULL) DestroyMenu(menubar);
-      if (menutray != NULL) DestroyMenu(menutray);
+      if (menubar != nullptr) DestroyMenu(menubar);
+      if (menutray != nullptr) DestroyMenu(menutray);
       this->onExit(code);
     }
     else {
@@ -1519,7 +1162,7 @@ namespace SSC {
   }
 
   void Window::close (int code) {
-    if (opts.shouldExitApplicationOnClose) {
+    if (options.shouldExitApplicationOnClose) {
       this->exit(0);
       DestroyWindow(window);
     } else {
@@ -1540,12 +1183,12 @@ namespace SSC {
   }
 
   void Window::show () {
-    static auto userConfig = SSC::getUserConfig();
+    static auto userConfig = getUserConfig();
     auto isAgent = userConfig.count("application_agent") != 0;
 
-    if (isAgent && this->opts.index == 0) return;
+    if (isAgent && this->options.index == 0) return;
 
-    if (this->opts.headless == false) {
+    if (this->options.headless == false) {
       ShowWindow(window, SW_SHOWNORMAL);
       UpdateWindow(window);
 
@@ -1570,7 +1213,7 @@ namespace SSC {
       rc.right = 0;
       InvalidateRect(this->window, &rc, true);
       DrawMenuBar(this->window);
-      RedrawWindow(this->window, NULL, NULL, RDW_INVALIDATE | RDW_ERASE);
+      RedrawWindow(this->window, nullptr, nullptr, RDW_INVALIDATE | RDW_ERASE);
     }
   }
 
@@ -1590,14 +1233,14 @@ namespace SSC {
     controller->put_Bounds(bounds);
   }
 
-  void Window::eval (const SSC::String& s) {
+  void Window::eval (const String& s) {
     app.dispatch([&, this, s] {
       if (this->webview == nullptr) {
         return;
       }
 
       this->webview->ExecuteScript(
-        SSC::convertStringToWString(s).c_str(),
+        convertStringToWString(s).c_str(),
         nullptr
       );
     });
@@ -1607,15 +1250,15 @@ namespace SSC {
     return this->navigate("", url);
   }
 
-  void Window::navigate (const SSC::String& seq, const SSC::String& value) {
-    auto index = std::to_string(this->opts.index);
+  void Window::navigate (const String& seq, const String& value) {
+    auto index = std::to_string(this->options.index);
 
     app.dispatch([&, this, seq, value, index] {
       EventRegistrationToken token;
       this->webview->add_NavigationCompleted(
         Microsoft::WRL::Callback<ICoreWebView2NavigationCompletedEventHandler>(
           [&, this, seq, index, token](ICoreWebView2* sender, ICoreWebView2NavigationCompletedEventArgs* args) -> HRESULT {
-            SSC::String state = "1";
+            String state = "1";
 
             BOOL success;
             args->get_IsSuccess(&success);
@@ -1633,7 +1276,7 @@ namespace SSC {
         &token
       );
 
-      webview->Navigate(SSC::convertStringToWString(value).c_str());
+      webview->Navigate(convertStringToWString(value).c_str());
     });
   }
 
@@ -1652,7 +1295,7 @@ namespace SSC {
     return "";
   }
 
-  void Window::setTitle (const SSC::String& title) {
+  void Window::setTitle (const String& title) {
     SetWindowText(window, title.c_str());
   }
 
@@ -1702,7 +1345,7 @@ namespace SSC {
       AdjustWindowRect(&r, WS_OVERLAPPEDWINDOW, 0);
       SetWindowPos(
         window,
-        NULL,
+        nullptr,
         r.left,
         r.top,
         r.right - r.left,
@@ -1727,7 +1370,7 @@ namespace SSC {
     AdjustWindowRect(&r, WS_OVERLAPPEDWINDOW, 0);
     SetWindowPos(
       window,
-      NULL,
+      nullptr,
       r.left,
       r.top,
       r.right - r.left,
@@ -1740,16 +1383,16 @@ namespace SSC {
     this->position.y = y;
   }
 
-  void Window::setTrayMenu (const SSC::String& seq, const SSC::String& value) {
+  void Window::setTrayMenu (const String& seq, const String& value) {
     setMenu(seq, value, true);
   }
 
-  void Window::setSystemMenu (const SSC::String& seq, const SSC::String& value) {
+  void Window::setSystemMenu (const String& seq, const String& value) {
     setMenu(seq, value, false);
   }
 
-  void Window::setMenu (const SSC::String& seq, const SSC::String& menuSource, const bool& isTrayMenu) {
-    static auto userConfig = SSC::getUserConfig();
+  void Window::setMenu (const String& seq, const String& menuSource, const bool& isTrayMenu) {
+    static auto userConfig = getUserConfig();
     if (menuSource.empty()) return void(0);
 
     NOTIFYICONDATA nid;
@@ -1775,7 +1418,7 @@ namespace SSC {
       HICON icon;
       if (trayIconPath.size() > 0) {
         icon = (HICON) LoadImageA(
-          NULL,
+          nullptr,
           trayIconPath.c_str(),
           IMAGE_ICON,
           GetSystemMetrics(SM_CXSMICON),
@@ -1783,7 +1426,10 @@ namespace SSC {
           LR_LOADFROMFILE
         );
       } else {
-        icon = LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_APPLICATION));
+        icon = LoadIcon(
+          GetModuleHandle(nullptr),
+          reinterpret_cast<LPCSTR>(MAKEINTRESOURCE(IDI_APPLICATION))
+        );
       }
 
       menutray = CreatePopupMenu();
@@ -1828,9 +1474,9 @@ namespace SSC {
 
         if (line.find("---") != -1) {
           if (isTrayMenu) {
-            AppendMenuW(menutray, MF_SEPARATOR, 0, NULL);
+            AppendMenuW(menutray, MF_SEPARATOR, 0, nullptr);
           } else {
-            AppendMenuW(subMenu, MF_SEPARATOR, 0, NULL);
+            AppendMenuW(subMenu, MF_SEPARATOR, 0, nullptr);
           }
           continue;
         }
@@ -1838,19 +1484,19 @@ namespace SSC {
         auto parts = split(line, ':');
         auto title = parts[0];
         int mask = 0;
-        SSC::String key = "";
+        String key = "";
 
         auto accelerators = split(parts[1], '+');
-        auto accl = SSC::String("");
+        auto accl = String("");
 
         key = trim(parts[1]) == "_" ? "" : trim(accelerators[0]);
 
         if (key.size() > 0) {
-          bool isShift = SSC::String("ABCDEFGHIJKLMNOPQRSTUVWXYZ").find(key) != -1;
+          bool isShift = String("ABCDEFGHIJKLMNOPQRSTUVWXYZ").find(key) != -1;
           accl = key;
 
           if (accelerators.size() > 1) {
-            accl = SSC::String(trim(accelerators[1]) + "+" + key);
+            accl = String(trim(accelerators[1]) + "+" + key);
             accl = replace(accl, "CommandOrControl", "Ctrl");
             accl = replace(accl, "Command", "Ctrl");
             accl = replace(accl, "Control", "Ctrl");
@@ -1858,18 +1504,18 @@ namespace SSC {
           }
 
           if (isShift) {
-            accl = SSC::String("Shift+" + accl);
+            accl = String("Shift+" + accl);
           }
         }
 
-        auto display = SSC::String(title + "\t" + accl);
+        auto display = String(title + "\t" + accl);
 
         if (isTrayMenu) {
           AppendMenuA(menutray, MF_STRING, itemId, display.c_str());
-          menuTrayMap[itemId] = SSC::String(title + ":" +(parts.size() > 1 ? parts[1] : ""));
+          menuTrayMap[itemId] = String(title + ":" +(parts.size() > 1 ? parts[1] : ""));
         } else {
           AppendMenuA(subMenu, MF_STRING, itemId, display.c_str());
-          menuMap[itemId] = SSC::String(title + "\t" + menuTitle);
+          menuMap[itemId] = String(title + "\t" + menuTitle);
         }
 
         itemId++;
@@ -1896,247 +1542,116 @@ namespace SSC {
       rc.right = 0;
       InvalidateRect(this->window, &rc, true);
       DrawMenuBar(this->window);
-      RedrawWindow(this->window, NULL, NULL, RDW_INVALIDATE | RDW_ERASE);
+      RedrawWindow(this->window, nullptr, nullptr, RDW_INVALIDATE | RDW_ERASE);
     }
 
     if (seq.size() > 0) {
-      auto index = std::to_string(this->opts.index);
+      auto index = std::to_string(this->options.index);
       this->resolvePromise(seq, "0", index);
     }
   }
 
   void Window::setSystemMenuItemEnabled (bool enabled, int barPos, int menuPos) {
-    // @TODO(): provide impl
+    // TODO
   }
 
   void Window::closeContextMenu() {
-    // @TODO(jwerle)
+    // TODO
   }
 
-  void Window::closeContextMenu(const SSC::String &seq) {
-    // @TODO(jwerle)
+  void Window::closeContextMenu (const String &seq) {
+    // TODO
   }
 
-  void Window::setContextMenu (const SSC::String& seq, const SSC::String& menuSource) {
-    if (menuSource.empty()) return void(0);
+  void Window::setContextMenu (const String& seq, const String& menuSource) {
+    if (menuSource.empty()) {
+      return;
+    }
 
-    HMENU hPopupMenu = CreatePopupMenu();
-
-    auto menuItems = split(menuSource, '\n');
+    const auto menuItems = split(menuSource, '\n');
+    auto menu = CreatePopupMenu();
+    Vector<String> lookup;
     int index = 1;
-    std::vector<SSC::String> lookup;
+
     lookup.push_back("");
 
-    for (auto item : menuItems) {
-      auto pair = split(trim(item), ':');
-      auto key = SSC::String("");
-
-      if (pair.size() > 1) {
-        key = pair[1];
-      }
+    for (const auto& item : menuItems) {
+      const auto pair = split(trim(item), ':');
 
       if (pair[0].find("---") != -1) {
-        InsertMenu(hPopupMenu, 0, MF_SEPARATOR, 0, NULL);
+        InsertMenu(menu, 0, MF_SEPARATOR, 0, nullptr);
       } else {
         lookup.push_back(pair[0]);
-        InsertMenu(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, index++, pair[0].c_str());
+        InsertMenu(menu, 0, MF_BYPOSITION | MF_STRING, index++, pair[0].c_str());
       }
     }
 
-    SetForegroundWindow(window);
+    SetForegroundWindow(this->window);
 
-    POINT p;
-    GetCursorPos(&p);
+    POINT point;
+    GetCursorPos(&point);
 
-    auto selection = TrackPopupMenu(
-      hPopupMenu,
+    const auto selection = TrackPopupMenu(
+      menu,
       TPM_RETURNCMD | TPM_NONOTIFY,
-      p.x,
-      p.y,
+      point.x,
+      point.y,
       0,
-      window,
+      this->window,
       nullptr
     );
 
-    DestroyMenu(hPopupMenu);
-    if (selection == 0) return;
-    this->eval(getResolveMenuSelectionJavaScript(seq, lookup.at(selection), "contextMenu", "context"));
+    DestroyMenu(menu);
+
+    if (selection != 0) {
+      this->eval(getResolveMenuSelectionJavaScript(seq, lookup.at(selection), "contextMenu", "context"));
+    }
   }
 
   void Window::setBackgroundColor (const String& rgba) {
+    const auto parts = split(trim(replace(replace(rgba, "rgba(", ""), ")", "")), ',');
+    int r = 0, g = 0, b = 0;
 
+    if (parts.size() >= 3) {
+      try { r = std::stoi(trim(parts[0])); }
+      catch (...) {}
+
+      try { g = std::stoi(trim(parts[1])); }
+      catch (...) {}
+
+      try { b = std::stoi(trim(parts[2])); }
+      catch (...) {}
+
+      return this->setBackgroundColor(r, g, b, 1.0);
+    }
   }
 
   void Window::setBackgroundColor (int r, int g, int b, float a) {
-    SetBkColor(GetDC(window), RGB(r, g, b));
-    app.wcex.hbrBackground = CreateSolidBrush(RGB(r, g, b));
+    SetBkColor(GetDC(this->window), RGB(r, g, b));
   }
 
   String Window::getBackgroundColor () {
-    LOGBRUSH lb;
-    GetObject(app.wcex.hbrBackground, sizeof(LOGBRUSH), &lb);
-
-    int r = GetRValue(lb.lbColor);
-    int g = GetGValue(lb.lbColor);
-    int b = GetBValue(lb.lbColor);
-
-    std::stringstream ss;
-    ss << "R:" << r << ", G:" << g << ", B:" << b;
-    return ss.str();
-  }
-
-  // message is defined in WinUser.h
-  // https://raw.githubusercontent.com/tpn/winsdk-10/master/Include/10.0.10240.0/um/WinUser.h
-  LRESULT CALLBACK Window::WndProc(
-    HWND hWnd,
-    UINT message,
-    WPARAM wParam,
-    LPARAM lParam
-  ) {
-    static auto app = SSC::App::sharedApplication();
-    Window* w = reinterpret_cast<Window*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
-
-    if (message == WM_COPYDATA) {
-      auto copyData = reinterpret_cast<PCOPYDATASTRUCT>(lParam);
-      message = (UINT) copyData->dwData;
-      wParam = (WPARAM) copyData->cbData;
-      lParam = (LPARAM) copyData->lpData;
+    auto color = GetBkColor(GetDC(this->window));
+    if (color == CLR_INVALID) {
+      return "";
     }
 
-    switch (message) {
-      case WM_SIZE: {
-        if (w == nullptr || w->webview == nullptr) {
-          break;
-        }
+    const auto r = GetRValue(color);
+    const auto g = GetGValue(color);
+    const auto b = GetBValue(color);
 
-        RECT bounds;
-        GetClientRect(hWnd, &bounds);
-        w->controller->put_Bounds(bounds);
-        break;
-      }
+    char string[100];
 
-      case WM_SOCKET_TRAY: {
-        static auto userConfig = SSC::getUserConfig();
-        auto isAgent = userConfig.count("tray_icon") != 0;
+    snprintf(
+      string,
+      sizeof(string),
+      "rgba(%d, %d, %d, %f)",
+      r,
+      g,
+      b,
+      1.0f
+    );
 
-        if (lParam == WM_LBUTTONDOWN) {
-          SetForegroundWindow(hWnd);
-          if (isAgent) {
-            POINT pt;
-            GetCursorPos(&pt);
-            TrackPopupMenu(w->menutray, TPM_BOTTOMALIGN | TPM_LEFTALIGN, pt.x, pt.y, 0, hWnd, NULL);
-          }
-
-          PostMessage(hWnd, WM_NULL, 0, 0);
-
-          // broadcast an event to all the windows that the tray icon was clicked
-          if (app != nullptr && app->windowManager != nullptr) {
-            for (auto window : app->windowManager->windows) {
-              if (window != nullptr) {
-                window->bridge->router.emit("tray", "true");
-              }
-            }
-          }
-        }
-        // fall through to WM_COMMAND!!
-      }
-
-      case WM_COMMAND: {
-        if (w == nullptr) break;
-
-        if (w->menuMap.contains(wParam)) {
-          String meta(w->menuMap[wParam]);
-          auto parts = split(meta, '\t');
-
-          if (parts.size() > 1) {
-            auto title = parts[0];
-            auto parent = parts[1];
-
-            if (String(title).find("About") == 0) {
-              w->about();
-              break;
-            }
-
-            if (String(title).find("Quit") == 0) {
-              w->exit(0);
-              break;
-            }
-
-            w->eval(getResolveMenuSelectionJavaScript("0", title, parent, "system"));
-          }
-        } else if (w->menuTrayMap.contains(wParam)) {
-          String meta(w->menuTrayMap[wParam]);
-          auto parts = split(meta, ':');
-
-          if (parts.size() > 0) {
-            auto title = trim(parts[0]);
-            auto tag = parts.size() > 1 ? trim(parts[1]) : "";
-            w->eval(getResolveMenuSelectionJavaScript("0", title, tag, "tray"));
-          }
-        }
-
-        break;
-      }
-
-      case WM_SETTINGCHANGE: {
-        // TODO(heapwolf): Dark mode
-        break;
-      }
-
-      case WM_CREATE: {
-        // TODO(heapwolf): Dark mode
-        SetWindowTheme(hWnd, L"Explorer", NULL);
-        SetMenu(hWnd, CreateMenu());
-        break;
-      }
-
-      case WM_CLOSE: {
-        if (!w->opts.closable) break;
-
-        SSC::JSON::Object json = SSC::JSON::Object::Entries {
-          {"data", w->index}
-        };
-
-        auto app = App::sharedApplication();
-        app->windowManager->destroyWindow(w->index);
-
-        for (auto window : app->windowManager->windows) {
-          if (window != nullptr) {
-            window->eval(getEmitToRenderProcessJavaScript("window-closed", json.str()));
-          }
-        }
-
-        w->close(0);
-        break;
-      }
-
-      case WM_HOTKEY: {
-        w->hotkey.onHotKeyBindingCallback((HotKeyBinding::ID) wParam);
-        break;
-      }
-
-      case WM_HANDLE_DEEP_LINK: {
-        auto url = SSC::String((const char*) lParam, wParam);
-        SSC::JSON::Object json = SSC::JSON::Object::Entries {{
-          "url", url
-        }};
-
-        if (app != nullptr && app->windowManager != nullptr) {
-          for (auto window : app->windowManager->windows) {
-            if (window != nullptr) {
-              window->bridge->router.emit("applicationurl", json.str());
-            }
-          }
-        }
-        break;
-      }
-
-      default:
-        return DefWindowProc(hWnd, message, wParam, lParam);
-        break;
-    }
-
-    return 0;
+    return string;
   }
-
-} // namespace SSC
+}
