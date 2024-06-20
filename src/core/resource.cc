@@ -3,6 +3,8 @@
 #include "debug.hh"
 #include "core.hh"
 
+#include "../platform/platform.hh"
+
 #if SOCKET_RUNTIME_PLATFORM_ANDROID
 #include "../platform/android.hh"
 #include <fstream>
@@ -254,10 +256,10 @@ namespace SSC {
     static wchar_t filename[MAX_PATH];
     GetModuleFileNameW(NULL, filename, MAX_PATH);
     const auto self = Path(filename).remove_filename();
-    value = path.string();
+    value = self.string();
     size_t offset = 0;
     // escape
-    while ((offset = value.find('\\', offset)) != Sstring::npos) {
+    while ((offset = value.find('\\', offset)) != String::npos) {
       value.replace(offset, 1, "\\\\");
       offset += 2;
     }
@@ -266,7 +268,7 @@ namespace SSC {
   #endif
 
     if (value.size() > 0) {
-    #if !PLATFORM_WINDOWS
+    #if !SOCKET_RUNTIME_PLATFORM_WINDOWS
       std::replace(
         value.begin(),
         value.end(),
@@ -461,6 +463,19 @@ namespace SSC {
     entries.push_back(this->tmp);
     return entries;
   }
+
+#if SOCKET_RUNTIME_PLATFORM_WINDOWS
+  const Path FileResource::getMicrosoftEdgeRuntimePath () {
+    // this is something like "C:\\Users\\jwerle\\AppData\\Local\\Microsoft\\Edge SxS\\Application\\123.0.2386.0"
+    static const auto EDGE_RUNTIME_DIRECTORY = convertStringToWString(trim(Env::get("SOCKET_EDGE_RUNTIME_DIRECTORY")));
+
+    return Path(
+      EDGE_RUNTIME_DIRECTORY.size() > 0 && fs::exists(EDGE_RUNTIME_DIRECTORY)
+        ? EDGE_RUNTIME_DIRECTORY
+        : ""
+    );
+  }
+#endif
 
   FileResource::FileResource (
     const Path& resourcePath,

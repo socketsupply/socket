@@ -11,10 +11,16 @@ namespace SSC {
   }
 
   void Core::shutdown () {
+    if (this->shuttingDown) {
+      return;
+    }
+
+    this->shuttingDown = true;
   #if SOCKET_RUNTIME_PLATFORM_DESKTOP
     this->childProcess.shutdown();
   #endif
     this->stopEventLoop();
+    this->shuttingDown = false;
   }
 
   bool Core::hasPost (uint64_t id) {
@@ -266,7 +272,7 @@ namespace SSC {
     if (ms > 0) {
       auto timeout = getEventLoopTimeout();
       ms = timeout > ms ? timeout : ms;
-      std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+      msleep(ms);
     }
   }
 

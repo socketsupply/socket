@@ -695,5 +695,4 @@ int lastY = 0;
 @implementation SSCWebViewController
 @end
 #endif
-
 #endif

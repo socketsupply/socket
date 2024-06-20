@@ -131,6 +131,10 @@ namespace SSC {
       static const WellKnownPaths& getWellKnownPaths ();
       static const Map getMountedPaths ();
 
+    #if SOCKET_RUNTIME_PLATFORM_WINDOWS
+      static const Path getMicrosoftEdgeRuntimePath ();
+    #endif
+
     #if SOCKET_RUNTIME_PLATFORM_ANDROID
       static void setSharedAndroidAssetManager (Android::AssetManager*);
       static Android::AssetManager* getSharedAndroidAssetManager ();

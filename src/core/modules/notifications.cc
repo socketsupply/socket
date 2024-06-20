@@ -96,7 +96,7 @@ namespace SSC {
       notificationPresentedObservers()
   {
     #if SOCKET_RUNTIME_PLATFORM_APPLE
-      if (!this->options.enabled) return;
+      if (!core->options.features.useNotifications) return;
       auto notificationCenter = [UNUserNotificationCenter currentNotificationCenter];
 
       this->userNotificationCenterDelegate = [SSCUserNotificationCenterDelegate new];
@@ -130,7 +130,7 @@ namespace SSC {
 
         [NSRunLoop.mainRunLoop
           addTimer: this->userNotificationCenterPollTimer
-            forMode: NSDefaultRunLoopMode
+           forMode: NSDefaultRunLoopMode
         ];
       }];
     #endif
@@ -138,7 +138,7 @@ namespace SSC {
 
   CoreNotifications::~CoreNotifications () {
     #if SOCKET_RUNTIME_PLATFORM_APPLE
-      if (!this->options.enabled) return;
+      if (!core->options.features.useNotifications) return;
 
       auto notificationCenter = [UNUserNotificationCenter currentNotificationCenter];
 

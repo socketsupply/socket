@@ -153,14 +153,13 @@ namespace SSC {
         fs(this),
         geolocation(this),
         networkStatus(this),
-        notifications(this, { options.features.useNotifications }),
+        notifications(this),
         os(this),
         platform(this),
         timers(this),
         udp(this)
       {
         initEventLoop();
-
         if (options.features.useNetworkStatus) {
           this->networkStatus.start();
         }
