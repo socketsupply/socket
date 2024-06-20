@@ -8,7 +8,7 @@ declare IOS_SIMULATOR_VERSION_MIN="${IOS_SIMULATOR_VERSION_MIN:-$IPHONEOS_VERSIO
 declare cflags=()
 declare arch="$(uname -m | sed 's/aarch64/arm64/g')"
 arch=${ARCH:-$arch}
-declare host="$(uname -s)"
+declare host="${TARGET_HOST:-"$(uname -s)"}"
 declare platform="desktop"
 
 declare ios_sdk_path=""
@@ -47,7 +47,7 @@ else
 fi
 
 cflags+=(
-  $CFLAG
+  $CFLAGS
   $CXXFLAGS
   -std=c++2a
   -ferror-limit=6
@@ -99,11 +99,37 @@ if (( !TARGET_OS_ANDROID && !TARGET_ANDROID_EMULATOR )); then
       -D_DLL
       -DWIN32
       -DWIN32_LEAN_AND_MEAN
-      -Xlinker /NODEFAULTLIB:libcmt
+      "-Xlinker /NODEFAULTLIB:libcmt"
       -Wno-nonportable-include-path
     )
     if [[ -n "$DEBUG" ]]; then
       cflags+=("-D_DEBUG")
+    fi
+
+    ## TODO(@jwerle): figure this out for macOS
+    if [[ "$(uname -s)" == "Linux" ]]; then
+      cflags+=(
+        "-fdeclspec"
+        "-I/usr/share/mingw-w64/include"
+        "-I/usr/include/x86_64-linux-gnu/c++/12/"
+        "-I/usr/lib/gcc/x86_64-w64-mingw32/10-win32/include/"
+        "-I/usr/lib/gcc/x86_64-w64-mingw32/10-posix/include/c++"
+        "-I/usr/lib/gcc/x86_64-w64-mingw32/10-win32/include/c++"
+        "-I/usr/lib/gcc/x86_64-w64-mingw32/10-win32/include/c++/x86_64-w64-mingw32"
+        "-I/usr/lib/gcc/x86_64-w64-mingw32/10-win32/include/c++/backward"
+        "-DWIN32"
+        "-DWINVER=0x0A00"
+        "-D_WIN32_WINNT=0x0A00"
+        "-D_WIN32"
+        "-D_WIN64"
+        "-D_MSC_VER=1940"
+        "-D_MSC_FULL_VER=193933519"
+        "-D_MSC_BUILD=0"
+        "-D_GLIBCXX_HAS_GTHREADS=1"
+        "-DSOCKET_RUNTIME_CROSS_COMPILED_HOST=1"
+        "-DSOCKET_RUNTIME_PLATFORM_WANTS_MINGW=1"
+        $(pkg-config gthread-2.0 --cflags)
+      )
     fi
   fi
 fi
