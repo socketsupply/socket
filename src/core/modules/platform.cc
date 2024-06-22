@@ -20,14 +20,14 @@ namespace SSC {
 
         this->wasFirstDOMContentLoadedEventDispatched = true;
       }
-
-      const auto json = JSON::Object::Entries {
-        {"source", "platform.event"},
-        {"data", JSON::Object {}}
-      };
-
-      callback(seq, json, Post{});
     });
+
+    const auto json = JSON::Object::Entries {
+      {"source", "platform.event"},
+      {"data", JSON::Object {}}
+    };
+
+    callback(seq, json, Post{});
   }
 
   void CorePlatform::notify (

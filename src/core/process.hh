@@ -3,6 +3,10 @@
 
 #include "../platform/platform.hh"
 
+#if SOCKET_RUNTIME_PLATFORM_WINDOWS
+#include <tlhelp32.h>
+#endif
+
 #if !SOCKET_RUNTIME_PLATFORM_IOS
 #include <iostream>
 #endif

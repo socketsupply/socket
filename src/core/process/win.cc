@@ -1,10 +1,10 @@
 #include <cstring>
 #include <iostream>
 #include <stdexcept>
-#include <tlhelp32.h>
 #include <limits.h>
 
 #include "../process.hh"
+#include "../env.hh"
 
 namespace SSC {
 
@@ -31,6 +31,27 @@ Process::Process(
   this->argv = argv;
   this->path = path;
 }
+
+Process::Process (
+  const String &command,
+  const String &argv,
+  const Vector<String> &env,
+  const String &path,
+  MessageCallback readStdout,
+  MessageCallback readStderr,
+  MessageCallback onExit,
+  bool openStdin,
+  const ProcessConfig &config
+ ) noexcept
+  : openStdin(true),
+    readStdout(std::move(readStdout)),
+    readStderr(std::move(readStderr)),
+    onExit(std::move(onExit)),
+    env(env),
+    command(command),
+    argv(argv),
+    path(path)
+{}
 
 int Process::wait () {
   do {
@@ -69,7 +90,7 @@ class Handle {
 };
 
 //Based on the discussion thread: https://www.reddit.com/r/cpp/comments/3vpjqg/a_new_platform_independent_process_library_for_c11/cxq1wsj
-std::mutex create_processMutex;
+std::recursive_mutex create_processMutex;
 
 //Based on the example at https://msdn.microsoft.com/en-us/library/windows/desktop/ms682499(v=vs.85).aspx.
 Process::PID Process::open (const String &command, const String &path) noexcept {
@@ -283,7 +304,7 @@ void Process::read() noexcept {
   if (stderrFD) {
     stderrThread = Thread([this]() {
       DWORD n;
-      UniquePointer<char*> buffer(new char[config.bufferSize]);
+      auto buffer = std::make_unique<char[]>(config.bufferSize);
 
       for (;;) {
         BOOL bSuccess = ReadFile(*stderrFD, static_cast<CHAR *>(buffer.get()), static_cast<DWORD>(config.bufferSize), &n, nullptr);

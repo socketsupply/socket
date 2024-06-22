@@ -380,6 +380,8 @@ namespace SSC {
         callback(ShowResult { "", options.id });
       });
     }];
+
+    return true;
   #endif
     return false;
   }

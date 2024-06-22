@@ -537,8 +537,13 @@ namespace SSC {
           }
 
           for (int i = 0; i < input_size; i += this->params.n_batch) {
-            int n_eval = std::min(input_size - i, this->params.n_batch);
+            if (this->stopped) return;
 
+          #if SOCKET_RUNTIME_PLATFORM_WINDOWS
+          #undef min
+          #endif
+
+            int n_eval = std::min(input_size - i, this->params.n_batch);
             if (llama_decode(this->guidance, llama_batch_get_one(input_buf + i, n_eval, n_past_guidance, 0))) {
               LOG("failed to eval\n");
               return;

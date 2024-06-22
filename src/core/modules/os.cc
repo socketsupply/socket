@@ -659,14 +659,12 @@ namespace SSC {
     const String& seq,
     const CoreModule::Callback& callback
   ) const {
-    this->core->dispatchEventLoop([=, this]() {
-      static const auto data = JSON::Object(OS_CONSTANTS);
-      static const auto json = JSON::Object::Entries {
-        {"source", "os.constants"},
-        {"data", data}
-      };
+    static const auto data = JSON::Object(OS_CONSTANTS);
+    static const auto json = JSON::Object::Entries {
+      {"source", "os.constants"},
+      {"data", data}
+    };
 
-      callback(seq, json, Post {});
-    });
+    callback(seq, json, Post {});
   }
 }
