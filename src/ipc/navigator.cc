@@ -149,7 +149,7 @@ namespace SSC::IPC {
         if (resolution.pathname.size() > 0) {
           const auto filename = Path(entry.first) / resolution.pathname.substr(1);
           resolution.type = Navigator::Location::Resolution::Type::Mount;
-          resolution.mount.filename = filename;
+          resolution.mount.filename = filename.string();
           return resolution;
         }
       }
@@ -252,27 +252,27 @@ namespace SSC::IPC {
       this
     );
   #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
-    EventRegistrationToken tokenNavigation;
+    EventRegistrationToken token;
     webview->add_NavigationStarting(
       Microsoft::WRL::Callback<ICoreWebView2NavigationStartingEventHandler>(
-        [this, &](ICoreWebView2* webview, ICoreWebView2NavigationStartingEventArgs *event) {
+        [=, this](ICoreWebView2* webview, ICoreWebView2NavigationStartingEventArgs* args) {
           PWSTR source;
           PWSTR uri;
 
-          event->get_Uri(&uri);
+          args->get_Uri(&uri);
           webview->get_Source(&source);
 
           if (uri == nullptr || source == nullptr) {
             if (uri) CoTaskMemFree(uri);
             if (source) CoTaskMemFree(source);
-            return E_POIINTER;
+            return E_POINTER;
           }
 
           const auto requestedURL = convertWStringToString(uri);
           const auto currentURL = convertWStringToString(source);
 
           if (!this->handleNavigationRequest(currentURL, requestedURL)) {
-            event->put_Cancel(true);
+            args->put_Cancel(true);
           }
 
           CoTaskMemFree(uri);
@@ -280,7 +280,7 @@ namespace SSC::IPC {
           return S_OK;
         }
       ).Get(),
-      &tokenNavigation
+      &token
     );
   #endif
   }

@@ -448,41 +448,6 @@ namespace SSC::IPC {
         nullptr
       );
     }
-  #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
-    static const int MAX_ALLOWED_SCHEME_ORIGINS = 64;
-    static const int MAX_CUSTOM_SCHEME_REGISTRATIONS = 64;
-    int registrationsCount = 0;
-
-    auto registration = Microsoft::WRL::Make<CoreWebView2CustomSchemeRegistration>(
-      convertStringToWString(scheme).c_str()
-    );
-
-    Microsoft::WRL::ComPtr<ICoreWebView2EnvironmentOptions4> options;
-    ICoreWebView2CustomSchemeRegistration* registrations[MAX_CUSTOM_SCHEME_REGISTRATIONS] = {};
-    const WCHAR* allowedOrigins[MAX_ALLOWED_SCHEME_ORIGINS] = {};
-    int i = 0;
-
-    for (const auto& entry : this->handlers) {
-      allowedOrigins[i++] = convertStringToWString(entry.first + "://*").c_str();
-    }
-
-    registration->put_HasAuthorityComponent(true);
-    registration->SetAllowedOrigins(this->handlers.size(), allowedOrigins);
-
-    this->coreWebView2CustomSchemeRegistrations.insert(registration);
-
-    if (this->configuration.webview->As(&options) != S_OK) {
-      return false;
-    }
-
-    for (const auto& registration : this->coreWebView2CustomSchemeRegistrations) {
-      registrations[registrationsCount++] = registration.Get();
-    }
-
-    options->SetCustomSchemeRegistrations(
-      registrationsCount,
-      static_cast<ICoreWebView2CustomSchemeRegistration**>(registrations)
-    );
   #endif
 
     this->handlers.insert_or_assign(scheme, handler);
@@ -599,6 +564,11 @@ namespace SSC::IPC {
     PlatformRequest platformRequest
   #endif
   ) {
+    const auto userConfig = handlers->bridge->userConfig;
+    const auto bundleIdentifier = userConfig.contains("meta_bundle_identifier")
+      ? userConfig.at("meta_bundle_identifier")
+      : "";
+
   #if SOCKET_RUNTIME_PLATFORM_APPLE
     this->absoluteURL = platformRequest.request.URL.absoluteString.UTF8String;
   #elif SOCKET_RUNTIME_PLATFORM_LINUX
@@ -607,6 +577,15 @@ namespace SSC::IPC {
     LPWSTR requestURI;
     platformRequest->get_Uri(&requestURI);
     this->absoluteURL = convertWStringToString(requestURI);
+    if (
+      this->absoluteURL.starts_with("socket://") &&
+      !this->absoluteURL.starts_with("socket://" + bundleIdentifier)
+    ) {
+      this->absoluteURL = String("socket://") + this->absoluteURL.substr(8);
+      if (this->absoluteURL.ends_with("/")) {
+        this->absoluteURL = this->absoluteURL.substr(0, this->absoluteURL.size() - 1);
+      }
+    }
     CoTaskMemFree(requestURI);
   #elif SOCKET_RUNTIME_PLATFORM_ANDROID
     auto app = App::sharedApplication();
@@ -620,11 +599,7 @@ namespace SSC::IPC {
     )).str();
   #endif
 
-    const auto userConfig = handlers->bridge->userConfig;
     const auto url = URL::Components::parse(this->absoluteURL);
-    const auto bundleIdentifier = userConfig.contains("meta_bundle_identifier")
-      ? userConfig.at("meta_bundle_identifier")
-      : "";
 
     this->request = std::make_shared<Request>(
       handlers,
@@ -1011,9 +986,10 @@ namespace SSC::IPC {
       this->setHeader("cache-control", "no-cache");
     }
 
+    this->setHeader("connection", "keep-alive");
     this->setHeader("access-control-allow-origin", "*");
-    this->setHeader("access-control-allow-methods", "*");
     this->setHeader("access-control-allow-headers", "*");
+    this->setHeader("access-control-allow-methods", "*");
 
     for (const auto& entry : defaultHeaders) {
       const auto parts = split(trim(entry), ':');
@@ -1176,13 +1152,15 @@ namespace SSC::IPC {
         : ""
     );
     this->platformResponseStream = SHCreateMemStream(nullptr, 0);
-    return S_OK == this->request->env->CreateWebResourceResponse(
+    const auto result = this->request->env->CreateWebResourceResponse(
       this->platformResponseStream,
       this->statusCode,
       convertStringToWString(statusText).c_str(),
       convertStringToWString(this->headers.str()).c_str(),
       &this->platformResponse
     );
+
+    return result == S_OK;
   #elif SOCKET_RUNTIME_PLATFORM_ANDROID
     const auto app = App::sharedApplication();
     const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
@@ -1256,7 +1234,10 @@ namespace SSC::IPC {
       // set 'content-length' header if response was not created
       this->setHeader("content-length", size);
       if (!this->writeHead()) {
-        debug("IPC::SchemeHandlers::Response: Failed to write head");
+        debug(
+          "IPC::SchemeHandlers::Response: Failed to write head for %s",
+	  this->request->str().c_str()
+        );
         return false;
       }
     }
