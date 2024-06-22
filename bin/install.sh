@@ -360,7 +360,7 @@ function _get_web_view2() {
 
   echo "# Downloading Webview2"
 
-  curl -L https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/1.0.2420.47 --output "$tmp/webview2.zip"
+  curl -L https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/1.0.2592.51 --output "$tmp/webview2.zip"
   cd "$tmp" || exit 1
   unzip -q "$tmp/webview2.zip"
   mkdir -p "$BUILD_DIR/include"
@@ -889,7 +889,6 @@ function _compile_llama {
     fi
 
     rm -f "$root/build/$(host_arch)-desktop/lib$d"/*.{so,la,dylib}*
-    return
   elif [ "$platform" == "iPhoneOS" ] || [ "$platform" == "iPhoneSimulator" ]; then
     # https://github.com/ggerganov/llama.cpp/discussions/4508
 
@@ -905,23 +904,30 @@ function _compile_llama {
       return
     fi
   elif [ "$platform" == "android" ]; then
-    local android_includes=$(android_arch_includes "$1")
-    local host_arch="$(host_arch)"
-    local cc="$(android_clang "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch")"
-    local cxx="$cc"
-    local clang_target="$(android_clang_target "$target")"
-    local ar="$(android_ar "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch")"
-    local cflags=("$clang_target" -std=c++2a -g -pedantic "${android_includes[*]}")
-
-    AR="$ar" CFLAGS="$cflags" CXXFLAGS="$cflags" CXX="$cxx" CC="$cc" make UNAME_M="$1" UNAME_P="$1" LLAMA_FAST=1 libllama.a
-
-    if [ ! $? = 0 ]; then
-      die $? "not ok - Unable to compile libllama for '$platform'"
+    if [[ "$host" == "Win32" ]]; then
+      echo "WARN - Building libllama for Android on Windows is not yet supported"
       return
+    else
+      local android_includes=$(android_arch_includes "$1")
+      local host_arch="$(host_arch)"
+      local cc="$(android_clang "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch")"
+      local cxx="$cc"
+      local clang_target="$(android_clang_target "$target")"
+      local ar="$(android_ar "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch")"
+      local cflags=("$clang_target" -std=c++2a -g -pedantic "${android_includes[*]}")
+
+      AR="$ar" CFLAGS="$cflags" CXXFLAGS="$cflags" CXX="$cxx" CC="$cc" make UNAME_M="$1" UNAME_P="$1" LLAMA_FAST=1 libllama.a
+
+      if [ ! $? = 0 ]; then
+        die $? "not ok - Unable to compile libllama for '$platform'"
+	return
+      fi
     fi
   fi
 
-  cp libllama.a ../lib
+  if [[ "$host" != "Win32" ]]; then
+    cp libllama.a ../lib
+  fi
 
   cd "$BUILD_DIR" || exit 1
   rm -f "$root/build/$target-$platform/lib$d"/*.{so,la,dylib}*
