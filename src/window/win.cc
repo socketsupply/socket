@@ -1,25 +1,17 @@
 #include "../app/app.hh"
 #include "window.hh"
-
-#ifndef CHECK_FAILURE
-#define CHECK_FAILURE(...)
-#endif
+#include <winuser.h>
 
 using namespace Microsoft::WRL;
 
+extern BOOL ChangeWindowMessageFilterEx (
+  HWND hwnd,
+  UINT message,
+  DWORD action,
+  void* unused
+);
+
 namespace SSC {
-  static inline void alert (const WString &ws) {
-    MessageBoxA(nullptr, convertWStringToString(ws).c_str(), _TEXT("Alert"), MB_OK | MB_ICONSTOP);
-  }
-
-  static inline void alert (const String &s) {
-    MessageBoxA(nullptr, s.c_str(), _TEXT("Alert"), MB_OK | MB_ICONSTOP);
-  }
-
-  static inline void alert (const char* s) {
-    MessageBoxA(nullptr, s, _TEXT("Alert"), MB_OK | MB_ICONSTOP);
-  }
-
   class CDataObject : public IDataObject {
     public:
       HRESULT __stdcall QueryInterface (REFIID iid, void ** ppvObject);
@@ -422,14 +414,14 @@ namespace SSC {
       globalMemory = GlobalAlloc(GHND, sizeof(DROPFILES) + len + 1);
 
       if (!globalMemory) {
-        return nullptr;
+        return E_POINTER;
       }
 
       dropFiles = (DROPFILES*) GlobalLock(globalMemory);
 
       if (!dropFiles) {
         GlobalFree(globalMemory);
-        return nullptr;
+        return E_POINTER;
       }
 
       dropFiles->fNC = TRUE;
@@ -616,28 +608,18 @@ namespace SSC {
     // this may be an "empty" path if not available
     static const auto edgeRuntimePath = FileResource::getMicrosoftEdgeRuntimePath();
     static auto app = App::sharedApplication();
+    app->isReady = false;
 
     if (!edgeRuntimePath.empty()) {
       const auto string = convertWStringToString(edgeRuntimePath.string());
-      const auto value = replace(string, "\\\\", "\\\\")
+      const auto value = replace(string, "\\\\", "\\\\");
       // inject the `EDGE_RUNTIME_DIRECTORY` environment variable directly into
       // the userConfig so it is available as an env var in the webview runtime
       this->bridge.userConfig["env_EDGE_RUNTIME_DIRECTORY"] = value;
-      this->options.userConfig["env_EDGE_RUNTIME_DIRECTORY"] = value;
       debug("Microsoft Edge Runtime directory set to '%ls'", edgeRuntimePath.c_str());
     }
 
     auto userConfig = this->bridge.userConfig;
-    auto webviewEnvironmentOptions = Microsoft::WRL::Make<CoreWebView2EnvironmentOptions>();
-    webviewEnvironmentOptions->put_AdditionalBrowserArguments(L"--enable-features=msWebView2EnableDraggableRegions");
-
-    Microsoft::WRL::ComPtr<ICoreWebView2EnvironmentOptions4> webviewEnvironmentOptions4;
-    if (webviewEnvironmentOptions.As(&webviewEnvironmentOptions4) != S_OK) {
-      throw std::runtime_error(
-        "Unable to resolve 'ICoreWebView2EnvironmentOptions4'"
-      );
-    }
-
     // only the root window can handle "agent" tasks
     const bool isAgent = (
       userConfig["application_agent"] == "true" &&
@@ -701,6 +683,9 @@ namespace SSC {
       );
     }
 
+    auto webviewEnvironmentOptions = Microsoft::WRL::Make<CoreWebView2EnvironmentOptions>();
+    webviewEnvironmentOptions->put_AdditionalBrowserArguments(L"--enable-features=msWebView2EnableDraggableRegions");
+
     this->drop = std::make_shared<DragDrop>(this);
     this->bridge.navigateFunction = [this] (const auto url) {
       this->navigate(url);
@@ -711,7 +696,10 @@ namespace SSC {
     };
 
     this->bridge.client.preload = IPC::Preload::compile({
-      .client = this->bridge.client,
+      .client = UniqueClient {
+        .id = this->bridge.client.id,
+	.index = this->bridge.client.index
+      },
       .index = options.index,
       .userScript = options.userScript
     });
@@ -734,9 +722,14 @@ namespace SSC {
     }
 
     // in theory these allow you to do drop files in elevated mode
-    ChangeWindowMessageFilterEx(this->window, WM_DROPFILES, MSGFLT_ALLOW, nullptr);
-    ChangeWindowMessageFilterEx(this->window, WM_COPYDATA, MSGFLT_ALLOW, nullptr);
-    ChangeWindowMessageFilterEx(this->window, 0x0049, MSGFLT_ALLOW, nullptr);
+    // FIXME(@jwerle): `ChangeWindowMessageFilter` will be deprecated and potentially removed
+    // but `ChangeWindowMessageFilterEx` doesn't seem to be available for linkage
+    ChangeWindowMessageFilter(WM_DROPFILES, MSGFLT_ADD);
+    ChangeWindowMessageFilter(WM_COPYDATA, MSGFLT_ADD);
+    ChangeWindowMessageFilter(0x0049, MSGFLT_ADD);
+    //ChangeWindowMessageFilterEx(this->window, WM_DROPFILES, /* MSGFLT_ALLOW */ 1, nullptr);
+    //ChangeWindowMessageFilterEx(this->window, WM_COPYDATA, /* MSGFLT_ALLOW*/ 1, nullptr);
+    //ChangeWindowMessageFilterEx(this->window, 0x0049, /* MSGFLT_ALLOW */ 1, nullptr);
 
     UpdateWindow(this->window);
     ShowWindow(this->window, isAgent ? SW_HIDE : SW_SHOWNORMAL);
@@ -746,7 +739,6 @@ namespace SSC {
 
     this->hotkey.init();
     this->bridge.init();
-    this->bridge.configureWebView(this->webview);
 
     static const auto APPDATA = Path(convertStringToWString(Env::get("APPDATA")));
 
@@ -756,6 +748,8 @@ namespace SSC {
       );
     }
 
+    // XXX(@jwerle): is this path correct? maybe we should use the bundle identifier here
+    // instead of the executable filename
     static const auto edgeRuntimeUserDataPath = ({
       wchar_t modulefile[MAX_PATH];
       GetModuleFileNameW(nullptr, modulefile, MAX_PATH);
@@ -769,19 +763,19 @@ namespace SSC {
     });
 
     CreateCoreWebView2EnvironmentWithOptions(
-      edgeRuntimePath.empty() ? nullptr : edgeRuntimePath.string(),
-      edgeRuntimeUserDataPath,
+      edgeRuntimePath.empty() ? nullptr : convertStringToWString(edgeRuntimePath.string()).c_str(),
+      convertStringToWString(edgeRuntimeUserDataPath.string()).c_str(),
       webviewEnvironmentOptions.Get(),
       Microsoft::WRL::Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>([=, this](
         HRESULT result,
-        ICoreWebView2Environment* webviewEnvironment
-      ) -> HRESULT {
+        ICoreWebView2Environment* env
+      ) mutable {
         return env->CreateCoreWebView2Controller(
           this->window,
           Microsoft::WRL::Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>([=, this](
             HRESULT result,
             ICoreWebView2Controller* controller
-          ) -> HRESULT {
+          ) mutable {
             const auto bundleIdentifier = userConfig["meta_bundle_identifier"];
 
             if (result != S_OK) {
@@ -801,38 +795,45 @@ namespace SSC {
               this->controller->put_Bounds(bounds);
               this->controller->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
               this->controller->AddRef();
+	      this->bridge.configureWebView(this->webview);
             } while (0);
 
             // configure the webview settings
             do {
               ICoreWebView2Settings* settings = nullptr;
+              ICoreWebView2Settings2* settings2 = nullptr;
               ICoreWebView2Settings3* settings3 = nullptr;
               ICoreWebView2Settings6* settings6 = nullptr;
+              ICoreWebView2Settings9* settings9 = nullptr;
+
+	      const auto wantsDebugMode = this->options.debug || isDebugEnabled();
 
               this->webview->get_Settings(&settings);
 
+              settings2 = reinterpret_cast<ICoreWebView2Settings2*>(settings);
               settings3 = reinterpret_cast<ICoreWebView2Settings3*>(settings);
               settings6 = reinterpret_cast<ICoreWebView2Settings6*>(settings);
+              settings9 = reinterpret_cast<ICoreWebView2Settings9*>(settings);
 
               settings->put_IsScriptEnabled(true);
               settings->put_IsStatusBarEnabled(false);
               settings->put_IsWebMessageEnabled(true);
+              settings->put_AreDevToolsEnabled(wantsDebugMode);
               settings->put_AreHostObjectsAllowed(true);
               settings->put_IsZoomControlEnabled(false);
               settings->put_IsBuiltInErrorPageEnabled(false);
               settings->put_AreDefaultContextMenusEnabled(true);
               settings->put_AreDefaultScriptDialogsEnabled(true);
 
+	      // TODO(@jwerle): set user agent for runtime
+	      // settings2->put_UserAgent();
+
+              settings3->put_AreBrowserAcceleratorKeysEnabled(wantsDebugMode);
+
               settings6->put_IsPinchZoomEnabled(false);
               settings6->put_IsSwipeNavigationEnabled(false);
 
-              if (this->options.debug || isDebugEnabled()) {
-                settings->put_AreDevToolsEnabled(true);
-                settings3->put_AreBrowserAcceleratorKeysEnabled(true);
-              } else {
-                settings->put_AreDevToolsEnabled(false);
-                settings3->put_AreBrowserAcceleratorKeysEnabled(false);
-              }
+	      settings9->put_IsNonClientRegionSupportEnabled(true);
             } while (0);
 
             // enumerate all child windows to re-register drag/drop
@@ -850,7 +851,7 @@ namespace SSC {
 
                   if (text.find("Chrome") != String::npos) {
                     RevokeDragDrop(handle);
-                    RegisterDragDrop(handle, window->drop);
+                    RegisterDragDrop(handle, window->drop.get());
                     window->drop->childWindow = handle;
                   }
                 }
@@ -870,15 +871,12 @@ namespace SSC {
 
               if (webview22 != nullptr) {
                 this->bridge.userConfig["env_COREWEBVIEW2_22_AVAILABLE"] = "true";
-                this->options.userConfig["env_COREWEBVIEW2_22_AVAILABLE"] = "true";
 
                 webview22->AddWebResourceRequestedFilterWithRequestSourceKinds(
                   L"*",
                   COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL,
                   COREWEBVIEW2_WEB_RESOURCE_REQUEST_SOURCE_KINDS_ALL
                 );
-
-                debug("Configured CoreWebView2 (ICoreWebView2_22) request filter with all request source kinds");
               }
 
               webview3->SetVirtualHostNameToFolderMapping(
@@ -893,9 +891,9 @@ namespace SSC {
               EventRegistrationToken token;
               this->webview->add_PermissionRequested(
                 Microsoft::WRL::Callback<ICoreWebView2PermissionRequestedEventHandler>([=, this](
-                  ICoreWebView2 *webview,
+                  ICoreWebView2 *_,
                   ICoreWebView2PermissionRequestedEventArgs *args
-                ) -> HRESULT {
+                ) mutable {
                   COREWEBVIEW2_PERMISSION_KIND kind;
                   args->get_PermissionKind(&kind);
 
@@ -994,7 +992,7 @@ namespace SSC {
             do {
               EventRegistrationToken token;
               this->webview->add_WebMessageReceived(
-                Microsoft::WRL::Callback<ICoreWebView2WebMessageReceivedEventHandler>([=](
+                Microsoft::WRL::Callback<ICoreWebView2WebMessageReceivedEventHandler>([=, this](
                   ICoreWebView2* webview,
                   ICoreWebView2WebMessageReceivedEventArgs* args
                 ) -> HRESULT {
@@ -1012,13 +1010,13 @@ namespace SSC {
                   const auto message = IPC::Message(convertWStringToString(string));
                   CoTaskMemFree(string);
 
-                  webview2->get_Environment(&environment);
-                  environment->QueryInterface(IID_PPV_ARGS(&environment12));
                   this->webview->QueryInterface(IID_PPV_ARGS(&webview2));
                   this->webview->QueryInterface(IID_PPV_ARGS(&webview18));
+                  webview2->get_Environment(&environment);
+                  environment->QueryInterface(IID_PPV_ARGS(&environment12));
 
-                  if (!this->bridge.route(message, nullptr, 0)) {
-                    onMessage(message);
+                  if (!this->bridge.route(message.str(), nullptr, 0)) {
+                    onMessage(message.str());
                   }
 
                   return S_OK;
@@ -1039,19 +1037,27 @@ namespace SSC {
                   ICoreWebView2Environment* env = nullptr;
                   ICoreWebView2Deferral* deferral = nullptr;
 
-                  if (auto result = args->GetDeferral(&deferral)) {
-                    return result;
-                  }
-
                   // get platform request and environment from event args
                   do {
                     ICoreWebView2_2* webview2 = nullptr;
-                    webview->QueryInterface(IID_PPV_ARGS(&webview2));
-                    webview2->get_Environment(&env);
-                    args->get_Request(&platformRequest);
+                    if (webview->QueryInterface(IID_PPV_ARGS(&webview2)) != S_OK) {
+                      return E_FAIL;
+		    }
+
+                    if (webview2->get_Environment(&env) != S_OK) {
+                      return E_FAIL;
+		    }
+
+                    if (args->get_Request(&platformRequest) != S_OK) {
+                      return E_FAIL;
+		    }
                   } while (0);
 
-                  auto request = IPC::SchemeHandlers::Request::Builder(&this->bridge.schemeHandlers, platformRequest);
+                  auto request = IPC::SchemeHandlers::Request::Builder(
+                    &this->bridge.schemeHandlers,
+		    platformRequest,
+		    env
+		  );
 
                   // get and set HTTP method
                   do {
@@ -1063,26 +1069,58 @@ namespace SSC {
                   // iterator all HTTP headers and set them
                   do {
                     ICoreWebView2HttpRequestHeaders* headers = nullptr;
-                    platformRequest->get_Headers(&headers);
                     ComPtr<ICoreWebView2HttpHeadersCollectionIterator> iterator;
-                    BOOL hasCurrent = FALSE;
-                    CHECK_FAILURE(headers->GetIterator(&iterator));
-                    while (SUCCEEDED(iterator->get_HasCurrentHeader(&hasCurrent)) && hasCurrent) {
-                      LPWSTR name;
-                      LPWSTR value;
-                      if (iterator->GetCurrentHeader(&name, &value) == S_OK) {
+                    BOOL hasCurrent = false;
+                    BOOL hasNext = false;
+                    
+                    if (platformRequest->get_Headers(&headers) == S_OK && headers->GetIterator(&iterator) == S_OK) {
+                      while (SUCCEEDED(iterator->get_HasCurrentHeader(&hasCurrent)) && hasCurrent) {
+                        LPWSTR name;
+			LPWSTR value;
+
+			if (iterator->GetCurrentHeader(&name, &value) != S_OK) {
+                          break;
+                        }
+
                         request.setHeader(convertWStringToString(name), convertWStringToString(value));
-                      }
-                    }
+			if (iterator->MoveNext(&hasNext) != S_OK || !hasNext) {
+                          break;
+                        }
+		      }
+		    }
                   } while (0);
 
-                  const auto handled = this->bridge.schemeHandlers.handleRequest(request.build(), [=](const auto& response) mutable {
+		  // get request body
+		  if (request.request->method == "POST" || request.request->method == "PUT" || request.request->method == "PATCH") {
+                    IStream* content = nullptr;
+                    if (platformRequest->get_Content(&content) == S_OK && content != nullptr) {
+		      STATSTG stat;
+		      content->Stat(&stat, 0);
+		      size_t size = stat.cbSize.QuadPart;
+		      if (size > 0) {
+		        auto buffer = std::make_shared<char[]>(size);
+                        if (content->Read(buffer.get(), size, nullptr) == S_OK) {
+			  request.setBody(IPC::SchemeHandlers::Body {
+                            size,
+			    std::move(buffer)
+			  });
+			}
+		      }
+		    }
+		  }
+
+		  auto req = request.build();
+                  if (args->GetDeferral(&deferral) != S_OK) {
+                    return E_FAIL;
+                  }
+
+                  const auto handled = this->bridge.schemeHandlers.handleRequest(req, [=](const auto& response) mutable {
                     args->put_Response(response.platformResponse);
                     deferral->Complete();
                   });
 
                   if (!handled) {
-                    auto response = IPC::SchemeHandlers::Response(request, 404);
+                    auto response = IPC::SchemeHandlers::Response(req, 404);
                     response.finish();
                     args->put_Response(response.platformResponse);
                     deferral->Complete();
@@ -1116,10 +1154,10 @@ namespace SSC {
   void Window::about () {
     auto app = App::sharedApplication();
     auto text = String(
-      this->options.userConfig["build_name"] + " " +
-      "v" + this->options.userConfig["meta_version"] + "\n" +
+      this->bridge.userConfig["build_name"] + " " +
+      "v" + this->bridge.userConfig["meta_version"] + "\n" +
       "Built with ssc v" + VERSION_FULL_STRING + "\n" +
-      this->options.userConfig["meta_copyright"]
+      this->bridge.userConfig["meta_copyright"]
     );
 
     MSGBOXPARAMS mbp;
@@ -1127,7 +1165,7 @@ namespace SSC {
     mbp.hwndOwner = this->window;
     mbp.hInstance = app->hInstance;
     mbp.lpszText = text.c_str();
-    mbp.lpszCaption = this->options.userConfig["build_name"].c_str();
+    mbp.lpszCaption = this->bridge.userConfig["build_name"].c_str();
     mbp.dwStyle = MB_USERICON;
     mbp.dwLanguageId = MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT);
     mbp.lpfnMsgBoxCallback = nullptr;
@@ -1151,13 +1189,9 @@ namespace SSC {
 
   void Window::exit (int code) {
     if (this->onExit != nullptr) {
-      std::cerr << "WARNING: Window#" << index << " exiting with code " << code << std::endl;
       if (menubar != nullptr) DestroyMenu(menubar);
       if (menutray != nullptr) DestroyMenu(menutray);
       this->onExit(code);
-    }
-    else {
-      std::cerr << "WARNING: Window#" << index << " window->onExit is null in Window::exit()" << std::endl;
     }
   }
 
@@ -1233,50 +1267,39 @@ namespace SSC {
     controller->put_Bounds(bounds);
   }
 
-  void Window::eval (const String& s) {
-    app.dispatch([&, this, s] {
+  void Window::eval (const String& source) {
+    auto app = App::sharedApplication();
+    app->dispatch([=, this] {
       if (this->webview == nullptr) {
         return;
       }
 
       this->webview->ExecuteScript(
-        convertStringToWString(s).c_str(),
+        convertStringToWString(source).c_str(),
         nullptr
       );
     });
   }
 
   void Window::navigate (const String& url) {
-    return this->navigate("", url);
-  }
-
-  void Window::navigate (const String& seq, const String& value) {
+    auto app = App::sharedApplication();
     auto index = std::to_string(this->options.index);
 
-    app.dispatch([&, this, seq, value, index] {
+    app->dispatch([=, this] {
       EventRegistrationToken token;
       this->webview->add_NavigationCompleted(
         Microsoft::WRL::Callback<ICoreWebView2NavigationCompletedEventHandler>(
-          [&, this, seq, index, token](ICoreWebView2* sender, ICoreWebView2NavigationCompletedEventArgs* args) -> HRESULT {
-            String state = "1";
-
+          [=, this](ICoreWebView2* sender, ICoreWebView2NavigationCompletedEventArgs* args) -> HRESULT {
             BOOL success;
             args->get_IsSuccess(&success);
-
-            if (success) {
-              state = "0";
-            }
-
-            this->resolvePromise(seq, state, index);
             webview->remove_NavigationCompleted(token);
-
             return S_OK;
           })
         .Get(),
         &token
       );
 
-      webview->Navigate(convertStringToWString(value).c_str());
+      webview->Navigate(convertStringToWString(url).c_str());
     });
   }
 
@@ -1299,7 +1322,7 @@ namespace SSC {
     SetWindowText(window, title.c_str());
   }
 
-  ScreenSize Window::getSize () {
+  Window::Size Window::getSize () {
     // 100 are the min width/height that can be returned. Keep defaults in case
     // the function call fail.
     UINT32 height = 100;
@@ -1308,15 +1331,15 @@ namespace SSC {
 
     // Make sure controller exists, and the call to get window bounds succeeds.
     if (controller != nullptr && controller->get_Bounds(&rect) >= 0) {
-      this->height = rect.bottom - rect.top;
-      this->width = rect.right - rect.left;
+      this->size.height = rect.bottom - rect.top;
+      this->size.width = rect.right - rect.left;
     }
 
-    return { static_cast<int>(this->height), static_cast<int>(this->width) };
+    return this->size;
   }
 
-  ScreenSize Window::getSize () const {
-    return { static_cast<int>(this->height), static_cast<int>(this->width) };
+  const Window::Size Window::getSize () const {
+    return this->size;
   }
 
   void Window::setSize (int width, int height, int hints) {
@@ -1356,16 +1379,16 @@ namespace SSC {
       resize(window);
     }
 
-    this->width = width;
-    this->height = height;
+    this->size.width = width;
+    this->size.height = height;
   }
 
   void Window::setPosition (float x, float y) {
     RECT r;
     r.left = x;
     r.top = y;
-    r.right = this->width;
-    r.bottom = this->height;
+    r.right = this->size.width;
+    r.bottom = this->size.height;
 
     AdjustWindowRect(&r, WS_OVERLAPPEDWINDOW, 0);
     SetWindowPos(
@@ -1383,22 +1406,25 @@ namespace SSC {
     this->position.y = y;
   }
 
-  void Window::setTrayMenu (const String& seq, const String& value) {
-    setMenu(seq, value, true);
+  void Window::setTrayMenu (const String& value) {
+    return this->setMenu(value, true);
   }
 
-  void Window::setSystemMenu (const String& seq, const String& value) {
-    setMenu(seq, value, false);
+  void Window::setSystemMenu (const String& value) {
+    return this->setMenu(value, false);
   }
 
-  void Window::setMenu (const String& seq, const String& menuSource, const bool& isTrayMenu) {
-    static auto userConfig = getUserConfig();
-    if (menuSource.empty()) return void(0);
+  void Window::setMenu (const String& menuSource, const bool& isTrayMenu) {
+    auto app = App::sharedApplication();
+    auto userConfig = this->options.userConfig;
+
+    if (menuSource.empty()) {
+      return;
+    }
 
     NOTIFYICONDATA nid;
 
     if (isTrayMenu) {
-      static auto app = App::sharedApplication();
 
       auto cwd = app->getcwd();
       auto trayIconPath = String("application_tray_icon");
@@ -1543,11 +1569,6 @@ namespace SSC {
       InvalidateRect(this->window, &rc, true);
       DrawMenuBar(this->window);
       RedrawWindow(this->window, nullptr, nullptr, RDW_INVALIDATE | RDW_ERASE);
-    }
-
-    if (seq.size() > 0) {
-      auto index = std::to_string(this->options.index);
-      this->resolvePromise(seq, "0", index);
     }
   }
 
