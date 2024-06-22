@@ -1388,7 +1388,7 @@ apply plugin: 'kotlin-android'
 
 android {
   compileSdkVersion 34
-  ndkVersion "26.0.10792818"
+  ndkVersion "26.1.10909125"
   flavorDimensions "default"
   namespace '{{android_bundle_identifier}}'
 
