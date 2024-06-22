@@ -365,10 +365,10 @@ unsigned short createLogSocket() {
             while ((logEntry = [enumerator nextObject]) != nil) {
               count++;
               OSLogEntryLog *entry = (OSLogEntryLog *)logEntry;
-              if ([entry.timestamp isEqualToDate:timestamp]) continue;
+              if ([entry.date isEqualToDate:timestamp]) continue;
 
               NSString *message = [entry composedMessage];
-              timestamp = entry.timestamp;
+              timestamp = entry.date;
               std::cout << message.UTF8String << std::endl;
             }
           }
