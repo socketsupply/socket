@@ -114,7 +114,11 @@ namespace SSC {
        * a `HINSTANCE` on Windows or an empty value (`0`) on other platforms.
        */
       App (
+      #if SOCKET_RUNTIME_PLATFORM_WINDOWS
+        HINSTANCE instanceId = 0,
+      #else
         int instanceId = 0,
+      #endif
         SharedPointer<Core> core = SharedPointer<Core>(new Core())
       );
     #endif

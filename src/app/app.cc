@@ -47,7 +47,7 @@ static dispatch_queue_t queue = dispatch_queue_create(
 
       for (auto& window : self.app->windowManager.windows) {
         if (window != nullptr) {
-          window->bridge.emit("applicationurl", json.str());
+          window->bridge.emit("applicationurl", json);
         }
       }
     }
@@ -527,12 +527,12 @@ namespace SSC {
     );
 
     // invalidate `window` pointer that potentially is leaked
-    if (window != nullptr && app->windowManager.getWindow(window) != window) {
+    if (window != nullptr && app->windowManager.getWindow(window->index).get() != window) {
       window = nullptr;
     }
 
     auto userConfig = window != nullptr
-      ? reinterpret_cast<Window*>(window)->options.userConfig
+      ? reinterpret_cast<Window*>(window)->bridge.userConfig
       : getUserConfig();
 
     if (message == WM_COPYDATA) {
@@ -560,7 +560,7 @@ namespace SSC {
         // XXX(@jwerle, @heapwolf): is this a correct for an `isAgent` predicate?
         auto isAgent = userConfig.count("tray_icon") != 0;
 
-        if (lParam == WM_LBUTTONDOWN) {
+        if (window != nullptr && lParam == WM_LBUTTONDOWN) {
           SetForegroundWindow(hWnd);
           if (isAgent) {
             POINT point;
@@ -579,9 +579,9 @@ namespace SSC {
           PostMessage(hWnd, WM_NULL, 0, 0);
 
           // broadcast an event to all the windows that the tray icon was clicked
-          for (auto window : app->windowManager->windows) {
+          for (auto window : app->windowManager.windows) {
             if (window != nullptr) {
-              window->bridge->router.emit("tray", "true");
+              window->bridge.emit("tray", JSON::Object {});
             }
           }
         }
@@ -641,27 +641,29 @@ namespace SSC {
       }
 
       case WM_CLOSE: {
-        if (!window->options.closable) {
+        if (!window || !window->options.closable) {
           break;
         }
 
         auto index = window->index;
         const JSON::Object json = JSON::Object::Entries {
-          {"data", window->index}
+          {"data", index}
         };
 
-        for (auto window : app->windowManager->windows) {
+        for (auto window : app->windowManager.windows) {
           if (window != nullptr && window->index != index) {
             window->eval(getEmitToRenderProcessJavaScript("window-closed", json.str()));
           }
         }
 
-        app->windowManager->destroyWindow(index);
+        app->windowManager.destroyWindow(index);
         break;
       }
 
       case WM_HOTKEY: {
-        window->hotkey.onHotKeyBindingCallback((HotKeyBinding::ID) wParam);
+        if (window != nullptr) {
+          window->hotkey.onHotKeyBindingCallback((HotKeyBinding::ID) wParam);
+	}
         break;
       }
 
@@ -671,9 +673,9 @@ namespace SSC {
           {"url", url}
         };
 
-        for (auto window : app->windowManager->windows) {
+        for (auto window : app->windowManager.windows) {
           if (window != nullptr) {
-            window->bridge->router.emit("applicationurl", json.str());
+            window->bridge.emit("applicationurl", json);
           }
         }
         break;
@@ -681,7 +683,6 @@ namespace SSC {
 
       default:
         return DefWindowProc(hWnd, message, wParam, lParam);
-        break;
     }
 
     return 0;
@@ -693,7 +694,11 @@ namespace SSC {
   }
 
 #if SOCKET_RUNTIME_PLATFORM_ANDROID
-  App::App (JNIEnv* env, jobject self, SharedPointer<Core> core)
+  App::App (
+    JNIEnv* env,
+    jobject self,
+    SharedPointer<Core> core
+  )
     : userConfig(getUserConfig()),
       core(core),
       windowManager(core),
@@ -710,8 +715,14 @@ namespace SSC {
     this->init();
   }
 #else
-  App::App (int instanceId, SharedPointer<Core> core)
-    : userConfig(getUserConfig()),
+  App::App (
+  #if SOCKET_RUNTIME_PLATFORM_WINDOWS
+    HINSTANCE instanceId,
+  #else
+    int instanceId,
+  #endif
+    SharedPointer<Core> core
+  ) : userConfig(getUserConfig()),
       core(core),
       windowManager(core),
       serviceWorkerContainer(core)
@@ -721,7 +732,7 @@ namespace SSC {
     }
 
   #if SOCKET_RUNTIME_PLATFORM_WINDOWS
-    this->hInstance = reinterpret_cast<HINSTANCE>(instanceId);
+    this->hInstance = instanceId;
 
     // this fixes bad default quality DPI.
     SetProcessDPIAware();
@@ -760,7 +771,6 @@ namespace SSC {
     if (!RegisterClassEx(&wcex)) {
       alert("Application could not launch, possible missing resources.");
     }
-
   #endif
 
   #if !SOCKET_RUNTIME_DESKTOP_EXTENSION
