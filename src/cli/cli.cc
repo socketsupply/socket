@@ -25,7 +25,7 @@
 #pragma comment(lib, "userenv.lib")
 #pragma comment(lib, "uuid.lib")
 #pragma comment(lib, "libuv.lib")
-#pragma comment(lib, "libllama.lib")
+#pragma comment(lib, "llama.lib")
 #pragma comment(lib, "winspool.lib")
 #pragma comment(lib, "ws2_32.lib")
 #endif
@@ -557,7 +557,7 @@ Vector<Path> handleBuildPhaseForCopyMappedFiles (
     dst = fs::absolute(dst);
 
     if (!fs::exists(fs::status(src))) {
-      log("WARNING: [build.copy-map] entry '" + src.string() +  "' does not exist");
+      log("WARNING: [build.copy-map] entry '" + convertWStringToString(src.string()) +  "' does not exist");
       continue;
     }
 
@@ -4876,7 +4876,7 @@ int main (const int argc, const char* argv[]) {
       }
 
       if (debugBuild) {
-        flags += " -D_DEBUG";
+        flags += " -D_DEBUG -g";
       }
 
       auto d = String(debugBuild ? "d" : "" );
@@ -5981,11 +5981,12 @@ int main (const int argc, const char* argv[]) {
         #if defined(_WIN32)
           auto d = String(debugBuild ? "d" : "");
           auto static_uv = prefixFile("lib" + d + "\\" + platform.arch + "-desktop\\libuv.lib");
+          auto static_llama = prefixFile("lib" + d + "\\" + platform.arch + "-desktop\\llama.lib");
           auto static_runtime = trim(prefixFile("lib" + d + "\\" + platform.arch + "-desktop\\libsocket-runtime" + d + ".a"));
-          // TODO(@heapwolf): llama for win32
         #else
           auto d = "";
           auto static_uv = "";
+          auto static_llama = "";
           auto static_runtime = "";
         #endif
 
@@ -5996,6 +5997,7 @@ int main (const int argc, const char* argv[]) {
             << Env::get("CXX")
             << quote // win32 - quote the binary path
             << " " << static_runtime
+            << " " << static_llama
             << " " << static_uv
             << " " << objects.str()
           #if defined(_WIN32)
