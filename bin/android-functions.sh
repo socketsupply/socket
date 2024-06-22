@@ -433,7 +433,7 @@ function android_clang () {
 
 function android_clang_target () {
   local arch=$1
-  echo "--target=$(android_arch "$arch")-linux-android$(android_eabi "$arch")"
+  echo "-target $(android_arch "$arch")-linux-android$(android_eabi "$arch")"
 }
 
 
@@ -450,9 +450,9 @@ function android_arch_includes() {
   #get abi specific includes and sysroot
   local arch=$1
   local include=(
-    "-I$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/$(android_arch "$arch")-linux-android$(android_eabi "$arch")"
-    "-I$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include"
-    "--sysroot=$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/lib/$(android_arch "$arch")-linux-android$(android_eabi "$arch")"
+    "-I$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/$(android_host_platform "$(host_os)")-x86_64/sysroot/usr/include/$(android_arch "$arch")-linux-android$(android_eabi "$arch")"
+    "-I$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/$(android_host_platform "$(host_os)")-x86_64/sysroot/usr/include"
+    "--sysroot=$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/$(android_host_platform "$(host_os)")-x86_64/sysroot/usr/lib/$(android_arch "$arch")-linux-android$(android_eabi "$arch")"
   )
 
   echo "${include[@]}"
@@ -488,7 +488,7 @@ function android_supported_abis() {
 export ANDROID_DEPS_ERROR
 
 declare ANDROID_PLATFORM="34"
-declare NDK_VERSION="26.0.10792818"
+declare NDK_VERSION="26.1.10909125"
 
 export BUILD_ANDROID
 

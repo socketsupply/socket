@@ -13,6 +13,11 @@ declare platform="desktop"
 
 declare ios_sdk_path=""
 
+cflags+=(
+  $CFLAGS
+  $CXXFLAGS
+)
+
 if [[ "$host" = "Linux" ]]; then
   if [ -n "$WSL_DISTRO_NAME" ] || uname -r | grep 'Microsoft'; then
     host="Win32"
@@ -47,8 +52,6 @@ else
 fi
 
 cflags+=(
-  $CFLAGS
-  $CXXFLAGS
   -std=c++2a
   -ferror-limit=6
   -I"$root/include"
