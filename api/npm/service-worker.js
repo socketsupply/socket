@@ -30,7 +30,7 @@ export async function onRequest (request, env, ctx) {
 
   if (typeof specifier === 'string') {
     try {
-      specifier = (new URL(require.resolve(specifier))).toString()
+      specifier = (new URL(require.resolve(specifier, { type: 'module' }))).toString()
     } catch {}
   }
 
@@ -173,6 +173,10 @@ export async function onRequest (request, env, ctx) {
  * @return {Response?}
  */
 export default async function (request, env, ctx) {
+  if (request.method === 'OPTIONS') {
+    return new Response('OK', { status: 204 })
+  }
+
   if (request.method !== 'GET') {
     return new Response('Invalid HTTP method', {
       status: http.BAD_REQUEST

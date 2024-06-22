@@ -159,6 +159,11 @@ export function init () {
                 }
               } else {
                 descriptors[key] = { ...nativeDescriptor, writable: true, configurable: true }
+                if (typeof implementation.prototype[key] === 'function') {
+                  descriptors[key].value = implementation.prototype[key]
+                  delete descriptors[key].get
+                  delete descriptors[key].set
+                }
               }
 
               if (descriptors[key] && typeof descriptors[key] === 'object') {
@@ -286,84 +291,6 @@ export function init () {
       isSocketRuntime: true
     })
   }
-
-  // globals
-  install({
-    // url
-    URL,
-    URLPattern,
-    URLSearchParams,
-
-    // Promise
-    Promise,
-
-    // fetch
-    fetch,
-    Headers,
-    Request,
-    Response,
-
-    // notifications
-    Notification,
-
-    // pickers
-    showDirectoryPicker,
-    showOpenFilePicker,
-    showSaveFilePicker,
-
-    // events
-    ApplicationURLEvent,
-    MenuItemEvent,
-    SignalEvent,
-    HotKeyEvent,
-
-    // file
-    File,
-    FileSystemHandle,
-    FileSystemFileHandle,
-    FileSystemDirectoryHandle,
-    FileSystemWritableFileStream,
-
-    // buffer
-    Buffer,
-
-    // workers
-    SharedWorker,
-    ServiceWorker,
-
-    // timers
-    setTimeout,
-    setInterval,
-    setImmediate,
-    clearTimeout,
-    clearInterval,
-    clearImmediate,
-
-    // streams
-    ReadableStream,
-    ReadableStreamBYOBReader,
-    ReadableByteStreamController,
-    ReadableStreamBYOBRequest,
-    ReadableStreamDefaultController,
-    ReadableStreamDefaultReader,
-    WritableStream,
-    WritableStreamDefaultController,
-    WritableStreamDefaultWriter,
-    TransformStream,
-    TransformStreamDefaultController,
-    ByteLengthQueuingStrategy,
-    CountQueuingStrategy,
-
-    // async
-    AsyncContext,
-    AsyncResource,
-    AsyncHook,
-    AsyncLocalStorage,
-    Deferred,
-
-    // platform detection
-    isSocketRuntime: true
-  })
 
   if (globalThis.scheduler) {
     install(scheduler, globalThis.scheduler)
