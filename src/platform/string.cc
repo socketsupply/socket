@@ -215,7 +215,7 @@ namespace SSC {
       << " in " << source
       << ": " <<  (LPTSTR) errorMessage;
 
-    LocalFree(lpMsgBuf);
+    LocalFree(errorMessage);
 
     return message.str();
   }
