@@ -5204,7 +5204,7 @@ int main (const int argc, const char* argv[]) {
       StringStream sdkmanager;
       StringStream packages;
       StringStream gradlew;
-      String ndkVersion = "26.0.10792818";
+      String ndkVersion = "26.1.10909125";
       String androidPlatform = "android-34";
 
       if (platform.unix) {
