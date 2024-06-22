@@ -361,10 +361,14 @@ unsigned short createLogSocket() {
             int count = 0;
             id logEntry;
 
+            NSString *lastMessage;
             while ((logEntry = [enumerator nextObject]) != nil) {
               count++;
               OSLogEntryLog *entry = (OSLogEntryLog *)logEntry;
               NSString *message = [entry composedMessage];
+              if ([message isEqualToString:lastMessage]) continue;
+
+              lastMessage = message;
               std::cout << message.UTF8String << std::endl;
             }
           }
