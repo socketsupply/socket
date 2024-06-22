@@ -467,7 +467,7 @@ namespace SSC {
 #if SOCKET_RUNTIME_PLATFORM_WINDOWS
   const Path FileResource::getMicrosoftEdgeRuntimePath () {
     // this is something like "C:\\Users\\jwerle\\AppData\\Local\\Microsoft\\Edge SxS\\Application\\123.0.2386.0"
-    static const auto EDGE_RUNTIME_DIRECTORY = convertStringToWString(trim(Env::get("SOCKET_EDGE_RUNTIME_DIRECTORY")));
+    static const auto EDGE_RUNTIME_DIRECTORY = trim(Env::get("SOCKET_EDGE_RUNTIME_DIRECTORY"));
 
     return Path(
       EDGE_RUNTIME_DIRECTORY.size() > 0 && fs::exists(EDGE_RUNTIME_DIRECTORY)
@@ -699,12 +699,12 @@ namespace SSC {
       return mimeType;
     #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
       LPWSTR mimeData;
-      const auto bytes = this->read(true)
-      const auto size = this->size(true);
+      const auto bytes = this->read();
+      const auto size = this->size();
       const auto result = FindMimeFromData(
         nullptr, // (LPBC) ignored (unsused)
         convertStringToWString(path).c_str(), // filename
-        reinterpret_cast<const void*>(bytes), // detected buffer data
+        const_cast<void*>(reinterpret_cast<const void*>(bytes)), // detected buffer data
         (DWORD) size, // detected buffer size
         nullptr, // mime suggestion
         0, // flags (unsused)
@@ -757,12 +757,12 @@ namespace SSC {
   #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
     LARGE_INTEGER fileSize;
     auto handle = CreateFile(
-      this->path.c_str(),
+      convertWStringToString(this->path.string()).c_str(),
       GENERIC_READ, // access
       FILE_SHARE_READ, // share mode
       nullptr, // security attribues (unused)
       OPEN_EXISTING, // creation disposition
-      nullptr, // flags and attribues (unused)
+      0, // flags and attribues (unused)
       nullptr // templte file (unused)
     );
 
@@ -849,12 +849,12 @@ namespace SSC {
     span->end();
   #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
     auto handle = CreateFile(
-      this->path.c_str(),
+      convertWStringToString(this->path.string()).c_str(),
       GENERIC_READ, // access
       FILE_SHARE_READ, // share mode
       nullptr, // security attribues (unused)
       OPEN_EXISTING, // creation disposition
-      nullptr, // flags and attribues (unused)
+      0, // flags and attribues (unused)
       nullptr // templte file (unused)
     );
 
