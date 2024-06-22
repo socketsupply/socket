@@ -1,4 +1,4 @@
-import { URLPattern as URLPatternImplementation } from './urlpattern/urlpattern.js'
+import { URLPattern } from './urlpattern/urlpattern.js'
 import url from './url/url.js'
 import qs from '../querystring.js'
 
@@ -19,19 +19,6 @@ for (const key in globalThis.URL) {
 URL.resolve = resolve
 URL.parse = parse
 URL.format = format
-
-export class URLPattern extends URLPatternImplementation {}
-
-const URLPatternDescriptors = Object.getOwnPropertyDescriptors(URLPattern.prototype)
-Object.defineProperties(URLPatternDescriptors, {
-  hash: { ...URLPatternDescriptors.hash, enumerable: true },
-  hostname: { ...URLPatternDescriptors.hostname, enumerable: true },
-  password: { ...URLPatternDescriptors.password, enumerable: true },
-  pathname: { ...URLPatternDescriptors.pathname, enumerable: true },
-  protocol: { ...URLPatternDescriptors.protocol, enumerable: true },
-  username: { ...URLPatternDescriptors.username, enumerable: true },
-  search: { ...URLPatternDescriptors.search, enumerable: true }
-})
 
 URL.prototype[Symbol.for('socket.runtime.util.inspect.custom')] = function () {
   return [
@@ -325,4 +312,4 @@ Object.defineProperties(URL.prototype, {
 })
 
 export default URL
-export { URL, URLSearchParams, parseURL }
+export { URL, URLSearchParams, parseURL, URLPattern }
