@@ -158,7 +158,9 @@ namespace SSC::IPC {
           if (result.seq == "-1") {
             this->bridge->send(result.seq, result.str(), result.post);
           } else {
-            callback(result);
+	    this->bridge->dispatch([=, this]() {
+              callback(result);
+            });
           }
         });
       });
@@ -168,7 +170,9 @@ namespace SSC::IPC {
       if (result.seq == "-1") {
         this->bridge->send(result.seq, result.str(), result.post);
       } else {
-        callback(result);
+	this->bridge->dispatch([=, this]() {
+          callback(result);
+        });
       }
     });
 

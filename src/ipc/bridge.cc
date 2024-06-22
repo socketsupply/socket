@@ -16,8 +16,8 @@ namespace SSC::IPC {
   // a proxy to a canonical URL for a module so `{{protocol}}:{{specifier}}` and
   // `{{protocol}}://{{bundle_identifier}}/socket/{{pathname}}` resolve to the exact
   // same module
-  static constexpr auto ESM_IMPORT_PROXY_TEMPLATE =
-R"S(/**
+  static constexpr auto ESM_IMPORT_PROXY_TEMPLATE_WITH_DEFAULT_EXPORT = R"S(
+/**
   * This module exists to provide a proxy to a canonical URL for a module
   * so `{{protocol}}:{{specifier}}` and `{{protocol}}://{bundle_identifier}/socket/{{pathname}}`
   * resolve to the exact same module instance.
@@ -25,7 +25,18 @@ R"S(/**
   */
 import module from '{{url}}'
 export * from '{{url}}'
-export default module)S";
+export default module
+)S";
+
+  static constexpr auto ESM_IMPORT_PROXY_TEMPLATE_WITHOUT_DEFAULT_EXPORT = R"S(
+/**
+  * This module exists to provide a proxy to a canonical URL for a module
+  * so `{{protocol}}:{{specifier}}` and `{{protocol}}://{bundle_identifier}/socket/{{pathname}}`
+  * resolve to the exact same module instance.
+  * @see {@link https://github.com/socketsupply/socket/blob/{{commit}}/api{{pathname}}}
+  */
+export * from '{{url}}'
+)S";
 
   static const Vector<String> allowedNodeCoreModules = {
     "async_hooks",
@@ -171,6 +182,7 @@ export default module)S";
       schemeHandlers(this)
   {
     this->id = rand64();
+    this->client.id = this->id;
   #if SOCKET_RUNTIME_PLATFORM_ANDROID
     this->isAndroidEmulator = App::sharedApplication()->isAndroidEmulator;
   #endif
@@ -389,7 +401,7 @@ export default module)S";
       auto message = Message(request->url(), true);
 
       if (request->method == "OPTIONS") {
-        auto response = SchemeHandlers::Response(request, 200);
+        auto response = SchemeHandlers::Response(request, 204);
         return callback(response);
       }
 
@@ -618,7 +630,9 @@ export default module)S";
 
         // handle HEAD and GET requests for a file resource
         if (resourcePath.size() > 0) {
-          contentLocation = replace(resourcePath, applicationResources, "");
+          if (resourcePath.starts_with(applicationResources)) {
+            contentLocation = resourcePath.substr(applicationResources.size() -1, resourcePath.size());
+	  }
 
           auto resource = FileResource(resourcePath);
 
@@ -630,7 +644,7 @@ export default module)S";
             }
 
             if (request->method == "OPTIONS") {
-              response.writeHead(200);
+              response.writeHead(204);
             }
 
             if (request->method == "HEAD") {
@@ -713,8 +727,11 @@ export default module)S";
       // module or stdlib import/fetch `socket:<module>/<path>` which will just
       // proxy an import into a normal resource request above
       if (request->hostname.size() == 0) {
-        const auto specifier = request->pathname.substr(1);
         auto pathname = request->pathname;
+	if (pathname.ends_with("/")) {
+          pathname = pathname.substr(0, pathname.size() - 1);
+	}
+        const auto specifier = pathname.substr(1);
 
         if (!pathname.ends_with(".js")) {
           pathname += ".js";
@@ -737,14 +754,19 @@ export default module)S";
             (request->query.size() > 0 ? "?" + request->query : "")
           );
 
-          const auto moduleImportProxy = tmpl(ESM_IMPORT_PROXY_TEMPLATE, Map {
-            {"url", url},
-            {"commit", VERSION_HASH_STRING},
-            {"protocol", "socket"},
-            {"pathname", pathname},
-            {"specifier", specifier},
-            {"bundle_identifier", bundleIdentifier}
-          });
+          const auto moduleImportProxy = tmpl(
+            String(resource.read()).find("export default") != String::npos
+	      ? ESM_IMPORT_PROXY_TEMPLATE_WITH_DEFAULT_EXPORT
+	      : ESM_IMPORT_PROXY_TEMPLATE_WITHOUT_DEFAULT_EXPORT,
+	    Map {
+              {"url", url},
+              {"commit", VERSION_HASH_STRING},
+              {"protocol", "socket"},
+              {"pathname", pathname},
+              {"specifier", specifier},
+              {"bundle_identifier", bundleIdentifier}
+            }
+	  );
 
           const auto contentType = resource.mimeType();
 
@@ -760,9 +782,9 @@ export default module)S";
 
           response.writeHead(200);
           response.write(moduleImportProxy);
+          return callback(response);
         }
-
-        return callback(response);
+        response.setHeader("content-type", "text/javascript");
       }
 
       response.writeHead(404);
@@ -838,14 +860,19 @@ export default module)S";
 
         if (resource.exists()) {
           const auto url = "socket://" + bundleIdentifier + "/socket" + pathname;
-          const auto moduleImportProxy = tmpl(ESM_IMPORT_PROXY_TEMPLATE, Map {
-            {"url", url},
-            {"commit", VERSION_HASH_STRING},
-            {"protocol", "node"},
-            {"pathname", pathname},
-            {"specifier", pathname.substr(1)},
-            {"bundle_identifier", bundleIdentifier}
-          });
+          const auto moduleImportProxy = tmpl(
+            String(resource.read()).find("export default") != String::npos
+	      ? ESM_IMPORT_PROXY_TEMPLATE_WITH_DEFAULT_EXPORT
+	      : ESM_IMPORT_PROXY_TEMPLATE_WITHOUT_DEFAULT_EXPORT,
+	    Map {
+              {"url", url},
+              {"commit", VERSION_HASH_STRING},
+              {"protocol", "node"},
+              {"pathname", pathname},
+              {"specifier", pathname.substr(1)},
+              {"bundle_identifier", bundleIdentifier}
+            }
+	  );
 
           const auto contentType = resource.mimeType();
 
@@ -957,6 +984,9 @@ export default module)S";
           auto pathname = request->pathname;
 
           if (request->scheme == "npm") {
+            if (hostname.size() > 0) {
+	      pathname = "/" + hostname;
+	    }
             hostname = this->userConfig["meta_bundle_identifier"];
           }
 
@@ -1010,6 +1040,51 @@ export default module)S";
         callback(response);
       });
     }
+  #if SOCKET_RUNTIME_PLATFORM_WINDOWS
+    static const int MAX_ALLOWED_SCHEME_ORIGINS = 64;
+    static const int MAX_CUSTOM_SCHEME_REGISTRATIONS = 64;
+    Microsoft::WRL::ComPtr<ICoreWebView2EnvironmentOptions4> options;
+    Vector<SharedPointer<WString>> schemes;
+    Vector<SharedPointer<WString>> origins;
+
+    if (this->schemeHandlers.configuration.webview.As(&options) == S_OK) {
+      ICoreWebView2CustomSchemeRegistration* registrations[MAX_CUSTOM_SCHEME_REGISTRATIONS] = {};
+      const WCHAR* allowedOrigins[MAX_ALLOWED_SCHEME_ORIGINS] = {};
+
+      int registrationsCount = 0;
+      int allowedOriginsCount = 0;
+
+      allowedOrigins[allowedOriginsCount++] = L"about://*";
+      allowedOrigins[allowedOriginsCount++] = L"https://*";
+
+      for (const auto& entry : this->schemeHandlers.handlers) {
+        const auto origin = entry.first + "://*";
+	origins.push_back(std::make_shared<WString>(convertStringToWString(origin)));
+	allowedOrigins[allowedOriginsCount++] = origins.back()->c_str();
+      }
+
+    	// store registratino refs here
+      Set<Microsoft::WRL::ComPtr<CoreWebView2CustomSchemeRegistration>> registrationsSet;
+
+      for (const auto& entry : this->schemeHandlers.handlers) {
+        schemes.push_back(std::make_shared<WString>(convertStringToWString(entry.first)));
+	auto registration = Microsoft::WRL::Make<CoreWebView2CustomSchemeRegistration>(
+          schemes.back()->c_str()
+	);
+
+        registration->SetAllowedOrigins(allowedOriginsCount, allowedOrigins);
+        registration->put_HasAuthorityComponent(true);
+        registration->put_TreatAsSecure(true);
+        registrations[registrationsCount++] = registration.Get();
+        registrationsSet.insert(registration);
+      }
+
+      options->SetCustomSchemeRegistrations(
+        registrationsCount,
+        static_cast<ICoreWebView2CustomSchemeRegistration**>(registrations)
+      );
+    }
+#endif
   }
 
   void Bridge::configureNavigatorMounts () {

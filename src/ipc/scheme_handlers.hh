@@ -259,7 +259,11 @@ namespace SSC::IPC {
       using RequestMap = std::map<uint64_t, SharedPointer<Request>>;
 
       struct Configuration {
+      #if SOCKET_RUNTIME_PLATFORM_WINDOWS
+        WebViewSettings webview;
+      #else
         WebViewSettings* webview;
+      #endif
       };
 
       Configuration configuration;
@@ -268,10 +272,6 @@ namespace SSC::IPC {
       Mutex mutex;
       Bridge* bridge = nullptr;
       RequestMap activeRequests;
-
-    #if SOCKET_RUNTIME_PLATFORM_WINDOWS
-      Set<Microsoft::WRL::ComPtr<CoreWebView2CustomSchemeRegistration>> coreWebView2CustomSchemeRegistrations;
-    #endif
 
       SchemeHandlers (Bridge* bridge);
       ~SchemeHandlers ();

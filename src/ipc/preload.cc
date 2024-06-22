@@ -79,7 +79,9 @@ namespace SSC::IPC {
       }
 
       if (!this->headers.has("referrer-policy")) {
-        this->headers.set("referrer-policy", this->metadata["referrer"]);
+        if (this->metadata["referrer"].size() > 0) {
+          this->headers.set("referrer-policy", this->metadata["referrer"]);
+	}
       }
     }
   }
@@ -111,6 +113,10 @@ namespace SSC::IPC {
     // 1. compile metadata if `options.features.useHTMLMarkup == true`, otherwise skip
     if (this->options.features.useHTMLMarkup) {
       for (const auto &entry : this->metadata) {
+        if (entry.second.size() == 0) {
+          continue;
+	}
+
         buffers.push_back(tmpl(
           R"HTML(<meta name="{{name}}" content="{{content}}">)HTML",
           Map {
