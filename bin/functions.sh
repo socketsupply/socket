@@ -98,7 +98,7 @@ function quiet () {
   declare command="$1"; shift
   if [ -n "$VERBOSE" ]; then
     echo "$command" "$@"
-    "$command" "$@"
+    eval "$command $@"
   else
     "$command" "$@" > /dev/null 2>&1
   fi

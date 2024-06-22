@@ -889,6 +889,7 @@ function _compile_llama {
     fi
 
     rm -f "$root/build/$(host_arch)-desktop/lib$d"/*.{so,la,dylib}*
+    return
   elif [ "$platform" == "iPhoneOS" ] || [ "$platform" == "iPhoneSimulator" ]; then
     # https://github.com/ggerganov/llama.cpp/discussions/4508
 
@@ -911,27 +912,28 @@ function _compile_llama {
       local android_includes=$(android_arch_includes "$1")
       local host_arch="$(host_arch)"
       local cc="$(android_clang "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch")"
-      local cxx="$cc"
+      local cxx="$(android_clang "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch" "++")"
       local clang_target="$(android_clang_target "$target")"
       local ar="$(android_ar "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch")"
       local cflags=("$clang_target" -std=c++2a -g -pedantic "${android_includes[*]}")
 
-      AR="$ar" CFLAGS="$cflags" CXXFLAGS="$cflags" CXX="$cxx" CC="$cc" make UNAME_M="$1" UNAME_P="$1" LLAMA_FAST=1 libllama.a
+      AR="$ar" CFLAGS="$cflags" CXXFLAGS="$cflags" CXX="$cxx" CC="$cc" make UNAME_S="Android" UNAME_M=".." UNAME_P="$1" LLAMA_FAST=1 libllama.a
 
       if [ ! $? = 0 ]; then
         die $? "not ok - Unable to compile libllama for '$platform'"
-	return
+        return
       fi
     fi
   fi
 
   if [[ "$host" != "Win32" ]]; then
     cp libllama.a ../lib
+    die $? "not ok - Unable to compile libllama for '$platform'"
   fi
 
   cd "$BUILD_DIR" || exit 1
   rm -f "$root/build/$target-$platform/lib$d"/*.{so,la,dylib}*
-  echo "ok - built llama for $target"
+  echo "ok - built llama for $target-$platform"
 }
 
 function _compile_libuv {
@@ -1122,7 +1124,6 @@ if [[ "$(uname -s)" == "Darwin" ]] && [[ -z "$NO_IOS" ]]; then
   _compile_llama x86_64 iPhoneSimulator & pids+=($!)
 
   if [[ "$arch" = "arm64" ]]; then
-    echo "lol"
     _compile_libuv arm64 iPhoneSimulator & pids+=($!)
     _compile_llama arm64 iPhoneSimulator & pids+=($!)
   fi

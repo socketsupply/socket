@@ -190,11 +190,11 @@ function generate_llama_build_info () {
     build_commit=$(printf '%s' "$out" | tr -d '\n')
   fi
 
-  if out=$("$clang" --version | head -1); then
+  if out=$(eval "$clang" --version | head -1); then
     build_compiler="$out"
   fi
 
-  if out=$("$clang" -dumpmachine); then
+  if out=$(eval "$clang" -dumpmachine); then
     build_target="$out"
   fi
 
