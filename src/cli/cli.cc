@@ -314,6 +314,7 @@ static uv_loop_t *loop = nullptr;
 static uv_udp_t logsocket;
 
 #if defined(__APPLE__)
+
 unsigned short createLogSocket() {
   std::promise<int> p;
   std::future<int> future = p.get_future();
@@ -326,6 +327,9 @@ unsigned short createLogSocket() {
     struct sockaddr_in addr;
     int port;
 
+    NSDate* lastLogTime = [NSDate now];
+    logsocket.data = (void*) lastLogTime;
+
     uv_ip4_addr("0.0.0.0", 0, &addr);
     uv_udp_bind(&logsocket, (const struct sockaddr*)&addr, UV_UDP_REUSEADDR);
 
@@ -336,6 +340,8 @@ unsigned short createLogSocket() {
       },
       [](uv_udp_t *req, ssize_t nread, const uv_buf_t *buf, const struct sockaddr *addr, unsigned flags) {
         if (nread > 0) {
+          NSDate* lastLogTime = (NSDate*)req->data;
+
           String data = trim(String(buf->base, nread));
           if (data[0] != '+') return;
 
@@ -348,8 +354,7 @@ unsigned short createLogSocket() {
               return;
             }
 
-            auto offset = [[NSDate now] dateByAddingTimeInterval: -1]; // this may not be enough
-            auto position = [logs positionWithDate: offset];
+            auto position = [logs positionWithDate: lastLogTime];
             auto predicate = [NSPredicate predicateWithFormat: @"(category == 'socket.runtime')"];
             auto enumerator = [logs entriesEnumeratorWithOptions: 0 position: position predicate: predicate error: &err];
 
@@ -361,15 +366,14 @@ unsigned short createLogSocket() {
             int count = 0;
             id logEntry;
 
-            NSDate *timestamp = [NSDate date];
             while ((logEntry = [enumerator nextObject]) != nil) {
-              count++;
               OSLogEntryLog *entry = (OSLogEntryLog *)logEntry;
-              if ([entry.date isEqualToDate:timestamp]) continue;
+
+              count++;
 
               NSString *message = [entry composedMessage];
-              timestamp = entry.date;
               std::cout << message.UTF8String << std::endl;
+              req->data = (void*) [NSDate now];
             }
           }
         }
