@@ -158,7 +158,7 @@ namespace SSC::IPC {
           if (result.seq == "-1") {
             this->bridge->send(result.seq, result.str(), result.post);
           } else {
-	    this->bridge->dispatch([=, this]() {
+            this->bridge->dispatch([=, this]() {
               callback(result);
             });
           }
