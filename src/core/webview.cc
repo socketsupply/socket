@@ -456,6 +456,7 @@ int lastY = 0;
 {
   const auto acceptedFileExtensions = parameters._acceptedFileExtensions;
   const auto acceptedMIMETypes = parameters._acceptedMIMETypes;
+  const auto window = (Window*) objc_getAssociatedObject(self, "window");
   StringStream contentTypesSpec;
 
   for (NSString* acceptedMIMEType in acceptedMIMETypes) {
@@ -499,21 +500,26 @@ int lastY = 0;
     .title = "Choose a File"
   };
 
-  Dialog dialog;
-  const auto results = dialog.showOpenFilePicker(options);
+  Dialog dialog(window);
+  const auto success = dialog.showOpenFilePicker(options, [=](const auto results) {
+    if (results.size() == 0) {
+      completionHandler(nullptr);
+      return;
+    }
 
-  if (results.size() == 0) {
+    auto urls = [NSMutableArray array];
+
+    for (const auto& result : results) {
+      [urls addObject: [NSURL URLWithString: @(result.c_str())]];
+    }
+
+    completionHandler(urls);
+  });
+
+  if (!success) {
     completionHandler(nullptr);
     return;
   }
-
-  auto urls = [NSMutableArray array];
-
-  for (const auto& result : results) {
-    [urls addObject: [NSURL URLWithString: @(result.c_str())]];
-  }
-
-  completionHandler(urls);
 }
 #endif
 
@@ -619,7 +625,7 @@ int lastY = 0;
 }
 
 #if SOCKET_RUNTIME_PLATFORM_IOS
-- (void)traitCollectionDidChange:(UITraitCollection *) previousTraitCollection {
+- (void) traitCollectionDidChange: (UITraitCollection*) previousTraitCollection {
   [super traitCollectionDidChange:previousTraitCollection];
 
   static auto userConfig = getUserConfig();
