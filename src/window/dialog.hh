@@ -47,13 +47,17 @@ namespace SSC {
         String title;
       };
 
+      using ShowCallback = Function<void(Vector<String>)>;
+
     #if SOCKET_RUNTIME_PLATFORM_IOS
       SSCUIPickerDelegate* uiPickerDelegate = nullptr;
       Vector<String> delegatedResults;
       std::mutex delegateMutex;
     #endif
 
+      ShowCallback callback = nullptr;
       Window* window = nullptr;
+
       Dialog (Window* window);
       Dialog () = default;
       Dialog (const Dialog&) = delete;
@@ -63,20 +67,24 @@ namespace SSC {
       Dialog& operator = (const Dialog&) = delete;
       Dialog& operator = (Dialog&&) = delete;
 
-      String showSaveFilePicker (
-        const FileSystemPickerOptions& options
+      bool showSaveFilePicker (
+        const FileSystemPickerOptions& options,
+        const ShowCallback& callback
       );
 
-      Vector<String> showOpenFilePicker (
-        const FileSystemPickerOptions& options
+      bool showOpenFilePicker (
+        const FileSystemPickerOptions& options,
+        const ShowCallback& callback
       );
 
-      Vector<String> showDirectoryPicker (
-        const FileSystemPickerOptions& options
+      bool showDirectoryPicker (
+        const FileSystemPickerOptions& options,
+        const ShowCallback& callback
       );
 
-      Vector<String> showFileSystemPicker (
-        const FileSystemPickerOptions& options
+      bool showFileSystemPicker (
+        const FileSystemPickerOptions& options,
+        const ShowCallback& callback
       );
   };
 }
