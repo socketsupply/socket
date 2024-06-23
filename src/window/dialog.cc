@@ -6,21 +6,26 @@
 #include "../platform/android.hh"
 #endif
 
+using namespace SSC;
+
 #if SOCKET_RUNTIME_PLATFORM_IOS
 @implementation SSCUIPickerDelegate : NSObject
 -  (void) documentPicker: (UIDocumentPickerViewController*) controller
   didPickDocumentsAtURLs: (NSArray<NSURL*>*) urls
 {
+  Vector<String> paths;
   for (NSURL* url in urls) {
     if (url.isFileURL) {
-      self.dialog->delegatedResults.push_back(url.path.UTF8String);
+      paths.push_back(url.path.UTF8String);
     }
   }
-  self.dialog->delegateMutex.unlock();
+  debug("before callback");
+  self.dialog->callback(paths);
+  debug("after callback");
 }
 
 - (void) documentPickerWasCancelled: (UIDocumentPickerViewController*) controller {
-  self.dialog->delegateMutex.unlock();
+  self.dialog->callback(Vector<String>());
 }
 
 -  (void) imagePickerController: (UIImagePickerController*) picker
@@ -28,19 +33,20 @@
 {
   NSURL* mediaURL = info[UIImagePickerControllerMediaURL];
   NSURL* imageURL = info[UIImagePickerControllerImageURL];
+  Vector<String> paths;
 
   if (mediaURL != nullptr) {
-    self.dialog->delegatedResults.push_back(mediaURL.path.UTF8String);
+    paths.push_back(mediaURL.path.UTF8String);
   } else {
-    self.dialog->delegatedResults.push_back(imageURL.path.UTF8String);
+    paths.push_back(imageURL.path.UTF8String);
   }
 
-  self.dialog->delegateMutex.unlock();
   [picker dismissViewControllerAnimated: YES completion: nullptr];
+  self.dialog->callback(paths);
 }
 
 - (void) imagePickerControllerDidCancel: (UIImagePickerController*) picker {
-  self.dialog->delegateMutex.unlock();
+  self.dialog->callback(Vector<String>());
 }
 @end
 #endif
@@ -49,14 +55,14 @@ namespace SSC {
   Dialog::Dialog (Window* window)
     : window(window)
   {
-  #if defined(__APPLE__) && TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+  #if SOCKET_RUNTIME_PLATFORM_IOS
     this->uiPickerDelegate = [SSCUIPickerDelegate new];
     this->uiPickerDelegate.dialog = this;
   #endif
   }
 
   Dialog::~Dialog () {
-  #if defined(__APPLE__) && TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+  #if SOCKET_RUNTIME_PLATFORM_IOS
     #if !__has_feature(objc_arc)
     [this->uiPickerDelegate release];
     #endif
@@ -64,10 +70,11 @@ namespace SSC {
   #endif
   }
 
-  String Dialog::showSaveFilePicker (
-    const FileSystemPickerOptions& options
+  bool Dialog::showSaveFilePicker (
+    const FileSystemPickerOptions& options,
+    const ShowCallback& callback
   ) {
-    const auto results = this->showFileSystemPicker({
+    return this->showFileSystemPicker({
       .prefersDarkMode = options.prefersDarkMode,
       .directories = false,
       .multiple = false,
@@ -77,18 +84,12 @@ namespace SSC {
       .defaultName = options.defaultName,
       .defaultPath = options.defaultPath,
       .title = options.title
-    });
-
-    if (results.size() == 1) {
-      return results[0];
-    }
-
-    return "";
+    }, callback);
   }
 
-
-  Vector<String> Dialog::showOpenFilePicker (
-    const FileSystemPickerOptions& options
+  bool Dialog::showOpenFilePicker (
+    const FileSystemPickerOptions& options,
+    const ShowCallback& callback
   ) {
     return this->showFileSystemPicker({
       .prefersDarkMode = options.prefersDarkMode,
@@ -100,11 +101,12 @@ namespace SSC {
       .defaultName = options.defaultName,
       .defaultPath = options.defaultPath,
       .title = options.title
-    });
+    }, callback);
   }
 
-  Vector<String> Dialog::showDirectoryPicker (
-    const FileSystemPickerOptions& options
+  bool Dialog::showDirectoryPicker (
+    const FileSystemPickerOptions& options,
+    const ShowCallback& callback
   ) {
     return this->showFileSystemPicker({
       .prefersDarkMode = options.prefersDarkMode,
@@ -116,11 +118,12 @@ namespace SSC {
       .defaultName = options.defaultName,
       .defaultPath = options.defaultPath,
       .title = options.title
-    });
+    }, callback);
   }
 
-  Vector<String> Dialog::showFileSystemPicker (
-    const FileSystemPickerOptions& options
+  bool Dialog::showFileSystemPicker (
+    const FileSystemPickerOptions& options,
+    const ShowCallback& callback
   ) {
     const auto isSavePicker = options.type == FileSystemPickerOptions::Type::Save;
     const auto allowDirectories = options.directories;
@@ -129,10 +132,11 @@ namespace SSC {
     const auto defaultName = options.defaultName;
     const auto defaultPath = options.defaultPath;
     const auto title = options.title;
+    const auto app = App::sharedApplication();
 
     Vector<String> paths;
 
-  #if defined(__APPLE__)
+  #if SOCKET_RUNTIME_PLATFORM_APPLE
     // state
     NSMutableArray<UTType *>* contentTypes = [NSMutableArray new];
     NSString* suggestedFilename = nullptr;
@@ -219,50 +223,48 @@ namespace SSC {
       }
     }
 
-  #if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
-    this->delegateMutex.lock();
-    dispatch_async(dispatch_get_main_queue(), ^{
-      UIWindow* window = nullptr;
+  #if SOCKET_RUNTIME_PLATFORM_IOS
+    UIWindow* window = nullptr;
+    this->callback = callback;
 
-      if (@available(iOS 15.0, *)) {
-        auto scene = (UIWindowScene*) UIApplication.sharedApplication.connectedScenes.allObjects.firstObject;
-        window = scene.windows.lastObject;
-      } else {
-        window = UIApplication.sharedApplication.windows.lastObject;
-      }
+    if (this->window) {
+      window = this->window->window;
+    } else if (@available(iOS 15.0, *)) {
+      auto scene = (UIWindowScene*) UIApplication.sharedApplication.connectedScenes.allObjects.firstObject;
+      window = scene.windows.lastObject;
+    } else {
+      window = UIApplication.sharedApplication.windows.lastObject;
+    }
 
-      if (prefersMedia) {
-        auto picker = [UIImagePickerController new];
-        NSMutableArray<NSString*>* mediaTypes = [NSMutableArray new];
+    if (prefersMedia) {
+      auto picker = [UIImagePickerController new];
+      NSMutableArray<NSString*>* mediaTypes = [NSMutableArray new];
 
-        picker.delegate = this->uiPickerDelegate;
+      picker.delegate = this->uiPickerDelegate;
 
-        [window.rootViewController
-          presentViewController: picker
-                       animated: YES
-                     completion: nullptr
-        ];
-      } else {
-        auto picker = [UIDocumentPickerViewController.alloc
-          initForOpeningContentTypes: contentTypes
-        ];
+      [window.rootViewController
+        presentViewController: picker
+                     animated: YES
+                   completion: nullptr
+      ];
+    } else {
+      auto picker = [UIDocumentPickerViewController.alloc
+        initForOpeningContentTypes: contentTypes
+      ];
 
-        picker.allowsMultipleSelection = allowMultiple ? YES : NO;
-        picker.modalPresentationStyle = UIModalPresentationFormSheet;
-        picker.directoryURL = directoryURL;
-        picker.delegate = this->uiPickerDelegate;
+      picker.allowsMultipleSelection = allowMultiple ? YES : NO;
+      picker.modalPresentationStyle = UIModalPresentationFormSheet;
+      picker.directoryURL = directoryURL;
+      picker.delegate = this->uiPickerDelegate;
 
-        [window.rootViewController
-          presentViewController: picker
-                       animated: YES
-                     completion: nullptr
-        ];
-      }
-    });
+      [window.rootViewController
+        presentViewController: picker
+                     animated: YES
+                   completion: nullptr
+      ];
+    }
 
-    std::lock_guard<std::mutex> lock(this->delegateMutex);
-    paths = this->delegatedResults;
-    this->delegatedResults.clear();
+    return true;
   #else
     NSAutoreleasePool* pool = [NSAutoreleasePool new];
 
@@ -335,6 +337,10 @@ namespace SSC {
     }
 
     [pool release];
+    app->dispatch([=, this] () {
+      callback(paths);
+    });
+    return true;
   #endif
   #elif defined(__linux__) && !defined(__ANDROID__)
     const guint SELECT_RESPONSE = 0;
@@ -355,7 +361,7 @@ namespace SSC {
         }
       }
 
-      return FALSE;
+      return false;
     };
 
     g_object_set(
@@ -501,7 +507,7 @@ namespace SSC {
 
     if (response != GTK_RESPONSE_ACCEPT && response != SELECT_RESPONSE) {
       gtk_widget_destroy(dialog);
-      return paths;
+      return false;
     }
 
     // TODO (@heapwolf): validate multi-select
@@ -521,7 +527,11 @@ namespace SSC {
 
     g_slist_free(filenames);
     gtk_widget_destroy(GTK_WIDGET(dialog));
-  #elif defined(_WIN32)
+    app->dispatch([=]() {
+      callback(paths);
+    });
+    return true;
+  #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
     IShellItemArray *openResults;
     IShellItem *saveResult;
     DWORD dialogOptions;
@@ -541,7 +551,7 @@ namespace SSC {
 
     if (FAILED(result)) {
       debug("ERR: CoInitializeEx() failed in 'showFileSystemPicker()'");
-      return paths;
+      return false;
     }
 
     // create IFileDialog instance (IFileOpenDialog or IFileSaveDialog)
@@ -556,7 +566,7 @@ namespace SSC {
       if (FAILED(result)) {
         debug("ERR: CoCreateInstance() failed in 'showFileSystemPicker()'");
         CoUninitialize();
-        return paths;
+        return false;
       }
     } else {
       result = CoCreateInstance(
@@ -569,7 +579,7 @@ namespace SSC {
       if (FAILED(result)) {
         debug("ERR: CoCreateInstance() failed in 'showFileSystemPicker()'");
         CoUninitialize();
-        return paths;
+        return false;
       }
     }
 
@@ -582,7 +592,7 @@ namespace SSC {
     if (FAILED(result)) {
       debug("ERR: IFileDialog::GetOptions() failed in 'showFileSystemPicker()'");
       CoUninitialize();
-      return paths;
+      return false;
     }
 
     if (allowDirectories == true && allowFiles == false) {
@@ -595,7 +605,7 @@ namespace SSC {
       if (FAILED(result)) {
         debug("ERR: IFileDialog::SetOptions(FOS_PICKFOLDERS) failed in 'showFileSystemPicker()'");
         CoUninitialize();
-        return paths;
+        return false;
       }
     }
 
@@ -605,7 +615,7 @@ namespace SSC {
       if (FAILED(result)) {
         debug("ERR: IFileDialog::SetOptions(FOS_ALLOWMULTISELECT) failed in 'showFileSystemPicker()'");
         CoUninitialize();
-        return paths;
+        return false;
       }
     }
 
@@ -623,7 +633,7 @@ namespace SSC {
       if (FAILED(result)) {
         debug("ERR: SHCreateItemFromParsingName() failed in 'showFileSystemPicker()'");
         CoUninitialize();
-        return paths;
+        return false;
       }
 
       if (isSavePicker) {
@@ -635,7 +645,7 @@ namespace SSC {
       if (FAILED(result)) {
         debug("ERR: IFileDialog::SetDefaultFolder() failed in 'showFileSystemPicker()'");
         CoUninitialize();
-        return paths;
+        return false;
       }
     }
 
@@ -653,7 +663,7 @@ namespace SSC {
       if (FAILED(result)) {
         debug("ERR: IFileDialog::SetTitle() failed in 'showFileSystemPicker()'");
         CoUninitialize();
-        return paths;
+        return false;
       }
     }
 
@@ -671,7 +681,7 @@ namespace SSC {
       if (FAILED(result)) {
         debug("ERR: IFileDialog::SetFileName() failed in 'showFileSystemPicker()'");
         CoUninitialize();
-        return paths;
+        return false;
       }
     }
 
@@ -684,7 +694,7 @@ namespace SSC {
     if (FAILED(result)) {
       debug("ERR: IFileDialog::Show() failed in 'showFileSystemPicker()'");
       CoUninitialize();
-      return paths;
+      return false;
     }
 
     if (isSavePicker) {
@@ -693,7 +703,7 @@ namespace SSC {
       if (FAILED(result)) {
         debug("ERR: IFileDialog::GetResult() failed in 'showFileSystemPicker()'");
         CoUninitialize();
-        return paths;
+        return false;
       }
     } else {
       result = dialog.open->GetResults(&openResults);
@@ -701,14 +711,15 @@ namespace SSC {
       if (FAILED(result)) {
         debug("ERR: IFileDialog::GetResults() failed in 'showFileSystemPicker()'");
         CoUninitialize();
-        return paths;
+        return false;
       }
     }
 
     if (FAILED(result)) {
       debug("ERR: IFileDialog::Show() failed in 'showFileSystemPicker()'");
       CoUninitialize();
-      return paths;
+      callback(paths);
+      return false;
     }
 
     if (isSavePicker) {
@@ -719,10 +730,10 @@ namespace SSC {
       if (FAILED(result)) {
         debug("ERR: IShellItem::GetDisplayName() failed in 'showFileSystemPicker()'");
         CoUninitialize();
-        return paths;
+        return false;
       }
 
-      paths.push_back(SSC::convertWStringToString(WString(buf)));
+      paths.push_back(convertWStringToString(WString(buf)));
       saveResult->Release();
 
       CoTaskMemFree(buf);
@@ -732,7 +743,7 @@ namespace SSC {
       if (FAILED(result)) {
         debug("ERR: IShellItemArray::GetCount() failed in 'showFileSystemPicker()'");
         CoUninitialize();
-        return paths;
+        return false;
       }
 
       for (DWORD i = 0; i < totalResults; i++) {
@@ -744,7 +755,7 @@ namespace SSC {
         if (FAILED(result)) {
           debug("ERR: IShellItemArray::GetItemAt() failed in 'showFileSystemPicker()'");
           CoUninitialize();
-          return paths;
+          return false;
         }
 
         result = path->GetDisplayName(SIGDN_DESKTOPABSOLUTEPARSING, &buf);
@@ -752,10 +763,10 @@ namespace SSC {
         if (FAILED(result)) {
           debug("ERR: IShellItem::GetDisplayName() failed in 'showFileSystemPicker()'");
           CoUninitialize();
-          return paths;
+          return false;
         }
 
-        paths.push_back(SSC::convertWStringToString(WString(buf)));
+        paths.push_back(convertWStringToString(WString(buf)));
         path->Release();
         CoTaskMemFree(buf);
       }
@@ -772,6 +783,10 @@ namespace SSC {
     }
 
     CoUninitialize();
+    app->dispatch([=]() {
+      callback(paths);
+    });
+    return true;
   #elif SOCKET_RUNTIME_PLATFORM_ANDROID
     if (this->window->androidWindowRef) {
       const auto app = App::sharedApplication();
@@ -824,9 +839,14 @@ namespace SSC {
           paths.push_back(string);
         }
       }
+
+      app->dispatch([=]() {
+        callback(paths);
+      });
+      return true;
     }
   #endif
 
-    return paths;
+    return false;
   }
 }
