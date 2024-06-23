@@ -72,10 +72,9 @@ namespace SSC {
   void Core::removePost (uint64_t id) {
     Lock lock(this->postsMutex);
 
-    if (this->posts.find(id) == this->posts.end()) {
-      return;
+    if (this->posts.find(id) != this->posts.end()) {
+      posts.erase(id);
     }
-    posts.erase(id);
   }
 
   String Core::createPost (String seq, String params, Post post) {
