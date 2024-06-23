@@ -2948,59 +2948,67 @@ static void mapIPCRoutes (Router *router) {
     const auto app = App::sharedApplication();
     const auto window = app->windowManager.getWindowForBridge(router->bridge);
 
-    Dialog* dialog = nullptr;
+    app->dispatch([=]() {
+      Dialog* dialog = nullptr;
 
-    if (window) {
-      dialog = &window->dialog;
-    } else {
-      dialog = new Dialog();
-    }
-
-    const auto options = Dialog::FileSystemPickerOptions {
-      .prefersDarkMode = message.get("prefersDarkMode") == "true",
-      .directories = allowDirs,
-      .multiple = allowMultiple,
-      .files = allowFiles,
-      .contentTypes = contentTypeSpecs,
-      .defaultName = defaultName,
-      .defaultPath = defaultPath,
-      .title = title
-    };
-
-    if (isSave) {
-      const auto result = dialog->showSaveFilePicker(options);
-
-      if (result.size() == 0) {
-        const auto err = JSON::Object::Entries {{"type", "AbortError"}};
-        reply(Result::Err { message, err });
+      if (window) {
+        dialog = &window->dialog;
       } else {
-        const auto data = JSON::Object::Entries {
-          {"paths", JSON::Array::Entries{result}}
-        };
-        reply(Result::Data { message, data });
-      }
-    } else {
-      JSON::Array paths;
-      const auto results = (
-        allowFiles && !allowDirs
-          ? dialog->showOpenFilePicker(options)
-          : dialog->showDirectoryPicker(options)
-      );
-
-      for (const auto& result : results) {
-        paths.push(result);
+        dialog = new Dialog();
       }
 
-      const auto data = JSON::Object::Entries {
-        {"paths", paths}
+      const auto options = Dialog::FileSystemPickerOptions {
+        .prefersDarkMode = message.get("prefersDarkMode") == "true",
+        .directories = allowDirs,
+        .multiple = allowMultiple,
+        .files = allowFiles,
+        .contentTypes = contentTypeSpecs,
+        .defaultName = defaultName,
+        .defaultPath = defaultPath,
+        .title = title
       };
 
-      reply(Result::Data { message, data });
-    }
+      const auto callback = [=](Vector<String> results) {
+        JSON::Array paths;
 
-    if (!window) {
-      delete dialog;
-    }
+        if (results.size() == 0) {
+          const auto err = JSON::Object::Entries {{"type", "AbortError"}};
+          return reply(Result::Err { message, err });
+        }
+
+        for (const auto& result : results) {
+          paths.push(result);
+        }
+
+        const auto data = JSON::Object::Entries {
+          {"paths", paths}
+        };
+
+        reply(Result::Data { message, data });
+      };
+
+      if (isSave) {
+        if (!dialog->showSaveFilePicker(options, callback)) {
+          const auto err = JSON::Object::Entries {{"type", "AbortError"}};
+          reply(Result::Err { message, err });
+        }
+      } else {
+        const auto result = (
+          allowFiles && !allowDirs
+            ? dialog->showOpenFilePicker(options, callback)
+            : dialog->showDirectoryPicker(options, callback)
+        );
+
+        if (!result) {
+          const auto err = JSON::Object::Entries {{"type", "AbortError"}};
+          reply(Result::Err { message, err });
+        }
+      }
+
+      if (!window) {
+        delete dialog;
+      }
+    });
   });
 
   /**
