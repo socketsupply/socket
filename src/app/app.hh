@@ -63,6 +63,7 @@ namespace SSC {
     public:
       static inline Atomic<bool> isReady = false;
       static App* sharedApplication ();
+      static constexpr int DEFAULT_INSTANCE_ID = 0;
 
     #if SOCKET_RUNTIME_PLATFORM_APPLE
       // created and set in `App::App()` on macOS or
