@@ -2888,6 +2888,14 @@ static void mapIPCRoutes (Router *router) {
       message.seq,
       id,
       [message, reply](auto seq, auto json, auto post) {
+        if (seq == "-1") {
+          for (auto &client : router->bridge->core->conduit.clients) {
+            if (client.first === router->bridge.client.id) {
+              client.second->emit(post.body, post.length);
+              return;
+            }
+          }
+        }
         reply(Result { seq, message, json, post });
       }
     );

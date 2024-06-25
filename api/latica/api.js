@@ -59,7 +59,6 @@ async function api (options = {}, events, dgram) {
   _peer.onSend = (...args) => bus._emit('#send', ...args)
   _peer.onFirewall = (...args) => bus._emit('#firewall', ...args)
   _peer.onMulticast = (...args) => bus._emit('#multicast', ...args)
-  _peer.onJoin = (...args) => bus._emit('#join', ...args)
   _peer.onSync = (...args) => bus._emit('#sync', ...args)
   _peer.onSyncStart = (...args) => bus._emit('#sync-start', ...args)
   _peer.onSyncEnd = (...args) => bus._emit('#sync-end', ...args)
@@ -234,6 +233,17 @@ async function api (options = {}, events, dgram) {
     sub.sharedKey = options.sharedKey
     sub.derivedKeys = derivedKeys
 
+    sub.stream = async (eventName, value, opts = {}) => {
+      opts.clusterId = opts.clusterId || clusterId
+      opts.subclusterId = opts.subclusterId || sub.subclusterId
+
+      const args = await pack(eventName, value, opts)
+
+      for (const p of sub.peers.values()) {
+        await _peer.stream(p.peerId, sub.sharedKey, args)
+      }
+    }
+
     sub.emit = async (eventName, value, opts = {}) => {
       opts.clusterId = opts.clusterId || clusterId
       opts.subclusterId = opts.subclusterId || sub.subclusterId
@@ -244,13 +254,13 @@ async function api (options = {}, events, dgram) {
         let packets = []
 
         for (const p of sub.peers.values()) {
-          const r = await p._peer.write(sub.sharedKey, args)
+          const r = await _peer.stream(p.peerId, sub.sharedKey, args)
           if (packets.length === 0) packets = r
         }
 
         for (const packet of packets) {
           const p = Packet.from(packet)
-          const pid = Buffer.from(packet.packetId).toString('hex')
+          const pid = packet.packetId.toString('hex')
           _peer.cache.insert(pid, p)
 
           _peer.unpublished[pid] = Date.now()
@@ -300,6 +310,7 @@ async function api (options = {}, events, dgram) {
     const scid = Buffer.from(packet.subclusterId).toString('base64')
     const sub = bus.subclusters.get(scid)
     if (!sub) return
+    if (!peer || !peer.peerId) return
 
     let ee = sub.peers.get(peer.peerId)
 
@@ -314,13 +325,11 @@ async function api (options = {}, events, dgram) {
       ee.port = peer.port
 
       ee.emit = async (eventName, value, opts = {}) => {
-        if (!ee._peer.write) return
-
         opts.clusterId = opts.clusterId || clusterId
         opts.subclusterId = opts.subclusterId || sub.subclusterId
 
         const args = await pack(eventName, value, opts)
-        return peer.write(sub.sharedKey, args)
+        return _peer.stream(peer.peerId, sub.sharedKey, args)
       }
 
       ee.on = async (eventName, cb) => {

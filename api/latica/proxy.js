@@ -209,6 +209,10 @@ class PeerWorkerProxy {
     return await this.callWorkerThread('requestReflection', args)
   }
 
+  async stream (...args) {
+    return await this.callWorkerThread('stream', args)
+  }
+
   async join (...args) {
     return await this.callWorkerThread('join', args)
   }
@@ -259,9 +263,17 @@ class PeerWorkerProxy {
   callMainThread (prop, args) {
     for (const i in args) {
       const arg = args[i]
-      if (!arg?.peerId) continue
-      args[i] = { ...arg }
-      delete args[i].localPeer // don't copy this over
+      if (arg?.constructor.name === 'RemotePeer' || arg?.constructor.name === 'Peer') {
+        args[i] = {
+          peerId: arg.peerId,
+          address: arg.address,
+          port: arg.port,
+          natType: arg.natType,
+          clusters: arg.clusters
+        }
+
+        delete args[i].localPeer // don't copy this over
+      }
     }
 
     try {

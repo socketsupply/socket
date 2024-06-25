@@ -25,7 +25,6 @@ globalThis.addEventListener('message', ({ data: source }) => {
         peer.onConnecting = (...args) => this.callMainThread('onConnecting', args)
         peer.onConnection = (...args) => this.callMainThread('onConnection', args)
         peer.onDisconnection = (...args) => this.callMainThread('onDisconnection', args)
-        peer.onJoin = (...args) => this.callMainThread('onJoin', args)
         peer.onPacket = (...args) => this.callMainThread('onPacket', args)
         peer.onStream = (...args) => this.callMainThread('onStream', args)
         peer.onData = (...args) => this.callMainThread('onData', args)
