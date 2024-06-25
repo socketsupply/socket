@@ -405,55 +405,6 @@ export * from '{{url}}'
         return callback(response);
       }
 
-      // handle special 'ipc://post' case
-      if (message.name == "post") {
-        uint64_t id = 0;
-
-        try {
-          id = std::stoull(message.get("id"));
-        } catch (...) {
-          auto response = SchemeHandlers::Response(request, 400);
-          response.send(JSON::Object::Entries {
-            {"err", JSON::Object::Entries {
-              {"message", "Invalid 'id' given in parameters"}
-            }}
-          });
-
-          return callback(response);
-        }
-
-        if (!this->core->hasPost(id)) {
-          auto response = SchemeHandlers::Response(request, 404);
-          response.send(JSON::Object::Entries {
-            {"err", JSON::Object::Entries {
-              {"message", "A 'Post' was not found for the given 'id' in parameters"},
-              {"type", "NotFoundError"}
-            }}
-          });
-
-          return callback(response);
-        }
-
-        auto response = SchemeHandlers::Response(request, 200);
-        const auto post = this->core->getPost(id);
-
-        // handle raw headers in 'Post' object
-        if (post.headers.size() > 0) {
-          const auto lines = split(trim(post.headers), '\n');
-          for (const auto& line : lines) {
-            const auto pair = split(trim(line), ':');
-            const auto key = trim(pair[0]);
-            const auto value = trim(pair[1]);
-            response.setHeader(key, value);
-          }
-        }
-
-        response.write(post.length, post.body);
-        callback(response);
-        this->core->removePost(id);
-        return;
-      }
-
       message.isHTTP = true;
       message.cancel = std::make_shared<MessageCancellation>();
 
@@ -465,7 +416,7 @@ export * from '{{url}}'
 
       const auto size = request->body.size;
       const auto bytes = request->body.bytes;
-      const auto invoked = this->router.invoke(message, request->body.bytes, size, [=](Result result) {
+      const auto invoked = this->router.invoke(message.str(), request->body.bytes, size, [=](Result result) {
         if (!request->isActive()) {
           return;
         }
@@ -710,7 +661,7 @@ export * from '{{url}}'
           });
 
           if (fetched) {
-            this->core->setTimeout(32000, [=] () mutable {
+            this->core->setTimeout(32000, [request] () mutable {
               if (request->isActive()) {
                 auto response = SchemeHandlers::Response(request, 408);
                 response.fail("ServiceWorker request timed out.");
@@ -728,9 +679,11 @@ export * from '{{url}}'
       // proxy an import into a normal resource request above
       if (request->hostname.size() == 0) {
         auto pathname = request->pathname;
-	if (pathname.ends_with("/")) {
+
+        if (pathname.ends_with("/")) {
           pathname = pathname.substr(0, pathname.size() - 1);
-	}
+        }
+
         const auto specifier = pathname.substr(1);
 
         if (!pathname.ends_with(".js")) {
@@ -756,9 +709,9 @@ export * from '{{url}}'
 
           const auto moduleImportProxy = tmpl(
             String(resource.read()).find("export default") != String::npos
-	      ? ESM_IMPORT_PROXY_TEMPLATE_WITH_DEFAULT_EXPORT
-	      : ESM_IMPORT_PROXY_TEMPLATE_WITHOUT_DEFAULT_EXPORT,
-	    Map {
+              ? ESM_IMPORT_PROXY_TEMPLATE_WITH_DEFAULT_EXPORT
+              : ESM_IMPORT_PROXY_TEMPLATE_WITHOUT_DEFAULT_EXPORT,
+            Map {
               {"url", url},
               {"commit", VERSION_HASH_STRING},
               {"protocol", "socket"},
@@ -766,7 +719,7 @@ export * from '{{url}}'
               {"specifier", specifier},
               {"bundle_identifier", bundleIdentifier}
             }
-	  );
+          );
 
           const auto contentType = resource.mimeType();
 
@@ -862,9 +815,9 @@ export * from '{{url}}'
           const auto url = "socket://" + bundleIdentifier + "/socket" + pathname;
           const auto moduleImportProxy = tmpl(
             String(resource.read()).find("export default") != String::npos
-	      ? ESM_IMPORT_PROXY_TEMPLATE_WITH_DEFAULT_EXPORT
-	      : ESM_IMPORT_PROXY_TEMPLATE_WITHOUT_DEFAULT_EXPORT,
-	    Map {
+              ? ESM_IMPORT_PROXY_TEMPLATE_WITH_DEFAULT_EXPORT
+              : ESM_IMPORT_PROXY_TEMPLATE_WITHOUT_DEFAULT_EXPORT,
+            Map {
               {"url", url},
               {"commit", VERSION_HASH_STRING},
               {"protocol", "node"},
@@ -872,7 +825,7 @@ export * from '{{url}}'
               {"specifier", pathname.substr(1)},
               {"bundle_identifier", bundleIdentifier}
             }
-	  );
+          );
 
           const auto contentType = resource.mimeType();
 

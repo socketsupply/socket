@@ -5,6 +5,8 @@
 #include "../window/window.hh"
 #include "ipc.hh"
 
+extern int LLAMA_BUILD_NUMBER;
+
 #define REQUIRE_AND_GET_MESSAGE_VALUE(var, name, parse, ...)                   \
   try {                                                                        \
     var = parse(message.get(name, ##__VA_ARGS__));                             \
@@ -639,6 +641,16 @@ static void mapIPCRoutes (Router *router) {
         RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
       );
     #endif
+  });
+
+  /**
+   * Query diagnostics information about the runtime core.
+   */
+  router->map("diagnostics.query", [=](auto message, auto router, auto reply) {
+    router->bridge->core->diagnostics.query(
+      message.seq,
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
+    );
   });
 
   /**
@@ -2131,6 +2143,12 @@ static void mapIPCRoutes (Router *router) {
           {"short", SSC::VERSION_STRING},
           {"hash", SSC::VERSION_HASH_STRING}}
         },
+        {"uv", JSON::Object::Entries {
+          {"version", uv_version_string()}
+        }},
+        {"llama", JSON::Object::Entries {
+          {"version", String("0.0.") + std::to_string(LLAMA_BUILD_NUMBER)}
+        }},
         {"host-operating-system",
         #if SOCKET_RUNTIME_PLATFORM_APPLE
           #if SOCKET_RUNTIME_PLATFORM_IOS_SIMULATOR
@@ -2162,7 +2180,7 @@ static void mapIPCRoutes (Router *router) {
    * `ipc://post` IPC call intercepted by an XHR request.
    * @param id The id of the post data.
    */
-  router->map("post", [=](auto message, auto router, auto reply) {
+  router->map("post", false, [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -2175,12 +2193,22 @@ static void mapIPCRoutes (Router *router) {
     if (!router->bridge->core->hasPost(id)) {
       return reply(Result::Err { message, JSON::Object::Entries {
         {"id", std::to_string(id)},
-        {"message", "Post not found for given 'id'"}
+        {"type", "NotFoundError"},
+        {"message", "A 'Post' was not found for the given 'id' in parameters"}
       }});
     }
 
     auto result = Result { message.seq, message };
     result.post = router->bridge->core->getPost(id);
+    if (result.post.headers.size() > 0) {
+      const auto lines = split(trim(result.post.headers), '\n');
+      for (const auto& line : lines) {
+        const auto pair = split(trim(line), ':');
+        const auto key = trim(pair[0]);
+        const auto value = trim(pair[1]);
+        result.headers.set(key, value);
+      }
+    }
     reply(result);
     router->bridge->core->removePost(id);
   });

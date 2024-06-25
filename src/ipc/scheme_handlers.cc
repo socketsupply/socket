@@ -1258,7 +1258,7 @@ namespace SSC::IPC {
         (gssize) size,
         nullptr
       );
-      this->request->bridge->core->retainSharedPointerBuffer(bytes, 256);
+      this->request->bridge->core->retainSharedPointerBuffer(std::move(bytes), 256);
       return true;
     #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
       return S_OK == this->platformResponseStream->Write(

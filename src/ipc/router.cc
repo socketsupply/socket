@@ -154,11 +154,11 @@ namespace SSC::IPC {
 
     if (context.async) {
       return this->bridge->dispatch([=, this]() mutable {
-        context.callback(msg, this, [=, this](const auto result) mutable {
+        context.callback(msg, this, [callback, this](const auto result) mutable {
           if (result.seq == "-1") {
             this->bridge->send(result.seq, result.str(), result.post);
           } else {
-            this->bridge->dispatch([=, this]() {
+            this->bridge->dispatch([result, callback, this]() {
               callback(result);
             });
           }
@@ -170,9 +170,7 @@ namespace SSC::IPC {
       if (result.seq == "-1") {
         this->bridge->send(result.seq, result.str(), result.post);
       } else {
-	this->bridge->dispatch([=, this]() {
-          callback(result);
-        });
+        callback(result);
       }
     });
 
