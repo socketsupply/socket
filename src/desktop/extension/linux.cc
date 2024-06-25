@@ -268,9 +268,10 @@ extern "C" {
 
     Core::Options options;
     options.dedicatedLoopThread = true;
-    static App app(std::move(std::make_shared<Core>(options)));
     auto userConfig = getUserConfig();
     auto cwd = userConfig["web-process-extension_cwd"];
+
+    static App app(App::DEFAULT_INSTANCE_ID, std::move(std::make_shared<Core>(options)));
 
     if (cwd.size() > 0) {
       setcwd(cwd);
