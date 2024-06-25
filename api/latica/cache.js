@@ -142,7 +142,7 @@ export class Cache {
         // some random and cluster-related.
         .pop()
 
-      this.data.delete(oldest.packetId.toString('hex'))
+      this.data.delete(Buffer.from(oldest.packetId).toString('hex'))
       if (this.onEjected) this.onEjected(oldest)
     }
 
@@ -189,7 +189,7 @@ export class Cache {
   async compose (packet, source = this.data) {
     let previous = packet
 
-    if (packet?.index > 0) previous = source.get(packet.previousId.toString('hex'))
+    if (packet?.index > 0) previous = source.get(Buffer.from(packet.previousId).toString('hex'))
     if (!previous) return null
 
     const { meta, size, indexes, ts } = previous.message

@@ -26,6 +26,7 @@
 
 #include "modules/ai.hh"
 #include "modules/child_process.hh"
+#include "modules/conduit.hh"
 #include "modules/diagnostics.hh"
 #include "modules/dns.hh"
 #include "modules/fs.hh"
@@ -54,6 +55,7 @@ namespace SSC {
       using DNS = CoreDNS;
       using Diagnostics = CoreDiagnostics;
       using FS = CoreFS;
+      using Conduit = CoreConduit;
       using Geolocation = CoreGeolocation;
       using NetworkStatus = CoreNetworkStatus;
       using Notifications = CoreNotifications;
@@ -74,6 +76,7 @@ namespace SSC {
           bool useGeolocation = true;
           bool useNetworkStatus = true;
           bool useNotifications = true;
+          bool useConduit = true;
           bool useOS = true;
           bool usePlatform = true;
           bool useTimers = true;
@@ -103,6 +106,7 @@ namespace SSC {
       Diagnostics diagnostics;
       DNS dns;
       FS fs;
+      Conduit conduit;
       Geolocation geolocation;
       NetworkStatus networkStatus;
       Notifications notifications;
@@ -153,6 +157,7 @@ namespace SSC {
         #endif
         ai(this),
         diagnostics(this),
+        conduit(this),
         dns(this),
         fs(this),
         geolocation(this),
@@ -166,6 +171,10 @@ namespace SSC {
         initEventLoop();
         if (options.features.useNetworkStatus) {
           this->networkStatus.start();
+        }
+
+        if (options.features.useConduit) {
+          this->conduit.open();
         }
       }
 
