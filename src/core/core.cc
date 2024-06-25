@@ -73,6 +73,7 @@ namespace SSC {
     Lock lock(this->postsMutex);
 
     if (this->posts.find(id) != this->posts.end()) {
+      // debug("remove post %ld", this->posts.at(id).body.use_count());
       posts.erase(id);
     }
   }
@@ -422,6 +423,13 @@ namespace SSC {
         } else {
           entry->ttl = entry->ttl - resolution;
         }
+      }
+
+      while (
+        core->sharedPointerBuffers.size() > 0 &&
+        core->sharedPointerBuffers.back().pointer == nullptr
+      ) {
+        core->sharedPointerBuffers.pop_back();
       }
 
       if (core->sharedPointerBuffers.size() == 0) {

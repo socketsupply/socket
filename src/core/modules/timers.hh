@@ -15,12 +15,15 @@ namespace SSC {
       using ImmediateCallback = TimeoutCallback;
 
       struct Timer {
+        enum class Type { Timeout, Interval, Immediate };
+
         CoreTimers* timers = nullptr;
         ID id = 0;
         Callback callback = nullptr;
         bool repeat = false;
         bool cancelled = false;
         uv_timer_t timer;
+        Type type;
         Timer (CoreTimers* timers, ID id, Callback callback);
       };
 

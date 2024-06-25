@@ -26,6 +26,7 @@
 
 #include "modules/ai.hh"
 #include "modules/child_process.hh"
+#include "modules/diagnostics.hh"
 #include "modules/dns.hh"
 #include "modules/fs.hh"
 #include "modules/geolocation.hh"
@@ -51,6 +52,7 @@ namespace SSC {
         using ChildProcess = CoreChildProcess;
       #endif
       using DNS = CoreDNS;
+      using Diagnostics = CoreDiagnostics;
       using FS = CoreFS;
       using Geolocation = CoreGeolocation;
       using NetworkStatus = CoreNetworkStatus;
@@ -98,6 +100,7 @@ namespace SSC {
     #if !SOCKET_RUNTIME_PLATFORM_IOS
       ChildProcess childProcess;
     #endif
+      Diagnostics diagnostics;
       DNS dns;
       FS fs;
       Geolocation geolocation;
@@ -149,6 +152,7 @@ namespace SSC {
           childProcess(this),
         #endif
         ai(this),
+        diagnostics(this),
         dns(this),
         fs(this),
         geolocation(this),
