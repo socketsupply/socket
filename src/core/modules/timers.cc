@@ -102,9 +102,16 @@ namespace SSC {
     uint64_t timeout,
     const TimeoutCallback& callback
   ) {
-    return this->createTimer(timeout, 0, [callback] (auto _) {
+    Lock lock(this->mutex);
+    const auto id = this->createTimer(timeout, 0, [callback] (auto _) {
       callback();
     });
+
+    if (this->handles.contains(id)) {
+      this->handles.at(id)->type = Timer::Type::Timeout;
+    }
+
+    return id;
   }
 
   bool CoreTimers::clearTimeout (const ID id) {
@@ -115,7 +122,19 @@ namespace SSC {
     uint64_t interval,
     const IntervalCallback& callback
   ) {
-    return this->createTimer(interval, interval, callback);
+    Lock lock(this->mutex);
+
+    const auto id = this->createTimer(interval, interval, callback);
+
+    if (this->handles.contains(id)) {
+      this->handles.at(id)->type = Timer::Type::Interval;
+    }
+
+    if (this->handles.contains(id)) {
+      this->handles.at(id)->type = Timer::Type::Interval;
+    }
+
+    return id;
   }
 
   bool CoreTimers::clearInterval (const ID id) {
@@ -123,9 +142,13 @@ namespace SSC {
   }
 
   const CoreTimers::ID CoreTimers::setImmediate (const ImmediateCallback& callback) {
-    return this->createTimer(0, 0, [callback] (auto _) {
+    Lock lock(this->mutex);
+
+    const auto id = this->createTimer(0, 0, [callback] (auto _) {
       callback();
     });
+
+    return id;
   }
 
   bool CoreTimers::clearImmediate (const ID id) {

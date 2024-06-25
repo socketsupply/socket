@@ -522,7 +522,7 @@ namespace SSC {
         };
 
         callback("-1", json, Post{});
-      } else if (nread > 0) {
+      } else if (nread > 0 && buf && buf->base) {
         char address[17] = {0};
         Post post;
         int port;
