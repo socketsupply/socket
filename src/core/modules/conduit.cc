@@ -2,11 +2,6 @@
 #include "core.hh"
 
 namespace SSC {
-  //
-  // ~~1. where to create this instance~~
-  // ~~2. how to listen to the stream (listeners)~~
-  // 3. how to write data to the stream (emit)
-  //
   const char *WS_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 
   CoreConduit::~CoreCoreConduit() {
@@ -14,17 +9,39 @@ namespace SSC {
   }
 
   void CoreConduit::handshake(CoreConduit::Client *client, const char *request) {
+    std::string req(request);
+
+    size_t reqeol = req.find("\r\n");
+    if (reqeol == std::string::npos) return; // nope
+
+    std::istringstream iss(req.substr(0, reqeol));
+    std::string method;
+    std::string url;
+    std::string version;
+
+    iss >> method >> url >> version;
+
+    const auto parsed = URL::Components::parse(url);
+    auto parts = split(parsed.pathname, '/');
+    if (!parsed.empty() && parsed.size() != 3) return; // nope
+
+    if (parsed.searchParams.get("id") == parsed.searchParams.end()) {
+      return; // nope
+    }
+
     Headers headers(request);
-    auto protocolHeader = headers["Sec-WebSocket-Protocol"];
     auto keyHeader = headers["Sec-WebSocket-Key"];
 
-    if (protocolHeader.empty() || keyHeader.empty()) {
+    if (keyHeader.empty()) {
       // Handle missing headers appropriately, e.g., close connection or send error
       return;
     }
 
-    uint64_t id = std::stoll(protocolHeader);
-    client->id = id;
+    const port = std::to_string(client->conduit->port);
+    auto wsa = "ws://localhost:" + port + "/";
+    client->route = replace(url, wsa, "ipc://");
+
+    auto id = std::stoll(parsed.searchParams.get("id"));
     this->clients[id] = client;
 
     debug("Received key: %s\n", keyHeader.c_str());
@@ -38,14 +55,14 @@ namespace SSC {
 
     debug("Generated Accept Key: %s\n", base64_accept_key);  // Debugging statement
 
-    std::ostringstream ss;
+    std::ostringstream oss;
 
-    ss << "HTTP/1.1 101 Switching Protocols\r\n"
+    oss << "HTTP/1.1 101 Switching Protocols\r\n"
        << "Upgrade: websocket\r\n"
        << "Connection: Upgrade\r\n"
        << "Sec-WebSocket-Accept: " << base64_accept_key << "\r\n\r\n";
 
-    std::string response = ss.str();
+    std::string response = oss.str();
     debug(response.c_str());
 
     uv_buf_t wrbuf = uv_buf_init(strdup(response.c_str()), response.size());
@@ -110,10 +127,7 @@ namespace SSC {
 
     pos += payload_len;
 
-    debug("Received message: %.*s\n", (int)payload_len, payload_data);
-
-    auto cb = this->listeners[client->id];
-    if (cb) cb((int)payload_len, payload_data);
+    this->core->router.invoke(this->route, payload_data, (int)payload_len);
   }
 
   bool CoreConduit::Client::emit(std::shared_ptr<char[]> message, size_t length) {
@@ -137,14 +151,6 @@ namespace SSC {
     });
 
     return true;
-  }
-
-  void CoreConduit::addListener(uint64_t key, Callback callback) {
-    listeners[key] = callback;
-  }
-
-  void CoreConduit::removeListener(uint64_t key) {
-    listeners.erase(key);
   }
 
   void CoreConduit::open() {
@@ -257,7 +263,6 @@ namespace SSC {
       }
 
       this->clients.clear();
-      this->listeners.clear();
     });
 
     return future.get();
