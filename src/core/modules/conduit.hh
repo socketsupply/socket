@@ -6,11 +6,6 @@
 namespace SSC {
   class Core;
   class CoreConduit : public CoreModule {
-    using Callback = std::function<void(int, unsigned char*)>;
-
-    uv_tcp_t conduitSocket;
-    struct sockaddr_in addr;
-
     typedef struct {
       uv_tcp_t handle;
       uv_write_t write_req;
@@ -20,12 +15,12 @@ namespace SSC {
       unsigned char *frame_buffer;
       size_t frame_buffer_size;
       Conduit* self;
-
+      String route = "";
       bool emit(std::shared_ptr<char[]> message, size_t length);
     } Client;
 
-    std::map<unit64_t, SharedPointer<Client>> clients;
-    std::map<uint64_t, Callback> listeners;
+    uv_tcp_t conduitSocket;
+    struct sockaddr_in addr;
 
     void handshake(client_t *client, const char *request);
     void processFrame(client_t *client, const char *frame, ssize_t len);
@@ -34,12 +29,11 @@ namespace SSC {
       CoreConduit (Core* core) : CoreModule(core) {};
       ~CoreConduit ();
 
+      std::map<unit64_t, SharedPointer<Client>> clients;
       int port = 0;
 
       void open();
       bool close();
-      void addListener(uint64_t key, Callback callback);
-      void removeListener(uint64_t key);
   }
 }
 
