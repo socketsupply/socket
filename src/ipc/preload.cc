@@ -234,6 +234,12 @@ namespace SSC::IPC {
             writable: true,
             value: globalThis.window ? 'window' : 'worker'
           },
+          parent: {
+            configurable: false,
+            enumerable: true,
+            writable: false,
+            value: globalThis?.parent?.__args?.client ?? {}
+          },
           frameType: {
             configurable: false,
             enumerable: true,
