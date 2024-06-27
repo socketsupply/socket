@@ -795,7 +795,7 @@ namespace SSC {
               this->controller->put_Bounds(bounds);
               this->controller->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
               this->controller->AddRef();
-	      this->bridge.configureWebView(this->webview);
+              this->bridge.configureWebView(this->webview);
             } while (0);
 
             // configure the webview settings
@@ -806,7 +806,7 @@ namespace SSC {
               ICoreWebView2Settings6* settings6 = nullptr;
               ICoreWebView2Settings9* settings9 = nullptr;
 
-	      const auto wantsDebugMode = this->options.debug || isDebugEnabled();
+              const auto wantsDebugMode = this->options.debug || isDebugEnabled();
 
               this->webview->get_Settings(&settings);
 
@@ -825,15 +825,15 @@ namespace SSC {
               settings->put_AreDefaultContextMenusEnabled(true);
               settings->put_AreDefaultScriptDialogsEnabled(true);
 
-	      // TODO(@jwerle): set user agent for runtime
-	      // settings2->put_UserAgent();
+              // TODO(@jwerle): set user agent for runtime
+              // settings2->put_UserAgent();
 
               settings3->put_AreBrowserAcceleratorKeysEnabled(wantsDebugMode);
 
               settings6->put_IsPinchZoomEnabled(false);
               settings6->put_IsSwipeNavigationEnabled(false);
 
-	      settings9->put_IsNonClientRegionSupportEnabled(true);
+              settings9->put_IsNonClientRegionSupportEnabled(true);
             } while (0);
 
             // enumerate all child windows to re-register drag/drop
@@ -1042,22 +1042,22 @@ namespace SSC {
                     ICoreWebView2_2* webview2 = nullptr;
                     if (webview->QueryInterface(IID_PPV_ARGS(&webview2)) != S_OK) {
                       return E_FAIL;
-		    }
+                    }
 
                     if (webview2->get_Environment(&env) != S_OK) {
                       return E_FAIL;
-		    }
+                    }
 
                     if (args->get_Request(&platformRequest) != S_OK) {
                       return E_FAIL;
-		    }
+                    }
                   } while (0);
 
                   auto request = IPC::SchemeHandlers::Request::Builder(
                     &this->bridge.schemeHandlers,
-		    platformRequest,
-		    env
-		  );
+                    platformRequest,
+                    env
+                  );
 
                   // get and set HTTP method
                   do {
@@ -1072,44 +1072,48 @@ namespace SSC {
                     ComPtr<ICoreWebView2HttpHeadersCollectionIterator> iterator;
                     BOOL hasCurrent = false;
                     BOOL hasNext = false;
-                    
+
                     if (platformRequest->get_Headers(&headers) == S_OK && headers->GetIterator(&iterator) == S_OK) {
                       while (SUCCEEDED(iterator->get_HasCurrentHeader(&hasCurrent)) && hasCurrent) {
                         LPWSTR name;
-			LPWSTR value;
+                        LPWSTR value;
 
-			if (iterator->GetCurrentHeader(&name, &value) != S_OK) {
+                        if (iterator->GetCurrentHeader(&name, &value) != S_OK) {
                           break;
                         }
 
                         request.setHeader(convertWStringToString(name), convertWStringToString(value));
-			if (iterator->MoveNext(&hasNext) != S_OK || !hasNext) {
+                        if (iterator->MoveNext(&hasNext) != S_OK || !hasNext) {
                           break;
                         }
-		      }
-		    }
+                      }
+                    }
                   } while (0);
 
-		  // get request body
-		  if (request.request->method == "POST" || request.request->method == "PUT" || request.request->method == "PATCH") {
+                  // get request body
+                  if (
+                    request.request->method == "POST" ||
+                    request.request->method == "PUT" ||
+                    request.request->method == "PATCH"
+                  ) {
                     IStream* content = nullptr;
                     if (platformRequest->get_Content(&content) == S_OK && content != nullptr) {
-		      STATSTG stat;
-		      content->Stat(&stat, 0);
-		      size_t size = stat.cbSize.QuadPart;
-		      if (size > 0) {
-		        auto buffer = std::make_shared<char[]>(size);
+                      STATSTG stat;
+                      content->Stat(&stat, 0);
+                      size_t size = stat.cbSize.QuadPart;
+                      if (size > 0) {
+                        auto buffer = std::make_shared<char[]>(size);
                         if (content->Read(buffer.get(), size, nullptr) == S_OK) {
-			  request.setBody(IPC::SchemeHandlers::Body {
+                          request.setBody(IPC::SchemeHandlers::Body {
                             size,
-			    std::move(buffer)
-			  });
-			}
-		      }
-		    }
-		  }
+                            std::move(buffer)
+                          });
+                        }
+                      }
+                    }
+                  }
 
-		  auto req = request.build();
+                  auto req = request.build();
                   if (args->GetDeferral(&deferral) != S_OK) {
                     return E_FAIL;
                   }
