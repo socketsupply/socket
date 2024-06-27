@@ -204,7 +204,10 @@ namespace SSC {
     };
 
     this->bridge.client.preload = IPC::Preload::compile({
-      .client = this->bridge.client,
+      .client = UniqueClient {
+        .id = this->bridge.client.id,
+        .index = this->bridge.client.index
+      },
       .index = options.index,
       .userScript = options.userScript
     });
@@ -289,11 +292,13 @@ namespace SSC {
     }
 
     if (userConfig["permissions_allow_notifications"] == "false") {
+    #if SOCKET_RUNTIME_PLATFORM_MACOS
       @try {
         [preferences setValue: @NO forKey: @"appBadgeEnabled"];
       } @catch (NSException *error) {
-        debug("Failed to set preference: 'deviceOrientationEventEnabled': %@", error);
+        debug("Failed to set preference: 'appBadgeEnabled': %@", error);
       }
+    #endif
 
       @try {
         [preferences setValue: @NO forKey: @"notificationsEnabled"];
@@ -307,11 +312,13 @@ namespace SSC {
         debug("Failed to set preference: 'notificationEventEnabled': %@", error);
       }
     } else {
+    #if SOCKET_RUNTIME_PLATFORM_MACOS
       @try {
         [preferences setValue: @YES forKey: @"appBadgeEnabled"];
       } @catch (NSException *error) {
         debug("Failed to set preference: 'appBadgeEnabled': %@", error);
       }
+    #endif
     }
 
   #if SOCKET_RUNTIME_PLATFORM_MACOS

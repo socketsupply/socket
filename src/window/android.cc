@@ -31,7 +31,10 @@ namespace SSC {
     };
 
     this->bridge.client.preload = IPC::Preload::compile({
-      .client = this->bridge.client,
+      .client = UniqueClient {
+        .id = this->bridge.client.id,
+        .index = this->bridge.client.index
+      },
       .index = options.index,
       .userScript = options.userScript
     });
