@@ -406,7 +406,9 @@ namespace SSC::IPC {
 
   SchemeHandlers::Handler SchemeHandlers::getHandlerForScheme (const String& scheme) {
     Lock lock(this->mutex);
-    return this->handlers.at(scheme);
+    return this->handlers.contains(scheme)
+      ? this->handlers.at(scheme)
+      : SchemeHandlers::Handler {};
   }
 
   bool SchemeHandlers::registerSchemeHandler (const String& scheme, const Handler& handler) {
@@ -550,6 +552,7 @@ namespace SSC::IPC {
     return (
       id > 0 &&
       this->activeRequests.contains(id) &&
+      this->activeRequests.at(id) != nullptr &&
       this->activeRequests.at(id)->cancelled
     );
   }
