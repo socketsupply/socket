@@ -101,6 +101,7 @@ void signalHandler (int signum) {
     defaultWindowSignalHandler(signum);
   }
 
+  msleep(32);
   if (signum == SIGTERM || signum == SIGINT) {
     signal(signum, SIG_DFL);
     if (shutdownHandler != nullptr) {
@@ -621,6 +622,8 @@ MAIN {
     createProcess(true);
 
     shutdownHandler = [=](int signum) mutable {
+      msleep(32);
+
     #if SOCKET_RUNTIME_PLATFORM_LINUX
       unlink(appInstanceLock.c_str());
     #endif
