@@ -98,9 +98,17 @@ function quiet () {
   declare command="$1"; shift
   if [ -n "$VERBOSE" ]; then
     echo "$command" "$@"
-    eval "$command $@"
+    if [[ "$(host_os)" != "Win32" ]]; then
+      eval "$command $@"
+    else
+    "$command" "$@"
+    fi
   else
-    "$command" "$@" > /dev/null 2>&1
+    if [[ "$(host_os)" != "Win32" ]]; then
+      eval "$command $@" > /dev/null 2>&1
+    else
+      "$command" "$@" > /dev/null 2>&1
+    fi
   fi
 
   return $?

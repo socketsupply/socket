@@ -433,7 +433,7 @@ function android_clang () {
 
 function android_clang_target () {
   local arch=$1
-  echo "-target $(android_arch "$arch")-linux-android$(android_eabi "$arch")"
+  echo "--target=$(android_arch "$arch")-linux-android$(android_eabi "$arch")"
 }
 
 

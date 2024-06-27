@@ -80,6 +80,7 @@ while (( $# > 0 )); do
       export TARGET_IPHONE_SIMULATOR=1
     elif [[ "$1" = "android" ]]; then
       platform="$1";
+      d=""
       export TARGET_OS_ANDROID=1
     else
       platform="$1";
@@ -190,12 +191,22 @@ function generate_llama_build_info () {
     build_commit=$(printf '%s' "$out" | tr -d '\n')
   fi
 
-  if out=$(eval "$clang" --version | head -1); then
-    build_compiler="$out"
-  fi
+  if [[ "$(host_os)" == "Win32" ]]; then
+    if out=$("$clang" --version | head -1); then
+      build_compiler="$out"
+    fi
 
-  if out=$(eval "$clang" -dumpmachine); then
-    build_target="$out"
+    if out=$("$clang" -dumpmachine); then
+      build_target="$out"
+    fi
+  else
+    if out=$(eval "$clang" --version | head -1); then
+      build_compiler="$out"
+    fi
+
+    if out=$(eval "$clang" -dumpmachine); then
+      build_target="$out"
+    fi
   fi
 
   echo "# generating llama build info"

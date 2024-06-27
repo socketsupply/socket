@@ -729,7 +729,7 @@ function _compile_libuv_android {
   local max_concurrency=$CPU_CORES
   build_static=0
   declare base_lib="libuv"
-  declare static_library="$root/build/$arch-$platform/lib$d/$base_lib$d.a"
+  declare static_library="$root/build/$arch-$platform/lib/$base_lib.a"
 
   for source in "${sources[@]}"; do
     if (( i++ > max_concurrency )); then
@@ -739,7 +739,7 @@ function _compile_libuv_android {
       i=0
     fi
 
-    declare object="${source/.c/$d.o}"
+    declare object="${source/.c/.o}"
     object="$(basename "$object")"
     objects+=("$output_directory/$object")
 
