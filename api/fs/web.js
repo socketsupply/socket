@@ -6,8 +6,9 @@ import mime from '../mime.js'
 import path from '../path.js'
 import fs from './promises.js'
 
-const kFileSystemHandleFullName = Symbol('kFileSystemHandleFullName')
-const kFileFullName = Symbol('kFileFullName')
+export const kFileSystemHandleFullName = Symbol('kFileSystemHandleFullName')
+export const kFileDescriptor = Symbol('kFileDescriptor')
+export const kFileFullName = Symbol('kFileFullName')
 
 // @ts-ignore
 export const File = globalThis.File ??
@@ -109,8 +110,11 @@ export async function createFile (filename, options = null) {
     ? options.highWaterMark
     : Math.min(stats.size, DEFAULT_STREAM_HIGH_WATER_MARK)
 
+  let fd = options?.fd ?? null
+
   return create(File, class File {
     get [kFileFullName] () { return filename }
+    get [kFileDescriptor] () { return fd }
 
     get lastModifiedDate () { return new Date(stats.mtimeMs) }
     get lastModified () { return stats.mtimeMs }
@@ -151,7 +155,6 @@ export async function createFile (filename, options = null) {
     stream () {
       let buffer = null
       let offset = 0
-      let fd = null
 
       const stream = new ReadableStream({
         async start (controller) {
@@ -256,6 +259,8 @@ export async function createFileSystemWritableFileStream (handle, options) {
 
   // @ts-ignore
   return create(FileSystemWritableFileStream, class FileSystemWritableFileStream {
+    get [kFileDescriptor] () { return fd }
+
     async seek (position) {
       offset = position
     }
@@ -338,9 +343,8 @@ export async function createFileSystemFileHandle (file, options = null) {
   }
 
   return create(FileSystemFileHandle, class FileSystemFileHandle {
-    get [kFileSystemHandleFullName] () {
-      return file[kFileFullName]
-    }
+    get [kFileSystemHandleFullName] () { return file[kFileFullName] }
+    get [kFileDescriptor] () { return file[kFileDescriptor] }
 
     get name () {
       return file.name
@@ -447,9 +451,8 @@ export async function createFileSystemDirectoryHandle (dirname, options = null) 
   let fd = null
 
   return create(FileSystemDirectoryHandle, class FileSystemDirectoryHandle {
-    get [kFileSystemHandleFullName] () {
-      return dirname
-    }
+    get [kFileSystemHandleFullName] () { return dirname }
+    get [kFileDescriptor] () { return fd }
 
     get name () {
       return path.basename(dirname)

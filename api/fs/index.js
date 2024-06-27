@@ -37,6 +37,7 @@ import * as constants from './constants.js'
 import * as promises from './promises.js'
 import { Watcher } from './watcher.js'
 import { Stats } from './stats.js'
+import bookmarks from './bookmarks.js'
 import fds from './fds.js'
 
 import * as exports from './index.js'
@@ -1506,6 +1507,7 @@ export function watch (path, options, callback = null) {
 
 // re-exports
 export {
+  bookmarks,
   constants,
   Dir,
   DirectoryHandle,
