@@ -244,6 +244,13 @@ namespace SSC {
     return nullptr;
   }
 
+  SharedPointer<CoreFS::Descriptor> CoreFS::getDescriptor (ID id) const {
+    if (descriptors.find(id) != descriptors.end()) {
+      return descriptors.at(id);
+    }
+    return nullptr;
+  }
+
   void CoreFS::removeDescriptor (ID id) {
     Lock lock(this->mutex);
     if (descriptors.find(id) != descriptors.end()) {
