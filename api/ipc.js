@@ -53,6 +53,7 @@ import {
 import * as errors from './errors.js'
 import { Buffer } from './buffer.js'
 import { rand64 } from './crypto.js'
+import bookmarks from './fs/bookmarks.js'
 import { URL } from './url.js'
 
 let nextSeq = 1
@@ -84,7 +85,6 @@ function initializeXHRIntercept () {
 
     async send (body) {
       const { method, seq, url } = this
-      const index = globalThis.__args?.index || 0
 
       if (url?.protocol === 'ipc:') {
         if (
@@ -234,6 +234,35 @@ function getRequestResponse (request, options) {
   }
 
   return response
+}
+
+function getFileSystemBookmarkName (options) {
+  const names = [
+    options.params.get('src'),
+    options.params.get('path'),
+    options.params.get('value')
+  ]
+  return names.find(Boolean) ?? null
+}
+
+function isFileSystemBookmark (options) {
+  const names = [
+    options.params.get('src'),
+    options.params.get('path'),
+    options.params.get('value')
+  ].filter(Boolean)
+
+  if (names.some((name) => bookmarks.temporary.has(name))) {
+    return true
+  }
+
+  for (const [, fd] of bookmarks.temporary.entries()) {
+    if (fd === options.params.get('id') || fd === options.params.get('fd')) {
+      return true
+    }
+  }
+
+  return false
 }
 
 export function maybeMakeError (error, caller) {
@@ -988,7 +1017,7 @@ export async function ready () {
 
 const { toString } = Object.prototype
 
-class IPCSearchParams extends URLSearchParams {
+export class IPCSearchParams extends URLSearchParams {
   constructor (params, nonce) {
     let value
     if (params !== undefined && toString.call(params) !== '[object Object]') {
@@ -1076,20 +1105,29 @@ export function sendSync (command, value = '', options = {}, buffer = null) {
     typeof __global_ipc_extension_handler === 'function' &&
     (options?.useExtensionIPCIfAvailable || command.startsWith('fs.'))
   ) {
-    let response = null
-    try {
-      response = __global_ipc_extension_handler(uri)
-    } catch (err) {
-      return Result.from(null, err)
-    }
+    // eslint-disable-next-line
+    do {
+      if (command.startsWith('fs.')) {
+        if (isFileSystemBookmark({ params })) {
+          break
+        }
+      }
 
-    if (typeof response === 'string') {
+      let response = null
       try {
-        response = JSON.parse(response)
-      } catch {}
-    }
+        response = __global_ipc_extension_handler(uri)
+      } catch (err) {
+        return Result.from(null, err)
+      }
 
-    return Result.from(response, null, command)
+      if (typeof response === 'string') {
+        try {
+          response = JSON.parse(response)
+        } catch {}
+      }
+
+      return Result.from(response, null, command)
+    } while (0)
   }
 
   const request = new globalThis.XMLHttpRequest()
@@ -1118,6 +1156,16 @@ export function sendSync (command, value = '', options = {}, buffer = null) {
 
   if (options?.cache === true) {
     cache[command] = result
+  }
+
+  if (command.startsWith('fs.') && isFileSystemBookmark({ params })) {
+    if (!result.err) {
+      const id = result.data?.id ?? result.data?.fd
+      const name = getFileSystemBookmarkName({ params })
+      if (id && name) {
+        bookmarks.temporary.set(name, id)
+      }
+    }
   }
 
   return result
@@ -1203,6 +1251,35 @@ export async function send (command, value, options = null) {
   const params = new IPCSearchParams(value)
   const uri = `ipc://${command}?${params}`
 
+  if (
+    typeof __global_ipc_extension_handler === 'function' &&
+    (options?.useExtensionIPCIfAvailable || command.startsWith('fs.'))
+  ) {
+    // eslint-disable-next-line
+    do {
+      if (command.startsWith('fs.')) {
+        if (isFileSystemBookmark({ params })) {
+          break
+        }
+      }
+
+      let response = null
+      try {
+        response = await __global_ipc_extension_handler(uri)
+      } catch (err) {
+        return Result.from(null, err)
+      }
+
+      if (typeof response === 'string') {
+        try {
+          response = JSON.parse(response)
+        } catch {}
+      }
+
+      return Result.from(response, null, command)
+    } while (0)
+  }
+
   if (options?.bytes) {
     postMessage(uri, options.bytes)
   } else {
@@ -1220,6 +1297,16 @@ export async function send (command, value, options = null) {
 
       if (options?.cache === true) {
         cache[command] = result
+      }
+
+      if (command.startsWith('fs.') && isFileSystemBookmark({ params })) {
+        if (!result.err) {
+          const id = result.data?.id ?? result.data?.fd
+          const name = getFileSystemBookmarkName({ params })
+          if (id && name) {
+            bookmarks.temporary.set(name, id)
+          }
+        }
       }
 
       resolve(result)
@@ -1250,20 +1337,29 @@ export async function write (command, value, buffer, options) {
     typeof __global_ipc_extension_handler === 'function' &&
     (options?.useExtensionIPCIfAvailable || command.startsWith('fs.'))
   ) {
-    let response = null
-    try {
-      response = await __global_ipc_extension_handler(uri, buffer)
-    } catch (err) {
-      return Result.from(null, err)
-    }
+    // eslint-disable-next-line
+    do {
+      if (command.startsWith('fs.')) {
+        if (isFileSystemBookmark({ params })) {
+          break
+        }
+      }
 
-    if (typeof response === 'string') {
+      let response = null
       try {
-        response = JSON.parse(response)
-      } catch {}
-    }
+        response = await __global_ipc_extension_handler(uri, buffer)
+      } catch (err) {
+        return Result.from(null, err)
+      }
 
-    return Result.from(response, null, command)
+      if (typeof response === 'string') {
+        try {
+          response = JSON.parse(response)
+        } catch {}
+      }
+
+      return Result.from(response, null, command)
+    } while (0)
   }
 
   const signal = options?.signal
@@ -1368,20 +1464,29 @@ export async function request (command, value, options) {
     typeof __global_ipc_extension_handler === 'function' &&
     (options?.useExtensionIPCIfAvailable || command.startsWith('fs.'))
   ) {
-    let response = null
-    try {
-      response = await __global_ipc_extension_handler(uri)
-    } catch (err) {
-      return Result.from(null, err)
-    }
+    // eslint-disable-next-line
+    do {
+      if (command.startsWith('fs.')) {
+        if (isFileSystemBookmark({ params })) {
+          break
+        }
+      }
 
-    if (typeof response === 'string') {
+      let response = null
       try {
-        response = JSON.parse(response)
-      } catch {}
-    }
+        response = await __global_ipc_extension_handler(uri)
+      } catch (err) {
+        return Result.from(null, err)
+      }
 
-    return Result.from(response, null, command)
+      if (typeof response === 'string') {
+        try {
+          response = JSON.parse(response)
+        } catch {}
+      }
+
+      return Result.from(response, null, command)
+    } while (0)
   }
 
   const signal = options?.signal
@@ -1448,6 +1553,16 @@ export async function request (command, value, options) {
 
         if (options?.cache === true) {
           cache[command] = result
+        }
+
+        if (command.startsWith('fs.') && isFileSystemBookmark({ params })) {
+          if (!result.err) {
+            const id = result.data?.id ?? result.data?.fd
+            const name = getFileSystemBookmarkName({ params })
+            if (id && name) {
+              bookmarks.temporary.set(name, id)
+            }
+          }
         }
 
         return resolve(result)
@@ -1548,7 +1663,6 @@ if (
 }
 
 Object.freeze(primordials)
-
 
 initializeXHRIntercept()
 
