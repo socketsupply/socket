@@ -57,9 +57,13 @@ namespace SSC {
   }
 
   SharedPointer<LLM> CoreAI::getLLM (ID id) {
-    if (!this->hasLLM(id)) return nullptr;
     Lock lock(this->mutex);
-    return this->llms.at(id);
+
+    if (this->llms.contains(id)) {
+      return this->llms.at(id);
+    }
+
+    return nullptr;
   }
 
   bool CoreAI::hasLLM (ID id) {

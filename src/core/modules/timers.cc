@@ -130,10 +130,6 @@ namespace SSC {
       this->handles.at(id)->type = Timer::Type::Interval;
     }
 
-    if (this->handles.contains(id)) {
-      this->handles.at(id)->type = Timer::Type::Interval;
-    }
-
     return id;
   }
 
@@ -147,6 +143,10 @@ namespace SSC {
     const auto id = this->createTimer(0, 0, [callback] (auto _) {
       callback();
     });
+
+    if (this->handles.contains(id)) {
+      this->handles.at(id)->type = Timer::Type::Immediate;
+    }
 
     return id;
   }
