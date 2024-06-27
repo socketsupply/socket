@@ -176,6 +176,7 @@ export class TimersDiagnostic extends Diagnostic {
 export class UDPDiagnostic extends Diagnostic {}
 
 /**
+ * A container for various queried runtime diagnostics.
  */
 export class QueryDiagnostic {
   posts = new PostsDiagnostic()
