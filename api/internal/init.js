@@ -262,10 +262,10 @@ if ((globalThis.window) === globalThis) {
         let start = null
         const initialHeight = document.body.offsetHeight
 
-        const animate = (timestamp) => {
+        window.requestAnimationFrame(function animate (timestamp) {
           if (!start) start = timestamp
           const elapsed = timestamp - start
-          const progress = Math.min(elapsed / duration, 1)
+          let progress = Math.min(elapsed / duration, 1)
           const easeProgress = bezierHide(progress)
           const currentHeight = initialHeight + (easeProgress * keyboardHeight)
           if (currentHeight <= 0) progress = 1
@@ -277,8 +277,7 @@ if ((globalThis.window) === globalThis) {
           } else {
             isKeyboardOpen = false
           }
-        }
-        window.requestAnimationFrame(animate)
+        })
       }
     })
   }
@@ -326,6 +325,7 @@ class RuntimeWorker extends GlobalWorker {
     globalThis.__args.client.id = '${id}'
     globalThis.__args.client.type = 'worker'
     globalThis.__args.client.frameType = 'none'
+    globalThis.__args.client.parent = ${JSON.stringify(globalThis.__args.client)}
 
     Object.defineProperty(globalThis, 'isWorkerScope', {
       configurable: false,
