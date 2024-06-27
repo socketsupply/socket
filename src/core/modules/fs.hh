@@ -83,7 +83,7 @@ namespace SSC {
         : CoreModule(core)
       {}
 
-      SharedPointer<Descriptor> getDescriptor (ID id) const;
+      SharedPointer<Descriptor> getDescriptor (ID id);
       void removeDescriptor (ID id);
       bool hasDescriptor (ID id) const;
 

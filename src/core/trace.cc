@@ -54,7 +54,7 @@ namespace SSC {
     if (this->index.contains(id)) {
       const auto i = this->index[id];
       if (i < this->spans->size()) {
-        return this->spans->at(id);
+        return this->spans->at(i);
       }
     }
 

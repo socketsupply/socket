@@ -374,6 +374,10 @@ namespace SSC {
 
       for (auto const id : ids) {
         Lock lock(core->fs.mutex);
+        if (!core->fs.descriptors.contains(id)) {
+          continue;
+        }
+
         auto desc = core->fs.descriptors.at(id);
 
         if (desc == nullptr) {

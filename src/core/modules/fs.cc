@@ -236,7 +236,8 @@ namespace SSC {
     return this->stale;
   }
 
-  SharedPointer<CoreFS::Descriptor> CoreFS::getDescriptor (ID id) const {
+  SharedPointer<CoreFS::Descriptor> CoreFS::getDescriptor (ID id) {
+    Lock lock(this->mutex);
     if (descriptors.find(id) != descriptors.end()) {
       return descriptors.at(id);
     }
