@@ -26,6 +26,7 @@ namespace SSC {
         }
       } while (0);
 
+    #if !SOCKET_RUNTIME_PLATFORM_IOS
       // `childProcess` diagnostics
       do {
         Lock lock(this->core->childProcess.mutex);
@@ -34,6 +35,7 @@ namespace SSC {
           query.childProcess.handles.ids.push_back(entry.first);
         }
       } while (0);
+    #endif
 
       // ai diagnostics
       do {
