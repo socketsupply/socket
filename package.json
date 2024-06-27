@@ -16,10 +16,10 @@
   },
   "private": true,
   "devDependencies": {
-    "acorn": "8.10.0",
-    "acorn-walk": "8.2.0",
+    "acorn": "8.12.0",
+    "acorn-walk": "8.3.3",
     "standard": "^17.1.0",
-    "typescript": "5.4.4",
+    "typescript": "5.5.2",
     "urlpattern-polyfill": "^10.0.0",
     "web-streams-polyfill": "^4.0.0",
     "whatwg-fetch": "^3.6.20",
