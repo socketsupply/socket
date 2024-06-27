@@ -240,12 +240,13 @@ if ((globalThis.window) === globalThis) {
     globalThis.addEventListener('keyboard', function (event) {
       const { detail } = event
 
+      keyboard.height = detail.value.height
+
       if (keyboard.offset === 0) {
         keyboard.offset = document.body.offsetHeight
       }
 
       if (detail.value.event === 'will-show' && !keyboard.opened) {
-        keyboard.height = detail.value.height
         let start = null
 
         requestAnimationFrame(function animate (timestamp) {
@@ -266,7 +267,7 @@ if ((globalThis.window) === globalThis) {
 
       if (detail.value.event === 'will-hide' && keyboard.opened) {
         keyboard.opened = false
-        keyboard.offset = globalThis.document.body.offsetHeight
+        const { offsetHeight } = globalThis.document.body
 
         let start = null
 
@@ -275,7 +276,7 @@ if ((globalThis.window) === globalThis) {
           const elapsed = timestamp - start
           let progress = Math.min(elapsed / timing.duration, 1)
           const easeProgress = bezier.hide(progress)
-          const currentHeight = keyboard.offset + (easeProgress * keyboard.height)
+          const currentHeight = offsetHeight + (easeProgress * keyboard.height)
           if (currentHeight <= 0) progress = 1
 
           globalThis.document.body.style.height = `${currentHeight}px`
