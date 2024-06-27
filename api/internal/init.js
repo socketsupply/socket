@@ -25,7 +25,7 @@ import { rand64 } from '../crypto.js'
 import location from '../location.js'
 import mime from '../mime.js'
 import path from '../path.js'
-import os from '../process.js'
+import os from '../os.js'
 import fs from '../fs/promises.js'
 import {
   createFileSystemDirectoryHandle,
