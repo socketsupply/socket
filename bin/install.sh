@@ -573,7 +573,7 @@ function _install {
 
     if [[ "$platform" != "android" ]]; then
       cp -rfp "$BUILD_DIR/$arch-$platform"/lib$_d/*.a "$SOCKET_HOME/lib$_d/$arch-$platform"
-      if [[ "$host" == "Darwin" ]]; then
+      if [[ "$host" == "Darwin" ]] && [[ "$platform" != "desktop" ]]; then
         cp -rfp "$BUILD_DIR/$arch-$platform"/lib/*.metallib "$SOCKET_HOME/lib/$arch-$platform"
       fi
     fi
