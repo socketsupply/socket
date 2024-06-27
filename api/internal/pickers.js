@@ -8,6 +8,8 @@ import {
   FileSystemHandle
 } from '../fs/web.js'
 
+import bookmarks from '../fs/bookmarks.js'
+
 /**
  * Key-value store for general usage by the file pickers"
  * @ignore
@@ -168,7 +170,10 @@ export async function showDirectoryPicker (options = null) {
     db.set(id, dirname)
   }
 
-  return await createFileSystemDirectoryHandle(dirname)
+  bookmarks.temporary.set(dirname, null) // placehold `null`
+
+  const result = await createFileSystemDirectoryHandle(dirname)
+  return result
 }
 
 /**
@@ -215,7 +220,11 @@ export async function showOpenFilePicker (options = null) {
   const handles = []
 
   for (const filename of filenames) {
-    handles.push(await createFileSystemFileHandle(filename, { writable: false }))
+    bookmarks.temporary.set(filename, null)
+  }
+
+  for (const filename of filenames) {
+    hnameandles.push(await createFileSystemFileHandle(filename, { writable: false }))
   }
 
   return handles
@@ -262,6 +271,8 @@ export async function showSaveFilePicker (options = null) {
   if (typeof id === 'string' && id.length > 0) {
     db.set(id, filename)
   }
+
+  bookmarks.temporary.set(filename, null)
 
   return await createFileSystemFileHandle(filename)
 }
