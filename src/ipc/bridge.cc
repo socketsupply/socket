@@ -583,7 +583,7 @@ export * from '{{url}}'
         if (resourcePath.size() > 0) {
           if (resourcePath.starts_with(applicationResources)) {
             contentLocation = resourcePath.substr(applicationResources.size() -1, resourcePath.size());
-	  }
+          }
 
           auto resource = FileResource(resourcePath);
 
@@ -938,8 +938,8 @@ export * from '{{url}}'
 
           if (request->scheme == "npm") {
             if (hostname.size() > 0) {
-	      pathname = "/" + hostname;
-	    }
+              pathname = "/" + hostname;
+            }
             hostname = this->userConfig["meta_bundle_identifier"];
           }
 
@@ -1012,8 +1012,8 @@ export * from '{{url}}'
 
       for (const auto& entry : this->schemeHandlers.handlers) {
         const auto origin = entry.first + "://*";
-	origins.push_back(std::make_shared<WString>(convertStringToWString(origin)));
-	allowedOrigins[allowedOriginsCount++] = origins.back()->c_str();
+        origins.push_back(std::make_shared<WString>(convertStringToWString(origin)));
+        allowedOrigins[allowedOriginsCount++] = origins.back()->c_str();
       }
 
     	// store registratino refs here
@@ -1021,9 +1021,9 @@ export * from '{{url}}'
 
       for (const auto& entry : this->schemeHandlers.handlers) {
         schemes.push_back(std::make_shared<WString>(convertStringToWString(entry.first)));
-	auto registration = Microsoft::WRL::Make<CoreWebView2CustomSchemeRegistration>(
+        auto registration = Microsoft::WRL::Make<CoreWebView2CustomSchemeRegistration>(
           schemes.back()->c_str()
-	);
+        );
 
         registration->SetAllowedOrigins(allowedOriginsCount, allowedOrigins);
         registration->put_HasAuthorityComponent(true);
@@ -1037,7 +1037,7 @@ export * from '{{url}}'
         static_cast<ICoreWebView2CustomSchemeRegistration**>(registrations)
       );
     }
-#endif
+  #endif
   }
 
   void Bridge::configureNavigatorMounts () {
