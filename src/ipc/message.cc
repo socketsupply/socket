@@ -72,7 +72,7 @@ namespace SSC::IPC {
 
   bool Message::has (const String& key) const {
     return (
-      this->args.find(key) != this->args.end() &&
+      this->args.contains(key) &&
       this->args.at(key).size() > 0
     );
   }
@@ -83,6 +83,8 @@ namespace SSC::IPC {
 
   String Message::get (const String& key, const String &fallback) const {
     if (key == "value") return this->value;
-    return args.count(key) ? decodeURIComponent(args.at(key)) : fallback;
+    return this->args.contains(key)
+      ? decodeURIComponent(args.at(key))
+      : fallback;
   }
 }
