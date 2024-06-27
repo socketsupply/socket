@@ -224,7 +224,11 @@ export async function showOpenFilePicker (options = null) {
   }
 
   for (const filename of filenames) {
-    hnameandles.push(await createFileSystemFileHandle(filename, { writable: false }))
+    const handle = await createFileSystemFileHandle(filename, {
+      writable: false
+    })
+
+    handles.push(handle)
   }
 
   return handles
