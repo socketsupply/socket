@@ -292,14 +292,6 @@ namespace SSC {
     }
 
     if (userConfig["permissions_allow_notifications"] == "false") {
-    #if SOCKET_RUNTIME_PLATFORM_MACOS
-      @try {
-        [preferences setValue: @NO forKey: @"appBadgeEnabled"];
-      } @catch (NSException *error) {
-        debug("Failed to set preference: 'appBadgeEnabled': %@", error);
-      }
-    #endif
-
       @try {
         [preferences setValue: @NO forKey: @"notificationsEnabled"];
       } @catch (NSException *error) {
@@ -311,14 +303,6 @@ namespace SSC {
       } @catch (NSException *error) {
         debug("Failed to set preference: 'notificationEventEnabled': %@", error);
       }
-    } else {
-    #if SOCKET_RUNTIME_PLATFORM_MACOS
-      @try {
-        [preferences setValue: @YES forKey: @"appBadgeEnabled"];
-      } @catch (NSException *error) {
-        debug("Failed to set preference: 'appBadgeEnabled': %@", error);
-      }
-    #endif
     }
 
   #if SOCKET_RUNTIME_PLATFORM_MACOS
