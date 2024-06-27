@@ -138,7 +138,12 @@ export async function onRequest (request, env, ctx) {
         export default module
         `
 
-    return new Response(proxy, {
+    const source = proxy
+      .trim()
+      .split('\n')
+      .map((line) => line.trim())
+      .join('\n')
+    return new Response(source, {
       headers: {
         'content-type': 'text/javascript'
       }
@@ -148,16 +153,18 @@ export async function onRequest (request, env, ctx) {
   if (resolved.type === 'commonjs') {
     const proxy = `
       import { createRequire } from 'socket:module'
-      const require = createRequire('${resolved.origin}', {
-        headers: {
-          'Runtime-ServiceWorker-Fetch-Mode': 'ignore'
-        }
-      })
+      const headers = { 'Runtime-ServiceWorker-Fetch-Mode': 'ignore' }
+      const require = createRequire('${resolved.origin}', { headers })
       const exports = require('${resolved.url}')
       export default exports?.default ?? exports ?? null
-    `
+    `.trim()
 
-    return new Response(proxy, {
+    const source = proxy
+      .trim()
+      .split('\n')
+      .map((line) => line.trim())
+      .join('\n')
+    return new Response(source, {
       headers: {
         'content-type': 'text/javascript'
       }
