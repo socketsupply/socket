@@ -1,4 +1,4 @@
-/* global Blob, DataTransfer, DragEvent, FileList, MessageEvent, reportError */
+/* global requestAnimationFrame, Blob, DataTransfer, DragEvent, FileList, MessageEvent, reportError */
 /* eslint-disable import/first */
 // mark when runtime did init
 console.assert(
@@ -25,7 +25,7 @@ import { rand64 } from '../crypto.js'
 import location from '../location.js'
 import mime from '../mime.js'
 import path from '../path.js'
-import process from '../process.js'
+import os from '../process.js'
 import fs from '../fs/promises.js'
 import {
   createFileSystemDirectoryHandle,
@@ -211,71 +211,79 @@ if ((globalThis.window) === globalThis) {
     }
   })
 
-  if (process.platform === 'ios') {
-    let keyboardHeight
-    let isKeyboardOpen = false
-    let initialHeight = 0
-    const duration = 346
-
-    const bezierShow = t => {
-      const p1 = 0.9
-      const p2 = 0.95
-      return 3 * (1 - t) * (1 - t) * t * p1 + 3 * (1 - t) * t * t * p2 + t * t * t
+  // TODO: move this somewhere more appropriate
+  if (os.platform() === 'ios') {
+    const timing = {
+      duration: 346 // TODO: document this
     }
 
-    const bezierHide = t => {
-      const p1 = 0.86
-      const p2 = 0.95
-      return 3 * (1 - t) * (1 - t) * t * p1 + 3 * (1 - t) * t * t * p2 + t * t * t
+    const keyboard = {
+      opened: false,
+      offset: 0,
+      height: 0
     }
 
-    globalThis.window.addEventListener('keyboard', ({ detail }) => {
-      if (initialHeight === 0) {
-        initialHeight = document.body.offsetHeight
+    const bezier = {
+      show (t) {
+        const p1 = 0.9
+        const p2 = 0.95
+        return 3 * (1 - t) * (1 - t) * t * p1 + 3 * (1 - t) * t * t * p2 + t * t * t
+      },
+
+      hide (t) {
+        const p1 = 0.86
+        const p2 = 0.95
+        return 3 * (1 - t) * (1 - t) * t * p1 + 3 * (1 - t) * t * t * p2 + t * t * t
+      }
+    }
+
+    globalThis.addEventListener('keyboard', function (event) {
+      const { detail } = event
+
+      if (keyboard.offset === 0) {
+        keyboard.offset = document.body.offsetHeight
       }
 
-      if (detail.value.event === 'will-show') {
-        if (isKeyboardOpen) return
-
-        keyboardHeight = detail.value.height
+      if (detail.value.event === 'will-show' && !keyboard.opened) {
+        keyboard.height = detail.value.height
         let start = null
 
-        const animate = (timestamp) => {
+        requestAnimationFrame(function animate (timestamp) {
           if (!start) start = timestamp
           const elapsed = timestamp - start
-          const progress = Math.min(elapsed / duration, 1)
-          const easeProgress = bezierShow(progress)
-          const currentHeight = initialHeight - (easeProgress * keyboardHeight)
+          const progress = Math.min(elapsed / timing.duration, 1)
+          const easeProgress = bezier.show(progress)
+          const currentHeight = keyboard.offset - (easeProgress * keyboard.height)
 
-          document.body.style.height = `${currentHeight}px`
+          globalThis.document.body.style.height = `${currentHeight}px`
 
           if (progress < 1) {
-            isKeyboardOpen = true
-            window.requestAnimationFrame(animate)
+            keyboard.opened = true
+            requestAnimationFrame(animate)
           }
-        }
-        window.requestAnimationFrame(animate)
+        })
       }
 
-      if (detail.value.event === 'will-hide') {
-        isKeyboardOpen = false
-        let start = null
-        const initialHeight = document.body.offsetHeight
+      if (detail.value.event === 'will-hide' && keyboard.opened) {
+        keyboard.opened = false
+        keyboard.offset = globalThis.document.body.offsetHeight
 
-        window.requestAnimationFrame(function animate (timestamp) {
+        let start = null
+
+        requestAnimationFrame(function animate (timestamp) {
           if (!start) start = timestamp
           const elapsed = timestamp - start
-          let progress = Math.min(elapsed / duration, 1)
-          const easeProgress = bezierHide(progress)
-          const currentHeight = initialHeight + (easeProgress * keyboardHeight)
+          let progress = Math.min(elapsed / timing.duration, 1)
+          const easeProgress = bezier.hide(progress)
+          const currentHeight = keyboard.offset + (easeProgress * keyboard.height)
           if (currentHeight <= 0) progress = 1
 
-          document.body.style.height = `${currentHeight}px`
+          globalThis.document.body.style.height = `${currentHeight}px`
 
           if (progress < 1) {
-            window.requestAnimationFrame(animate)
+            requestAnimationFrame(animate)
           } else {
-            isKeyboardOpen = false
+            keyboard.opened = false
           }
         })
       }
