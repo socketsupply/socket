@@ -209,15 +209,14 @@ namespace SSC {
 
     auto decoded = this->decodeMessage(payload_data, (int)payload_len);
 
-    std::stringstream ss("ipc://");
-    ss << decoded.pluck("route");
-    ss << "&id=" << std::to_string(client->id);
+    const auto uri = URL::Builder()
+      .setProtocol("ipc")
+      .setHostname(decoded.pluck("route"))
+      .setSearchParam("id", client->id)
+      .setSearchParams(decoded.options)
+      .build();
 
-    for (auto& key : decoded.options) {
-      ss << "&" << option.first << "=" << option.second;
-    }
-
-    this->core->router.invoke(new URL(ss), decodedMessage.payload, decodedMessage.payload.size());
+    this->core->router.invoke(uri, decodedMessage.payload, decodedMessage.payload.size());
   }
 
   bool CoreConduit::Client::emit (const CoreConduit::Options& options, const unsigned char* payload_data, size_t length) {
