@@ -22,38 +22,24 @@ export class Conduit {
    *
    * @private
    * @param {string} key - The header key.
-   * @param {string|number} value - The header value.
+   * @param {string} value - The header value.
    * @returns {Uint8Array} The encoded header.
-   * @throws Will throw an error if the header value type is invalid.
    */
   encodeHeader (key, value) {
     const keyLength = key.length
     const keyBuffer = new TextEncoder().encode(key)
 
-    let valueBuffer
-    let valueType
-
-    if (typeof value === 'number') {
-      valueType = 0
-      valueBuffer = new TextEncoder().encode(value.toString())
-    } else if (typeof value === 'string') {
-      valueType = 1
-      valueBuffer = new TextEncoder().encode(value)
-    } else {
-      throw new Error('Invalid header value type')
-    }
-
+    const valueBuffer = new TextEncoder().encode(value)
     const valueLength = valueBuffer.length
 
-    const buffer = new ArrayBuffer(1 + keyLength + 1 + 2 + valueLength)
+    const buffer = new ArrayBuffer(1 + keyLength + 2 + valueLength)
     const view = new DataView(buffer)
 
     view.setUint8(0, keyLength)
     new Uint8Array(buffer, 1, keyLength).set(keyBuffer)
 
-    view.setUint8(1 + keyLength, valueType)
-    view.setUint16(2 + keyLength, valueLength, false)
-    new Uint8Array(buffer, 4 + keyLength, valueLength).set(valueBuffer)
+    view.setUint16(1 + keyLength, valueLength, false)
+    new Uint8Array(buffer, 3 + keyLength, valueLength).set(valueBuffer)
 
     return new Uint8Array(buffer)
   }
@@ -84,7 +70,7 @@ export class Conduit {
       offset += headerBuffer.length
     })
 
-    view.setUint16(offset, bodyLength)
+    view.setUint16(offset, bodyLength, false)
     offset += 2
 
     new Uint8Array(buffer, offset, bodyLength).set(payload)
@@ -112,23 +98,13 @@ export class Conduit {
       const key = new TextDecoder().decode(new Uint8Array(data.buffer, offset, keyLength))
       offset += keyLength
 
-      const valueType = view.getUint8(offset)
-      offset += 1
-
       const valueLength = view.getUint16(offset, false)
       offset += 2
 
       const valueBuffer = new Uint8Array(data.buffer, offset, valueLength)
       offset += valueLength
 
-      let value
-      if (valueType === 0) {
-        value = parseInt(new TextDecoder().decode(valueBuffer), 10)
-      } else if (valueType === 1) {
-        value = new TextDecoder().decode(valueBuffer)
-      } else {
-        throw new Error('Invalid header value type')
-      }
+      const value = new TextDecoder().decode(valueBuffer)
 
       headers[key] = value
     }
@@ -153,7 +129,7 @@ export class Conduit {
    */
 
   receive (cb) {
-    this.socket.onmessage = event => this.decodeMessage(data)
+    this.socket.onmessage = event => this.decodeMessage(Uint8Array.from(data))
   }
 
   /**

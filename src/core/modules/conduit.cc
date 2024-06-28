@@ -8,45 +8,125 @@ namespace SSC {
     this->close();
   }
 
-  void CoreConduit::handshake(CoreConduit::Client *client, const char *request) {
-    std::string req(request);
+  Vector<uint8_t> CoreConduit::encodeMessage (const CoreConduit::Options& options, const Vector<uint8_t>& payload) {
+    Vector<uint8_t> encodedMessage;
+
+    encodedMessage.push_back(static_cast<uint8_t>(options.size()));
+
+    for (const auto& option : options) {
+      const String& key = option.first;
+      const String& value = option.second;
+
+      // length
+      encodedMessage.push_back(static_cast<uint8_t>(key.length()));
+      // key
+      encodedMessage.insert(encodedMessage.end(), key.begin(), key.end());
+
+      // value length
+      uint16_t valueLength = static_cast<uint16_t>(value.length());
+      encodedMessage.push_back(static_cast<uint8_t>((valueLength >> 8) & 0xFF));
+      encodedMessage.push_back(static_cast<uint8_t>(valueLength & 0xFF));
+      // value
+      encodedMessage.insert(encodedMessage.end(), value.begin(), value.end());
+    }
+
+    // len
+    uint16_t bodyLength = static_cast<uint16_t>(payload.size());
+    encodedMessage.push_back(static_cast<uint8_t>((bodyLength >> 8) & 0xFF));
+    encodedMessage.push_back(static_cast<uint8_t>(bodyLength & 0xFF));
+
+    // body
+    encodedMessage.insert(encodedMessage.end(), payload.begin(), payload.end());
+
+    return encodedMessage;
+  }
+
+  CoreConduit::EncodedMessage decodeMessage (const Vector<uint8_t>& data) {
+    EncodedMessage message;
+    size_t offset = 0;
+
+    uint8_t numOpts = data[offset++];
+
+    for (uint8_t i = 0; i < numOpts; ++i) {
+      // len
+      uint8_t keyLength = data[offset++];
+      // key
+      String key(data.begin() + offset, data.begin() + offset + keyLength);
+      offset += keyLength;
+
+      // len
+      uint16_t valueLength = (data[offset] << 8) | data[offset + 1];
+      offset += 2;
+
+      // val
+      String value(data.begin() + offset, data.begin() + offset + valueLength);
+      offset += valueLength;
+
+      message.options[key] = value;
+    }
+
+    // len
+    uint16_t bodyLength = (data[offset] << 8) | data[offset + 1];
+    offset += 2;
+
+    // body
+    message.payload = Vector<uint8_t>(data.begin() + offset, data.begin() + offset + bodyLength);
+
+    return message;
+  }
+
+  CoreConduit::EncodedMessage decodeMessage (const unsigned char* payload_data, int payload_len) {
+    Vector<uint8_t> data(payload_data, payload_data + payload_len);
+    return decodeMessage(data);
+  }
+
+  bool has (uint64_t id) const {
+    std::lock_guard<std::mutex> lock(clientsMutex);
+    return this->clients.find(id) != this->clients.end();
+  }
+
+  std::shared_ptr<CoreConduit::Client> get (uint64_t id) const {
+    std::lock_guard<std::mutex> lock(clientsMutex);
+    auto it = clients.find(id);
+
+    if (it != clients.end()) {
+      return it->second;
+    }
+    return nullptr;
+  }
+
+  void CoreConduit::handshake (std::shared_ptr<CoreConduit::Client> client, const char *request) {
+    String req(request);
 
     size_t reqeol = req.find("\r\n");
-    if (reqeol == std::string::npos) return; // nope
+    if (reqeol == String::npos) return; // nope
 
     std::istringstream iss(req.substr(0, reqeol));
-    std::string method;
-    std::string url;
-    std::string version;
+    String method;
+    String url;
+    String version;
 
     iss >> method >> url >> version;
 
     const auto parsed = URL::Components::parse(url);
-    auto parts = split(parsed.pathname, '/');
-    if (!parsed.empty() && parsed.size() != 3) return; // nope
-
     if (parsed.searchParams.get("id") == parsed.searchParams.end()) {
-      return; // nope
+      return;
     }
 
     Headers headers(request);
     auto keyHeader = headers["Sec-WebSocket-Key"];
 
     if (keyHeader.empty()) {
-      // Handle missing headers appropriately, e.g., close connection or send error
+      debug("Sec-WebSocket-Key is required but missing.");
       return;
     }
-
-    const port = std::to_string(client->conduit->port);
-    auto wsa = "ws://localhost:" + port + "/";
-    client->route = replace(url, wsa, "ipc://");
 
     auto id = std::stoll(parsed.searchParams.get("id"));
     this->clients[id] = client;
 
     debug("Received key: %s\n", keyHeader.c_str());
 
-    std::string acceptKey = keyHeader + WS_GUID;
+    String acceptKey = keyHeader + WS_GUID;
     char calculatedHash[SHA_DIGEST_LENGTH];
     shacalc(acceptKey.c_str(), calculatedHash);
 
@@ -62,7 +142,7 @@ namespace SSC {
        << "Connection: Upgrade\r\n"
        << "Sec-WebSocket-Accept: " << base64_accept_key << "\r\n\r\n";
 
-    std::string response = oss.str();
+    String response = oss.str();
     debug(response.c_str());
 
     uv_buf_t wrbuf = uv_buf_init(strdup(response.c_str()), response.size());
@@ -84,7 +164,7 @@ namespace SSC {
     client->is_handshake_done = 1;
   }
 
-  void CoreConduit::processFrame(CoreConduit::Client *client, const char *frame, ssize_t len) {
+  void CoreConduit::processFrame (std::shared_ptr<CoreConduit::Client> client, const char *frame, ssize_t len) {
     if (len < 2) return; // Frame too short to be valid
 
     unsigned char *data = (unsigned char *)frame;
@@ -127,25 +207,41 @@ namespace SSC {
 
     pos += payload_len;
 
-    this->core->router.invoke(this->route, payload_data, (int)payload_len);
+    auto decoded = this->decodeMessage(payload_data, (int)payload_len);
+
+    std::stringstream ss("ipc://");
+    ss << decoded.pluck("route");
+    ss << "&id=" << std::to_string(client->id);
+
+    for (auto& key : decoded.options) {
+      ss << "&" << option.first << "=" << option.second;
+    }
+
+    this->core->router.invoke(new URL(ss), decodedMessage.payload, decodedMessage.payload.size());
   }
 
-  bool CoreConduit::Client::emit(std::shared_ptr<char[]> message, size_t length) {
-    this->conduit->core->dispatchEventLoop([this, message, length]() mutable {
-      size_t frame_size = 2 + length;
-      std::vector<unsigned char> frame(frame_size);
+  bool CoreConduit::Client::emit (const CoreConduit::Options& options, const unsigned char* payload_data, size_t length) {
+    Vector<uint8_t> payloadVec(payload_data, payload_data + length);
+    Vector<uint8_t> encodedMessage = encodeMessage(options, payloadVec);
+
+    this->conduit->dispatchEventLoop([this, encodedMessage = std::move(encodedMessage)]() mutable {
+      size_t encodedLength = encodedMessage.size();
+      Vector<unsigned char> frame(2 + encodedLength);
+
       frame[0] = 0x81; // FIN and opcode 1 (text)
-      frame[1] = length;
-      memcpy(frame.data() + 2, message, length);
+      frame[1] = static_cast<unsigned char>(encodedLength);
+      std::memcpy(frame.data() + 2, encodedMessage.data(), encodedLength);
 
-      uv_buf_t wrbuf = uv_buf_init(reinterpret_cast<char*>(frame.data()), frame_size);
-      uv_write_t *write_req = new uv_write_t;
-      write_req->bufs = &wrbuf;
-      write_req->data = new std::vector<unsigned char>(std::move(frame));
+      uv_buf_t wrbuf = uv_buf_init(reinterpret_cast<char*>(frame.data()), frame.size());
+      auto writeReq = new uv_write_t;
+      writeReq->bufs = &wrbuf;
+      writeReq->data = new Vector<unsigned char>(std::move(frame));
 
-      uv_write(write_req, (uv_stream_t *)&client->handle, &wrbuf, 1, [](uv_write_t *req, int status) {
-        if (status) debug("Write error %s\n", uv_strerror(status));
-        delete static_cast<std::vector<unsigned char>*>(req->data);
+      uv_write(writeReq, (uv_stream_t *)&client, &wrbuf, 1, [](uv_write_t *req, int status) {
+        if (status) {
+          std::cerr << "Write error: " << uv_strerror(status) << std::endl;
+        }
+        delete static_cast<Vector<unsigned char>*>(req->data);
         delete req;
       });
     });
@@ -153,7 +249,7 @@ namespace SSC {
     return true;
   }
 
-  void CoreConduit::open() {
+  void CoreConduit::open () {
     std::promise<int> p;
     std::future<int> future = p.get_future();
 
@@ -231,7 +327,7 @@ namespace SSC {
     this->port = future.get();
   }
 
-  bool CoreConduit::close() {
+  bool CoreConduit::close () {
     std::promise<bool> p;
     std::future<bool> future = p.get_future();
 
