@@ -512,12 +512,11 @@ async function send (socket, options, callback) {
     })
 
     if (socket.conduit) {
-      const headers = {
+      socket.conduit.send({
+        route: 'udp.send',
         port: options.port,
         address: options.address
-      }
-
-      socket.conduit.send(headers, options.buffer)
+      }, options.buffer)
       result = { data: true }
     } else {
       result = await ipc.write('udp.send', {
@@ -774,12 +773,12 @@ export class Socket extends EventEmitter {
       }
 
       if (this.highThroughput) {
-        this.conduit = new Conduit({ method: 'udp.send', id: this.id })
+        this.conduit = new Conduit({ id: this.id })
 
-        this.conduit.receive(({ headers, payload }) => {
+        this.conduit.receive(({ options, payload }) => {
           const rinfo = {
-            port: headers.port,
-            address: headers.address,
+            port: options.port,
+            address: options.address,
             family: getAddressFamily(address)
           }
 

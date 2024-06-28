@@ -11,9 +11,9 @@ export class Conduit {
    * @param {string} params.id - The ID for the connection.
    * @param {string} params.method - The method to use for the connection.
    */
-  constructor ({ id, method }) {
+  constructor ({ id }) {
     const port = globalThis.__args.conduit
-    const uri = `ws://localhost:${port}/${method}?id=${id}`
+    const uri = `ws://localhost:${port}?id=${id}`
     this.socket = new globalThis.WebSocket(uri)
   }
 
