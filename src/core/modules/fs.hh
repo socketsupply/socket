@@ -66,10 +66,13 @@ namespace SSC {
           this->callback = callback;
           this->descriptor = descriptor;
           this->recursive = false;
+          this->req.loop = nullptr;
         }
 
         ~RequestContext () {
-          uv_fs_req_cleanup(&this->req);
+          if (this->req.loop) {
+            uv_fs_req_cleanup(&this->req);
+          }
         }
 
         void setBuffer (SharedPointer<char[]> base, uint32_t size);
