@@ -102,6 +102,7 @@ namespace SSC::IPC {
         {"client", JSON::Object {}},
         {"config", JSON::Object {}},
         {"debug", this->options.debug},
+        {"conduit", this->options.conduit},
         {"headless", this->options.headless},
         {"env", JSON::Object {}},
         {"index", this->options.index}

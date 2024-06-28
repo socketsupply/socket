@@ -14,6 +14,7 @@ import { isArrayBufferView, isFunction, noop } from './util.js'
 import { murmur3, rand64 } from './crypto.js'
 import { InternalError } from './errors.js'
 import { AsyncResource } from './async/resource.js'
+import { Conduit } from './internal/conduit.js'
 import { EventEmitter } from './events.js'
 import diagnostics from './diagnostics.js'
 import { Buffer } from './buffer.js'
@@ -510,11 +511,21 @@ async function send (socket, options, callback) {
       address: options.address
     })
 
-    result = await ipc.write('udp.send', {
-      id: socket.id,
-      port: options.port,
-      address: options.address
-    }, options.buffer)
+    if (socket.conduit) {
+      const headers = {
+        port: options.port,
+        address: options.address
+      }
+
+      socket.conduit.send(headers, options.buffer)
+      result = { data: true }
+    } else {
+      result = await ipc.write('udp.send', {
+        id: socket.id,
+        port: options.port,
+        address: options.address
+      }, options.buffer)
+    }
 
     callback(result.err, result.data)
   } catch (err) {
@@ -759,6 +770,20 @@ export class Socket extends EventEmitter {
           } else {
             cb(err)
           }
+        })
+      }
+
+      if (this.highThroughput) {
+        this.conduit = new Conduit({ method: 'udp.send', id: this.id })
+
+        this.conduit.receive(({ headers, payload }) => {
+          const rinfo = {
+            port: headers.port,
+            address: headers.address,
+            family: getAddressFamily(address)
+          }
+
+          this.emit('message', payload, rinfo)
         })
       }
 
