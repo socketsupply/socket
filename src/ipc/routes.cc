@@ -2889,11 +2889,15 @@ static void mapIPCRoutes (Router *router) {
       id,
       [message, reply](auto seq, auto json, auto post) {
         if (seq == "-1") {
-          const clients = router->bridge->core->conduit.clients;
+          if (router->bridge->core->conduit.has(id)) {
+            const client = router->bridge->core->conduit.get(id);
 
-          if (clients.find(id) != clients.end()) {
-            const client = router->bridge->core->conduit.clients[id];
-            client.emit(post.body, post.length);
+            CoreConduit::Options options = {
+              { "port": json["data"]["port"] },
+              { "address": json["data"]["address"] }
+            };
+
+            client.emit(options, post.body, post.length);
             return;
           }
         }
