@@ -70,6 +70,7 @@ namespace SSC::IPC {
         };
 
       bool headless = false;
+      int conduit = 0;
       bool debug = false;
 
       Features features;
