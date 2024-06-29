@@ -133,8 +133,7 @@ namespace SSC {
   }
 
   URL::Builder& URL::Builder::setSearchParam (const String& key, const String& value) {
-    this->searchParams[key] = value;
-    return *this;
+    return this->setSearchParams(Map {{ key, value }});
   }
 
   URL::Builder& URL::Builder::setSearchParam (const String& key, const JSON::Any& value) {
@@ -146,9 +145,22 @@ namespace SSC {
   }
 
   URL::Builder& URL::Builder::setSearchParams (const Map& params) {
-    for (const auto& entry : params) {
-      this->searchParams.insert_or_assign(entry.first, entry.second);
+    if (params.size() > 0) {
+      if (!this->search.starts_with("?")) {
+        this->search = "?";
+      } else if (this->search.size() > 0) {
+        this->search += "&";
+      }
+
+      for (const auto& entry : params) {
+        this->search = entry.first + "=" + entry.second + "&";
+      }
     }
+
+    if (this->search.ends_with("&")) {
+      this->search = this->search.substr(0, this->search.size() - 1);
+    }
+
     return *this;
   }
 
