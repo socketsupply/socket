@@ -10,9 +10,6 @@ namespace SSC {
     struct sockaddr_in addr;
     mutable std::mutex clientsMutex;
 
-    void handshake (client_t *client, const char *request);
-    void processFrame (client_t *client, const char *frame, ssize_t len);
-
     public:
       using Options = std::unordered_map<String, String>;
 
@@ -37,9 +34,19 @@ namespace SSC {
           }
           return "";
         }
+
+        std::map<String, String> getOptionsAsMap () {
+          std::map<String, String> omap;
+
+          for (const auto& pair : this->options) {
+            omap.insert(pair);
+          }
+          return omap;
+        }
       };
 
       struct Client{
+        uint64_t id;
         uv_tcp_t handle;
         uv_write_t write_req;
         uv_shutdown_t shutdown_req;
@@ -47,7 +54,7 @@ namespace SSC {
         int is_handshake_done;
         unsigned char *frame_buffer;
         size_t frame_buffer_size;
-        Conduit* self;
+        CoreConduit* self;
         String route = "";
         bool emit(const Options& options, const unsigned char* payload_data, size_t length);
       };
@@ -58,17 +65,19 @@ namespace SSC {
       EncodedMessage decodeMessage (const unsigned char* payload_data, int payload_len);
       EncodedMessage decodeMessage(const Vector<uint8_t>& data);
       Vector<uint8_t> encodeMessage(const CoreConduit::Options& options, const Vector<uint8_t>& payload);
-      bool has (uint64_t id);
-
-      CoreConduit::Client get(uint64_t id) const;
+      bool has (uint64_t id) const;
       std::shared_ptr<CoreConduit::Client> get (uint64_t id) const;
 
-      std::map<unit64_t, SharedPointer<Client>> clients;
+      std::map<uint64_t, SharedPointer<Client>> clients;
       int port = 0;
 
       void open();
       bool close();
-  }
+
+    private:
+      void handshake (std::shared_ptr<Client> client, const char *request);
+      void processFrame (std::shared_ptr<Client> client, const char *frame, ssize_t len);
+  };
 }
 
 #endif

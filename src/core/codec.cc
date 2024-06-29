@@ -61,19 +61,6 @@ static const char SAFE[256] = {
   /* F */ 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0
 };
 
-static char encoding_table[] = {
-    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
-    'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
-    'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
-    'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f',
-    'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n',
-    'o', 'p', 'q', 'r', 's', 't', 'u', 'v',
-    'w', 'x', 'y', 'z', '0', '1', '2', '3',
-    '4', '5', '6', '7', '8', '9', '+', '/'
-};
-
-static int mod_table[] = {0, 2, 1};
-
 namespace SSC {
   const Array<uint8_t, 8> toBytes (const uint64_t input) {
     Array<uint8_t, 8> bytes;
@@ -87,17 +74,6 @@ namespace SSC {
     bytes[6] = input >> 8*1;
     bytes[7] = input >> 8*0;
     return bytes;
-  }
-
-  inline const unsigned int rol (const unsigned int value, const unsigned int steps) {
-    return ((value << steps) | (value >> (32 - steps)));
-  }
-
-  inline void clearWBuffert (unsigned int* buffert) {
-    int pos = 0;
-    for (pos = 16; --pos >= 0;) {
-      buffert[pos] = 0;
-    }
   }
 
   void innerHash (unsigned int* result, unsigned int* w) {
