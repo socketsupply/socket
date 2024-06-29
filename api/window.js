@@ -13,6 +13,7 @@ import { isValidPercentageValue } from './util.js'
 import * as statuses from './window/constants.js'
 import location from './location.js'
 import { URL } from './url.js'
+import client from './window/client.js'
 import hotkey from './window/hotkey.js'
 import menu from './application/menu.js'
 import ipc from './ipc.js'
@@ -588,7 +589,7 @@ export class ApplicationWindow {
   }
 }
 
-export { hotkey }
+export { client, hotkey }
 
 export default ApplicationWindow
 
