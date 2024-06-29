@@ -26,8 +26,6 @@ namespace SSC {
       String search = ""; // includes '?' and 'query' if 'query' is not empty
       String hash = ""; // include '#' and 'fragment' if 'fragment' is not empty
 
-      Map searchParams;
-
       Builder& setProtocol (const String& protocol);
       Builder& setUsername (const String& username);
       Builder& setPassword (const String& password);
