@@ -76,6 +76,16 @@ namespace SSC {
     return nullptr;
   }
 
+  SharedPointer<WindowManager::ManagedWindow> WindowManager::getWindowForClient (const IPC::Client& client) {
+    for (const auto& window : this->windows) {
+      if (window != nullptr && window->bridge.client.id == client.id) {
+        return this->getWindow(window->index);
+      }
+    }
+
+    return nullptr;
+  }
+
   SharedPointer<WindowManager::ManagedWindow> WindowManager::WindowManager::getOrCreateWindow (int index) {
     return this->getOrCreateWindow(index, Window::Options {});
   }

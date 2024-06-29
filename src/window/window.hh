@@ -537,6 +537,7 @@ namespace SSC {
 
       SharedPointer<ManagedWindow> getWindow (int index, const WindowStatus status);
       SharedPointer<ManagedWindow> getWindow (int index);
+      SharedPointer<ManagedWindow> getWindowForClient (const IPC::Client& client);
       SharedPointer<ManagedWindow> getWindowForBridge (const IPC::Bridge* bridge);
       SharedPointer<ManagedWindow> getWindowForWebView (WebView* webview);;
       SharedPointer<ManagedWindow> getOrCreateWindow (int index);
