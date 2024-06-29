@@ -1,10 +1,13 @@
 #include "conduit.hh"
-#include "core.hh"
+#include "../core.hh"
+#include "../codec.hh"
+
+#define SHA_DIGEST_LENGTH 20
 
 namespace SSC {
   const char *WS_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 
-  CoreConduit::~CoreCoreConduit() {
+  CoreConduit::~CoreConduit() {
     this->close();
   }
 
@@ -42,7 +45,7 @@ namespace SSC {
   }
 
   CoreConduit::EncodedMessage decodeMessage (const Vector<uint8_t>& data) {
-    EncodedMessage message;
+    CoreConduit::EncodedMessage message;
     size_t offset = 0;
 
     uint8_t numOpts = data[offset++];
@@ -80,12 +83,12 @@ namespace SSC {
     return decodeMessage(data);
   }
 
-  bool has (uint64_t id) const {
+  bool CoreConduit::has (uint64_t id) const {
     std::lock_guard<std::mutex> lock(clientsMutex);
     return this->clients.find(id) != this->clients.end();
   }
 
-  std::shared_ptr<CoreConduit::Client> get (uint64_t id) const {
+  std::shared_ptr<CoreConduit::Client> CoreConduit::get (uint64_t id) const {
     std::lock_guard<std::mutex> lock(clientsMutex);
     auto it = clients.find(id);
 
@@ -108,8 +111,8 @@ namespace SSC {
 
     iss >> method >> url >> version;
 
-    const auto parsed = URL::Components::parse(url);
-    if (parsed.searchParams.get("id") == parsed.searchParams.end()) {
+    URL parsed(url);
+    if (parsed.searchParams.count("id") == 0) {
       return;
     }
 
@@ -117,14 +120,14 @@ namespace SSC {
     auto keyHeader = headers["Sec-WebSocket-Key"];
 
     if (keyHeader.empty()) {
-      debug("Sec-WebSocket-Key is required but missing.");
+      // debug("Sec-WebSocket-Key is required but missing.");
       return;
     }
 
-    auto id = std::stoll(parsed.searchParams.get("id"));
+    auto id = std::stoll(parsed.searchParams["id"]);
     this->clients[id] = client;
 
-    debug("Received key: %s\n", keyHeader.c_str());
+    // debug("Received key: %s\n", keyHeader.c_str());
 
     String acceptKey = keyHeader + WS_GUID;
     char calculatedHash[SHA_DIGEST_LENGTH];
@@ -133,7 +136,7 @@ namespace SSC {
     size_t base64_len;
     unsigned char *base64_accept_key = base64Encode((unsigned char*)calculatedHash, SHA_DIGEST_LENGTH, &base64_len);
 
-    debug("Generated Accept Key: %s\n", base64_accept_key);  // Debugging statement
+    // debug("Generated Accept Key: %s\n", base64_accept_key);  // Debugging statement
 
     std::ostringstream oss;
 
@@ -143,14 +146,14 @@ namespace SSC {
        << "Sec-WebSocket-Accept: " << base64_accept_key << "\r\n\r\n";
 
     String response = oss.str();
-    debug(response.c_str());
+    // debug(response.c_str());
 
     uv_buf_t wrbuf = uv_buf_init(strdup(response.c_str()), response.size());
     uv_write_t *write_req = new uv_write_t;
     write_req->bufs = &wrbuf;
 
     uv_write(write_req, (uv_stream_t*)&client->handle, &wrbuf, 1, [](uv_write_t *req, int status) {
-      if (status) debug(stderr, "write error %s\n", uv_strerror(status));
+      // if (status) debug(stderr, "write error %s\n", uv_strerror(status));
 
       if (req->bufs != nullptr) {
         free(req->bufs->base);
@@ -213,10 +216,10 @@ namespace SSC {
       .setProtocol("ipc")
       .setHostname(decoded.pluck("route"))
       .setSearchParam("id", client->id)
-      .setSearchParams(decoded.options)
+      .setSearchParams(decoded.getOptionsAsMap())
       .build();
 
-    this->core->router.invoke(uri, decodedMessage.payload, decodedMessage.payload.size());
+    this->core->bridge->router.invoke(uri, decodedMessage.payload, decodedMessage.payload.size());
   }
 
   bool CoreConduit::Client::emit (const CoreConduit::Options& options, const unsigned char* payload_data, size_t length) {
@@ -263,7 +266,7 @@ namespace SSC {
 
       int r = uv_listen((uv_stream_t*)&this->conduitSocket, 128, [](uv_stream_t *stream, int status) {
         if (status < 0) {
-          debug("New connection error %s\n", uv_strerror(status));
+          // debug("New connection error %s\n", uv_strerror(status));
           return;
         }
 
@@ -293,7 +296,7 @@ namespace SSC {
                 }
               } else if (nread < 0) {
                 if (nread != UV_EOF) {
-                  debug("Read error %s\n", uv_err_name(nread));
+                  // debug("Read error %s\n", uv_err_name(nread));
                 }
                 uv_close((uv_handle_t *)stream, nullptr);
               }
@@ -311,7 +314,7 @@ namespace SSC {
       });
 
       if (r) {
-        debug("Listen error %s\n", uv_strerror(r));
+        // debug("Listen error %s\n", uv_strerror(r));
         p.set_value(0);
         return;
       }
