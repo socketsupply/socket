@@ -15,7 +15,7 @@ namespace SSC {
 
       struct EncodedMessage {
         Options options;
-        Vector<uint8_t> payload;
+        std::vector<uint8_t> payload;
 
         String get (const String& key) const {
           auto it = options.find(key);
@@ -57,15 +57,14 @@ namespace SSC {
         size_t frame_buffer_size;
         CoreConduit* self;
         String route = "";
-        bool emit(const Options& options, const unsigned char* payload_data, size_t length);
+        bool emit(const CoreConduit::Options& options, std::shared_ptr<char[]> payload_data, size_t length);
       };
 
       CoreConduit (Core* core) : CoreModule(core) {};
       ~CoreConduit ();
 
-      EncodedMessage decodeMessage (const unsigned char* payload_data, int payload_len);
-      EncodedMessage decodeMessage(const Vector<uint8_t>& data);
-      Vector<uint8_t> encodeMessage(const CoreConduit::Options& options, const Vector<uint8_t>& payload);
+      EncodedMessage decodeMessage (std::vector<uint8_t>& data);
+      std::vector<uint8_t> encodeMessage (const CoreConduit::Options& options, const std::vector<uint8_t>& payload);
       bool has (uint64_t id) const;
       std::shared_ptr<CoreConduit::Client> get (uint64_t id) const;
 

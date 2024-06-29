@@ -51,7 +51,7 @@ namespace SSC {
     return encodedMessage;
   }
 
-  CoreConduit::EncodedMessage decodeMessage (const Vector<uint8_t>& data) {
+  CoreConduit::EncodedMessage CoreConduit::decodeMessage (std::vector<uint8_t>& data) {
     CoreConduit::EncodedMessage message;
     size_t offset = 0;
 
@@ -85,18 +85,13 @@ namespace SSC {
     return message;
   }
 
-  CoreConduit::EncodedMessage decodeMessage (const unsigned char* payload_data, int payload_len) {
-    Vector<uint8_t> data(payload_data, payload_data + payload_len);
-    return decodeMessage(data);
-  }
-
   bool CoreConduit::has (uint64_t id) const {
-    std::lock_guard<std::mutex> lock(clientsMutex);
+    // std::lock_guard<std::mutex> lock(clientsMutex);
     return this->clients.find(id) != this->clients.end();
   }
 
   std::shared_ptr<CoreConduit::Client> CoreConduit::get (uint64_t id) const {
-    std::lock_guard<std::mutex> lock(clientsMutex);
+    // std::lock_guard<std::mutex> lock(clientsMutex);
     auto it = clients.find(id);
 
     if (it != clients.end()) {
@@ -218,15 +213,16 @@ namespace SSC {
       client->frame_buffer_size = payload_len;
     }
 
-    unsigned char *payload_data = client->frame_buffer;
+    unsigned char *payload = client->frame_buffer;
 
     for (uint64_t i = 0; i < payload_len; i++) {
-      payload_data[i] = data[pos + i] ^ masking_key[i % 4];
+      payload[i] = data[pos + i] ^ masking_key[i % 4];
     }
 
     pos += payload_len;
 
-    auto decoded = this->decodeMessage(payload_data, (int)payload_len);
+    Vector<uint8_t> vec(payload, payload + payload_len);
+    auto decoded = this->decodeMessage(vec);
 
     const auto uri = URL::Builder()
       .setProtocol("ipc")
@@ -241,8 +237,8 @@ namespace SSC {
     window->bridge.router.invoke(uri.str(), vectorToShared(decoded.payload), decoded.payload.size());
   }
 
-  bool CoreConduit::Client::emit (const CoreConduit::Options& options, const unsigned char* payload_data, size_t length) {
-    Vector<uint8_t> payloadVec(payload_data, payload_data + length);
+  bool SSC::CoreConduit::Client::emit(const CoreConduit::Options& options, std::shared_ptr<char[]> payload, size_t length) {
+    Vector<uint8_t> payloadVec(payload.get(), payload.get() + length);
     Vector<uint8_t> encodedMessage = this->self->encodeMessage(options, payloadVec);
 
     this->self->core->dispatchEventLoop([this, encodedMessage = std::move(encodedMessage)]() mutable {

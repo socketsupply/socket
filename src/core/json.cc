@@ -220,6 +220,34 @@ namespace SSC::JSON {
   }
 #endif
 
+  Any Any::operator[](const SSC::String& key) const {
+    if (this->type == Type::Object) {
+      return this->as<Object>()[key];
+    }
+    throw Error("TypeError", "cannot use operator[] on non-object type", __PRETTY_FUNCTION__);
+  }
+
+  Any& Any::operator[](const SSC::String& key) {
+    if (this->type == Type::Object) {
+      return this->as<Object>()[key];
+    }
+    throw Error("TypeError", "cannot use operator[] on non-object type", __PRETTY_FUNCTION__);
+  }
+
+  Any Any::operator[](const unsigned int index) const {
+    if (this->type == Type::Array) {
+      return this->as<Array>()[index];
+    }
+    throw Error("TypeError", "cannot use operator[] on non-array type", __PRETTY_FUNCTION__);
+  }
+
+  Any& Any::operator[](const unsigned int index) {
+    if (this->type == Type::Array) {
+      return this->as<Array>()[index];
+    }
+    throw Error("TypeError", "cannot use operator[] on non-array type", __PRETTY_FUNCTION__);
+  }
+
   SSC::String Any::str () const {
     const auto ptr = this->pointer.get() == nullptr
       ? reinterpret_cast<const void*>(this)

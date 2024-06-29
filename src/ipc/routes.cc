@@ -2884,22 +2884,26 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
+    std::shared_ptr<CoreConduit::Client> client;
+
+    if (router->bridge->core->conduit.has(id)) {
+      client = router->bridge->core->conduit.get(id);
+    }
+
     router->bridge->core->udp.readStart(
       message.seq,
       id,
       [&, message, reply](auto seq, auto json, auto post) {
-        if (seq == "-1") {
-          if (router->bridge->core->conduit.has(id)) {
-            auto client = router->bridge->core->conduit.get(id);
+        if (seq == "-1" && client != nullptr) {
+          auto data = json["data"];
 
-            CoreConduit::Options options = {
-              { "port", json["data"]["port"] },
-              { "address", json["data"]["address"] }
-            };
+          CoreConduit::Options options = {
+            { "port", data["port"].str() },
+            { "address", data["address"].str() }
+          };
 
-            client.emit(options, post.body, post.length);
-            return;
-          }
+          client->emit(options, post.body, post.length);
+          return;
         }
 
         reply(Result { seq, message, json, post });

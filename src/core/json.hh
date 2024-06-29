@@ -217,6 +217,11 @@ namespace SSC::JSON {
 
         throw Error("BadCastError", "cannot cast to null value", __PRETTY_FUNCTION__);
       }
+
+      Any operator[](const SSC::String& key) const;
+      Any& operator[](const SSC::String& key);
+      Any operator[](const unsigned int index) const;
+      Any& operator[](const unsigned int index);
   };
 
   class Raw : public Value<SSC::String, Type::Raw> {
