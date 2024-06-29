@@ -45,7 +45,7 @@ namespace SSC {
         }
       };
 
-      struct Client{
+      struct Client {
         uint64_t id;
         uint64_t clientId;
         uv_tcp_t handle;
@@ -73,7 +73,7 @@ namespace SSC {
       int port = 0;
 
       void open();
-      bool close();
+      void close();
 
     private:
       void handshake (std::shared_ptr<Client> client, const char *request);

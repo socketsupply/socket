@@ -1,11 +1,18 @@
 #include "conduit.hh"
 #include "../core.hh"
+#include "../../app/app.hh"
 #include "../codec.hh"
 
 #define SHA_DIGEST_LENGTH 20
 
 namespace SSC {
   const char *WS_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+
+  std::shared_ptr<char[]> vectorToShared(const std::vector<uint8_t>& vec) {
+    std::shared_ptr<char[]> sharedArray(new char[vec.size()]);
+    std::memcpy(sharedArray.get(), vec.data(), vec.size());
+    return sharedArray;
+  }
 
   CoreConduit::~CoreConduit() {
     this->close();
@@ -131,8 +138,8 @@ namespace SSC {
     auto id = std::stoll(parsed.searchParams["id"]);
     auto clientId = std::stoll(parsed.searchParams["clientId"]);
 
-    client.id = id;
-    client.clientId = clientId;
+    client->id = id;
+    client->clientId = clientId;
 
     this->clients[id] = client;
 
@@ -229,17 +236,16 @@ namespace SSC {
       .build();
 
     auto app = App::sharedApplication();
-    auto window = app->windowManager.getWindowForClient({ .id = client->clientID });
-
-    auto router = window->bridge.router;
-    router.invoke(uri, decodedMessage.payload, decodedMessage.payload.size());
+    auto window = app->windowManager.getWindowForClient({ .id = client->clientId });
+  
+    window->bridge.router.invoke(uri.str(), vectorToShared(decoded.payload), decoded.payload.size());
   }
 
   bool CoreConduit::Client::emit (const CoreConduit::Options& options, const unsigned char* payload_data, size_t length) {
     Vector<uint8_t> payloadVec(payload_data, payload_data + length);
-    Vector<uint8_t> encodedMessage = encodeMessage(options, payloadVec);
+    Vector<uint8_t> encodedMessage = this->self->encodeMessage(options, payloadVec);
 
-    this->conduit->dispatchEventLoop([this, encodedMessage = std::move(encodedMessage)]() mutable {
+    this->self->core->dispatchEventLoop([this, encodedMessage = std::move(encodedMessage)]() mutable {
       size_t encodedLength = encodedMessage.size();
       Vector<unsigned char> frame(2 + encodedLength);
 
@@ -252,7 +258,7 @@ namespace SSC {
       writeReq->bufs = &wrbuf;
       writeReq->data = new Vector<unsigned char>(std::move(frame));
 
-      uv_write(writeReq, (uv_stream_t *)&client, &wrbuf, 1, [](uv_write_t *req, int status) {
+      uv_write(writeReq, (uv_stream_t *)&this->handle, &wrbuf, 1, [](uv_write_t *req, int status) {
         if (status) {
           std::cerr << "Write error: " << uv_strerror(status) << std::endl;
         }
@@ -268,7 +274,7 @@ namespace SSC {
     std::promise<int> p;
     std::future<int> future = p.get_future();
 
-    this->core->dispatchEventLoop([this, p]() mutable {
+    this->core->dispatchEventLoop([&, this]() mutable {
       auto loop = this->core->getEventLoop();
 
       uv_tcp_init(loop, &this->conduitSocket);
@@ -283,25 +289,28 @@ namespace SSC {
           return;
         }
 
-        auto client = new CoreConduit::Client();
+        auto client = std::make_shared<CoreConduit::Client>();
         client->self = static_cast<CoreConduit*>(stream->data);
         client->is_handshake_done = 0;
         client->frame_buffer = nullptr;
         client->frame_buffer_size = 0;
-        client->handle.data = client;
+        client->handle.data = new std::shared_ptr<CoreConduit::Client>(client);
 
         uv_tcp_init(uv_default_loop(), &client->handle);
 
         if (uv_accept(stream, (uv_stream_t*)&client->handle) == 0) {
           uv_read_start(
             (uv_stream_t *)&client->handle,
-            [](uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
-              buf->base = (char *) new char[size]{0};
+            [](uv_handle_t *handle, size_t size, uv_buf_t *buf) {
+              buf->base = (char*) new char[size]{0};
               buf->len = size;
             },
             [](uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) {
-              auto client = static_cast<CoreConduit::Client*>(stream->data);
               if (nread > 0) {
+                auto handle = uv_handle_get_data((uv_handle_t*)stream);
+                auto shared_client_ptr = static_cast<std::shared_ptr<CoreConduit::Client>*>(handle);
+                auto client = *shared_client_ptr;
+
                 if (!client->is_handshake_done) {
                   client->self->handshake(client, buf->base);
                 } else {
@@ -323,7 +332,6 @@ namespace SSC {
         }
 
         uv_close((uv_handle_t *)&client->handle, nullptr);
-        delete client;
       });
 
       if (r) {
@@ -342,18 +350,12 @@ namespace SSC {
     this->port = future.get();
   }
 
-  bool CoreConduit::close () {
-    std::promise<bool> p;
-    std::future<bool> future = p.get_future();
-
-    this->core->dispatchEventLoop([this, p]() mutable {
+  void CoreConduit::close () {
+    this->core->dispatchEventLoop([this]() mutable {
       if (!uv_is_closing((uv_handle_t*)&this->conduitSocket)) {
         uv_close((uv_handle_t*)&this->conduitSocket, [](uv_handle_t* handle) {
           auto conduit = static_cast<CoreConduit*>(handle->data);
-          p.set_value(true);
         });
-      } else {
-        p.set_value(true);
       }
 
       for (auto& clientPair : this->clients) {
@@ -375,7 +377,5 @@ namespace SSC {
 
       this->clients.clear();
     });
-
-    return future.get();
   }
 }
