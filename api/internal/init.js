@@ -324,17 +324,35 @@ class RuntimeWorker extends GlobalWorker {
     const url = encodeURIComponent(new URL(filename, globalThis.location.href).toString())
     const id = String(rand64())
 
+    const topClient = globalThis.__args.client.top || globalThis.__args.client
+
+    const __args = { ...globalThis.__args, client: {} }
     const preload = `
     Object.defineProperty(globalThis, '__args', {
       configurable: false,
       enumerable: false,
-      value: ${JSON.stringify(globalThis.__args)}
+      value: ${JSON.stringify(__args)}
     })
 
     globalThis.__args.client.id = '${id}'
     globalThis.__args.client.type = 'worker'
     globalThis.__args.client.frameType = 'none'
-    globalThis.__args.client.parent = ${JSON.stringify(globalThis.__args.client)}
+    globalThis.__args.client.parent = ${JSON.stringify({
+      id: globalThis.__args?.client?.id,
+      top: null,
+      type: globalThis.__args?.client?.type,
+      parent: null,
+      frameType: globalThis.__args?.client?.frameType
+    })}
+    globalThis.__args.client.top = ${JSON.stringify({
+      id: topClient?.id,
+      top: null,
+      type: topClient?.type,
+      parent: null,
+      frameType: topClient?.frameType
+    })}
+
+    globalThis.__args.client.parent.top = globalThis.__args.client.top
 
     Object.defineProperty(globalThis, 'isWorkerScope', {
       configurable: false,
