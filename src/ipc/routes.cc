@@ -2887,14 +2887,14 @@ static void mapIPCRoutes (Router *router) {
     router->bridge->core->udp.readStart(
       message.seq,
       id,
-      [message, reply](auto seq, auto json, auto post) {
+      [&, message, reply](auto seq, auto json, auto post) {
         if (seq == "-1") {
           if (router->bridge->core->conduit.has(id)) {
-            const client = router->bridge->core->conduit.get(id);
+            auto client = router->bridge->core->conduit.get(id);
 
             CoreConduit::Options options = {
-              { "port": json["data"]["port"] },
-              { "address": json["data"]["address"] }
+              { "port", json["data"]["port"] },
+              { "address", json["data"]["address"] }
             };
 
             client.emit(options, post.body, post.length);
