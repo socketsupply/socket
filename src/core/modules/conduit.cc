@@ -116,6 +116,10 @@ namespace SSC {
       return;
     }
 
+    if (parsed.searchParams.count("clientId") == 0) {
+      return;
+    }
+
     Headers headers(request);
     auto keyHeader = headers["Sec-WebSocket-Key"];
 
@@ -125,6 +129,11 @@ namespace SSC {
     }
 
     auto id = std::stoll(parsed.searchParams["id"]);
+    auto clientId = std::stoll(parsed.searchParams["clientId"]);
+
+    client.id = id;
+    client.clientId = clientId;
+
     this->clients[id] = client;
 
     // debug("Received key: %s\n", keyHeader.c_str());
@@ -219,7 +228,11 @@ namespace SSC {
       .setSearchParams(decoded.getOptionsAsMap())
       .build();
 
-    this->core->bridge->router.invoke(uri, decodedMessage.payload, decodedMessage.payload.size());
+    auto app = App::sharedApplication();
+    auto window = app->windowManager.getWindowForClient({ .id = client->clientID });
+
+    auto router = window->bridge.router;
+    router.invoke(uri, decodedMessage.payload, decodedMessage.payload.size());
   }
 
   bool CoreConduit::Client::emit (const CoreConduit::Options& options, const unsigned char* payload_data, size_t length) {
