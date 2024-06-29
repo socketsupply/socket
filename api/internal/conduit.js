@@ -13,7 +13,8 @@ export class Conduit {
    */
   constructor ({ id }) {
     const port = globalThis.__args.conduit
-    const uri = `ws://localhost:${port}?id=${id}`
+    const clientId = globalThis.__args.client.top.id
+    const uri = `ws://localhost:${port}?id=${id}&clientId=${clientId}`
     this.socket = new globalThis.WebSocket(uri)
   }
 

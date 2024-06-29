@@ -47,6 +47,7 @@ namespace SSC {
 
       struct Client{
         uint64_t id;
+        uint64_t clientId;
         uv_tcp_t handle;
         uv_write_t write_req;
         uv_shutdown_t shutdown_req;
