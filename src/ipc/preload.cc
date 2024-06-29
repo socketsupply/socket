@@ -238,9 +238,16 @@ namespace SSC::IPC {
             configurable: false,
             enumerable: true,
             writable: false,
-            value: globalThis?.parent !== globalThis
-	      ? globalThis?.parent?.__args?.client ?? {}
-	      : {}
+            value: globalThis.parent !== globalThis
+	            ? globalThis.parent?.__args?.client ?? null
+	            : null
+          },
+          top: {
+            configurable: false,
+            enumerable: true,
+            get: () => globalThis.top
+	            ? globalThis.top.__args?.client ?? null
+	            : globalThis.__args.client
           },
           frameType: {
             configurable: false,
