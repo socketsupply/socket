@@ -4377,10 +4377,10 @@ int main (const int argc, const char* argv[]) {
             }
 
             auto objectFile = source;
-            objectFile = replace(objectFile, "\\.mm", ".o");
-            objectFile = replace(objectFile, "\\.m", ".o");
-            objectFile = replace(objectFile, "\\.cc", ".o");
-            objectFile = replace(objectFile, "\\.c", ".o");
+            objectFile = replace(objectFile, "\\.mm$", ".o");
+            objectFile = replace(objectFile, "\\.m$", ".o");
+            objectFile = replace(objectFile, "\\.cc$", ".o");
+            objectFile = replace(objectFile, "\\.c$", ".o");
 
             auto filename = Path(objectFile).filename();
             auto object = (
@@ -5758,10 +5758,10 @@ int main (const int argc, const char* argv[]) {
             }
 
             auto objectFile = source;
-            objectFile = replace(objectFile, "\\.mm", ".o");
-            objectFile = replace(objectFile, "\\.m", ".o");
-            objectFile = replace(objectFile, "\\.cc", ".o");
-            objectFile = replace(objectFile, "\\.c", ".o");
+            objectFile = replace(objectFile, "\\.mm$", ".o");
+            objectFile = replace(objectFile, "\\.m$", ".o");
+            objectFile = replace(objectFile, "\\.cc$", ".o");
+            objectFile = replace(objectFile, "\\.c$", ".o");
 
             auto object = Path(objectFile);
 
