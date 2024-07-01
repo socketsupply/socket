@@ -786,12 +786,18 @@ export class Socket extends EventEmitter {
 
         this.conduit.receive((err, decoded) => {
           const rinfo = {
-            port: decoded.options.port,
+            port: Number(decoded.options.port),
             address: decoded.options.address,
             family: getAddressFamily(decoded.options.address)
           }
 
-          this.emit('message', decoded.payload, rinfo)
+          const message = Buffer.from(decoded.payload)
+
+          this.#resource.runInAsyncScope(() => {
+            this.emit('message', message, rinfo)
+          })
+
+          dc.channel('message').publish({ socket, buffer: message, info })
         })
 
         this.conduit.socket.onopen = () => {
@@ -802,7 +808,6 @@ export class Socket extends EventEmitter {
               if (err) {
                 cb(err)
               } else {
-                this.dataListener = createDataListener(this, this.#resource)
                 cb(null)
                 this.emit('listening')
               }
