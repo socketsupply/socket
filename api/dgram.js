@@ -809,6 +809,8 @@ export class Socket extends EventEmitter {
             })
           })
         }
+
+        return
       }
 
       startReading(this, (err) => {
