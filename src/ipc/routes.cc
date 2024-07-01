@@ -2893,7 +2893,7 @@ static void mapIPCRoutes (Router *router) {
 
           CoreConduit::Options options = {
             { "port", data["port"].str() },
-            { "address", data["address"].str() }
+            { "address", data["address"].template as<JSON::String>().data }
           };
 
           auto client = router->bridge->core->conduit.get(id);
