@@ -1,9 +1,12 @@
 /**
  * @class Conduit
  *
- * @classdesc A class for managing WebSocket connections with custom headers and payload encoding.
+ * @classdesc A class for managing WebSocket connections with custom options and payload encoding.
  */
 export class Conduit {
+  isActive = false
+  id = null
+
   /**
    * Creates an instance of Conduit.
    *
@@ -14,8 +17,9 @@ export class Conduit {
   constructor ({ id }) {
     const port = globalThis.__args.conduit
     const clientId = globalThis.__args.client.top.id
-    const uri = `ws://localhost:${port}?id=${id}&clientId=${clientId}`
+    const uri = `ws://localhost:${port}/${id}/${clientId}`
     this.socket = new globalThis.WebSocket(uri)
+    this.socket.binaryType = 'arraybuffer'
   }
 
   /**
@@ -26,7 +30,7 @@ export class Conduit {
    * @param {string} value - The header value.
    * @returns {Uint8Array} The encoded header.
    */
-  encodeHeader (key, value) {
+  encodeOption (key, value) {
     const keyLength = key.length
     const keyBuffer = new TextEncoder().encode(key)
 
@@ -46,20 +50,20 @@ export class Conduit {
   }
 
   /**
-   * Encodes headers and payload into a single Uint8Array message.
+   * Encodes options and payload into a single Uint8Array message.
    *
    * @private
-   * @param {Object} headers - The headers to encode.
+   * @param {Object} options - The options to encode.
    * @param {Uint8Array} payload - The payload to encode.
    * @returns {Uint8Array} The encoded message.
    */
-  encodeMessage (headers, payload) {
-    const headerBuffers = Object.entries(headers)
-      .map(([key, value]) => this.encodeHeader(key, value))
+  encodeMessage (options, payload) {
+    const headerBuffers = Object.entries(options)
+      .map(([key, value]) => this.encodeOption(key, value))
 
-    const totalHeaderLength = headerBuffers.reduce((sum, buf) => sum + buf.length, 0)
+    const totalOptionLength = headerBuffers.reduce((sum, buf) => sum + buf.length, 0)
     const bodyLength = payload.length
-    const buffer = new ArrayBuffer(1 + totalHeaderLength + 2 + bodyLength)
+    const buffer = new ArrayBuffer(1 + totalOptionLength + 2 + bodyLength)
     const view = new DataView(buffer)
 
     view.setUint8(0, headerBuffers.length)
@@ -80,19 +84,19 @@ export class Conduit {
   }
 
   /**
-   * Decodes a Uint8Array message into headers and payload.
+   * Decodes a Uint8Array message into options and payload.
    * @param {Uint8Array} data - The data to decode.
-   * @returns {Object} The decoded message containing headers and payload.
+   * @returns {Object} The decoded message containing options and payload.
    * @throws Will throw an error if the data is invalid.
    */
   decodeMessage (data) {
     const view = new DataView(data.buffer)
-    const numHeaders = view.getUint8(0)
+    const numOpts = view.getUint8(0)
 
     let offset = 1
-    const headers = {}
+    const options = {}
 
-    for (let i = 0; i < numHeaders; i++) {
+    for (let i = 0; i < numOpts; i++) {
       const keyLength = view.getUint8(offset)
       offset += 1
 
@@ -106,40 +110,45 @@ export class Conduit {
       offset += valueLength
 
       const value = new TextDecoder().decode(valueBuffer)
-
-      headers[key] = value
+      options[key] = value
     }
 
     const bodyLength = view.getUint16(offset, false)
     offset += 2
 
     const payload = new Uint8Array(data.buffer, offset, bodyLength)
-
-    return { headers, payload }
+    return { options, payload }
   }
 
   /**
    * Registers a callback to handle incoming messages.
-   * The callback will receive an object containing decoded headers and payload.
+   * The callback will receive an error object and an object containing decoded options and payload.
    *
    * @param {Function} cb - The callback function to handle incoming messages.
-   *   The callback receives a single parameter:
+   * @param {Error} cb.error - The error object, if an error occurs. Null if no error.
    * @param {Object} cb.message - The decoded message object.
-   * @param {Object} cb.message.headers - The decoded headers as key-value pairs.
+   * @param {Object} cb.message.options - The decoded options as key-value pairs.
    * @param {Uint8Array} cb.message.payload - The actual data of the payload.
    */
-
   receive (cb) {
-    this.socket.onmessage = event => this.decodeMessage(Uint8Array.from(data))
+    this.socket.onerror = err => {
+      cb(err)
+    }
+
+    this.socket.onmessage = event => {
+      const arrayBuffer = event.data
+      const data = new Uint8Array(arrayBuffer)
+      cb(null, this.decodeMessage(data))
+    }
   }
 
   /**
-   * Sends a message with the specified headers and payload over the WebSocket connection.
+   * Sends a message with the specified options and payload over the WebSocket connection.
    *
-   * @param {Object} headers - The headers to send.
+   * @param {Object} options - The options to send.
    * @param {Uint8Array} payload - The payload to send.
    */
-  send (headers, payload) {
-    this.socket.send(this.encodeMessage(headers, payload))
+  send (options, payload) {
+    this.socket.send(this.encodeMessage(options, payload))
   }
 }

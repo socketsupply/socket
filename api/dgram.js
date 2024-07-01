@@ -155,9 +155,17 @@ async function startReading (socket, callback) {
   }
 
   try {
-    result = await ipc.send('udp.readStart', {
-      id: socket.id
-    })
+    if (socket.conduit.isActive) {
+      const opts = {
+        route: 'udp.readStart'
+      }
+      socket.conduit.send(opts, Buffer.from(''))
+      result = { data: true }
+    } else {
+      result = await ipc.send('udp.readStart', {
+        id: socket.id
+      })
+    }
 
     callback(result.err, result.data)
   } catch (err) {
@@ -511,12 +519,13 @@ async function send (socket, options, callback) {
       address: options.address
     })
 
-    if (socket.conduit) {
-      socket.conduit.send({
+    if (socket.conduit.isActive) {
+      const opts = {
         route: 'udp.send',
         port: options.port,
         address: options.address
-      }, options.buffer)
+      }
+      socket.conduit.send(opts, options.buffer)
       result = { data: true }
     } else {
       result = await ipc.write('udp.send', {
@@ -772,18 +781,34 @@ export class Socket extends EventEmitter {
         })
       }
 
-      if (this.highThroughput) {
+      if (!this.legacy) {
         this.conduit = new Conduit({ id: this.id })
 
-        this.conduit.receive(({ options, payload }) => {
+        this.conduit.receive((err, decoded) => {
           const rinfo = {
-            port: options.port,
-            address: options.address,
-            family: getAddressFamily(address)
+            port: decoded.options.port,
+            address: decoded.options.address,
+            family: getAddressFamily(decoded.options.address)
           }
 
-          this.emit('message', payload, rinfo)
+          this.emit('message', decoded.payload, rinfo)
         })
+
+        this.conduit.socket.onopen = () => {
+          this.conduit.isActive = true
+
+          startReading(this, (err) => {
+            this.#resource.runInAsyncScope(() => {
+              if (err) {
+                cb(err)
+              } else {
+                this.dataListener = createDataListener(this, this.#resource)
+                cb(null)
+                this.emit('listening')
+              }
+            })
+          })
+        }
       }
 
       startReading(this, (err) => {
