@@ -648,8 +648,8 @@ if (typeof globalThis.XMLHttpRequest === 'function') {
 
     if (
       globalThis.__args?.config?.webview_fetch_allow_runtime_headers === true ||
-      /(socket|ipc|node|npm):/.test(url.protocol) ||
-      protocols.handlers.has(url.protocol.slice(0, -1)) ||
+      (url.protocol && /(socket|ipc|node|npm):/.test(url.protocol)) ||
+      (url.protocol && protocols.handlers.has(url.protocol.slice(0, -1))) ||
       url.hostname === globalThis.__args.config.meta_bundle_identifier
     ) {
       for (const key in additionalHeaders) {
