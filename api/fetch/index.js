@@ -72,7 +72,7 @@ async function initBody (body) {
 
       for await (const chunk of body) {
         controller.enqueue(chunk)
-        chunks.push(chunk)
+        chunks.push(new Uint8Array(chunk))
       }
 
       const buffer = Buffer.concat(chunks)
