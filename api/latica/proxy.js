@@ -11,7 +11,7 @@
  *
  */
 import path from '../path.js'
-const { pathname } = new URL(import.meta.url)
+const importMetaURL = new URL(import.meta.url)
 
 function deepClone (object, map = new Map()) {
   if (map.has(object)) return map.get(object)
@@ -83,7 +83,7 @@ class PeerWorkerProxy {
   constructor (options, port, fn) {
     if (!options.isWorkerThread) {
       this.#channel = new MessageChannel()
-      this.#worker = new window.Worker(path.join(path.dirname(pathname), 'worker.js'))
+      this.#worker = new globalThis.Worker(path.join(path.dirname(importMetaURL.href), 'worker.js'))
 
       this.#worker.addEventListener('error', err => {
         throw err
