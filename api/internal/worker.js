@@ -91,8 +91,16 @@ if (source && typeof source === 'string') {
     // wait for everything to be ready, then import
     hooks.onReady(async () => {
       try {
+        let workerSource = source;
+        // make sure any blobs have an importable mime type
+        if (source.startsWith('blob:')) {
+          const b = await fetch(source).then(r => r.blob());
+          if (b.type !== 'text/javascript') {
+            workerSource = URL.createObjectURL(new Blob([b], {type: 'text/javascript'}));
+          }
+        }
         // @ts-ignore
-        await import(source)
+        await import(workerSource)
         if (Array.isArray(globalThis.RUNTIME_WORKER_MESSAGE_EVENT_BACKLOG)) {
           for (const event of globalThis.RUNTIME_WORKER_MESSAGE_EVENT_BACKLOG) {
             globalThis.dispatchEvent(new MessageEvent(event.type, event))
