@@ -101,6 +101,7 @@ declare sources=(
   $(find "$root"/src/ipc/*.cc)
   $(find "$root"/src/platform/*.cc)
   $(find "$root"/src/serviceworker/*.cc)
+  #$(find "$root"/src/sharedworker/*.cc)
   "$root/build/llama/common/common.cpp"
   "$root/build/llama/common/sampling.cpp"
   "$root/build/llama/common/json-schema-to-grammar.cpp"
