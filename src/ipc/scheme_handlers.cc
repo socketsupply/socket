@@ -1239,7 +1239,7 @@ namespace SSC::IPC {
       if (!this->writeHead()) {
         debug(
           "IPC::SchemeHandlers::Response: Failed to write head for %s",
-	  this->request->str().c_str()
+          this->request->str().c_str()
         );
         return false;
       }

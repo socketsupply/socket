@@ -76,6 +76,10 @@ open class SchemeHandlers (val bridge: Bridge) {
     fun getWebResourceResponse (): WebResourceResponse? {
       return this.response.response
     }
+
+    fun waitForFinishedResponse () {
+      this.response.waitForFinish()
+    }
   }
 
   open class Response (val request: Request) {
@@ -88,6 +92,9 @@ open class SchemeHandlers (val bridge: Bridge) {
     )
 
     val headers = mutableMapOf<String, String>()
+    val buffers = mutableListOf<ByteArray>()
+    val semaphore = Semaphore(0)
+
     var pendingWrites = 0
     var finished = false
 
@@ -119,25 +126,7 @@ open class SchemeHandlers (val bridge: Bridge) {
     }
 
     fun write (bytes: ByteArray) {
-      val stream = this.stream
-      val response = this
-      this.pendingWrites++
-        try {
-          console.log("before write")
-          stream.write(bytes, 0, bytes.size)
-        } catch (err: Exception) {
-          if (!err.message.toString().contains("closed")) {
-            console.error("socket.runtime.ipc.SchemeHandlers.Response: ${err.toString()}")
-          }
-        }
-
-        response.pendingWrites--
-        console.log("after write pending=${response.pendingWrites}")
-
-        if (response.pendingWrites == 0) {
-          response.finished = true
-          stream.close()
-        }
+      this.buffers += bytes
     }
 
     fun write (string: String) {
@@ -145,25 +134,24 @@ open class SchemeHandlers (val bridge: Bridge) {
     }
 
     fun finish () {
-      val stream = this.stream
-      val response = this
-      thread {
-        if (!response.finished) {
-          console.log("waiting for writes to finish")
-          while (response.pendingWrites > 0) {
-            Thread.sleep(4)
+      if (!this.finished) {
+        this.finished = true
+        this.semaphore.release()
+      }
+    }
+
+    fun waitForFinish () {
+      this.semaphore.acquireUninterruptibly()
+      this.semaphore.release()
+      if (this.finished) {
+        val stream = this.stream
+        val buffers = this.buffers
+        thread {
+          for (bytes in buffers) {
+            stream.write(bytes)
           }
-
-          if (!response.finished) {
-            console.log("writes finished")
-
-            for (entry in response.headers) {
-              console.log("${entry.key}: ${entry.value}")
-            }
-
-            stream.flush()
-            stream.close()
-          }
+          stream.flush()
+          stream.close()
         }
       }
     }
@@ -173,13 +161,8 @@ open class SchemeHandlers (val bridge: Bridge) {
     val request = Request(this.bridge, webResourceRequest)
 
     if (this.handleRequest(this.bridge.index, request)) {
-      val response = request.getWebResourceResponse()
-      response?.responseHeaders = mapOf(
-        "Access-Control-Allow-Origin" to "*",
-        "Access-Control-Allow-Headers" to "*",
-        "Access-Control-Allow-Methods" to "*"
-      )
-      return response
+      request.waitForFinishedResponse()
+      return request.getWebResourceResponse()
     }
 
     return null
