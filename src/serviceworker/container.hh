@@ -93,7 +93,7 @@ namespace SSC {
       };
 
       struct FetchResponse {
-        uint64_t id = 0;
+        ID id = 0;
         int statusCode = 200;
         Headers headers;
         FetchBody body;
@@ -102,8 +102,8 @@ namespace SSC {
 
       using Registrations = std::map<String, Registration>;
       using FetchCallback = std::function<void(const FetchResponse)>;
-      using FetchCallbacks = std::map<uint64_t, FetchCallback>;
-      using FetchRequests = std::map<uint64_t, FetchRequest>;
+      using FetchCallbacks = std::map<ID, FetchCallback>;
+      using FetchRequests = std::map<ID, FetchRequest>;
 
       SharedPointer<Core> core = nullptr;
       IPC::Bridge* bridge = nullptr;
@@ -123,10 +123,10 @@ namespace SSC {
       void init (IPC::Bridge* bridge);
       void reset ();
       const Registration& registerServiceWorker (const RegistrationOptions& options);
-      bool unregisterServiceWorker (uint64_t id);
+      bool unregisterServiceWorker (ID id);
       bool unregisterServiceWorker (String scopeOrScriptURL);
-      void skipWaiting (uint64_t id);
-      void updateState (uint64_t id, const String& stateString);
+      void skipWaiting (ID id);
+      void updateState (ID id, const String& stateString);
       bool fetch (const FetchRequest& request, FetchCallback callback);
       bool claimClients (const String& scope);
   };
