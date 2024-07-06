@@ -332,15 +332,10 @@ namespace SSC {
   }
 
   void WindowManager::ManagedWindow::hide () {
-    if (
-      status > WindowStatus::WINDOW_HIDDEN &&
-      status < WindowStatus::WINDOW_EXITING
-    ) {
-      auto index = std::to_string(this->index);
-      status = WindowStatus::WINDOW_HIDING;
-      Window::hide();
-      status = WindowStatus::WINDOW_HIDDEN;
-    }
+    auto index = std::to_string(this->index);
+    status = WindowStatus::WINDOW_HIDING;
+    Window::hide();
+    status = WindowStatus::WINDOW_HIDDEN;
   }
 
   void WindowManager::ManagedWindow::close (int code) {
