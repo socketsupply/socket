@@ -1,22 +1,39 @@
 import serialize from './serialize.js'
 
+const {
+  BroadcastChannel,
+  MessagePort,
+  postMessage
+} = globalThis
+
 const platform = {
-  BroadcastChannelPostMessage: globalThis.BroadcastChannel.prototype.postMessage,
-  MessageChannelPostMessage: globalThis.MessageChannel.prototype.postMessage,
-  GlobalPostMessage: globalThis.postMessage
+  BroadcastChannelPostMessage: BroadcastChannel.prototype.postMessage,
+  MessagePortPostMessage: MessagePort.prototype.postMessage,
+  GlobalPostMessage: postMessage
 }
 
-globalThis.BroadcastChannel.prototype.postMessage = function (message, ...args) {
-  message = handlePostMessage(message)
-  return platform.BroadcastChannelPostMessage.call(this, message, ...args)
+BroadcastChannel.prototype.postMessage = function (message, ...args) {
+  return platform.BroadcastChannelPostMessage.call(
+    this,
+    handlePostMessage(message),
+    ...args
+  )
 }
 
-globalThis.MessageChannel.prototype.postMessage = function (message, ...args) {
-  return platform.MessageChannelPostMessage.call(this, handlePostMessage(message), ...args)
+MessagePort.prototype.postMessage = function (message, ...args) {
+  return platform.MessagePortPostMessage.call(
+    this,
+    handlePostMessage(message),
+    ...args
+  )
 }
 
 globalThis.postMessage = function (message, ...args) {
-  return platform.GlobalPostMessage.call(this, handlePostMessage(message), ...args)
+  return platform.GlobalPostMessage.call(
+    this,
+    handlePostMessage(message),
+    ...args
+  )
 }
 
 function handlePostMessage (message) {

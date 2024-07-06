@@ -16,9 +16,6 @@ const ports = []
 // level 1 Worker `EventTarget` 'message' listener
 let onmessage = null
 
-// level 1 Worker `EventTarget` 'connect' listener
-let onconnect = null
-
 // 'close' state for a polyfilled `SharedWorker`
 let isClosed = false
 
@@ -130,21 +127,6 @@ Object.defineProperties(WorkerGlobalScopePrototype, {
     }
   },
 
-  onconnect: {
-    configurable: false,
-    get: () => onconnect,
-    set: (value) => {
-      if (typeof onconnect === 'function') {
-        workerGlobalScopeEventTarget.removeEventListener('connect', onconnect)
-      }
-
-      if (value === null || typeof value === 'function') {
-        onconnect = value
-        workerGlobalScopeEventTarget.addEventListener('connect', onconnect)
-      }
-    }
-  },
-
   close: {
     configurable: false,
     enumerable: false,
@@ -214,10 +196,6 @@ export async function onWorkerMessage (event) {
       }
     }
 
-    workerGlobalScopeEventTarget.dispatchEvent(new MessageEvent('connect', {
-      ...data?.__runtime_shared_worker
-    }))
-
     event.stopImmediatePropagation()
     return false
   }
@@ -226,7 +204,7 @@ export async function onWorkerMessage (event) {
 }
 
 export function addEventListener (eventName, callback, ...args) {
-  if (eventName === 'message' || eventName === 'connect') {
+  if (eventName === 'message') {
     return workerGlobalScopeEventTarget.addEventListener(eventName, callback, ...args)
   } else {
     return worker.addEventListener(eventName, callback, ...args)
@@ -234,7 +212,7 @@ export function addEventListener (eventName, callback, ...args) {
 }
 
 export function removeEventListener (eventName, callback, ...args) {
-  if (eventName === 'message' || eventName === 'connect') {
+  if (eventName === 'message') {
     return workerGlobalScopeEventTarget.removeEventListener(eventName, callback, ...args)
   } else {
     return worker.removeEventListener(eventName, callback, ...args)
@@ -242,7 +220,7 @@ export function removeEventListener (eventName, callback, ...args) {
 }
 
 export function dispatchEvent (event) {
-  if (event.type === 'message' || event.type === 'connect') {
+  if (event.type === 'message') {
     return workerGlobalScopeEventTarget.dispatchEvent(event)
   }
 

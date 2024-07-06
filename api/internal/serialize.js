@@ -20,17 +20,22 @@ export default function serialize (value) {
   })
 }
 
-function map (object, callback) {
+function map (object, callback, seen = new Set()) {
+  if (seen.has(object)) {
+    return object
+  }
+
+  seen.add(object)
   if (Array.isArray(object)) {
     for (let i = 0; i < object.length; ++i) {
-      object[i] = map(object[i], callback)
+      object[i] = map(object[i], callback, seen)
     }
   } else if (object && typeof object === 'object') {
     object = callback(object)
     for (const key in object) {
       const descriptor = Object.getOwnPropertyDescriptor(object, key)
       if (descriptor && descriptor.writable) {
-        object[key] = map(object[key], callback)
+        object[key] = map(object[key], callback, seen)
       }
     }
   }
