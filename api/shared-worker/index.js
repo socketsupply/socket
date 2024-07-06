@@ -2,6 +2,7 @@
 import application from '../application.js'
 import location from '../location.js'
 import crypto from '../crypto.js'
+import client from '../application/client.js'
 import ipc from '../ipc.js'
 
 let contextWindow = null
@@ -34,6 +35,7 @@ export async function init (sharedWorker, options) {
   channel.postMessage({
     connect: {
       scriptURL: options.scriptURL,
+      client: client.toJSON(),
       name: options.name,
       port: sharedWorker.port,
       id: sharedWorker.id
@@ -131,11 +133,9 @@ export async function getContextWindow () {
     existingContextWindow ??
     application.createWindow({
       canExit: false,
-      //headless: !process.env.SOCKET_RUNTIME_SHARED_WORKER_DEBUG,
-      headless: false,
+      headless: !process.env.SOCKET_RUNTIME_SHARED_WORKER_DEBUG,
       // @ts-ignore
-      //debug: Boolean(process.env.SOCKET_RUNTIME_SHARED_WORKER_DEBUG),
-      debug: true,
+      debug: Boolean(process.env.SOCKET_RUNTIME_SHARED_WORKER_DEBUG),
       index: SHARED_WORKER_WINDOW_INDEX,
       title: SHARED_WORKER_WINDOW_TITLE,
       path: SHARED_WORKER_WINDOW_PATH,
