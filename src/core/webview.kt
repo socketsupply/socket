@@ -1,10 +1,7 @@
 // vim: set sw=2:
 package socket.runtime.core
 
-import java.lang.ref.WeakReference
-
 import android.content.Context
-import android.util.AttributeSet
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 
@@ -13,6 +10,12 @@ import android.webkit.WebResourceResponse
  */
 open class WebView (context: android.content.Context) : android.webkit.WebView(context)
 
+/**
+ * @see https://developer.android.com/reference/kotlin/android/webkit/WebChromeClient
+ */
 open class WebChromeClient : android.webkit.WebChromeClient() {}
-open class WebViewClient : android.webkit.WebViewClient() {
-}
+
+/**
+ * @see https://developer.android.com/reference/kotlin/android/webkit/WebViewClient
+ */
+open class WebViewClient : android.webkit.WebViewClient() {}
