@@ -13,16 +13,14 @@ namespace SSC::IPC {
   static Mutex mutex;
 
   // The `ESM_IMPORT_PROXY_TEMPLATE` is used to provide an ESM module as
-  // a proxy to a canonical URL for a module so `{{protocol}}:{{specifier}}` and
-  // `{{protocol}}://{{bundle_identifier}}/socket/{{pathname}}` resolve to the exact
-  // same module
+  // a proxy to a canonical URL for a module import.
   static constexpr auto ESM_IMPORT_PROXY_TEMPLATE_WITH_DEFAULT_EXPORT = R"S(
 /**
-  * This module exists to provide a proxy to a canonical URL for a module
-  * so `{{protocol}}:{{specifier}}` and `{{protocol}}://{bundle_identifier}/socket/{{pathname}}`
-  * resolve to the exact same module instance.
-  * @see {@link https://github.com/socketsupply/socket/blob/{{commit}}/api{{pathname}}}
-  */
+ * This module exists to provide a proxy to a canonical URL for a module
+ * so `{{protocol}}:{{specifier}}` and `{{protocol}}://{bundle_identifier}/socket/{{pathname}}`
+ * resolve to the exact same module instance.
+ * @see {@link https://github.com/socketsupply/socket/blob/{{commit}}/api{{pathname}}}
+ */
 import module from '{{url}}'
 export * from '{{url}}'
 export default module
@@ -30,11 +28,11 @@ export default module
 
   static constexpr auto ESM_IMPORT_PROXY_TEMPLATE_WITHOUT_DEFAULT_EXPORT = R"S(
 /**
-  * This module exists to provide a proxy to a canonical URL for a module
-  * so `{{protocol}}:{{specifier}}` and `{{protocol}}://{bundle_identifier}/socket/{{pathname}}`
-  * resolve to the exact same module instance.
-  * @see {@link https://github.com/socketsupply/socket/blob/{{commit}}/api{{pathname}}}
-  */
+ * This module exists to provide a proxy to a canonical URL for a module
+ * so `{{protocol}}:{{specifier}}` and `{{protocol}}://{bundle_identifier}/socket/{{pathname}}`
+ * resolve to the exact same module instance.
+ * @see {@link https://github.com/socketsupply/socket/blob/{{commit}}/api{{pathname}}}
+ */
 export * from '{{url}}'
 )S";
 
@@ -582,7 +580,7 @@ export * from '{{url}}'
         // handle HEAD and GET requests for a file resource
         if (resourcePath.size() > 0) {
           if (resourcePath.starts_with(applicationResources)) {
-            contentLocation = resourcePath.substr(applicationResources.size() -1, resourcePath.size());
+            contentLocation = resourcePath.substr(applicationResources.size(), resourcePath.size());
           }
 
           auto resource = FileResource(resourcePath);
