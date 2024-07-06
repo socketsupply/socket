@@ -1,4 +1,4 @@
-import { SharedWorker } from '../internal/shared-worker.js'
+import { SharedWorker } from '../shared-worker/index.js'
 import location from '../location.js'
 import state from './state.js'
 

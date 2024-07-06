@@ -1,7 +1,7 @@
 import { Notification, NotificationOptions } from '../notification.js'
 import { SHARED_WORKER_URL } from './instance.js'
 import { NotAllowedError } from '../errors.js'
-import { SharedWorker } from '../internal/shared-worker.js'
+import { SharedWorker } from '../shared-worker/index.js'
 import permissions from '../internal/permissions.js'
 
 let sharedWorker = null

@@ -30,16 +30,18 @@ import {
 
 import '../console.js'
 
-const SERVICE_WORKER_READY_TOKEN = { __service_worker_ready: true }
-
 Object.defineProperties(
   globalThis,
   Object.getOwnPropertyDescriptors(ServiceWorkerGlobalScope.prototype)
 )
 
-const module = { exports: {} }
-const events = new Set()
-const stages = { register: null, install: null, activate: null }
+export default null
+
+export const SERVICE_WORKER_READY_TOKEN = { __service_worker_ready: true }
+
+export const module = { exports: {} }
+export const events = new Set()
+export const stages = { register: null, install: null, activate: null }
 // service worker life cycle stages
 stages.register = new Deferred()
 stages.install = new Deferred(stages.register)
@@ -49,17 +51,17 @@ stages.activate = new Deferred(stages.install)
 hooks.onReady(onReady)
 globalThis.addEventListener('message', onMessage)
 
-// service worker  globals
+// service worker globals
 globals.register('ServiceWorker.state', state)
 globals.register('ServiceWorker.stages', stages)
 globals.register('ServiceWorker.events', events)
 globals.register('ServiceWorker.module', module)
 
-function onReady () {
+export function onReady () {
   globalThis.postMessage(SERVICE_WORKER_READY_TOKEN)
 }
 
-async function onMessage (event) {
+export async function onMessage (event) {
   if (event instanceof ExtendableMessageEvent) {
     return
   }
@@ -134,6 +136,12 @@ async function onMessage (event) {
         configurable: false,
         enumerable: false,
         get: () => process
+      },
+
+      Buffer: {
+        configurable: false,
+        enumerable: false,
+        get: () => Buffer
       },
 
       global: {

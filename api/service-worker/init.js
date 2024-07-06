@@ -1,6 +1,6 @@
 /* global Worker */
 import { SHARED_WORKER_URL } from './instance.js'
-import { SharedWorker } from '../internal/shared-worker.js'
+import { SharedWorker } from '../shared-worker/index.js'
 import { Notification } from '../notification.js'
 import { sleep } from '../timers.js'
 import globals from '../internal/globals.js'
@@ -195,13 +195,17 @@ export async function onFetch (event) {
       }
     })(),
     new Promise((resolve) => {
-      globalThis.top.addEventListener('serviceWorker.activate', async function onActivate (event) {
-        const { hash } = new ServiceWorkerInfo(event.detail)
-        if (hash === info.hash) {
-          await sleep(64)
-          resolve()
+      globalThis.top.addEventListener(
+        'serviceWorker.activate',
+        async function (event) {
+          // @ts-ignore
+          const { hash } = new ServiceWorkerInfo(event.detail)
+          if (hash === info.hash) {
+            await sleep(64)
+            resolve(null)
+          }
         }
-      })
+      )
     })
   ])
 
@@ -213,8 +217,7 @@ export async function onFetch (event) {
       id: event.detail.fetch.id
     }
 
-    await ipc.write('serviceWorker.fetch.response', options)
-    return
+    return await ipc.write('serviceWorker.fetch.response', options)
   }
 
   const client = event.detail.fetch.client ?? {}

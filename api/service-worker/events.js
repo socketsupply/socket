@@ -397,6 +397,13 @@ export class ExtendableMessageEvent extends ExtendableEvent {
   }
 
   /**
+   * @type {string?}
+   */
+  get origin () {
+    return this.#origin
+  }
+
+  /**
    * @type {string}
    */
   get lastEventId () {
