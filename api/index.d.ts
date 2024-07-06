@@ -580,6 +580,10 @@ declare module "socket:fs/bookmarks" {
     export default _default;
 }
 
+declare module "socket:internal/serialize" {
+    export default function serialize(value: any): any;
+}
+
 declare module "socket:url/urlpattern/urlpattern" {
     export { me as URLPattern };
     var me: {
@@ -768,6 +772,8 @@ declare module "socket:ipc" {
      * @ignore
      */
     export function createBinding(domain: string, ctx?: (Function | object) | undefined): ProxyConstructor;
+    export function inflateIPCMessageTransfers(object: any, types?: Map<any, any>): any;
+    export function findIPCMessageTransfers(transfers: any, object: any): any;
     /**
      * Represents an OK IPC status.
      * @ignore
@@ -1051,6 +1057,29 @@ declare module "socket:ipc" {
      * @ignore
      */
     export const primordials: any;
+    export const ports: Map<any, any>;
+    export class IPCMessagePort extends MessagePort {
+        static from(options?: any): any;
+        static create(options?: any): any;
+        get id(): any;
+        get started(): any;
+        get closed(): any;
+        set onmessage(onmessage: any);
+        get onmessage(): any;
+        set onmessageerror(onmessageerror: any);
+        get onmessageerror(): any;
+        postMessage(message: any, optionsOrTransferList: any): void;
+        addEventListener(...args: any[]): any;
+        removeEventListener(...args: any[]): any;
+        dispatchEvent(event: any): any;
+    }
+    export class IPCMessageChannel extends MessageChannel {
+        constructor(options?: any);
+        port1: any;
+        port2: any;
+        get id(): any;
+        #private;
+    }
     export default exports;
     import { Buffer } from "socket:buffer";
     import { URL } from "socket:url/index";
@@ -6901,7 +6930,7 @@ declare module "socket:window/constants" {
     
 }
 
-declare module "socket:window/client" {
+declare module "socket:application/client" {
     /**
      * @typedef {{
      *  id?: string | null,
@@ -6943,6 +6972,11 @@ declare module "socket:window/client" {
          * @type {Client|null}
          */
         get top(): Client;
+        /**
+         * Converts this `Client` instance to JSON.
+         * @return {object}
+         */
+        toJSON(): object;
         #private;
     }
     const _default: any;
@@ -7511,7 +7545,7 @@ declare module "socket:window" {
     export const constants: typeof statuses;
     import ipc from "socket:ipc";
     import * as statuses from "socket:window/constants";
-    import client from "socket:window/client";
+    import client from "socket:application/client";
     import hotkey from "socket:window/hotkey";
     export { client, hotkey };
 }
@@ -7714,7 +7748,6 @@ declare module "socket:application" {
      * @return {Promise<ipc.Result>}
      */
     export function setSystemMenuItemEnabled(value: object): Promise<ipc.Result>;
-    export { menu };
     export const MAX_WINDOWS: 32;
     export class ApplicationWindowList {
         static from(...args: any[]): exports.ApplicationWindowList;
@@ -7765,9 +7798,11 @@ declare module "socket:application" {
     export default exports;
     import ApplicationWindow from "socket:window";
     import ipc from "socket:ipc";
+    import client from "socket:application/client";
     import menu from "socket:application/menu";
     import * as exports from "socket:application";
     
+    export { client, menu };
 }
 
 declare module "socket:test/fast-deep-equal" {
@@ -7905,6 +7940,39 @@ declare module "socket:bootstrap" {
     import { EventEmitter } from "socket:events";
 }
 
+declare module "socket:shared-worker/index" {
+    export function init(sharedWorker: any, options: any): Promise<void>;
+    /**
+     * Gets the SharedWorker context window.
+     * This function will create it if it does not already exist.
+     * @return {Promise<import('./window.js').ApplicationWindow}
+     */
+    export function getContextWindow(): Promise<any>;
+    export const SHARED_WORKER_WINDOW_INDEX: 46;
+    export const SHARED_WORKER_WINDOW_TITLE: "socket:shared-worker";
+    export const SHARED_WORKER_WINDOW_PATH: string;
+    export const channel: BroadcastChannel;
+    export const workers: Map<any, any>;
+    export class SharedWorkerMessagePort extends ipc.IPCMessagePort {
+    }
+    export class SharedWorker extends EventTarget {
+        /**
+         * `SharedWorker` class constructor.
+         * @param {string} aURL
+         * @param {string|object=} [nameOrOptions]
+         */
+        constructor(aURL: string, nameOrOptions?: (string | object) | undefined);
+        set onerror(onerror: any);
+        get onerror(): any;
+        get ready(): any;
+        get port(): any;
+        get id(): any;
+        #private;
+    }
+    export default SharedWorker;
+    import ipc from "socket:ipc";
+}
+
 declare module "socket:internal/globals" {
     /**
      * Gets a runtime global value by name.
@@ -7925,30 +7993,6 @@ declare module "socket:internal/globals" {
     }
     export default registry;
     const registry: any;
-}
-
-declare module "socket:internal/shared-worker" {
-    export function getSharedWorkerImplementationForPlatform(): {
-        new (scriptURL: string | URL, options?: string | WorkerOptions): SharedWorker;
-        prototype: SharedWorker;
-    } | typeof SharedHybridWorkerProxy | typeof SharedHybridWorker;
-    export class SharedHybridWorkerProxy extends EventTarget {
-        constructor(url: any, options: any);
-        onChannelMessage(event: any): void;
-        get id(): any;
-        get port(): any;
-        #private;
-    }
-    export class SharedHybridWorker extends EventTarget {
-        constructor(url: any, nameOrOptions: any);
-        get port(): any;
-        #private;
-    }
-    export const SharedWorker: {
-        new (scriptURL: string | URL, options?: string | WorkerOptions): SharedWorker;
-        prototype: SharedWorker;
-    } | typeof SharedHybridWorkerProxy | typeof SharedHybridWorker;
-    export default SharedWorker;
 }
 
 declare module "socket:console" {
@@ -8396,6 +8440,7 @@ declare module "socket:vm" {
         filename?: string;
         context?: object;
     };
+    import { SharedWorker } from "socket:shared-worker/index";
 }
 
 declare module "socket:worker_threads/init" {
@@ -10118,6 +10163,11 @@ declare module "socket:service-worker/env" {
          */
         get context(): ProxyConstructor;
         /**
+         * The environment type
+         * @type {string}
+         */
+        get type(): string;
+        /**
          * The current environment name. This value is also used as the
          * internal database name.
          * @type {string}
@@ -10382,6 +10432,10 @@ declare module "socket:service-worker/events" {
          * @type {import('./clients.js').Client?}
          */
         get source(): import("socket:service-worker/clients").Client;
+        /**
+         * @type {string?}
+         */
+        get origin(): string;
         /**
          * @type {string}
          */
@@ -12888,7 +12942,7 @@ declare module "socket:network" {
 
 declare module "socket:service-worker" {
     /**
-     * A reference toe opened environment. This value is an instance of an
+     * A reference to the opened environment. This value is an instance of an
      * `Environment` if the scope is a ServiceWorker scope.
      * @type {Environment|null}
      */
@@ -13763,10 +13817,6 @@ declare module "socket:commonjs/builtins" {
      */
     export const runtimeModules: Set<string>;
     export default builtins;
-}
-
-declare module "socket:internal/serialize" {
-    export default function serialize(value: any): any;
 }
 
 declare module "socket:commonjs/cache" {
@@ -15878,6 +15928,18 @@ declare module "socket:notification" {
     import URL from "socket:url";
 }
 
+declare module "socket:shared-worker" {
+    /**
+     * A reference to the opened environment. This value is an instance of an
+     * `Environment` if the scope is a ServiceWorker scope.
+     * @type {Environment|null}
+     */
+    export const env: Environment | null;
+    export default SharedWorker;
+    import { SharedWorker } from "socket:shared-worker/index";
+    export { Environment, SharedWorker };
+}
+
 declare module "socket:service-worker/instance" {
     export function createServiceWorker(currentState?: any, options?: any): any;
     export const SHARED_WORKER_URL: string;
@@ -15902,7 +15964,7 @@ declare module "socket:service-worker/instance" {
 
 declare module "socket:worker" {
     export default Worker;
-    import { SharedWorker } from "socket:internal/shared-worker";
+    import { SharedWorker } from "socket:shared-worker/index";
     import { ServiceWorker } from "socket:service-worker/instance";
     import { Worker } from "socket:worker_threads";
     export { SharedWorker, ServiceWorker, Worker };
@@ -16599,11 +16661,11 @@ declare module "socket:internal/promise" {
          */
         constructor(resolver: ResolverFunction);
         [resourceSymbol]: {
-            "__#15@#type": any;
-            "__#15@#destroyed": boolean;
-            "__#15@#asyncId": number;
-            "__#15@#triggerAsyncId": any;
-            "__#15@#requireManualDestroy": boolean;
+            "__#16@#type": any;
+            "__#16@#destroyed": boolean;
+            "__#16@#asyncId": number;
+            "__#16@#triggerAsyncId": any;
+            "__#16@#requireManualDestroy": boolean;
             readonly type: string;
             readonly destroyed: boolean;
             asyncId(): number;
@@ -16903,7 +16965,7 @@ declare module "socket:service-worker/init" {
     export function onUnregister(event: any): Promise<void>;
     export function onSkipWaiting(event: any): Promise<void>;
     export function onActivate(event: any): Promise<void>;
-    export function onFetch(event: any): Promise<void>;
+    export function onFetch(event: any): Promise<any>;
     export function onNotificationShow(event: any, target: any): any;
     export function onNotificationClose(event: any, target: any): void;
     export function onGetNotifications(event: any, target: any): any;
@@ -17267,7 +17329,82 @@ declare module "socket:service-worker/storage" {
 }
 
 declare module "socket:service-worker/worker" {
-    export {};
+    export function onReady(): void;
+    export function onMessage(event: any): Promise<any>;
+    const _default: any;
+    export default _default;
+    export namespace SERVICE_WORKER_READY_TOKEN {
+        let __service_worker_ready: boolean;
+    }
+    export namespace module {
+        let exports: {};
+    }
+    export const events: Set<any>;
+    export namespace stages {
+        let register: Deferred;
+        let install: Deferred;
+        let activate: Deferred;
+    }
+    import { Deferred } from "socket:async";
+}
+
+declare module "socket:shared-worker/debug" {
+    export function debug(...args: any[]): void;
+    export default debug;
+}
+
+declare module "socket:shared-worker/global" {
+    export class SharedWorkerGlobalScope {
+        get isSharedWorkerScope(): boolean;
+        set onconnect(listener: any);
+        get onconnect(): any;
+    }
+    const _default: SharedWorkerGlobalScope;
+    export default _default;
+}
+
+declare module "socket:shared-worker/init" {
+    export function onInstall(event: any): Promise<void>;
+    export function onUninstall(event: any): Promise<void>;
+    export function onConnect(event: any): Promise<void>;
+    export const workers: Map<any, any>;
+    export { channel };
+    export class SharedWorkerInstance extends Worker {
+        constructor(filename: any, options: any);
+        get info(): any;
+        onMessage(event: any): Promise<void>;
+        #private;
+    }
+    export class SharedWorkerInfo {
+        constructor(data: any);
+        id: any;
+        port: any;
+        scriptURL: any;
+        url: any;
+        hash: any;
+        get pathname(): string;
+    }
+    const _default: any;
+    export default _default;
+    import { channel } from "socket:shared-worker/index";
+}
+
+declare module "socket:shared-worker/state" {
+    export const state: any;
+    export default state;
+}
+
+declare module "socket:shared-worker/worker" {
+    export function onReady(): void;
+    export function onMessage(event: any): Promise<void>;
+    const _default: any;
+    export default _default;
+    export namespace SHARED_WORKER_READY_TOKEN {
+        let __shared_worker_ready: boolean;
+    }
+    export namespace module {
+        let exports: {};
+    }
 }
 
 declare module "socket:test/harness" {

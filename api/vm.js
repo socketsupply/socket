@@ -27,7 +27,7 @@
 /* eslint-disable no-new-func */
 /* global ErrorEvent, EventTarget, MessagePort */
 import { maybeMakeError } from './ipc.js'
-import { SharedWorker } from './internal/shared-worker.js'
+import { SharedWorker } from './shared-worker/index.js'
 import { isESMSource } from './util.js'
 import application from './application.js'
 import globals from './internal/globals.js'
@@ -1203,61 +1203,11 @@ export async function getContextWindow () {
     return contextWindow
   }
 
-  const currentWindow = await application.getCurrentWindow()
-
-  if (os.platform() === 'win32' && !process.env.COREWEBVIEW2_22_AVAILABLE) {
-    contextWindow = currentWindow
-
-    if (!contextWindow.frame) {
-      const frameId = `__${os.platform()}-vm-frame__`
-      const existingFrame = globalThis.top.document.querySelector(
-        `iframe[id="${frameId}"]`
-      )
-
-      if (existingFrame) {
-        existingFrame.parentElement.removeChild(existingFrame)
-      }
-
-      const frame = globalThis.top.document.createElement('iframe')
-
-      frame.setAttribute('sandbox', 'allow-same-origin allow-scripts')
-      frame.src = VM_WINDOW_PATH
-      frame.id = frameId
-
-      Object.assign(frame.style, {
-        display: 'none',
-        height: 0,
-        width: 0
-      })
-
-      const target = (
-        globalThis.top.document.head ??
-        globalThis.top.document.body ??
-        globalThis.top.document
-      )
-
-      target.prepend(frame)
-      contextWindow.frame = frame
-      contextWindow.ready = new Promise((resolve, reject) => {
-        frame.onload = resolve
-        frame.onerror = (event) => {
-          reject(new Error('Failed to load VM context window frame', {
-            // @ts-ignore
-            cause: event.error ?? event
-          }))
-        }
-      })
-    }
-
-    await contextWindow.ready
-    return contextWindow
-  }
-
   const existingContextWindow = await application.getWindow(VM_WINDOW_INDEX, { max: false })
   const pendingContextWindow = (
     existingContextWindow ??
     application.createWindow({
-      canExit: true,
+      canExit: false,
       headless: !process.env.SOCKET_RUNTIME_VM_DEBUG,
       // @ts-ignore
       debug: Boolean(process.env.SOCKET_RUNTIME_VM_DEBUG),

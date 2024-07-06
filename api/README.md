@@ -11,17 +11,17 @@
  import { createWindow } from 'socket:application'
  ```
 
-## [MAX_WINDOWS](https://github.com/socketsupply/socket/blob/master/api/application.js#L37)
+## [MAX_WINDOWS](https://github.com/socketsupply/socket/blob/master/api/application.js#L38)
 
 This is a `VariableDeclaration` named `MAX_WINDOWS` in `api/application.js`, it's exported but undocumented.
 
 
-## [ApplicationWindowList](https://github.com/socketsupply/socket/blob/master/api/application.js#L39)
+## [ApplicationWindowList](https://github.com/socketsupply/socket/blob/master/api/application.js#L40)
 
 This is a `ClassDeclaration` named `ApplicationWindowList` in `api/application.js`, it's exported but undocumented.
 
 
-## [`getCurrentWindowIndex()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L164)
+## [`getCurrentWindowIndex()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L165)
 
 Returns the current window index
 
@@ -29,7 +29,7 @@ Returns the current window index
 | :---         | :--- | :---        |
 | Not specified | number |  |
 
-## [`createWindow(opts)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L199)
+## [`createWindow(opts)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L200)
 
 Creates a new window and returns an instance of ApplicationWindow.
 
@@ -67,15 +67,15 @@ Creates a new window and returns an instance of ApplicationWindow.
 | :---         | :--- | :---        |
 | Not specified | Promise<ApplicationWindow> |  |
 
-### [`radius()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L226)
+### [`radius()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L227)
 
 
 
-### [`margin()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L231)
+### [`margin()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L232)
 
 
 
-## [`getScreenSize()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L319)
+## [`getScreenSize()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L320)
 
 Returns the current screen size.
 
@@ -83,7 +83,7 @@ Returns the current screen size.
 | :---         | :--- | :---        |
 | Not specified | Promise<{ width: number, height: number  | >} |
 
-## [`getWindows(indices)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L345)
+## [`getWindows(indices)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L351)
 
 Returns the ApplicationWindow instances for the given indices or all windows if no indices are provided.
 
@@ -95,7 +95,7 @@ Returns the ApplicationWindow instances for the given indices or all windows if 
 | :---         | :--- | :---        |
 | Not specified | Promise<ApplicationWindowList> |  |
 
-## [`getWindow(index)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L402)
+## [`getWindow(index)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L405)
 
 Returns the ApplicationWindow instance for the given index
 
@@ -107,7 +107,7 @@ Returns the ApplicationWindow instance for the given index
 | :---         | :--- | :---        |
 | Not specified | Promise<ApplicationWindow> | the ApplicationWindow instance or null if the window does not exist |
 
-## [`getCurrentWindow()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L412)
+## [`getCurrentWindow()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L415)
 
 Returns the ApplicationWindow instance for the current window.
 
@@ -115,7 +115,7 @@ Returns the ApplicationWindow instance for the current window.
 | :---         | :--- | :---        |
 | Not specified | Promise<ApplicationWindow> |  |
 
-## [`exit(code)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L421)
+## [`exit(code)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L424)
 
 Quits the backend process and then quits the render process, the exit code used is the final exit code to the OS.
 
@@ -127,7 +127,7 @@ Quits the backend process and then quits the render process, the exit code used 
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-## [`setSystemMenu(options)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L518)
+## [`setSystemMenu(options)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L521)
 
 Set the native menu for the app.
 
@@ -222,11 +222,11 @@ Set the native menu for the app.
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-## [`setTrayMenu()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L525)
+## [`setTrayMenu()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L528)
 
 An alias to setSystemMenu for creating a tary menu
 
-## [`setSystemMenuItemEnabled(value)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L534)
+## [`setSystemMenuItemEnabled(value)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L537)
 
 Set the enabled state of the system menu.
 
@@ -238,23 +238,23 @@ Set the enabled state of the system menu.
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-## [runtimeVersion](https://github.com/socketsupply/socket/blob/master/api/application.js#L542)
+## [runtimeVersion](https://github.com/socketsupply/socket/blob/master/api/application.js#L545)
 
 Socket Runtime version.
 
-## [debug](https://github.com/socketsupply/socket/blob/master/api/application.js#L548)
+## [debug](https://github.com/socketsupply/socket/blob/master/api/application.js#L551)
 
 Runtime debug flag.
 
-## [config](https://github.com/socketsupply/socket/blob/master/api/application.js#L554)
+## [config](https://github.com/socketsupply/socket/blob/master/api/application.js#L557)
 
 Application configuration.
 
-## [backend](https://github.com/socketsupply/socket/blob/master/api/application.js#L559)
+## [backend](https://github.com/socketsupply/socket/blob/master/api/application.js#L562)
 
 The application's backend instance.
 
-### [`open(opts)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L565)
+### [`open(opts)`](https://github.com/socketsupply/socket/blob/master/api/application.js#L568)
 
 
 
@@ -267,7 +267,7 @@ The application's backend instance.
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-### [`close()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L573)
+### [`close()`](https://github.com/socketsupply/socket/blob/master/api/application.js#L576)
 
 
 
@@ -1683,17 +1683,17 @@ Watch for changes at `path` calling `callback`
  import { send } from 'socket:ipc'
  ```
 
-## [`maybeMakeError()`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L268)
+## [`maybeMakeError()`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L269)
 
 This is a `FunctionDeclaration` named `maybeMakeError` in `api/ipc.js`, it's exported but undocumented.
 
 
-## [`IPCSearchParams` (extends `URLSearchParams`)](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1020)
+## [`IPCSearchParams` (extends `URLSearchParams`)](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1021)
 
 This is a `ClassDeclaration` named ``IPCSearchParams` (extends `URLSearchParams`)` in `api/ipc.js`, it's exported but undocumented.
 
 
-## [`emit(name, value, target, options)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1181)
+## [`emit(name, value, target, options)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1182)
 
 Emit event to be dispatched on `window` object.
 
@@ -1704,7 +1704,7 @@ Emit event to be dispatched on `window` object.
 | target | EventTarget | window | true |  |
 | options | Object |  | true |  |
 
-## [`send(command, value, options)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1240)
+## [`send(command, value, options)`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1241)
 
 Sends an async IPC command request with parameters.
 
@@ -1719,6 +1719,31 @@ Sends an async IPC command request with parameters.
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
 | Not specified | Promise<Result> |  |
+
+## [`inflateIPCMessageTransfers()`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1692)
+
+This is a `FunctionDeclaration` named `inflateIPCMessageTransfers` in `api/ipc.js`, it's exported but undocumented.
+
+
+## [`findIPCMessageTransfers()`](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1724)
+
+This is a `FunctionDeclaration` named `findIPCMessageTransfers` in `api/ipc.js`, it's exported but undocumented.
+
+
+## [ports](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1773)
+
+This is a `VariableDeclaration` named `ports` in `api/ipc.js`, it's exported but undocumented.
+
+
+## [`IPCMessagePort` (extends `MessagePort`)](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1775)
+
+This is a `ClassDeclaration` named ``IPCMessagePort` (extends `MessagePort`)` in `api/ipc.js`, it's exported but undocumented.
+
+
+## [`IPCMessageChannel` (extends `MessageChannel`)](https://github.com/socketsupply/socket/blob/master/api/ipc.js#L1958)
+
+This is a `ClassDeclaration` named ``IPCMessageChannel` (extends `MessageChannel`)` in `api/ipc.js`, it's exported but undocumented.
+
 
 
 <!-- This file is generated by bin/docs-generator/api-module.js -->
