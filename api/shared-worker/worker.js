@@ -133,7 +133,6 @@ export async function onMessage (event) {
       state.sharedWorker.state = 'installing'
       // open envirnoment
       state.env = await Environment.open({ type: 'sharedWorker', id })
-        console.log({ scriptURL })
       // import module, which could be ESM, CommonJS,
       // or a simple SharedWorker
       const result = await import(scriptURL)
@@ -185,14 +184,20 @@ export async function onMessage (event) {
         }
       })
     }
+
     channel.postMessage({ installed: { id: state.id } })
+    debug(
+      '[%s]: SharedWorker (%s) installed',
+      new URL(scriptURL).pathname.replace(/^\/socket\//, 'socket:'),
+      state.id
+    )
     return
   }
 
   if (data?.connect) {
     event.stopImmediatePropagation()
     const connection = ipc.inflateIPCMessageTransfers(event.data.connect, new Map(Object.entries({
-      'SharedWorkerMessagePort': SharedWorkerMessagePort
+      SharedWorkerMessagePort
     })))
 
     const connectEvent = new MessageEvent('connect')
@@ -201,8 +206,20 @@ export async function onMessage (event) {
       writable: false,
       value: Object.seal(Object.freeze([connection.port]))
     })
-      console.log({ connectEvent })
+
     globalThis.dispatchEvent(connectEvent)
+
+    debug(
+      '[%s]: SharedWorker (%s) connection from client (%s/%s) at %s',
+      new URL(state.sharedWorker.scriptURL).pathname.replace(/^\/socket\//, 'socket:'),
+      state.id,
+      connection.client.id,
+      [
+        connection.client.frameType.replace('none', ''),
+        connection.client.type
+      ].filter(Boolean).join('-'),
+      connection.client.location
+    )
     // eslint-disable-next-line
     return
   }

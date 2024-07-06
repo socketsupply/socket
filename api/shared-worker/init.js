@@ -74,6 +74,7 @@ export class SharedWorkerInstance extends Worker {
 export class SharedWorkerInfo {
   id = null
   port = null
+  client = null
   scriptURL = null
 
   url = null
@@ -144,7 +145,7 @@ export async function onConnect (event) {
       await new Promise((resolve, reject) => {
         channel.addEventListener('message', (event) => {
           if (event.data?.error?.id === info.id) {
-            reject()
+            reject(new Error(event.data.error.message))
           } else if (event.data?.installed?.id === info.id) {
             resolve()
           }
