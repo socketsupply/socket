@@ -30,7 +30,9 @@ export class Location {
   }
 
   get origin () {
-    return this.url.origin
+    return this.url.origin && this.url.origin !== 'null'
+      ? this.url.origin
+      : globalThis.origin || globalThis.location.origin
   }
 
   get href () {
