@@ -39,7 +39,10 @@ open class WindowFragmentManager (protected val activity: WindowManagerActivity)
           // .setCustomAnimations(android.R.anim.slide_in_left, android.R.anim.slide_out_right)
           setReorderingAllowed(true)
           add(R.id.window, fragment)
-          addToBackStack("window#${options.index}")
+          if (!options.headless) {
+            //addToBackStack("window#${options.index}")
+            addToBackStack(null)
+          }
         }
       }
     }
@@ -191,10 +194,15 @@ open class WindowManagerActivity : AppCompatActivity(R.layout.window_container_v
   /**
    * Creates a new window at a given `index`.
    */
-  fun createWindow (index: Int = 0, shouldExitApplicationOnClose: Boolean = false) {
+  fun createWindow (
+    index: Int = 0,
+    shouldExitApplicationOnClose: Boolean = false,
+    headless: Boolean = false
+  ) {
     this.windowFragmentManager.createWindowFragment(WindowOptions(
       index = index,
-      shouldExitApplicationOnClose = shouldExitApplicationOnClose
+      shouldExitApplicationOnClose = shouldExitApplicationOnClose,
+      headless = headless
     ))
   }
 
@@ -229,12 +237,14 @@ open class WindowManagerActivity : AppCompatActivity(R.layout.window_container_v
   /**
    */
   fun getWindowTitle (index: Int): String {
+    // TODO(@jwerle)
     return ""
   }
 
   /**
    */
   fun setWindowTitle (index: Int, title: String): Boolean {
+    // TODO(@jwerle)
     return false
   }
 

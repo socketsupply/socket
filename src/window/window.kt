@@ -46,7 +46,8 @@ data class ScreenSize (val width: Int, val height: Int);
  */
 data class WindowOptions (
   var index: Int = 0,
-  var shouldExitApplicationOnClose: Boolean = false
+  var shouldExitApplicationOnClose: Boolean = false,
+  var headless: Boolean = false
 )
 
 /**
@@ -245,6 +246,7 @@ open class WindowFragment : Fragment(R.layout.web_view) {
         arguments = bundleOf(
           "index" to options.index,
           "shouldExitApplicationOnClose" to options.shouldExitApplicationOnClose
+          "headless" to options.headless
         )
       }
     }
@@ -270,12 +272,10 @@ open class WindowFragment : Fragment(R.layout.web_view) {
 
   override fun onAttach (context: Context) {
     super.onAttach(context)
-    console.log("onAttach")
   }
 
   override fun onCreate (savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
-    console.log("onCreate")
   }
 
   override fun onCreateView (
@@ -283,28 +283,23 @@ open class WindowFragment : Fragment(R.layout.web_view) {
     container: ViewGroup?,
     savedInstanceState: Bundle?
   ): View? {
-    console.log("onCreateView")
     return super.onCreateView(inflater, container, savedInstanceState)
   }
 
   override fun onStart () {
     super.onStart()
-    console.log("onStart")
   }
 
   override fun onStop () {
     super.onStop()
-    console.log("onStop")
   }
 
   override fun onResume () {
     super.onResume()
-    console.log("onResume")
   }
 
   override fun onPause () {
     super.onPause()
-    console.log("onPause")
   }
 
   /**
@@ -319,6 +314,7 @@ open class WindowFragment : Fragment(R.layout.web_view) {
 
     if (arguments != null) {
       this.options.index = arguments.getInt("index", this.options.index)
+      this.options.headless = arguments.getBoolean("headless", this.options.headless)
       this.options.shouldExitApplicationOnClose = arguments.getBoolean(
         "shouldExitApplicationOnClose",
         this.options.shouldExitApplicationOnClose
@@ -326,22 +322,17 @@ open class WindowFragment : Fragment(R.layout.web_view) {
     }
 
     this.webview = view.findViewById<WebView>(R.id.webview)
-
     this.webview.apply {
       // features
+      settings.setGeolocationEnabled(app.hasRuntimePermission("geolocation"))
+      settings.javaScriptCanOpenWindowsAutomatically = true
       settings.javaScriptEnabled = true
-
       settings.domStorageEnabled = app.hasRuntimePermission("data_access")
       settings.databaseEnabled = app.hasRuntimePermission("data_access")
 
-      settings.setGeolocationEnabled(app.hasRuntimePermission("geolocation"))
-      settings.javaScriptCanOpenWindowsAutomatically = true
-
-      // allow list
-      settings.allowFileAccess = true
       settings.allowContentAccess = true
+      settings.allowFileAccess = true
 
-      // allow mixed content
       settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
     }
 

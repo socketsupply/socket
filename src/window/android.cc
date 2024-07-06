@@ -19,6 +19,7 @@ namespace SSC {
     const auto app = App::sharedApplication();
     const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
 
+    this->index = this->options.index;
     this->bridge.userConfig = options.userConfig;
     this->bridge.configureNavigatorMounts();
 
@@ -44,9 +45,10 @@ namespace SSC {
       attachment.env,
       app->appActivity,
       "createWindow",
-      "(IZ)V",
+      "(IZZ)V",
       options.index,
-      options.shouldExitApplicationOnClose
+      options.shouldExitApplicationOnClose,
+      options.headless
     );
 
     this->hotkey.init();
