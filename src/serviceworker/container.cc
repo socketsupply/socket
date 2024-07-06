@@ -560,7 +560,7 @@ namespace SSC {
     return false;
   }
 
-  bool ServiceWorkerContainer::unregisterServiceWorker (uint64_t id) {
+  bool ServiceWorkerContainer::unregisterServiceWorker (ID id) {
     Lock lock(this->mutex);
 
     for (const auto& entry : this->registrations) {
@@ -572,7 +572,7 @@ namespace SSC {
     return false;
   }
 
-  void ServiceWorkerContainer::skipWaiting (uint64_t id) {
+  void ServiceWorkerContainer::skipWaiting (ID id) {
     Lock lock(this->mutex);
 
     for (auto& entry : this->registrations) {
@@ -593,7 +593,7 @@ namespace SSC {
     }
   }
 
-  void ServiceWorkerContainer::updateState (uint64_t id, const String& stateString) {
+  void ServiceWorkerContainer::updateState (ID id, const String& stateString) {
     Lock lock(this->mutex);
 
     for (auto& entry : this->registrations) {
@@ -704,6 +704,7 @@ namespace SSC {
         return true;
       }
 
+      // the ID of the fetch request
       const auto id = rand64();
       const auto client = JSON::Object::Entries {
         {"id", std::to_string(request.client.id)}
