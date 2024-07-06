@@ -14,6 +14,7 @@ import ApplicationWindow, { formatURL } from './window.js'
 import { isValidPercentageValue } from './util.js'
 import ipc, { primordials } from './ipc.js'
 import menu, { setMenu } from './application/menu.js'
+import client from './application/client.js'
 import os from './os.js'
 
 import * as exports from './application.js'
@@ -31,7 +32,7 @@ function serializeConfig (config) {
   return entries.join('\n')
 }
 
-export { menu }
+export { client, menu }
 
 // get this from constant value in runtime
 export const MAX_WINDOWS = 32
@@ -317,17 +318,22 @@ export async function createWindow (opts) {
  * @returns {Promise<{ width: number, height: number }>}
  */
 export async function getScreenSize () {
-  if (os.platform() === 'android') {
+  if (os.platform() === 'android' || os.platform() === 'ios') {
     return {
       width: globalThis.screen?.availWidth ?? 0,
       height: globalThis.screen?.availHeight ?? 0
     }
   }
-  const { data, err } = await ipc.request('application.getScreenSize', { index: globalThis.__args.index })
-  if (err) {
-    throw err
+
+  const result = await ipc.request('application.getScreenSize', {
+    index: globalThis.__args.index
+  })
+
+  if (result.err) {
+    throw result.err
   }
-  return data
+
+  return result.data
 }
 
 function throwOnInvalidIndex (index) {
@@ -343,10 +349,7 @@ function throwOnInvalidIndex (index) {
  * @return {Promise<ApplicationWindowList>}
  */
 export async function getWindows (indices, options = null) {
-  if (
-    !globalThis.RUNTIME_APPLICATION_ALLOW_MULTI_WINDOWS &&
-    (os.platform() === 'android')
-  ) {
+  if (globalThis.RUNTIME_APPLICATION_ALLOW_MULTI_WINDOWS === false) {
     return new ApplicationWindowList([
       new ApplicationWindow({
         index: 0,
