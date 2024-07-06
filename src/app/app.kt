@@ -64,6 +64,9 @@ open class AppActivity : WindowManagerActivity() {
   }
 
   override fun onCreate (savedInstanceState: Bundle?) {
+    this.supportActionBar?.hide()
+    this.getWindow()?.statusBarColor = android.graphics.Color.TRANSPARENT
+
     super.onCreate(savedInstanceState)
 
     val rootDirectory = this.getRootDirectory()
@@ -91,7 +94,6 @@ open class AppActivity : WindowManagerActivity() {
       )
     }
 
-    console.log("onCreateAppActivity")
     app.onCreateAppActivity(this)
 
     if (savedInstanceState == null) {

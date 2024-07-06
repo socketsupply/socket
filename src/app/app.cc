@@ -205,12 +205,6 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
 
   self.app->windowManager.configure(windowManagerOptions);
 
-  auto defaultWindow = self.app->windowManager.createDefaultWindow(Window::Options {
-     .shouldExitApplicationOnClose = true
-    });
-
-  defaultWindow->setTitle(self.app->userConfig["meta_title"]);
-
   static const auto port = getDevPort();
   static const auto host = getDevHost();
 
@@ -220,7 +214,6 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
   ) {
     auto serviceWorkerWindowOptions = Window::Options {};
     auto serviceWorkerUserConfig = self.app->userConfig;
-    const auto screen = defaultWindow->getScreenSize();
 
     serviceWorkerUserConfig["webview_watch_reload"] = "false";
     serviceWorkerWindowOptions.shouldExitApplicationOnClose = false;
@@ -239,6 +232,12 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
   } else if (self.app->userConfig["webview_service_worker_mode"] == "hybrid") {
     self.app->serviceWorkerContainer.init(&defaultWindow->bridge);
   }
+
+  auto defaultWindow = self.app->windowManager.createDefaultWindow(Window::Options {
+     .shouldExitApplicationOnClose = true
+    });
+
+  defaultWindow->setTitle(self.app->userConfig["meta_title"]);
 
   if (isDebugEnabled() && port > 0 && host.size() > 0) {
     defaultWindow->navigate(host + ":" + std::to_string(port));
@@ -1184,8 +1183,6 @@ extern "C" {
           .shouldExitApplicationOnClose = true
         });
 
-        defaultWindow->setTitle(app->userConfig["meta_title"]);
-
         if (
           app->userConfig["webview_service_worker_mode"] != "hybrid" &&
           app->userConfig["permissions_allow_service_worker"] != "false"
@@ -1193,7 +1190,6 @@ extern "C" {
           if (app->windowManager.getWindowStatus(SOCKET_RUNTIME_SERVICE_WORKER_CONTAINER_WINDOW_INDEX) == WindowManager::WINDOW_NONE) {
             auto serviceWorkerWindowOptions = Window::Options {};
             auto serviceWorkerUserConfig = app->userConfig;
-            auto screen = defaultWindow->getScreenSize();
 
             serviceWorkerUserConfig["webview_watch_reload"] = "false";
             serviceWorkerWindowOptions.shouldExitApplicationOnClose = false;
@@ -1208,12 +1204,21 @@ extern "C" {
             serviceWorkerWindow->navigate(
               "socket://" + app->userConfig["meta_bundle_identifier"] + "/socket/service-worker/index.html"
             );
+
+            app->core->setTimeout(256, [=](){
+              serviceWorkerWindow->hide();
+            });
           }
-        } else if (app->userConfig["webview_service_worker_mode"] == "hybrid") {
+        }
+
+        if (
+          app->userConfig["permissions_allow_service_worker"] != "false" &&
+          app->userConfig["webview_service_worker_mode"] == "hybrid"
+        ) {
           app->serviceWorkerContainer.init(&defaultWindow->bridge);
         }
 
-        defaultWindow->show();
+        defaultWindow->setTitle(app->userConfig["meta_title"]);
 
         static const auto port = getDevPort();
         static const auto host = getDevHost();
