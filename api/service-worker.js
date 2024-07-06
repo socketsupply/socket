@@ -3,7 +3,7 @@ import { Environment } from './service-worker/env.js'
 import { Context } from './service-worker/context.js'
 
 /**
- * A reference toe opened environment. This value is an instance of an
+ * A reference to the opened environment. This value is an instance of an
  * `Environment` if the scope is a ServiceWorker scope.
  * @type {Environment|null}
  */

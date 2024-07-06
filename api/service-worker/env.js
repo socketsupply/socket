@@ -68,7 +68,8 @@ export class Environment extends EventTarget {
   #database = null
   #context = {}
   #proxy = null
-  #scope = null
+  #scope = '/'
+  #type = 'serviceWorker'
 
   /**
    * `Environment` class constructor
@@ -80,7 +81,8 @@ export class Environment extends EventTarget {
 
     Environment.instance = this
 
-    this.#scope = options.scope
+    this.#type = options?.type ?? this.#type
+    this.#scope = options.scope ?? this.#scope
     this.#proxy = new Proxy(this.#context, {
       get: (target, property) => {
         return target[property] ?? undefined
@@ -137,12 +139,20 @@ export class Environment extends EventTarget {
   }
 
   /**
+   * The environment type
+   * @type {string}
+   */
+  get type () {
+    return this.#type
+  }
+
+  /**
    * The current environment name. This value is also used as the
    * internal database name.
    * @type {string}
    */
   get name () {
-    return `socket.runtime.serviceWorker.env(${this.#scope})`
+    return `socket.runtime.${this.#type}.env(${this.#scope})`
   }
 
   /**

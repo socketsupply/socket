@@ -4,7 +4,7 @@ import util from '../util.js'
 export function debug (...args) {
   const state = globals.get('ServiceWorker.state')
 
-  if (process.env.SOCKET_RUTIME_SERVICE_WORKER_DEBUG) {
+  if (process.env.SOCKET_RUNTIME_SERVICE_WORKER_DEBUG) {
     console.debug(...args)
   }
 

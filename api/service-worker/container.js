@@ -1,7 +1,7 @@
 /* global EventTarget */
 import { ServiceWorkerRegistration } from './registration.js'
 import { createServiceWorker, SHARED_WORKER_URL } from './instance.js'
-import { SharedWorker } from '../internal/shared-worker.js'
+import { SharedWorker } from '../shared-worker/index.js'
 import { Deferred } from '../async.js'
 import application from '../application.js'
 import location from '../location.js'
