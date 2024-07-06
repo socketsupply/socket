@@ -1,3 +1,5 @@
+import location from '../location.js'
+
 /**
  * @typedef {{
  *  id?: string | null,
@@ -65,6 +67,27 @@ export class Client {
     return this.#state?.top
       ? new Client(this.#state.top)
       : null
+  }
+
+  /**
+   * A readonly `URL` of the current location of this client.
+   * @type {URL}
+   */
+  get location () {
+    return new URL(globalThis.RUNTIME_WORKER_LOCATION ?? location.href)
+  }
+
+  /**
+   * Converts this `Client` instance to JSON.
+   * @return {object}
+   */
+  toJSON () {
+    return {
+      id: this.id,
+      frameType: this.frameType,
+      type: this.type,
+      location: this.location.toString()
+    }
   }
 }
 
