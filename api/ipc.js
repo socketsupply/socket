@@ -54,6 +54,7 @@ import * as errors from './errors.js'
 import { Buffer } from './buffer.js'
 import { rand64 } from './crypto.js'
 import bookmarks from './fs/bookmarks.js'
+import serialize from './internal/serialize.js'
 import { URL } from './url.js'
 
 let nextSeq = 1
@@ -1685,6 +1686,300 @@ if (typeof globalThis?.window !== 'undefined') {
         }
       })
     })
+  }
+}
+
+export function inflateIPCMessageTransfers (object, types = new Map()) {
+  if (ArrayBuffer.isView(object)) {
+    return object
+  } else if (Array.isArray(object)) {
+    for (let i = 0; i < object.length; ++i) {
+      object[i] = inflateIPCMessageTransfers(object[i], types)
+    }
+  } else if (object && typeof object === 'object') {
+    if ('__type__' in object && types.has(object.__type__)) {
+      const Type = types.get(object.__type__)
+      if (typeof Type === 'function') {
+        if (typeof Type.from === 'function') {
+          return Type.from(object)
+        } else {
+          return new Type(object)
+        }
+      }
+    }
+
+    if (object.__type__ === 'IPCMessagePort' && object.id) {
+      return IPCMessagePort.create(object)
+    } else {
+      for (const key in object) {
+        const value = object[key]
+        object[key] = inflateIPCMessageTransfers(value, types)
+      }
+    }
+  }
+
+  return object
+}
+
+export function findIPCMessageTransfers (transfers, object) {
+  if (ArrayBuffer.isView(object)) {
+    add(object.buffer)
+  } else if (object instanceof ArrayBuffer) {
+    add(object)
+  } else if (Array.isArray(object)) {
+    for (let i = 0; i < object.length; ++i) {
+      object[i] = findMessageTransfers(transfers, object[i])
+    }
+  } else if (object && typeof object === 'object') {
+    if (
+      object instanceof MessagePort || (
+        typeof object.postMessage === 'function' &&
+        Object.getPrototypeOf(object).constructor.name === 'MessagePort'
+      )
+    ) {
+      const port = IPCMessagePort.create(object)
+      object.addEventListener('message', (event) => {
+        port.dispatchEvent(new MessageEvent('message', event))
+      })
+      port.onmessage = (event) => {
+        const transfers = new Set()
+        findIPCMessageTransfers(transfers, event.data)
+        object.postMessage(event.data, {
+          transfer: Array.from(transfers)
+        })
+      }
+      add(port)
+      return port
+    } else {
+      for (const key in object) {
+        object[key] = findMessageTransfers(transfers, object[key])
+      }
+    }
+  }
+
+  return object
+
+  function add (value) {
+    if (
+      value &&
+      !transfers.has(value) &&
+      !(Symbol.for('socket.runtime.serialize') in value)
+    ) {
+      transfers.add(value)
+    }
+  }
+}
+
+export const ports = new Map()
+
+export class IPCMessagePort extends MessagePort {
+  static from (options = null) {
+    return this.create(options)
+  }
+
+  static create (options = null) {
+    const id = String(options?.id ?? rand64())
+    const port = Object.create(this.prototype)
+    const channel = typeof options?.channel === 'string'
+      ? new BroadcastChannel(options.channel)
+      : options.channel ?? new BroadcastChannel(id)
+
+    ports.set(port, Object.create(null, {
+      id: { writable: true, value: id },
+      closed: { writable: true, value: false },
+      started: { writable: true, value: false },
+      channel: { writable: true, value: channel },
+      onmessage: { writable: true, value: null },
+      onmessageerror: { writable: true, value: null },
+      eventTarget: { writable: true, value: new EventTarget() }
+    }))
+
+    channel.addEventListener('message', (event) => {
+      if (ports.get(port)?.started) {
+        port.dispatchEvent(new MessageEvent('message', event))
+      }
+    })
+
+    return port
+  }
+
+  get id () {
+    return ports.get(this)?.id ?? null
+  }
+
+  get started () {
+    return ports.get(this)?.started ?? false
+  }
+
+  get closed () {
+    return ports.get(this)?.closed ?? false
+  }
+
+  get onmessage () {
+    return ports.get(this)?.onmessage ?? null
+  }
+
+  set onmessage (onmessage) {
+    const port = ports.get(this)
+
+    if (!port) {
+      return
+    }
+
+    if (typeof this.onmessage === 'function') {
+      this.removeEventListener('message', this.onmessage)
+      port.onmessage = null
+    }
+
+    if (typeof onmessage === 'function') {
+      this.addEventListener('message', onmessage)
+      port.onmessage = onmessage
+      if (!port.started) {
+        this.start()
+      }
+    }
+  }
+
+  get onmessageerror () {
+    return ports.get(this)?.onmessageerror ?? null
+  }
+
+  set onmessageerror (onmessageerror) {
+    const port = ports.get(this)
+
+    if (!port) {
+      return
+    }
+
+    if (typeof this.onmessageerror === 'function') {
+      this.removeEventListener('messageerror', this.onmessageerror)
+      port.onmessageerror = null
+    }
+
+    if (typeof onmessageerror === 'function') {
+      this.addEventListener('messageerror', onmessageerror)
+      port.onmessageerror = onmessageerror
+    }
+  }
+
+  start () {
+    const port = ports.get(this)
+    if (port) {
+      port.started = true
+    }
+  }
+
+  close () {
+    const port = ports.get(this)
+    if (port) {
+      port.closed = true
+    }
+  }
+
+  postMessage (message, optionsOrTransferList) {
+    const port = ports.get(this)
+    const options = { transfer: [] }
+
+    if (!port) {
+      return
+    }
+
+    if (Array.isArray(optionsOrTransferList)) {
+      options.transfer.push(...optionsOrTransferList)
+    } else if (Array.isArray(optionsOrTransferList?.transfer)) {
+      options.transfer.push(...optionsOrTransferList.transfer)
+    }
+
+    const transfers = new Set(options.transfer)
+    const handle = this[Symbol.for('socket.runtime.ipc.MessagePort.handlePostMessage')]
+
+    const serializedMessage = serialize(findIPCMessageTransfers(transfers, message))
+    options.transfer = Array.from(transfers)
+
+    if (typeof handle === 'function') {
+      if (handle.call(this, serializedMessage, options) === false) {
+        return
+      }
+    }
+
+    port.channel.postMessage(serializedMessage, options)
+  }
+
+  addEventListener (...args) {
+    const eventTarget = ports.get(this)?.eventTarget
+
+    if (eventTarget) {
+      return eventTarget.addEventListener(...args)
+    }
+
+    return false
+  }
+
+  removeEventListener (...args) {
+    const eventTarget = ports.get(this)?.eventTarget
+
+    if (eventTarget) {
+      return eventTarget.removeEventListener(...args)
+    }
+
+    return false
+  }
+
+  dispatchEvent (event) {
+    const eventTarget = ports.get(this)?.eventTarget
+
+    if (eventTarget) {
+      if (event.type === 'message') {
+        return eventTarget.dispatchEvent(new MessageEvent('message', {
+          ...event,
+          data: inflateIPCMessageTransfers(event.data)
+        }))
+      } else {
+        return eventTarget.dispatchEvent(event)
+      }
+    }
+
+    return false
+  }
+
+  [Symbol.for('socket.runtime.ipc.MessagePort.handlePostMessage')] (message, options = null) {
+    return true
+  }
+
+  [Symbol.for('socket.runtime.serialize')] () {
+    return {
+      __type__: 'IPCMessagePort',
+      channel: ports.get(this)?.channel?.name ?? null,
+      id: this.id
+    }
+  }
+}
+
+export class IPCMessageChannel extends MessageChannel {
+  #id = null
+  #channel = null
+
+  port1 = null
+  port2 = null
+
+  constructor (options = null) {
+    super()
+    this.#id = String(options?.id ?? rand64())
+    this.#channel = options?.channel ?? new BroadcastChannel(this.#id)
+
+    this.port1 = IPCMessagePort.create({
+      channel: this.#channel,
+      ...options?.port1
+    })
+
+    this.port2 = IPCMessagePort.create({
+      channel: this.#channel,
+      ...options?.port2
+    })
+  }
+
+  get id () {
+    return this.#id
   }
 }
 
