@@ -673,6 +673,92 @@ declare module "socket:url" {
     import URL from "socket:url/index";
 }
 
+declare module "socket:internal/symbols" {
+    export const dispose: any;
+    export const serialize: any;
+    namespace _default {
+        export { dispose };
+        export { serialize };
+    }
+    export default _default;
+}
+
+declare module "socket:gc" {
+    /**
+     * Track `object` ref to call `Symbol.for('socket.runtime.gc.finalize')` method when
+     * environment garbage collects object.
+     * @param {object} object
+     * @return {boolean}
+     */
+    export function ref(object: object, ...args: any[]): boolean;
+    /**
+     * Stop tracking `object` ref to call `Symbol.for('socket.runtime.gc.finalize')` method when
+     * environment garbage collects object.
+     * @param {object} object
+     * @return {boolean}
+     */
+    export function unref(object: object): boolean;
+    /**
+     * An alias for `unref()`
+     * @param {object} object}
+     * @return {boolean}
+     */
+    export function retain(object: object): boolean;
+    /**
+     * Call finalize on `object` for `gc.finalizer` implementation.
+     * @param {object} object]
+     * @return {Promise<boolean>}
+     */
+    export function finalize(object: object, ...args: any[]): Promise<boolean>;
+    /**
+     * Calls all pending finalization handlers forcefully. This function
+     * may have unintended consequences as objects be considered finalized
+     * and still strongly held (retained) somewhere.
+     */
+    export function release(): Promise<void>;
+    export const finalizers: WeakMap<object, any>;
+    export const kFinalizer: unique symbol;
+    export const finalizer: symbol;
+    /**
+     * @type {Set<WeakRef>}
+     */
+    export const pool: Set<WeakRef<any>>;
+    /**
+     * Static registry for objects to clean up underlying resources when they
+     * are gc'd by the environment. There is no guarantee that the `finalizer()`
+     * is called at any time.
+     */
+    export const registry: FinalizationRegistry<Finalizer>;
+    /**
+     * Default exports which also acts a retained value to persist bound
+     * `Finalizer#handle()` functions from being gc'd before the
+     * `FinalizationRegistry` callback is called because `heldValue` must be
+     * strongly held (retained) in order for the callback to be called.
+     */
+    export const gc: any;
+    export default gc;
+    /**
+     * A container for strongly (retain) referenced finalizer function
+     * with arguments weakly referenced to an object that will be
+     * garbage collected.
+     */
+    export class Finalizer {
+        /**
+         * Creates a `Finalizer` from input.
+         */
+        static from(handler: any): Finalizer;
+        /**
+         * `Finalizer` class constructor.
+         * @private
+         * @param {array} args
+         * @param {function} handle
+         */
+        private constructor();
+        args: any[];
+        handle: any;
+    }
+}
+
 declare module "socket:ipc" {
     export function maybeMakeError(error: any, caller: any): any;
     /**
@@ -2173,1071 +2259,6 @@ declare module "socket:async/wrap" {
     export function wrap(fn: Function): Function;
     export const symbol: unique symbol;
     export default wrap;
-}
-
-declare module "socket:diagnostics/channels" {
-    /**
-     * Normalizes a channel name to lower case replacing white space,
-     * hyphens (-), underscores (_), with dots (.).
-     * @ignore
-     */
-    export function normalizeName(group: any, name: any): string;
-    /**
-     * Used to preallocate a minimum sized array of subscribers for
-     * a channel.
-     * @ignore
-     */
-    export const MIN_CHANNEL_SUBSCRIBER_SIZE: 64;
-    /**
-     * A general interface for diagnostic channels that can be subscribed to.
-     */
-    export class Channel {
-        constructor(name: any);
-        name: any;
-        group: any;
-        /**
-         * Computed subscribers for all channels in this group.
-         * @type {Array<function>}
-         */
-        get subscribers(): Function[];
-        /**
-         * Accessor for determining if channel has subscribers. This
-         * is always `false` for `Channel instances and `true` for `ActiveChannel`
-         * instances.
-         */
-        get hasSubscribers(): boolean;
-        /**
-         * Computed number of subscribers for this channel.
-         */
-        get length(): number;
-        /**
-         * Resets channel state.
-         * @param {(boolean)} [shouldOrphan = false]
-         */
-        reset(shouldOrphan?: (boolean)): void;
-        channel(name: any): Channel;
-        /**
-         * Adds an `onMessage` subscription callback to the channel.
-         * @return {boolean}
-         */
-        subscribe(_: any, onMessage: any): boolean;
-        /**
-         * Removes an `onMessage` subscription callback from the channel.
-         * @param {function} onMessage
-         * @return {boolean}
-         */
-        unsubscribe(_: any, onMessage: Function): boolean;
-        /**
-         * A no-op for `Channel` instances. This function always returns `false`.
-         * @param {string|object} name
-         * @param {object=} [message]
-         * @return Promise<boolean>
-         */
-        publish(name: string | object, message?: object | undefined): Promise<boolean>;
-        /**
-         * Returns a string representation of the `ChannelRegistry`.
-         * @ignore
-         */
-        toString(): any;
-        /**
-         * Iterator interface
-         * @ignore
-         */
-        get [Symbol.iterator](): any[];
-        /**
-         * The `Channel` string tag.
-         * @ignore
-         */
-        [Symbol.toStringTag](): string;
-        #private;
-    }
-    /**
-     * An `ActiveChannel` is a prototype implementation for a `Channel`
-     * that provides an interface what is considered an "active" channel. The
-     * `hasSubscribers` accessor always returns `true` for this class.
-     */
-    export class ActiveChannel extends Channel {
-        unsubscribe(onMessage: any): boolean;
-        /**
-         * @param {object|any} message
-         * @return Promise<boolean>
-         */
-        publish(message: object | any): Promise<boolean>;
-    }
-    /**
-     * A container for a grouping of channels that are named and owned
-     * by this group. A `ChannelGroup` can also be a regular channel.
-     */
-    export class ChannelGroup extends Channel {
-        /**
-         * @param {Array<Channel>} channels
-         * @param {string} name
-         */
-        constructor(name: string, channels: Array<Channel>);
-        channels: Channel[];
-        /**
-         * Subscribe to a channel or selection of channels in this group.
-         * @param {string} name
-         * @return {boolean}
-         */
-        subscribe(name: string, onMessage: any): boolean;
-        /**
-         * Unsubscribe from a channel or selection of channels in this group.
-         * @param {string} name
-         * @return {boolean}
-         */
-        unsubscribe(name: string, onMessage: any): boolean;
-        /**
-         * Gets or creates a channel for this group.
-         * @param {string} name
-         * @return {Channel}
-         */
-        channel(name: string): Channel;
-        /**
-         * Select a test of channels from this group.
-         * The following syntax is supported:
-         *   - One Channel: `group.channel`
-         *   - All Channels: `*`
-         *   - Many Channel: `group.*`
-         *   - Collections: `['group.a', 'group.b', 'group.c'] or `group.a,group.b,group.c`
-         * @param {string|Array<string>} keys
-         * @param {(boolean)} [hasSubscribers = false] - Enforce subscribers in selection
-         * @return {Array<{name: string, channel: Channel}>}
-         */
-        select(keys: string | Array<string>, hasSubscribers?: (boolean)): Array<{
-            name: string;
-            channel: Channel;
-        }>;
-    }
-    /**
-     * An object mapping of named channels to `WeakRef<Channel>` instances.
-     */
-    export const registry: {
-        /**
-         * Subscribes callback `onMessage` to channel of `name`.
-         * @param {string} name
-         * @param {function} onMessage
-         * @return {boolean}
-         */
-        subscribe(name: string, onMessage: Function): boolean;
-        /**
-         * Unsubscribes callback `onMessage` from channel of `name`.
-         * @param {string} name
-         * @param {function} onMessage
-         * @return {boolean}
-         */
-        unsubscribe(name: string, onMessage: Function): boolean;
-        /**
-         * Predicate to determine if a named channel has subscribers.
-         * @param {string} name
-         */
-        hasSubscribers(name: string): boolean;
-        /**
-         * Get or set a channel by `name`.
-         * @param {string} name
-         * @return {Channel}
-         */
-        channel(name: string): Channel;
-        /**
-         * Creates a `ChannelGroup` for a set of channels
-         * @param {string} name
-         * @param {Array<string>} [channels]
-         * @return {ChannelGroup}
-         */
-        group(name: string, channels?: Array<string>): ChannelGroup;
-        /**
-         * Get a channel by name. The name is normalized.
-         * @param {string} name
-         * @return {Channel?}
-         */
-        get(name: string): Channel | null;
-        /**
-         * Checks if a channel is known by  name. The name is normalized.
-         * @param {string} name
-         * @return {boolean}
-         */
-        has(name: string): boolean;
-        /**
-         * Set a channel by name. The name is normalized.
-         * @param {string} name
-         * @param {Channel} channel
-         * @return {Channel?}
-         */
-        set(name: string, channel: Channel): Channel | null;
-        /**
-         * Removes a channel by `name`
-         * @return {boolean}
-         */
-        remove(name: any): boolean;
-        /**
-         * Returns a string representation of the `ChannelRegistry`.
-         * @ignore
-         */
-        toString(): any;
-        /**
-         * Returns a JSON representation of the `ChannelRegistry`.
-         * @return {object}
-         */
-        toJSON(): object;
-        /**
-         * The `ChannelRegistry` string tag.
-         * @ignore
-         */
-        [Symbol.toStringTag](): string;
-    };
-    export default registry;
-}
-
-declare module "socket:diagnostics/metric" {
-    export class Metric {
-        init(): void;
-        update(value: any): void;
-        destroy(): void;
-        toJSON(): {};
-        toString(): string;
-        [Symbol.iterator](): any;
-        [Symbol.toStringTag](): string;
-    }
-    export default Metric;
-}
-
-declare module "socket:diagnostics/window" {
-    export class RequestAnimationFrameMetric extends Metric {
-        constructor(options: any);
-        originalRequestAnimationFrame: typeof requestAnimationFrame;
-        requestAnimationFrame(callback: any): any;
-        sampleSize: any;
-        sampleTick: number;
-        channel: import("socket:diagnostics/channels").Channel;
-        value: {
-            rate: number;
-            samples: number;
-        };
-        now: number;
-        samples: Uint8Array;
-        toJSON(): {
-            sampleSize: any;
-            sampleTick: number;
-            samples: number[];
-            rate: number;
-            now: number;
-        };
-    }
-    export class FetchMetric extends Metric {
-        constructor(options: any);
-        originalFetch: typeof fetch;
-        channel: import("socket:diagnostics/channels").Channel;
-        fetch(resource: any, options: any, extra: any): Promise<any>;
-    }
-    export class XMLHttpRequestMetric extends Metric {
-        constructor(options: any);
-        channel: import("socket:diagnostics/channels").Channel;
-        patched: {
-            open: {
-                (method: string, url: string | URL): void;
-                (method: string, url: string | URL, async: boolean, username?: string | null, password?: string | null): void;
-            };
-            send: (body?: Document | XMLHttpRequestBodyInit | null) => void;
-        };
-    }
-    export class WorkerMetric extends Metric {
-        constructor(options: any);
-        GlobalWorker: {
-            new (scriptURL: string | URL, options?: WorkerOptions): Worker;
-            prototype: Worker;
-        } | {
-            new (): {};
-        };
-        channel: import("socket:diagnostics/channels").Channel;
-        Worker: {
-            new (url: any, options: any, ...args: any[]): {};
-        };
-    }
-    export const metrics: {
-        requestAnimationFrame: RequestAnimationFrameMetric;
-        XMLHttpRequest: XMLHttpRequestMetric;
-        Worker: WorkerMetric;
-        fetch: FetchMetric;
-        channel: import("socket:diagnostics/channels").ChannelGroup;
-        subscribe(...args: any[]): boolean;
-        unsubscribe(...args: any[]): boolean;
-        start(which: any): void;
-        stop(which: any): void;
-    };
-    namespace _default {
-        export { metrics };
-    }
-    export default _default;
-    import { Metric } from "socket:diagnostics/metric";
-}
-
-declare module "socket:diagnostics/runtime" {
-    /**
-     * Queries runtime diagnostics.
-     * @return {Promise<QueryDiagnostic>}
-     */
-    export function query(): Promise<QueryDiagnostic>;
-    /**
-     * A base container class for diagnostic information.
-     */
-    export class Diagnostic {
-        /**
-         * A container for handles related to the diagnostics
-         */
-        static Handles: {
-            new (): {
-                /**
-                 * The nunmber of handles in this diagnostics.
-                 * @type {number}
-                 */
-                count: number;
-                /**
-                 * A set of known handle IDs
-                 * @type {string[]}
-                 */
-                ids: string[];
-            };
-        };
-        /**
-         * Known handles for this diagnostics.
-         * @type {Diagnostic.Handles}
-         */
-        handles: {
-            new (): {
-                /**
-                 * The nunmber of handles in this diagnostics.
-                 * @type {number}
-                 */
-                count: number;
-                /**
-                 * A set of known handle IDs
-                 * @type {string[]}
-                 */
-                ids: string[];
-            };
-        };
-    }
-    /**
-     * A container for libuv diagnostics
-     */
-    export class UVDiagnostic extends Diagnostic {
-        /**
-         * A container for libuv metrics.
-         */
-        static Metrics: {
-            new (): {
-                /**
-                 * The number of event loop iterations.
-                 * @type {number}
-                 */
-                loopCount: number;
-                /**
-                 * Number of events that have been processed by the event handler.
-                 * @type {number}
-                 */
-                events: number;
-                /**
-                 * Number of events that were waiting to be processed when the
-                 * event provider was called.
-                 * @type {number}
-                 */
-                eventsWaiting: number;
-            };
-        };
-        /**
-         * Known libuv metrics for this diagnostic.
-         * @type {UVDiagnostic.Metrics}
-         */
-        metrics: {
-            new (): {
-                /**
-                 * The number of event loop iterations.
-                 * @type {number}
-                 */
-                loopCount: number;
-                /**
-                 * Number of events that have been processed by the event handler.
-                 * @type {number}
-                 */
-                events: number;
-                /**
-                 * Number of events that were waiting to be processed when the
-                 * event provider was called.
-                 * @type {number}
-                 */
-                eventsWaiting: number;
-            };
-        };
-        /**
-         * The current idle time of the libuv loop
-         * @type {number}
-         */
-        idleTime: number;
-        /**
-         * The number of active requests in the libuv loop
-         * @type {number}
-         */
-        activeRequests: number;
-    }
-    /**
-     * A container for Core Post diagnostics.
-     */
-    export class PostsDiagnostic extends Diagnostic {
-    }
-    /**
-     * A container for child process diagnostics.
-     */
-    export class ChildProcessDiagnostic extends Diagnostic {
-    }
-    /**
-     * A container for AI diagnostics.
-     */
-    export class AIDiagnostic extends Diagnostic {
-        /**
-         * A container for AI LLM diagnostics.
-         */
-        static LLMDiagnostic: {
-            new (): {
-                /**
-                 * Known handles for this diagnostics.
-                 * @type {Diagnostic.Handles}
-                 */
-                handles: {
-                    new (): {
-                        /**
-                         * The nunmber of handles in this diagnostics.
-                         * @type {number}
-                         */
-                        count: number;
-                        /**
-                         * A set of known handle IDs
-                         * @type {string[]}
-                         */
-                        ids: string[];
-                    };
-                };
-            };
-            /**
-             * A container for handles related to the diagnostics
-             */
-            Handles: {
-                new (): {
-                    /**
-                     * The nunmber of handles in this diagnostics.
-                     * @type {number}
-                     */
-                    count: number;
-                    /**
-                     * A set of known handle IDs
-                     * @type {string[]}
-                     */
-                    ids: string[];
-                };
-            };
-        };
-        /**
-         * Known AI LLM diagnostics.
-         * @type {AIDiagnostic.LLMDiagnostic}
-         */
-        llm: {
-            new (): {
-                /**
-                 * Known handles for this diagnostics.
-                 * @type {Diagnostic.Handles}
-                 */
-                handles: {
-                    new (): {
-                        /**
-                         * The nunmber of handles in this diagnostics.
-                         * @type {number}
-                         */
-                        count: number;
-                        /**
-                         * A set of known handle IDs
-                         * @type {string[]}
-                         */
-                        ids: string[];
-                    };
-                };
-            };
-            /**
-             * A container for handles related to the diagnostics
-             */
-            Handles: {
-                new (): {
-                    /**
-                     * The nunmber of handles in this diagnostics.
-                     * @type {number}
-                     */
-                    count: number;
-                    /**
-                     * A set of known handle IDs
-                     * @type {string[]}
-                     */
-                    ids: string[];
-                };
-            };
-        };
-    }
-    /**
-     * A container for various filesystem diagnostics.
-     */
-    export class FSDiagnostic extends Diagnostic {
-        /**
-         * A container for filesystem watcher diagnostics.
-         */
-        static WatchersDiagnostic: {
-            new (): {
-                /**
-                 * Known handles for this diagnostics.
-                 * @type {Diagnostic.Handles}
-                 */
-                handles: {
-                    new (): {
-                        /**
-                         * The nunmber of handles in this diagnostics.
-                         * @type {number}
-                         */
-                        count: number;
-                        /**
-                         * A set of known handle IDs
-                         * @type {string[]}
-                         */
-                        ids: string[];
-                    };
-                };
-            };
-            /**
-             * A container for handles related to the diagnostics
-             */
-            Handles: {
-                new (): {
-                    /**
-                     * The nunmber of handles in this diagnostics.
-                     * @type {number}
-                     */
-                    count: number;
-                    /**
-                     * A set of known handle IDs
-                     * @type {string[]}
-                     */
-                    ids: string[];
-                };
-            };
-        };
-        /**
-         * A container for filesystem descriptors diagnostics.
-         */
-        static DescriptorsDiagnostic: {
-            new (): {
-                /**
-                 * Known handles for this diagnostics.
-                 * @type {Diagnostic.Handles}
-                 */
-                handles: {
-                    new (): {
-                        /**
-                         * The nunmber of handles in this diagnostics.
-                         * @type {number}
-                         */
-                        count: number;
-                        /**
-                         * A set of known handle IDs
-                         * @type {string[]}
-                         */
-                        ids: string[];
-                    };
-                };
-            };
-            /**
-             * A container for handles related to the diagnostics
-             */
-            Handles: {
-                new (): {
-                    /**
-                     * The nunmber of handles in this diagnostics.
-                     * @type {number}
-                     */
-                    count: number;
-                    /**
-                     * A set of known handle IDs
-                     * @type {string[]}
-                     */
-                    ids: string[];
-                };
-            };
-        };
-        /**
-         * Known FS watcher diagnostics.
-         * @type {FSDiagnostic.WatchersDiagnostic}
-         */
-        watchers: {
-            new (): {
-                /**
-                 * Known handles for this diagnostics.
-                 * @type {Diagnostic.Handles}
-                 */
-                handles: {
-                    new (): {
-                        /**
-                         * The nunmber of handles in this diagnostics.
-                         * @type {number}
-                         */
-                        count: number;
-                        /**
-                         * A set of known handle IDs
-                         * @type {string[]}
-                         */
-                        ids: string[];
-                    };
-                };
-            };
-            /**
-             * A container for handles related to the diagnostics
-             */
-            Handles: {
-                new (): {
-                    /**
-                     * The nunmber of handles in this diagnostics.
-                     * @type {number}
-                     */
-                    count: number;
-                    /**
-                     * A set of known handle IDs
-                     * @type {string[]}
-                     */
-                    ids: string[];
-                };
-            };
-        };
-        /**
-         * @type {FSDiagnostic.DescriptorsDiagnostic}
-         */
-        descriptors: {
-            new (): {
-                /**
-                 * Known handles for this diagnostics.
-                 * @type {Diagnostic.Handles}
-                 */
-                handles: {
-                    new (): {
-                        /**
-                         * The nunmber of handles in this diagnostics.
-                         * @type {number}
-                         */
-                        count: number;
-                        /**
-                         * A set of known handle IDs
-                         * @type {string[]}
-                         */
-                        ids: string[];
-                    };
-                };
-            };
-            /**
-             * A container for handles related to the diagnostics
-             */
-            Handles: {
-                new (): {
-                    /**
-                     * The nunmber of handles in this diagnostics.
-                     * @type {number}
-                     */
-                    count: number;
-                    /**
-                     * A set of known handle IDs
-                     * @type {string[]}
-                     */
-                    ids: string[];
-                };
-            };
-        };
-    }
-    /**
-     * A container for various timers diagnostics.
-     */
-    export class TimersDiagnostic extends Diagnostic {
-        /**
-         * A container for core timeout timer diagnostics.
-         */
-        static TimeoutDiagnostic: {
-            new (): {
-                /**
-                 * Known handles for this diagnostics.
-                 * @type {Diagnostic.Handles}
-                 */
-                handles: {
-                    new (): {
-                        /**
-                         * The nunmber of handles in this diagnostics.
-                         * @type {number}
-                         */
-                        count: number;
-                        /**
-                         * A set of known handle IDs
-                         * @type {string[]}
-                         */
-                        ids: string[];
-                    };
-                };
-            };
-            /**
-             * A container for handles related to the diagnostics
-             */
-            Handles: {
-                new (): {
-                    /**
-                     * The nunmber of handles in this diagnostics.
-                     * @type {number}
-                     */
-                    count: number;
-                    /**
-                     * A set of known handle IDs
-                     * @type {string[]}
-                     */
-                    ids: string[];
-                };
-            };
-        };
-        /**
-         * A container for core interval timer diagnostics.
-         */
-        static IntervalDiagnostic: {
-            new (): {
-                /**
-                 * Known handles for this diagnostics.
-                 * @type {Diagnostic.Handles}
-                 */
-                handles: {
-                    new (): {
-                        /**
-                         * The nunmber of handles in this diagnostics.
-                         * @type {number}
-                         */
-                        count: number;
-                        /**
-                         * A set of known handle IDs
-                         * @type {string[]}
-                         */
-                        ids: string[];
-                    };
-                };
-            };
-            /**
-             * A container for handles related to the diagnostics
-             */
-            Handles: {
-                new (): {
-                    /**
-                     * The nunmber of handles in this diagnostics.
-                     * @type {number}
-                     */
-                    count: number;
-                    /**
-                     * A set of known handle IDs
-                     * @type {string[]}
-                     */
-                    ids: string[];
-                };
-            };
-        };
-        /**
-         * A container for core immediate timer diagnostics.
-         */
-        static ImmediateDiagnostic: {
-            new (): {
-                /**
-                 * Known handles for this diagnostics.
-                 * @type {Diagnostic.Handles}
-                 */
-                handles: {
-                    new (): {
-                        /**
-                         * The nunmber of handles in this diagnostics.
-                         * @type {number}
-                         */
-                        count: number;
-                        /**
-                         * A set of known handle IDs
-                         * @type {string[]}
-                         */
-                        ids: string[];
-                    };
-                };
-            };
-            /**
-             * A container for handles related to the diagnostics
-             */
-            Handles: {
-                new (): {
-                    /**
-                     * The nunmber of handles in this diagnostics.
-                     * @type {number}
-                     */
-                    count: number;
-                    /**
-                     * A set of known handle IDs
-                     * @type {string[]}
-                     */
-                    ids: string[];
-                };
-            };
-        };
-        /**
-         * @type {TimersDiagnostic.TimeoutDiagnostic}
-         */
-        timeout: {
-            new (): {
-                /**
-                 * Known handles for this diagnostics.
-                 * @type {Diagnostic.Handles}
-                 */
-                handles: {
-                    new (): {
-                        /**
-                         * The nunmber of handles in this diagnostics.
-                         * @type {number}
-                         */
-                        count: number;
-                        /**
-                         * A set of known handle IDs
-                         * @type {string[]}
-                         */
-                        ids: string[];
-                    };
-                };
-            };
-            /**
-             * A container for handles related to the diagnostics
-             */
-            Handles: {
-                new (): {
-                    /**
-                     * The nunmber of handles in this diagnostics.
-                     * @type {number}
-                     */
-                    count: number;
-                    /**
-                     * A set of known handle IDs
-                     * @type {string[]}
-                     */
-                    ids: string[];
-                };
-            };
-        };
-        /**
-         * @type {TimersDiagnostic.IntervalDiagnostic}
-         */
-        interval: {
-            new (): {
-                /**
-                 * Known handles for this diagnostics.
-                 * @type {Diagnostic.Handles}
-                 */
-                handles: {
-                    new (): {
-                        /**
-                         * The nunmber of handles in this diagnostics.
-                         * @type {number}
-                         */
-                        count: number;
-                        /**
-                         * A set of known handle IDs
-                         * @type {string[]}
-                         */
-                        ids: string[];
-                    };
-                };
-            };
-            /**
-             * A container for handles related to the diagnostics
-             */
-            Handles: {
-                new (): {
-                    /**
-                     * The nunmber of handles in this diagnostics.
-                     * @type {number}
-                     */
-                    count: number;
-                    /**
-                     * A set of known handle IDs
-                     * @type {string[]}
-                     */
-                    ids: string[];
-                };
-            };
-        };
-        /**
-         * @type {TimersDiagnostic.ImmediateDiagnostic}
-         */
-        immediate: {
-            new (): {
-                /**
-                 * Known handles for this diagnostics.
-                 * @type {Diagnostic.Handles}
-                 */
-                handles: {
-                    new (): {
-                        /**
-                         * The nunmber of handles in this diagnostics.
-                         * @type {number}
-                         */
-                        count: number;
-                        /**
-                         * A set of known handle IDs
-                         * @type {string[]}
-                         */
-                        ids: string[];
-                    };
-                };
-            };
-            /**
-             * A container for handles related to the diagnostics
-             */
-            Handles: {
-                new (): {
-                    /**
-                     * The nunmber of handles in this diagnostics.
-                     * @type {number}
-                     */
-                    count: number;
-                    /**
-                     * A set of known handle IDs
-                     * @type {string[]}
-                     */
-                    ids: string[];
-                };
-            };
-        };
-    }
-    /**
-     * A container for UDP diagnostics.
-     */
-    export class UDPDiagnostic extends Diagnostic {
-    }
-    /**
-     * A container for various queried runtime diagnostics.
-     */
-    export class QueryDiagnostic {
-        posts: PostsDiagnostic;
-        childProcess: ChildProcessDiagnostic;
-        ai: AIDiagnostic;
-        fs: FSDiagnostic;
-        timers: TimersDiagnostic;
-        udp: UDPDiagnostic;
-        uv: UVDiagnostic;
-    }
-    namespace _default {
-        export { query };
-    }
-    export default _default;
-}
-
-declare module "socket:diagnostics/index" {
-    /**
-     * @param {string} name
-     * @return {import('./channels.js').Channel}
-     */
-    export function channel(name: string): import("socket:diagnostics/channels").Channel;
-    export default exports;
-    import * as exports from "socket:diagnostics/index";
-    import channels from "socket:diagnostics/channels";
-    import window from "socket:diagnostics/window";
-    import runtime from "socket:diagnostics/runtime";
-    
-    export { channels, window, runtime };
-}
-
-declare module "socket:diagnostics" {
-    export * from "socket:diagnostics/index";
-    export default exports;
-    import * as exports from "socket:diagnostics/index";
-}
-
-declare module "socket:internal/symbols" {
-    export const dispose: any;
-    export const serialize: any;
-    namespace _default {
-        export { dispose };
-        export { serialize };
-    }
-    export default _default;
-}
-
-declare module "socket:gc" {
-    /**
-     * Track `object` ref to call `Symbol.for('socket.runtime.gc.finalize')` method when
-     * environment garbage collects object.
-     * @param {object} object
-     * @return {boolean}
-     */
-    export function ref(object: object, ...args: any[]): boolean;
-    /**
-     * Stop tracking `object` ref to call `Symbol.for('socket.runtime.gc.finalize')` method when
-     * environment garbage collects object.
-     * @param {object} object
-     * @return {boolean}
-     */
-    export function unref(object: object): boolean;
-    /**
-     * An alias for `unref()`
-     * @param {object} object}
-     * @return {boolean}
-     */
-    export function retain(object: object): boolean;
-    /**
-     * Call finalize on `object` for `gc.finalizer` implementation.
-     * @param {object} object]
-     * @return {Promise<boolean>}
-     */
-    export function finalize(object: object, ...args: any[]): Promise<boolean>;
-    /**
-     * Calls all pending finalization handlers forcefully. This function
-     * may have unintended consequences as objects be considered finalized
-     * and still strongly held (retained) somewhere.
-     */
-    export function release(): Promise<void>;
-    export const finalizers: WeakMap<object, any>;
-    export const kFinalizer: unique symbol;
-    export const finalizer: symbol;
-    /**
-     * @type {Set<WeakRef>}
-     */
-    export const pool: Set<WeakRef<any>>;
-    /**
-     * Static registry for objects to clean up underlying resources when they
-     * are gc'd by the environment. There is no guarantee that the `finalizer()`
-     * is called at any time.
-     */
-    export const registry: FinalizationRegistry<Finalizer>;
-    /**
-     * Default exports which also acts a retained value to persist bound
-     * `Finalizer#handle()` functions from being gc'd before the
-     * `FinalizationRegistry` callback is called because `heldValue` must be
-     * strongly held (retained) in order for the callback to be called.
-     */
-    export const gc: any;
-    export default gc;
-    /**
-     * A container for strongly (retain) referenced finalizer function
-     * with arguments weakly referenced to an object that will be
-     * garbage collected.
-     */
-    export class Finalizer {
-        /**
-         * Creates a `Finalizer` from input.
-         */
-        static from(handler: any): Finalizer;
-        /**
-         * `Finalizer` class constructor.
-         * @private
-         * @param {array} args
-         * @param {function} handle
-         */
-        private constructor();
-        args: any[];
-        handle: any;
-    }
 }
 
 declare module "socket:internal/async/hooks" {
@@ -5252,6 +4273,985 @@ declare module "socket:fs/flags" {
     
 }
 
+declare module "socket:diagnostics/channels" {
+    /**
+     * Normalizes a channel name to lower case replacing white space,
+     * hyphens (-), underscores (_), with dots (.).
+     * @ignore
+     */
+    export function normalizeName(group: any, name: any): string;
+    /**
+     * Used to preallocate a minimum sized array of subscribers for
+     * a channel.
+     * @ignore
+     */
+    export const MIN_CHANNEL_SUBSCRIBER_SIZE: 64;
+    /**
+     * A general interface for diagnostic channels that can be subscribed to.
+     */
+    export class Channel {
+        constructor(name: any);
+        name: any;
+        group: any;
+        /**
+         * Computed subscribers for all channels in this group.
+         * @type {Array<function>}
+         */
+        get subscribers(): Function[];
+        /**
+         * Accessor for determining if channel has subscribers. This
+         * is always `false` for `Channel instances and `true` for `ActiveChannel`
+         * instances.
+         */
+        get hasSubscribers(): boolean;
+        /**
+         * Computed number of subscribers for this channel.
+         */
+        get length(): number;
+        /**
+         * Resets channel state.
+         * @param {(boolean)} [shouldOrphan = false]
+         */
+        reset(shouldOrphan?: (boolean)): void;
+        channel(name: any): Channel;
+        /**
+         * Adds an `onMessage` subscription callback to the channel.
+         * @return {boolean}
+         */
+        subscribe(_: any, onMessage: any): boolean;
+        /**
+         * Removes an `onMessage` subscription callback from the channel.
+         * @param {function} onMessage
+         * @return {boolean}
+         */
+        unsubscribe(_: any, onMessage: Function): boolean;
+        /**
+         * A no-op for `Channel` instances. This function always returns `false`.
+         * @param {string|object} name
+         * @param {object=} [message]
+         * @return Promise<boolean>
+         */
+        publish(name: string | object, message?: object | undefined): Promise<boolean>;
+        /**
+         * Returns a string representation of the `ChannelRegistry`.
+         * @ignore
+         */
+        toString(): any;
+        /**
+         * Iterator interface
+         * @ignore
+         */
+        get [Symbol.iterator](): any[];
+        /**
+         * The `Channel` string tag.
+         * @ignore
+         */
+        [Symbol.toStringTag](): string;
+        #private;
+    }
+    /**
+     * An `ActiveChannel` is a prototype implementation for a `Channel`
+     * that provides an interface what is considered an "active" channel. The
+     * `hasSubscribers` accessor always returns `true` for this class.
+     */
+    export class ActiveChannel extends Channel {
+        unsubscribe(onMessage: any): boolean;
+        /**
+         * @param {object|any} message
+         * @return Promise<boolean>
+         */
+        publish(message: object | any): Promise<boolean>;
+    }
+    /**
+     * A container for a grouping of channels that are named and owned
+     * by this group. A `ChannelGroup` can also be a regular channel.
+     */
+    export class ChannelGroup extends Channel {
+        /**
+         * @param {Array<Channel>} channels
+         * @param {string} name
+         */
+        constructor(name: string, channels: Array<Channel>);
+        channels: Channel[];
+        /**
+         * Subscribe to a channel or selection of channels in this group.
+         * @param {string} name
+         * @return {boolean}
+         */
+        subscribe(name: string, onMessage: any): boolean;
+        /**
+         * Unsubscribe from a channel or selection of channels in this group.
+         * @param {string} name
+         * @return {boolean}
+         */
+        unsubscribe(name: string, onMessage: any): boolean;
+        /**
+         * Gets or creates a channel for this group.
+         * @param {string} name
+         * @return {Channel}
+         */
+        channel(name: string): Channel;
+        /**
+         * Select a test of channels from this group.
+         * The following syntax is supported:
+         *   - One Channel: `group.channel`
+         *   - All Channels: `*`
+         *   - Many Channel: `group.*`
+         *   - Collections: `['group.a', 'group.b', 'group.c'] or `group.a,group.b,group.c`
+         * @param {string|Array<string>} keys
+         * @param {(boolean)} [hasSubscribers = false] - Enforce subscribers in selection
+         * @return {Array<{name: string, channel: Channel}>}
+         */
+        select(keys: string | Array<string>, hasSubscribers?: (boolean)): Array<{
+            name: string;
+            channel: Channel;
+        }>;
+    }
+    /**
+     * An object mapping of named channels to `WeakRef<Channel>` instances.
+     */
+    export const registry: {
+        /**
+         * Subscribes callback `onMessage` to channel of `name`.
+         * @param {string} name
+         * @param {function} onMessage
+         * @return {boolean}
+         */
+        subscribe(name: string, onMessage: Function): boolean;
+        /**
+         * Unsubscribes callback `onMessage` from channel of `name`.
+         * @param {string} name
+         * @param {function} onMessage
+         * @return {boolean}
+         */
+        unsubscribe(name: string, onMessage: Function): boolean;
+        /**
+         * Predicate to determine if a named channel has subscribers.
+         * @param {string} name
+         */
+        hasSubscribers(name: string): boolean;
+        /**
+         * Get or set a channel by `name`.
+         * @param {string} name
+         * @return {Channel}
+         */
+        channel(name: string): Channel;
+        /**
+         * Creates a `ChannelGroup` for a set of channels
+         * @param {string} name
+         * @param {Array<string>} [channels]
+         * @return {ChannelGroup}
+         */
+        group(name: string, channels?: Array<string>): ChannelGroup;
+        /**
+         * Get a channel by name. The name is normalized.
+         * @param {string} name
+         * @return {Channel?}
+         */
+        get(name: string): Channel | null;
+        /**
+         * Checks if a channel is known by  name. The name is normalized.
+         * @param {string} name
+         * @return {boolean}
+         */
+        has(name: string): boolean;
+        /**
+         * Set a channel by name. The name is normalized.
+         * @param {string} name
+         * @param {Channel} channel
+         * @return {Channel?}
+         */
+        set(name: string, channel: Channel): Channel | null;
+        /**
+         * Removes a channel by `name`
+         * @return {boolean}
+         */
+        remove(name: any): boolean;
+        /**
+         * Returns a string representation of the `ChannelRegistry`.
+         * @ignore
+         */
+        toString(): any;
+        /**
+         * Returns a JSON representation of the `ChannelRegistry`.
+         * @return {object}
+         */
+        toJSON(): object;
+        /**
+         * The `ChannelRegistry` string tag.
+         * @ignore
+         */
+        [Symbol.toStringTag](): string;
+    };
+    export default registry;
+}
+
+declare module "socket:diagnostics/metric" {
+    export class Metric {
+        init(): void;
+        update(value: any): void;
+        destroy(): void;
+        toJSON(): {};
+        toString(): string;
+        [Symbol.iterator](): any;
+        [Symbol.toStringTag](): string;
+    }
+    export default Metric;
+}
+
+declare module "socket:diagnostics/window" {
+    export class RequestAnimationFrameMetric extends Metric {
+        constructor(options: any);
+        originalRequestAnimationFrame: typeof requestAnimationFrame;
+        requestAnimationFrame(callback: any): any;
+        sampleSize: any;
+        sampleTick: number;
+        channel: import("socket:diagnostics/channels").Channel;
+        value: {
+            rate: number;
+            samples: number;
+        };
+        now: number;
+        samples: Uint8Array;
+        toJSON(): {
+            sampleSize: any;
+            sampleTick: number;
+            samples: number[];
+            rate: number;
+            now: number;
+        };
+    }
+    export class FetchMetric extends Metric {
+        constructor(options: any);
+        originalFetch: typeof fetch;
+        channel: import("socket:diagnostics/channels").Channel;
+        fetch(resource: any, options: any, extra: any): Promise<any>;
+    }
+    export class XMLHttpRequestMetric extends Metric {
+        constructor(options: any);
+        channel: import("socket:diagnostics/channels").Channel;
+        patched: {
+            open: {
+                (method: string, url: string | URL): void;
+                (method: string, url: string | URL, async: boolean, username?: string | null, password?: string | null): void;
+            };
+            send: (body?: Document | XMLHttpRequestBodyInit | null) => void;
+        };
+    }
+    export class WorkerMetric extends Metric {
+        constructor(options: any);
+        GlobalWorker: {
+            new (scriptURL: string | URL, options?: WorkerOptions): Worker;
+            prototype: Worker;
+        } | {
+            new (): {};
+        };
+        channel: import("socket:diagnostics/channels").Channel;
+        Worker: {
+            new (url: any, options: any, ...args: any[]): {};
+        };
+    }
+    export const metrics: {
+        requestAnimationFrame: RequestAnimationFrameMetric;
+        XMLHttpRequest: XMLHttpRequestMetric;
+        Worker: WorkerMetric;
+        fetch: FetchMetric;
+        channel: import("socket:diagnostics/channels").ChannelGroup;
+        subscribe(...args: any[]): boolean;
+        unsubscribe(...args: any[]): boolean;
+        start(which: any): void;
+        stop(which: any): void;
+    };
+    namespace _default {
+        export { metrics };
+    }
+    export default _default;
+    import { Metric } from "socket:diagnostics/metric";
+}
+
+declare module "socket:diagnostics/runtime" {
+    /**
+     * Queries runtime diagnostics.
+     * @return {Promise<QueryDiagnostic>}
+     */
+    export function query(): Promise<QueryDiagnostic>;
+    /**
+     * A base container class for diagnostic information.
+     */
+    export class Diagnostic {
+        /**
+         * A container for handles related to the diagnostics
+         */
+        static Handles: {
+            new (): {
+                /**
+                 * The nunmber of handles in this diagnostics.
+                 * @type {number}
+                 */
+                count: number;
+                /**
+                 * A set of known handle IDs
+                 * @type {string[]}
+                 */
+                ids: string[];
+            };
+        };
+        /**
+         * Known handles for this diagnostics.
+         * @type {Diagnostic.Handles}
+         */
+        handles: {
+            new (): {
+                /**
+                 * The nunmber of handles in this diagnostics.
+                 * @type {number}
+                 */
+                count: number;
+                /**
+                 * A set of known handle IDs
+                 * @type {string[]}
+                 */
+                ids: string[];
+            };
+        };
+    }
+    /**
+     * A container for libuv diagnostics
+     */
+    export class UVDiagnostic extends Diagnostic {
+        /**
+         * A container for libuv metrics.
+         */
+        static Metrics: {
+            new (): {
+                /**
+                 * The number of event loop iterations.
+                 * @type {number}
+                 */
+                loopCount: number;
+                /**
+                 * Number of events that have been processed by the event handler.
+                 * @type {number}
+                 */
+                events: number;
+                /**
+                 * Number of events that were waiting to be processed when the
+                 * event provider was called.
+                 * @type {number}
+                 */
+                eventsWaiting: number;
+            };
+        };
+        /**
+         * Known libuv metrics for this diagnostic.
+         * @type {UVDiagnostic.Metrics}
+         */
+        metrics: {
+            new (): {
+                /**
+                 * The number of event loop iterations.
+                 * @type {number}
+                 */
+                loopCount: number;
+                /**
+                 * Number of events that have been processed by the event handler.
+                 * @type {number}
+                 */
+                events: number;
+                /**
+                 * Number of events that were waiting to be processed when the
+                 * event provider was called.
+                 * @type {number}
+                 */
+                eventsWaiting: number;
+            };
+        };
+        /**
+         * The current idle time of the libuv loop
+         * @type {number}
+         */
+        idleTime: number;
+        /**
+         * The number of active requests in the libuv loop
+         * @type {number}
+         */
+        activeRequests: number;
+    }
+    /**
+     * A container for Core Post diagnostics.
+     */
+    export class PostsDiagnostic extends Diagnostic {
+    }
+    /**
+     * A container for child process diagnostics.
+     */
+    export class ChildProcessDiagnostic extends Diagnostic {
+    }
+    /**
+     * A container for AI diagnostics.
+     */
+    export class AIDiagnostic extends Diagnostic {
+        /**
+         * A container for AI LLM diagnostics.
+         */
+        static LLMDiagnostic: {
+            new (): {
+                /**
+                 * Known handles for this diagnostics.
+                 * @type {Diagnostic.Handles}
+                 */
+                handles: {
+                    new (): {
+                        /**
+                         * The nunmber of handles in this diagnostics.
+                         * @type {number}
+                         */
+                        count: number;
+                        /**
+                         * A set of known handle IDs
+                         * @type {string[]}
+                         */
+                        ids: string[];
+                    };
+                };
+            };
+            /**
+             * A container for handles related to the diagnostics
+             */
+            Handles: {
+                new (): {
+                    /**
+                     * The nunmber of handles in this diagnostics.
+                     * @type {number}
+                     */
+                    count: number;
+                    /**
+                     * A set of known handle IDs
+                     * @type {string[]}
+                     */
+                    ids: string[];
+                };
+            };
+        };
+        /**
+         * Known AI LLM diagnostics.
+         * @type {AIDiagnostic.LLMDiagnostic}
+         */
+        llm: {
+            new (): {
+                /**
+                 * Known handles for this diagnostics.
+                 * @type {Diagnostic.Handles}
+                 */
+                handles: {
+                    new (): {
+                        /**
+                         * The nunmber of handles in this diagnostics.
+                         * @type {number}
+                         */
+                        count: number;
+                        /**
+                         * A set of known handle IDs
+                         * @type {string[]}
+                         */
+                        ids: string[];
+                    };
+                };
+            };
+            /**
+             * A container for handles related to the diagnostics
+             */
+            Handles: {
+                new (): {
+                    /**
+                     * The nunmber of handles in this diagnostics.
+                     * @type {number}
+                     */
+                    count: number;
+                    /**
+                     * A set of known handle IDs
+                     * @type {string[]}
+                     */
+                    ids: string[];
+                };
+            };
+        };
+    }
+    /**
+     * A container for various filesystem diagnostics.
+     */
+    export class FSDiagnostic extends Diagnostic {
+        /**
+         * A container for filesystem watcher diagnostics.
+         */
+        static WatchersDiagnostic: {
+            new (): {
+                /**
+                 * Known handles for this diagnostics.
+                 * @type {Diagnostic.Handles}
+                 */
+                handles: {
+                    new (): {
+                        /**
+                         * The nunmber of handles in this diagnostics.
+                         * @type {number}
+                         */
+                        count: number;
+                        /**
+                         * A set of known handle IDs
+                         * @type {string[]}
+                         */
+                        ids: string[];
+                    };
+                };
+            };
+            /**
+             * A container for handles related to the diagnostics
+             */
+            Handles: {
+                new (): {
+                    /**
+                     * The nunmber of handles in this diagnostics.
+                     * @type {number}
+                     */
+                    count: number;
+                    /**
+                     * A set of known handle IDs
+                     * @type {string[]}
+                     */
+                    ids: string[];
+                };
+            };
+        };
+        /**
+         * A container for filesystem descriptors diagnostics.
+         */
+        static DescriptorsDiagnostic: {
+            new (): {
+                /**
+                 * Known handles for this diagnostics.
+                 * @type {Diagnostic.Handles}
+                 */
+                handles: {
+                    new (): {
+                        /**
+                         * The nunmber of handles in this diagnostics.
+                         * @type {number}
+                         */
+                        count: number;
+                        /**
+                         * A set of known handle IDs
+                         * @type {string[]}
+                         */
+                        ids: string[];
+                    };
+                };
+            };
+            /**
+             * A container for handles related to the diagnostics
+             */
+            Handles: {
+                new (): {
+                    /**
+                     * The nunmber of handles in this diagnostics.
+                     * @type {number}
+                     */
+                    count: number;
+                    /**
+                     * A set of known handle IDs
+                     * @type {string[]}
+                     */
+                    ids: string[];
+                };
+            };
+        };
+        /**
+         * Known FS watcher diagnostics.
+         * @type {FSDiagnostic.WatchersDiagnostic}
+         */
+        watchers: {
+            new (): {
+                /**
+                 * Known handles for this diagnostics.
+                 * @type {Diagnostic.Handles}
+                 */
+                handles: {
+                    new (): {
+                        /**
+                         * The nunmber of handles in this diagnostics.
+                         * @type {number}
+                         */
+                        count: number;
+                        /**
+                         * A set of known handle IDs
+                         * @type {string[]}
+                         */
+                        ids: string[];
+                    };
+                };
+            };
+            /**
+             * A container for handles related to the diagnostics
+             */
+            Handles: {
+                new (): {
+                    /**
+                     * The nunmber of handles in this diagnostics.
+                     * @type {number}
+                     */
+                    count: number;
+                    /**
+                     * A set of known handle IDs
+                     * @type {string[]}
+                     */
+                    ids: string[];
+                };
+            };
+        };
+        /**
+         * @type {FSDiagnostic.DescriptorsDiagnostic}
+         */
+        descriptors: {
+            new (): {
+                /**
+                 * Known handles for this diagnostics.
+                 * @type {Diagnostic.Handles}
+                 */
+                handles: {
+                    new (): {
+                        /**
+                         * The nunmber of handles in this diagnostics.
+                         * @type {number}
+                         */
+                        count: number;
+                        /**
+                         * A set of known handle IDs
+                         * @type {string[]}
+                         */
+                        ids: string[];
+                    };
+                };
+            };
+            /**
+             * A container for handles related to the diagnostics
+             */
+            Handles: {
+                new (): {
+                    /**
+                     * The nunmber of handles in this diagnostics.
+                     * @type {number}
+                     */
+                    count: number;
+                    /**
+                     * A set of known handle IDs
+                     * @type {string[]}
+                     */
+                    ids: string[];
+                };
+            };
+        };
+    }
+    /**
+     * A container for various timers diagnostics.
+     */
+    export class TimersDiagnostic extends Diagnostic {
+        /**
+         * A container for core timeout timer diagnostics.
+         */
+        static TimeoutDiagnostic: {
+            new (): {
+                /**
+                 * Known handles for this diagnostics.
+                 * @type {Diagnostic.Handles}
+                 */
+                handles: {
+                    new (): {
+                        /**
+                         * The nunmber of handles in this diagnostics.
+                         * @type {number}
+                         */
+                        count: number;
+                        /**
+                         * A set of known handle IDs
+                         * @type {string[]}
+                         */
+                        ids: string[];
+                    };
+                };
+            };
+            /**
+             * A container for handles related to the diagnostics
+             */
+            Handles: {
+                new (): {
+                    /**
+                     * The nunmber of handles in this diagnostics.
+                     * @type {number}
+                     */
+                    count: number;
+                    /**
+                     * A set of known handle IDs
+                     * @type {string[]}
+                     */
+                    ids: string[];
+                };
+            };
+        };
+        /**
+         * A container for core interval timer diagnostics.
+         */
+        static IntervalDiagnostic: {
+            new (): {
+                /**
+                 * Known handles for this diagnostics.
+                 * @type {Diagnostic.Handles}
+                 */
+                handles: {
+                    new (): {
+                        /**
+                         * The nunmber of handles in this diagnostics.
+                         * @type {number}
+                         */
+                        count: number;
+                        /**
+                         * A set of known handle IDs
+                         * @type {string[]}
+                         */
+                        ids: string[];
+                    };
+                };
+            };
+            /**
+             * A container for handles related to the diagnostics
+             */
+            Handles: {
+                new (): {
+                    /**
+                     * The nunmber of handles in this diagnostics.
+                     * @type {number}
+                     */
+                    count: number;
+                    /**
+                     * A set of known handle IDs
+                     * @type {string[]}
+                     */
+                    ids: string[];
+                };
+            };
+        };
+        /**
+         * A container for core immediate timer diagnostics.
+         */
+        static ImmediateDiagnostic: {
+            new (): {
+                /**
+                 * Known handles for this diagnostics.
+                 * @type {Diagnostic.Handles}
+                 */
+                handles: {
+                    new (): {
+                        /**
+                         * The nunmber of handles in this diagnostics.
+                         * @type {number}
+                         */
+                        count: number;
+                        /**
+                         * A set of known handle IDs
+                         * @type {string[]}
+                         */
+                        ids: string[];
+                    };
+                };
+            };
+            /**
+             * A container for handles related to the diagnostics
+             */
+            Handles: {
+                new (): {
+                    /**
+                     * The nunmber of handles in this diagnostics.
+                     * @type {number}
+                     */
+                    count: number;
+                    /**
+                     * A set of known handle IDs
+                     * @type {string[]}
+                     */
+                    ids: string[];
+                };
+            };
+        };
+        /**
+         * @type {TimersDiagnostic.TimeoutDiagnostic}
+         */
+        timeout: {
+            new (): {
+                /**
+                 * Known handles for this diagnostics.
+                 * @type {Diagnostic.Handles}
+                 */
+                handles: {
+                    new (): {
+                        /**
+                         * The nunmber of handles in this diagnostics.
+                         * @type {number}
+                         */
+                        count: number;
+                        /**
+                         * A set of known handle IDs
+                         * @type {string[]}
+                         */
+                        ids: string[];
+                    };
+                };
+            };
+            /**
+             * A container for handles related to the diagnostics
+             */
+            Handles: {
+                new (): {
+                    /**
+                     * The nunmber of handles in this diagnostics.
+                     * @type {number}
+                     */
+                    count: number;
+                    /**
+                     * A set of known handle IDs
+                     * @type {string[]}
+                     */
+                    ids: string[];
+                };
+            };
+        };
+        /**
+         * @type {TimersDiagnostic.IntervalDiagnostic}
+         */
+        interval: {
+            new (): {
+                /**
+                 * Known handles for this diagnostics.
+                 * @type {Diagnostic.Handles}
+                 */
+                handles: {
+                    new (): {
+                        /**
+                         * The nunmber of handles in this diagnostics.
+                         * @type {number}
+                         */
+                        count: number;
+                        /**
+                         * A set of known handle IDs
+                         * @type {string[]}
+                         */
+                        ids: string[];
+                    };
+                };
+            };
+            /**
+             * A container for handles related to the diagnostics
+             */
+            Handles: {
+                new (): {
+                    /**
+                     * The nunmber of handles in this diagnostics.
+                     * @type {number}
+                     */
+                    count: number;
+                    /**
+                     * A set of known handle IDs
+                     * @type {string[]}
+                     */
+                    ids: string[];
+                };
+            };
+        };
+        /**
+         * @type {TimersDiagnostic.ImmediateDiagnostic}
+         */
+        immediate: {
+            new (): {
+                /**
+                 * Known handles for this diagnostics.
+                 * @type {Diagnostic.Handles}
+                 */
+                handles: {
+                    new (): {
+                        /**
+                         * The nunmber of handles in this diagnostics.
+                         * @type {number}
+                         */
+                        count: number;
+                        /**
+                         * A set of known handle IDs
+                         * @type {string[]}
+                         */
+                        ids: string[];
+                    };
+                };
+            };
+            /**
+             * A container for handles related to the diagnostics
+             */
+            Handles: {
+                new (): {
+                    /**
+                     * The nunmber of handles in this diagnostics.
+                     * @type {number}
+                     */
+                    count: number;
+                    /**
+                     * A set of known handle IDs
+                     * @type {string[]}
+                     */
+                    ids: string[];
+                };
+            };
+        };
+    }
+    /**
+     * A container for UDP diagnostics.
+     */
+    export class UDPDiagnostic extends Diagnostic {
+    }
+    /**
+     * A container for various queried runtime diagnostics.
+     */
+    export class QueryDiagnostic {
+        posts: PostsDiagnostic;
+        childProcess: ChildProcessDiagnostic;
+        ai: AIDiagnostic;
+        fs: FSDiagnostic;
+        timers: TimersDiagnostic;
+        udp: UDPDiagnostic;
+        uv: UVDiagnostic;
+    }
+    namespace _default {
+        export { query };
+    }
+    export default _default;
+}
+
+declare module "socket:diagnostics/index" {
+    /**
+     * @param {string} name
+     * @return {import('./channels.js').Channel}
+     */
+    export function channel(name: string): import("socket:diagnostics/channels").Channel;
+    export default exports;
+    import * as exports from "socket:diagnostics/index";
+    import channels from "socket:diagnostics/channels";
+    import window from "socket:diagnostics/window";
+    import runtime from "socket:diagnostics/runtime";
+    
+    export { channels, window, runtime };
+}
+
+declare module "socket:diagnostics" {
+    export * from "socket:diagnostics/index";
+    export default exports;
+    import * as exports from "socket:diagnostics/index";
+}
+
 declare module "socket:fs/stats" {
     /**
      * A container for various stats about a file or directory.
@@ -6972,6 +6972,11 @@ declare module "socket:application/client" {
          * @type {Client|null}
          */
         get top(): Client;
+        /**
+         * A readonly `URL` of the current location of this client.
+         * @type {URL}
+         */
+        get location(): URL;
         /**
          * Converts this `Client` instance to JSON.
          * @return {object}
@@ -16661,11 +16666,11 @@ declare module "socket:internal/promise" {
          */
         constructor(resolver: ResolverFunction);
         [resourceSymbol]: {
-            "__#16@#type": any;
-            "__#16@#destroyed": boolean;
-            "__#16@#asyncId": number;
-            "__#16@#triggerAsyncId": any;
-            "__#16@#requireManualDestroy": boolean;
+            "__#15@#type": any;
+            "__#15@#destroyed": boolean;
+            "__#15@#asyncId": number;
+            "__#15@#triggerAsyncId": any;
+            "__#15@#requireManualDestroy": boolean;
             readonly type: string;
             readonly destroyed: boolean;
             asyncId(): number;
@@ -17379,6 +17384,7 @@ declare module "socket:shared-worker/init" {
         constructor(data: any);
         id: any;
         port: any;
+        client: any;
         scriptURL: any;
         url: any;
         hash: any;
