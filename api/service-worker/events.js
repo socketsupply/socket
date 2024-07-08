@@ -307,11 +307,6 @@ export class FetchEvent extends ExtendableEvent {
           .concat(Array.from(FetchEvent.defaultHeaders.entries()))
           .map((entry) => entry.join(':'))
           .concat('Runtime-Response-Source:serviceworker')
-          .concat('Access-Control-Allow-Credentials:true')
-          .concat('Access-Control-Allow-Origin:*')
-          .concat('Access-Control-Allow-Methods:*')
-          .concat('Access-Control-Allow-Headers:*')
-          .concat(`Content-Length:${arrayBuffer.byteLength}`)
           .join('\n')
 
         const params = {
