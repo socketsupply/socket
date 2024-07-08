@@ -408,7 +408,6 @@ namespace SSC {
       };
 
     // XXX(@jwerle): we handle this in the android runtime
-    #if !SOCKET_RUNTIME_PLATFORM_ANDROID
       const auto extname = Path(request.pathname).extension().string();
       auto html = (message.buffer.bytes != nullptr && message.buffer.size > 0)
         ? String(response.body.bytes.get(), response.body.size)
@@ -449,18 +448,15 @@ namespace SSC {
 
         memcpy(response.body.bytes.get(), html.c_str(), html.size());
       }
-    #endif
 
       callback(response);
       reply(IPC::Result { message.seq, message });
 
-      do {
-        Lock lock(this->mutex);
-        this->fetchCallbacks.erase(id);
-        if (this->fetchRequests.contains(id)) {
-          this->fetchRequests.erase(id);
-        }
-      } while (0);
+      Lock lock(this->mutex);
+      this->fetchCallbacks.erase(id);
+      if (this->fetchRequests.contains(id)) {
+        this->fetchRequests.erase(id);
+      }
     });
   }
 
