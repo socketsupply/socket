@@ -23,7 +23,9 @@ open class SchemeHandlers (val bridge: Bridge) {
 
         if (seq != null && this.bridge.buffers.contains(seq)) {
           val buffer = this.bridge.buffers[seq]
-          this.bridge.buffers.remove(seq)
+          if (request.method == "POST" || request.method == "PUT" || request.method == "PATCH") {
+            this.bridge.buffers.remove(seq)
+          }
           buffer
         } else {
           null
@@ -113,7 +115,7 @@ open class SchemeHandlers (val bridge: Bridge) {
       if (name.lowercase() == "content-type") {
         this.mimeType = value
         this.response.setMimeType(value)
-      } else {
+      } else if (name.lowercase() != "content-length") {
         this.headers.remove(name)
 
         if (this.response.responseHeaders != null) {
@@ -150,6 +152,7 @@ open class SchemeHandlers (val bridge: Bridge) {
           for (bytes in buffers) {
             stream.write(bytes)
           }
+
           stream.flush()
           stream.close()
         }
