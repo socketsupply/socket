@@ -1,5 +1,6 @@
 import { toString, IllegalConstructor } from '../util.js'
 import process from '../process.js'
+import gc from '../gc.js'
 
 /**
  * Used to preallocate a minimum sized array of subscribers for
@@ -45,6 +46,7 @@ export class Channel {
   constructor (name) {
     this.name = name
     this.group = null
+    gc.ref(this)
   }
 
   /**
