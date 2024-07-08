@@ -142,11 +142,14 @@ export async function getContextWindow () {
       config: {
         webview_watch_reload: false
       }
-    })
+    }).catch(() => application.getWindow(SHARED_WORKER_WINDOW_INDEX, {
+      max: false
+    }))
   )
 
-  const promises = []
-  promises.push(Promise.resolve(pendingContextWindow))
+  const promises = [
+    Promise.resolve(pendingContextWindow)
+  ]
 
   if (!existingContextWindow) {
     promises.push(new Promise((resolve) => {
@@ -168,6 +171,8 @@ export async function getContextWindow () {
   await ready
   contextWindow = await pendingContextWindow
   contextWindow.ready = ready
+
+  await contextWindow.hide()
 
   return contextWindow
 }
