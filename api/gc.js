@@ -1,6 +1,4 @@
 import { FinalizationRegistryCallbackError } from './errors.js'
-import diagnostics from './diagnostics.js'
-import { noop } from './util.js'
 import symbols from './internal/symbols.js'
 
 if (typeof FinalizationRegistry === 'undefined') {
@@ -9,13 +7,6 @@ if (typeof FinalizationRegistry === 'undefined') {
     'gc.ref() will have no effect.'
   )
 }
-
-const dc = diagnostics.channels.group('gc', [
-  'finalizer.start',
-  'finalizer.end',
-  'unref',
-  'ref'
-])
 
 export const finalizers = new WeakMap()
 export const kFinalizer = Symbol.for('socket.runtime.gc.finalizer')
@@ -63,8 +54,6 @@ export default gc
 async function finalizationRegistryCallback (finalizer) {
   if (!finalizer) return // potentially called when finalizer is already gone
 
-  dc.channel('finalizer.start').publish({ finalizer })
-
   if (typeof finalizer.handle === 'function') {
     try {
       await finalizer.handle(...finalizer.args)
@@ -94,7 +83,6 @@ async function finalizationRegistryCallback (finalizer) {
     pool.delete(weakRef)
   }
 
-  dc.channel('finalizer.end').publish({ finalizer })
   finalizer = undefined
 }
 
@@ -118,7 +106,7 @@ export class Finalizer {
     let { handle, args } = handler
 
     if (typeof handle !== 'function') {
-      handle = noop
+      handle = () => {}
     }
 
     if (!Array.isArray(args)) {
@@ -163,8 +151,6 @@ export async function ref (object, ...args) {
     pool.add(weakRef)
 
     registry.register(object, finalizer, object)
-
-    dc.channel('ref').publish({ object, finalizer: weakRef })
   }
 
   return finalizers.has(object)
@@ -195,7 +181,6 @@ export function unref (object) {
 
     finalizers.delete(object)
     registry.unregister(object)
-    dc.channel('unref').publish({ object, finalizer: weakRef })
     return true
   }
 
