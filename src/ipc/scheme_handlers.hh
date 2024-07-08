@@ -5,10 +5,6 @@
 #include "../core/trace.hh"
 #include "../core/webview.hh"
 
-#if SOCKET_RUNTIME_PLATFORM_ANDROID
-#include "../android/platform.hh"
-#endif
-
 #include "client.hh"
 
 namespace SSC::IPC {
