@@ -245,7 +245,7 @@ open class WindowFragment : Fragment(R.layout.web_view) {
       return WindowFragment().apply {
         arguments = bundleOf(
           "index" to options.index,
-          "shouldExitApplicationOnClose" to options.shouldExitApplicationOnClose
+          "shouldExitApplicationOnClose" to options.shouldExitApplicationOnClose,
           "headless" to options.headless
         )
       }
