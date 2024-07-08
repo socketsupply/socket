@@ -567,7 +567,7 @@ if (globalThis.Worker === GlobalWorker) {
 if (typeof globalThis.XMLHttpRequest === 'function') {
   const { open, send, setRequestHeader } = globalThis.XMLHttpRequest.prototype
   const additionalHeaders = {}
-  const headerFilters = []
+  const headerFilters = ['user-agent']
   const isAsync = Symbol('isAsync')
   let queue = null
 
@@ -590,12 +590,22 @@ if (typeof globalThis.XMLHttpRequest === 'function') {
 
   globalThis.XMLHttpRequest.prototype.setRequestHeader = function (name, value) {
     if (testHeaderFilters(name)) {
-      return setRequestHeader.call(this, name, value)
+      try {
+        setRequestHeader.call(this, name, value)
+      } catch {}
     }
 
     function testHeaderFilters (header) {
+      if (header.toLowerCase().startsWith('sec-')) {
+        return false
+      }
+
       for (const filter of headerFilters) {
-        if (filter.test(header)) {
+        if (typeof filter === 'string') {
+          if (filter === name.toLowerCase()) {
+            return false
+          }
+        } else if (filter.test(header)) {
           return false
         }
       }

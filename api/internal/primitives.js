@@ -201,8 +201,11 @@ export function init () {
   }
 
   try {
-    Symbol.dispose = symbols.dispose
-    Symbol.serialize = symbols.serialize
+    globalThis.Symbol.dispose = symbols.dispose
+  } catch {}
+
+  try {
+    globalThis.Symbol.serialize = symbols.serialize
   } catch {}
 
   if (
