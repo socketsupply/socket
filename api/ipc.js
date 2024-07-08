@@ -56,6 +56,7 @@ import { rand64 } from './crypto.js'
 import bookmarks from './fs/bookmarks.js'
 import serialize from './internal/serialize.js'
 import { URL } from './url.js'
+import gc from './gc.js'
 
 let nextSeq = 1
 const cache = {}
@@ -1784,7 +1785,8 @@ export class IPCMessagePort extends MessagePort {
       ? new BroadcastChannel(options.channel)
       : options.channel ?? new BroadcastChannel(id)
 
-    ports.set(port, Object.create(null, {
+    port[Symbol.for('socket.runtime.IPCMessagePort.id')] = id
+    ports.set(id, Object.create(null, {
       id: { writable: true, value: id },
       closed: { writable: true, value: false },
       started: { writable: true, value: false },
@@ -1795,32 +1797,41 @@ export class IPCMessagePort extends MessagePort {
     }))
 
     channel.addEventListener('message', (event) => {
-      if (ports.get(port)?.started) {
+      if (ports.get(id)?.started) {
         port.dispatchEvent(new MessageEvent('message', event))
       }
     })
 
+    gc.ref(port)
     return port
   }
 
   get id () {
-    return ports.get(this)?.id ?? null
+    return this[Symbol.for('socket.runtime.IPCMessagePort.id')] ?? null
   }
 
   get started () {
-    return ports.get(this)?.started ?? false
+    if (!ports.has(this.id)) {
+      return false
+    }
+
+    return ports.get(this.id)?.started ?? false
   }
 
   get closed () {
-    return ports.get(this)?.closed ?? false
+    if (!ports.has(this.id)) {
+      return true
+    }
+
+    return ports.get(this.id)?.closed ?? false
   }
 
   get onmessage () {
-    return ports.get(this)?.onmessage ?? null
+    return ports.get(this.id)?.onmessage ?? null
   }
 
   set onmessage (onmessage) {
-    const port = ports.get(this)
+    const port = ports.get(this.id)
 
     if (!port) {
       return
@@ -1841,11 +1852,11 @@ export class IPCMessagePort extends MessagePort {
   }
 
   get onmessageerror () {
-    return ports.get(this)?.onmessageerror ?? null
+    return ports.get(this.id)?.onmessageerror ?? null
   }
 
   set onmessageerror (onmessageerror) {
-    const port = ports.get(this)
+    const port = ports.get(this.id)
 
     if (!port) {
       return
@@ -1863,21 +1874,21 @@ export class IPCMessagePort extends MessagePort {
   }
 
   start () {
-    const port = ports.get(this)
+    const port = ports.get(this.id)
     if (port) {
       port.started = true
     }
   }
 
   close () {
-    const port = ports.get(this)
+    const port = ports.get(this.id)
     if (port) {
       port.closed = true
     }
   }
 
   postMessage (message, optionsOrTransferList) {
-    const port = ports.get(this)
+    const port = ports.get(this.id)
     const options = { transfer: [] }
 
     if (!port) {
@@ -1906,7 +1917,7 @@ export class IPCMessagePort extends MessagePort {
   }
 
   addEventListener (...args) {
-    const eventTarget = ports.get(this)?.eventTarget
+    const eventTarget = ports.get(this.id)?.eventTarget
 
     if (eventTarget) {
       return eventTarget.addEventListener(...args)
@@ -1916,7 +1927,7 @@ export class IPCMessagePort extends MessagePort {
   }
 
   removeEventListener (...args) {
-    const eventTarget = ports.get(this)?.eventTarget
+    const eventTarget = ports.get(this.id)?.eventTarget
 
     if (eventTarget) {
       return eventTarget.removeEventListener(...args)
@@ -1926,7 +1937,7 @@ export class IPCMessagePort extends MessagePort {
   }
 
   dispatchEvent (event) {
-    const eventTarget = ports.get(this)?.eventTarget
+    const eventTarget = ports.get(this.id)?.eventTarget
 
     if (eventTarget) {
       if (event.type === 'message') {
@@ -1942,15 +1953,27 @@ export class IPCMessagePort extends MessagePort {
     return false
   }
 
-  [Symbol.for('socket.runtime.ipc.MessagePort.handlePostMessage')] (message, options = null) {
+  [Symbol.for('socket.runtime.ipc.MessagePort.handlePostMessage')] (
+    message,
+    options = null
+  ) {
     return true
   }
 
   [Symbol.for('socket.runtime.serialize')] () {
     return {
       __type__: 'IPCMessagePort',
-      channel: ports.get(this)?.channel?.name ?? null,
+      channel: ports.get(this.id)?.channel?.name ?? null,
       id: this.id
+    }
+  }
+
+  [Symbol.for('socket.runtime.gc.finalizer')] () {
+    return {
+      args: [this.id],
+      handle (id) {
+        ports.delete(id)
+      }
     }
   }
 }
