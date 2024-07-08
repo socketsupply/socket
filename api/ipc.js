@@ -90,7 +90,7 @@ function initializeXHRIntercept () {
 
       if (url?.protocol === 'ipc:') {
         if (
-          /put|post/i.test(method) &&
+          /put|post|patch/i.test(method) &&
           typeof body !== 'undefined' &&
           typeof seq !== 'undefined'
         ) {
