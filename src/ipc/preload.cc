@@ -59,20 +59,6 @@ namespace SSC::IPC {
     this->headers = options.headers;
     this->metadata = options.metadata;
 
-    /*
-    auto argv = options.argv;
-  #if SOCKET_RUNTIME_PLATFORM_WINDOWS
-    do {
-      // Escape backslashes in paths.
-      size_t lastPosition = 0;
-      while ((lastPosition = argv.find('\\', lastPosition)) != String::npos) {
-        argv.replace(lastPosition, 1, "\\\\");
-        lastPosition += 2;
-      }
-    } while (0);
-  #endif
-  */
-
     if (options.features.useHTMLMarkup) {
       if (!this->metadata.contains("referrer")) {
         this->metadata["referrer"] = DEFAULT_REFERRER_POLICY;
@@ -81,8 +67,24 @@ namespace SSC::IPC {
       if (!this->headers.has("referrer-policy")) {
         if (this->metadata["referrer"].size() > 0) {
           this->headers.set("referrer-policy", this->metadata["referrer"]);
-	}
+        }
       }
+    }
+
+    if (Env::has("SOCKET_RUNTIME_VM_DEBUG")) {
+      this->options.env["SOCKET_RUNTIME_VM_DEBUG"] = Env::get("SOCKET_RUNTIME_VM_DEBUG");
+    }
+
+    if (Env::has("SOCKET_RUNTIME_NPM_DEBUG")) {
+      this->options.env["SOCKET_RUNTIME_NPM_DEBUG"] = Env::get("SOCKET_RUNTIME_NPM_DEBUG");
+    }
+
+    if (Env::has("SOCKET_RUNTIME_SHARED_WORKER_DEBUG")) {
+      this->options.env["SOCKET_RUNTIME_SHARED_WORKER_DEBUG"] = Env::get("SOCKET_RUNTIME_SHARED_WORKER_DEBUG");
+    }
+
+    if (Env::has("SOCKET_RUNTIME_SERVICE_WORKER_DEBUG")) {
+      this->options.env["SOCKET_RUNTIME_SERVICE_WORKER_DEBUG"] = Env::get("SOCKET_RUNTIME_SERVICE_WORKER_DEBUG");
     }
   }
 
@@ -115,7 +117,7 @@ namespace SSC::IPC {
       for (const auto &entry : this->metadata) {
         if (entry.second.size() == 0) {
           continue;
-	}
+        }
 
         buffers.push_back(tmpl(
           R"HTML(<meta name="{{name}}" content="{{content}}">)HTML",

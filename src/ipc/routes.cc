@@ -3159,13 +3159,17 @@ static void mapIPCRoutes (Router *router) {
         options.headless = false;
       }
 
-      if (message.has("radius")) {
-        options.radius = std::stof(message.get("radius"));
-      }
+      try {
+        if (message.has("radius")) {
+          options.radius = std::stof(message.get("radius"));
+        }
+      } catch (...) {}
 
-      if (message.has("margin")) {
-        options.margin = std::stof(message.get("margin"));
-      }
+      try {
+        if (message.has("margin")) {
+          options.margin = std::stof(message.get("margin"));
+        }
+      } catch (...) {}
 
       options.width = message.get("width").size()
         ? window->getSizeInPixels(message.get("width"), screen.width)
@@ -3222,7 +3226,9 @@ static void mapIPCRoutes (Router *router) {
         createdWindow->navigate(message.get("url"));
       }
 
-      createdWindow->show();
+      if (!options.headless) {
+        createdWindow->show();
+      }
 
       reply(Result::Data { message, createdWindow->json() });
     });
