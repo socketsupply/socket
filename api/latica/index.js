@@ -1059,10 +1059,10 @@ export class Peer {
     const cache = new Map()
     const message = this.encryption.seal(args.message, keys)
     const packets = await this._message2packets(PacketPublish, message, args)
-    const head = packets.find(p => p.index === 0) // has a head, should compose
 
     for (let packet of packets) {
       packet = Packet.from(packet)
+      cache.set(packet.packetId.toString('hex'), packet)
       this.cacheInsert(packet)
 
       if (this.onPacket && packet.index === -1) {
@@ -1075,9 +1075,10 @@ export class Peer {
       this.mcast(packet)
     }
 
+    const head = [...cache.values()][0]
     // if there is a head, we can recompose the packets, this gives this
     // peer a consistent view of the data as it has been published.
-    if (this.onPacket && head) {
+    if (this.onPacket && head && head.index === 0) {
       const p = await this.cache.compose(head, cache)
       if (p) {
         this.onPacket(p, this.port, this.address, true)
