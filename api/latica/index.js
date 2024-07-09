@@ -278,7 +278,7 @@ export class Peer {
     this.encryption = new Encryption()
 
     if (!config.peerId) throw new Error('constructor expected .peerId')
-    if (typeof config.peerId !== 'string' || !PEERID_REGEX.test(config.peerId)) throw new Error(`invalid .peerId (${config.peerId})`)
+    if (!Peer.isValidPeerId(config.peerId)) throw new Error(`invalid .peerId (${config.peerId})`)
 
     //
     // The purpose of this.config is to seperate transitioned state from initial state.
@@ -1008,7 +1008,7 @@ export class Peer {
 
     // set the .packetId (any maybe the .previousId and .nextId)
     for (let i = 0; i < packets.length; i++) {
-      packets[i].index = i
+      if (packets.length > 1) packets[i].index = i
 
       if (i === 0) {
         packets[0].packetId = await sha256(packets[0].message, { bytes: true })
@@ -1405,17 +1405,12 @@ export class Peer {
     this.metrics.i[packet.type]++
 
     this.lastUpdate = Date.now()
-    const { reflectionId, isReflection, isConnection, isHeartbeat } = packet.message
+    const { reflectionId, isReflection, isConnection, requesterPeerId } = packet.message
 
-    if (packet.message.requesterPeerId === this.peerId) return
+    if (!Peer.isValidPeerId(requesterPeerId)) return // required field
+    if (requesterPeerId === this.peerId) return // from self?
 
     const { probeExternalPort, isProbe, pingId } = packet.message
-
-    if (isHeartbeat) {
-      // const peer = this.getPeer(packet.message.requesterPeerId)
-      // if (peer && natType) peer.natType = natType
-      return
-    }
 
     // if (peer && reflectionId) peer.reflectionId = reflectionId
     if (!port) port = packet.message.port
@@ -1425,14 +1420,13 @@ export class Peer {
       cacheSize: this.cache.size,
       uptime: this.uptime,
       responderPeerId: this.peerId,
-      requesterPeerId: packet.message.requesterPeerId,
+      requesterPeerId,
       port,
       isProbe,
       address
     }
 
     if (reflectionId) message.reflectionId = reflectionId
-    if (isHeartbeat) message.isHeartbeat = Date.now()
     if (pingId) message.pingId = pingId
 
     if (isReflection) {
@@ -1444,8 +1438,7 @@ export class Peer {
     }
 
     if (isConnection) {
-      const peerId = packet.message.requesterPeerId
-      this._onConnection(packet, peerId, port, address)
+      this._onConnection(packet, requesterPeerId, port, address)
 
       message.isConnection = true
       delete message.address
@@ -1481,12 +1474,15 @@ export class Peer {
 
     const { reflectionId, pingId, isReflection, responderPeerId } = packet.message
 
+    if (!Peer.isValidPeerId(responderPeerId)) return // required field
+    if (responderPeerId === this.peerId) return // from self?
+
     this._onDebug(`<- PONG (from=${address}:${port}, hash=${packet.message.cacheSummaryHash}, isConnection=${!!packet.message.isConnection})`)
-    const peer = this.getPeer(packet.message.responderPeerId)
+    const peer = this.getPeer(responderPeerId)
 
     if (packet.message.isConnection) {
       if (pingId) peer.pingId = pingId
-      this._onConnection(packet, packet.message.responderPeerId, port, address)
+      this._onConnection(packet, responderPeerId, port, address)
       return
     }
 
@@ -1594,6 +1590,8 @@ export class Peer {
 
     if (packet.hops >= this.maxHops) return
     if (!isNaN(ts) && ((ts + this.config.keepalive) < Date.now())) return
+    if (!Peer.isValidPeerId(packet.message.requesterPeerId)) return
+    if (!Peer.isValidPeerId(packet.message.responderPeerId)) return
     if (packet.message.requesterPeerId === this.peerId) return // intro to myself?
     if (packet.message.responderPeerId === this.peerId) return // intro from myself?
 
@@ -1813,7 +1811,8 @@ export class Peer {
     this.metrics.i[packet.type]++
 
     const pid = packet.packetId.toString('hex')
-    if (packet.message.requesterPeerId === this.peerId) return
+    if (!Peer.isValidPeerId(packet.message.requesterPeerId)) return // required field
+    if (packet.message.requesterPeerId === this.peerId) return // from self?
     if (this.gate.has(pid)) return
     if (packet.clusterId.length !== 32) return
 
@@ -2217,6 +2216,16 @@ export class Peer {
       case PacketSync.type: return this._onSync(...args)
       case PacketQuery.type: return this._onQuery(...args)
     }
+  }
+
+  /**
+   * Test a peerID is valid
+   *
+   * @param {string} pid
+   * @returns boolean
+   */
+  static isValidPeerId (pid) {
+    return typeof pid === 'string' && PEERID_REGEX.test(pid)
   }
 }
 
