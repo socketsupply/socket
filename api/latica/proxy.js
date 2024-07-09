@@ -10,8 +10,6 @@
  * Protocol
  *
  */
-import path from '../path.js'
-const { pathname } = new URL(import.meta.url)
 
 function deepClone (object, map = new Map()) {
   if (map.has(object)) return map.get(object)
@@ -83,7 +81,7 @@ class PeerWorkerProxy {
   constructor (options, port, fn) {
     if (!options.isWorkerThread) {
       this.#channel = new MessageChannel()
-      this.#worker = new window.Worker(path.join(path.dirname(pathname), 'worker.js'))
+      this.#worker = new window.Worker(new URL('./worker.js', import.meta.url))
 
       this.#worker.addEventListener('error', err => {
         throw err
@@ -114,7 +112,7 @@ class PeerWorkerProxy {
               this[prop](data)
             }
           } catch (err) {
-            throw new Error(err)
+            throw new Error(`Unable to call ${prop} (${err.message})`)
           }
           return
         }
@@ -130,7 +128,6 @@ class PeerWorkerProxy {
         if (err) {
           p.reject(err)
         } else {
-          if (prop === 'open') console.log('<<<', data)
           p.resolve(data)
         }
 
@@ -263,13 +260,15 @@ class PeerWorkerProxy {
   callMainThread (prop, args) {
     for (const i in args) {
       const arg = args[i]
+
       if (arg?.constructor.name === 'RemotePeer' || arg?.constructor.name === 'Peer') {
-        args[i] = {
+        args[i] = { // what details we want to expose outside of the protocol 
           peerId: arg.peerId,
           address: arg.address,
           port: arg.port,
           natType: arg.natType,
-          clusters: arg.clusters
+          clusters: arg.clusters,
+          connected: arg.connected
         }
 
         delete args[i].localPeer // don't copy this over

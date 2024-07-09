@@ -58,20 +58,30 @@ namespace SSC {
 
   CoreConduit::EncodedMessage CoreConduit::decodeMessage (std::vector<uint8_t>& data) {
     CoreConduit::EncodedMessage message;
+
+    if (data.size() < 1) return message;
+
     size_t offset = 0;
 
     uint8_t numOpts = data[offset++];
 
     for (uint8_t i = 0; i < numOpts; ++i) {
+      if (offset >= data.size()) continue;
+
       // len
       uint8_t keyLength = data[offset++];
+      if (offset + keyLength > data.size()) continue;
       // key
       String key(data.begin() + offset, data.begin() + offset + keyLength);
       offset += keyLength;
 
+      if (offset + 2 > data.size()) continue;
+
       // len
       uint16_t valueLength = (data[offset] << 8) | data[offset + 1];
       offset += 2;
+
+      if (offset + valueLength > data.size()) continue;
 
       // val
       String value(data.begin() + offset, data.begin() + offset + valueLength);
@@ -80,9 +90,13 @@ namespace SSC {
       message.options[key] = value;
     }
 
+    if (offset + 2 > data.size()) return message;
+
     // len
     uint16_t bodyLength = (data[offset] << 8) | data[offset + 1];
     offset += 2;
+
+    if (offset + bodyLength > data.size()) return message;
 
     // body
     message.payload = Vector<uint8_t>(data.begin() + offset, data.begin() + offset + bodyLength);

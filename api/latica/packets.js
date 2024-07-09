@@ -367,7 +367,7 @@ export class Packet {
       bufs.push(buf)
     }
 
-    return Buffer.concat(bufs, FRAME_BYTES)
+    return Buffer.concat(bufs)
   }
 
   static decode (buf) {

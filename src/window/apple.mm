@@ -214,6 +214,11 @@ namespace SSC {
     });
 
     configuration.defaultWebpagePreferences.allowsContentJavaScript = YES;
+
+    #if SOCKET_RUNTIME_PLATFORM_IOS
+      configuration.allowsInlineMediaPlayback = YES;
+    #endif
+
     configuration.mediaTypesRequiringUserActionForPlayback = WKAudiovisualMediaTypeNone;
     // https://webkit.org/blog/10882/app-bound-domains/
     // https://developer.apple.com/documentation/webkit/wkwebviewconfiguration/3585117-limitsnavigationstoappbounddomai
