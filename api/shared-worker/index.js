@@ -1,4 +1,4 @@
-/* global ErrorEvent */
+/* global XMLHttpRequest, ErrorEvent */
 import application from '../application.js'
 import location from '../location.js'
 import crypto from '../crypto.js'
@@ -62,10 +62,21 @@ export class SharedWorker extends EventTarget {
 
   /**
    * `SharedWorker` class constructor.
-   * @param {string} aURL
+   * @param {string|URL|Blob} aURL
    * @param {string|object=} [nameOrOptions]
    */
   constructor (aURL, nameOrOptions = null) {
+    if (typeof aURL === 'string' && !URL.canParse(aURL, location.href)) {
+      const blob = new Blob([aURL], { type: 'text/javascript' })
+      aURL = URL.createObjectURL(blob).toString()
+    } else if (String(aURL).startsWith('blob:')) {
+      const request = new XMLHttpRequest()
+      request.open('GET', String(aURL), false)
+      request.send()
+      const blob = new Blob([request.responseText || request.response], { type: 'application/javascript' })
+      aURL = URL.createObjectURL(blob)
+    }
+
     const url = new URL(aURL, location.origin)
     const id = crypto.murmur3(url.origin + url.pathname)
 
