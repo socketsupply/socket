@@ -606,7 +606,8 @@ export class Peer {
   }
 
   async cacheInsert (packet) {
-    this.cache.insert(packet.packetId.toString('hex'), Packet.from(packet))
+    const p = Packet.from(packet)
+    this.cache.insert(p.packetId.toString('hex'), p)
   }
 
   async addIndexedPeer (info) {
@@ -1055,11 +1056,13 @@ export class Peer {
     args.subclusterId = keys.publicKey
     args.clusterId = args.clusterId || this.config.clusterId
 
+    const cache = new Map()
     const message = this.encryption.seal(args.message, keys)
     const packets = await this._message2packets(PacketPublish, message, args)
     const head = packets.find(p => p.index === 0) // has a head, should compose
 
-    for (const packet of packets) {
+    for (let packet of packets) {
+      packet = Packet.from(packet)
       this.cacheInsert(packet)
 
       if (this.onPacket && packet.index === -1) {
@@ -1075,7 +1078,7 @@ export class Peer {
     // if there is a head, we can recompose the packets, this gives this
     // peer a consistent view of the data as it has been published.
     if (this.onPacket && head) {
-      const p = await this.cache.compose(head)
+      const p = await this.cache.compose(head, cache)
       if (p) {
         this.onPacket(p, this.port, this.address, true)
         this._onDebug(`-> PUBLISH (multicasted=true, packetId=${p.packetId.toString('hex').slice(0, 8)})`)
