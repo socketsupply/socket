@@ -40,17 +40,20 @@ async function api (options = {}, events, dgram) {
   const _peer = new Ctor(options, dgram)
 
   _peer.onJoin = (packet, ...args) => {
-    if (Buffer.from(packet.clusterId).compare(clusterId) !== 0) return
+    packet = Packet.from(packet)
+    if (packet.clusterId.compare(clusterId) !== 0) return
     bus._emit('#join', packet, ...args)
   }
 
   _peer.onPacket = (packet, ...args) => {
-    if (Buffer.from(packet.clusterId).compare(clusterId) !== 0) return
+    packet = Packet.from(packet)
+    if (packet.clusterId.compare(clusterId) !== 0) return
     bus._emit('#packet', packet, ...args)
   }
 
   _peer.onStream = (packet, ...args) => {
-    if (Buffer.from(packet.clusterId).compare(clusterId) !== 0) return
+    packet = Packet.from(packet)
+    if (packet.clusterId.compare(clusterId) !== 0) return
     bus._emit('#stream', packet, ...args)
   }
 
@@ -301,7 +304,7 @@ async function api (options = {}, events, dgram) {
     sub.join = () => _peer.join(sub.sharedKey, options)
 
     bus._on('#ready', () => {
-      const scid = Buffer.from(sub.subclusterId).toString('base64')
+      const scid = sub.subclusterId.toString('base64')
       const subcluster = bus.subclusters.get(scid)
       if (subcluster) _peer.join(subcluster.sharedKey, options)
     })
@@ -311,7 +314,7 @@ async function api (options = {}, events, dgram) {
   }
 
   bus._on('#join', async (packet, peer) => {
-    const scid = Buffer.from(packet.subclusterId).toString('base64')
+    const scid = packet.subclusterId.toString('base64')
     const sub = bus.subclusters.get(scid)
     if (!sub) return
     if (!peer || !peer.peerId) return
@@ -355,7 +358,7 @@ async function api (options = {}, events, dgram) {
   })
 
   const handlePacket = async (packet, peer, port, address) => {
-    const scid = Buffer.from(packet.subclusterId).toString('base64')
+    const scid = packet.subclusterId.toString('base64')
     const sub = bus.subclusters.get(scid)
     if (!sub) return
 

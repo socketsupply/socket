@@ -1994,28 +1994,42 @@ export class Peer {
     // if (cluster && cluster[packet.subclusterId]) {
 
     const pid = packet.packetId.toString('hex')
+    const cid = packet.clusterId.toString('base64')
+    const scid = packet.subclusterId.toString('base64')
 
-    if (this.gate.has(pid)) return
+    if (this.gate.has(pid)) {
+      this.metrics.i.DROPPED++
+      return
+    }
+
     this.gate.set(pid, 6)
 
     if (this.cache.has(pid)) {
       this.metrics.i.DROPPED++
-      const cid = packet.clusterId.toString('base64')
-      const scid = packet.subclusterId.toString('base64')
       this._onDebug(`<- DROP (packetId=${pid.slice(0, 6)}, clusterId=${cid.slice(0, 6)}, subclueterId=${scid.slice(0, 6)}, from=${address}:${port}, hops=${packet.hops})`)
       return
     }
 
-    this._onDebug(`<- PUBLISH (packetId=${pid.slice(0, 6)}, from=${address}:${port}, is-sync=${packet.usr4.toString() === 'SYNC'})`)
     this.cacheInsert(packet)
 
     const ignorelist = [{ address, port }]
-    const scid = packet.subclusterId.toString('base64')
 
     if (!this.indexed && this.encryption.has(scid)) {
       let p = packet.copy()
-      if (p.index > -1) p = await this.cache.compose(p)
-      if (p?.index === -1 && this.onPacket) this.onPacket(p, port, address)
+
+      if (p.index > -1) {
+        this._onDebug(`<- PUBLISH REQUIRES COMPOSE (packetId=${pid.slice(0, 6)}, index=${p.index}, from=${address}:${port})`)
+
+        p = await this.cache.compose(p)
+        if (p?.isComposed) this._onDebug(`<- PUBLISH COMPOSED (packetId=${pid.slice(0, 6)}, from=${address}:${port})`)
+      }
+
+      if (p?.index === -1 && this.onPacket) {
+        this._onDebug(`<- PUBLISH (packetId=${pid.slice(0, 6)}, from=${address}:${port})`)
+        this.onPacket(p, port, address)
+      }
+    } else {
+      this._onDebug(`<- PUBLISH (packetId=${pid.slice(0, 6)}, index=${packet.index}, from=${address}:${port})`)
     }
 
     if (packet.hops >= this.maxHops) return
