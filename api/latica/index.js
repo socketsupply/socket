@@ -92,7 +92,7 @@ const isReplicatable = type => (
 export function rateLimit (rates, type, port, address, subclusterIdQuota) {
   const R = isReplicatable(type)
   const key = (R ? 'R' : 'C') + ':' + address + ':' + port
-  const quota = subclusterIdQuota || (R ? 512 : 4096)
+  const quota = subclusterIdQuota || (R ? 1024 : 1024 * 1024)
   const time = Math.floor(Date.now() / 60000)
   const rate = rates.get(key) || { time, quota, used: 0 }
 
@@ -179,22 +179,27 @@ export class RemotePeer {
     args.usr4 = Buffer.from(this.localPeer.peerId, 'hex')
     args.message = this.localPeer.encryption.seal(args.message, keys)
 
+    const cache = new Map()
     const packets = await this.localPeer._message2packets(PacketStream, args.message, args)
 
     if (this.proxy) {
-      this.localPeer._onDebug(this.localPeer.peerId, `>> WRITE STREAM HAS PROXY ${this.proxy.address}:${this.proxy.port}`)
+      this.localPeer._onDebug(`>> WRITE STREAM HAS PROXY ${this.proxy.address}:${this.proxy.port}`)
     }
 
     for (const packet of packets) {
       const from = this.localPeer.peerId.slice(0, 6)
       const to = this.peerId.slice(0, 6)
-      this.localPeer._onDebug(this.localPeer.peerId, `>> WRITE STREAM (from=${from}, to=${to}, via=${rinfo.address}:${rinfo.port})`)
+      this.localPeer._onDebug(`>> WRITE STREAM (from=${from}, to=${to}, via=${rinfo.address}:${rinfo.port})`)
 
-      this.localPeer.gate.set(packet.packetId.toString('hex'), 1)
+      const pid = packet.packetId.toString('hex')
+      cache.set(pid, packet)
+      this.localPeer.gate.set(pid, 1)
       await this.localPeer.send(await Packet.encode(packet), rinfo.port, rinfo.address, this.socket)
     }
 
-    return packets
+    const head = packets.find(p => p.index === 0) // has a head, should compose
+    const p = await this.localPeer.cache.compose(head, cache)
+    return [p]
   }
 }
 
@@ -420,10 +425,9 @@ export class Peer {
   async _mainLoop (ts) {
     if (this.closing) return this._clearInterval(this.mainLoopTimer)
 
-    // Node 21.x will need this...
-    // const offline = typeof globalThis.navigator.onLine !== 'undefined' && !globalThis.navigator.onLine
-    const offline = globalThis.navigator && !globalThis.navigator.onLine
-    if (offline) {
+    // if `globalThis.navigator` doesn't exist (such as in Node) assume online.
+    const online = !globalThis.navigator || globalThis.navigator.onLine
+    if (!online) {
       if (this.onConnecting) this.onConnecting({ code: -2, status: 'Offline' })
       return true
     }
@@ -432,6 +436,16 @@ export class Peer {
     if (this.onInterval) this.onInterval()
 
     this.uptime += this.config.keepalive
+
+    // heartbeat
+    for (const [, peer] of Object.entries(this.peers)) {
+      this.ping(peer, false, {
+        message: {
+          requesterPeerId: this.peerId,
+          natType: this.natType
+        }
+      })
+    }
 
     // wait for nat type to be discovered
     if (!NAT.isValid(this.natType)) return true
@@ -477,19 +491,6 @@ export class Peer {
       }
     }
 
-    // heartbeat
-    const { hash } = await this.cache.summarize('', this.cachePredicate)
-    for (const [, peer] of Object.entries(this.peers)) {
-      this.ping(peer, false, {
-        message: {
-          requesterPeerId: this.peerId,
-          natType: this.natType,
-          cacheSummaryHash: hash || null,
-          cacheSize: this.cache.size
-        }
-      })
-    }
-
     // if this peer has previously tried to join any clusters, multicast a
     // join messages for each into the network so we are always searching.
     for (const cluster of Object.values(this.clusters)) {
@@ -519,7 +520,7 @@ export class Peer {
    */
   async stream (peerId, sharedKey, args) {
     const p = this.peers.find(p => p.peerId === peerId)
-    if (p) p.write(sharedKey, args)
+    if (p) return p.write(sharedKey, args)
   }
 
   /**
@@ -738,12 +739,12 @@ export class Peer {
 
       // tell all well-known peers that we would like to hear from them, if
       // we hear from any we can ask for the reflection information we need.
-      for (const peer of this.peers.filter(p => p.indexed).sort(() => Math.random() - 0.5).slice(0, 3)) {
-        await this.ping(peer, false, { message: { requesterPeerId: this.peerId } })
+      for (const peer of this.peers.filter(p => p.indexed).sort(() => Math.random() - 0.5).slice(0, 32)) {
+        await this.ping(peer, false, { message: { isConnection: true, requesterPeerId: this.peerId } })
       }
 
       if (++this.reflectionRetry > 16) this.reflectionRetry = 1
-      return this._setTimeout(() => this.requestReflection(), this.reflectionRetry * 512)
+      return this._setTimeout(() => this.requestReflection(), this.reflectionRetry * 256)
     }
 
     this.reflectionRetry = 1
@@ -939,7 +940,7 @@ export class Peer {
       }
     })
 
-    this._onDebug(`-> JOIN (clusterId=${cid}, subclusterId=${scid}, clock=${packet.clock}/${this.clock})`)
+    this._onDebug(`-> JOIN (clusterId=${cid.slice(0, 6)}, subclusterId=${scid.slice(0, 6)}, clock=${packet.clock}/${this.clock})`)
     if (this.onState) this.onState(this.getState())
 
     this.mcast(packet)
@@ -959,11 +960,14 @@ export class Peer {
     const len = message?.byteLength ?? message?.length ?? 0
     let clock = packet?.clock || 0
 
-    const siblings = [...this.cache.data.values()]
+    const siblings = packet && [...this.cache.data.values()]
       .filter(Boolean)
-      .filter(p => p?.previousId?.toString('hex') === packet?.packetId?.toString('hex'))
+      .filter(p => {
+        if (!p.previousId || !packet.packetId) return
+        return Buffer.from(p.previousId).compare(Buffer.from(packet.packetId)) === 0
+      })
 
-    if (siblings.length) {
+    if (siblings?.length) {
       // if there are siblings of the previous packet
       // pick the highest clock value, the parent packet or the sibling
       const sort = (a, b) => a.clock - b.clock
@@ -998,19 +1002,19 @@ export class Peer {
       sig
     }))
 
-    if (packet) packets[0].previousId = packet.packetId
-    if (nextId) packets[packets.length - 1].nextId = nextId
+    if (packet) packets[0].previousId = Buffer.from(packet.packetId)
+    if (nextId) packets[packets.length - 1].nextId = Buffer.from(nextId)
 
     // set the .packetId (any maybe the .previousId and .nextId)
     for (let i = 0; i < packets.length; i++) {
-      if (packets.length > 1) packets[i].index = i
+      packets[i].index = i
 
       if (i === 0) {
         packets[0].packetId = await sha256(packets[0].message, { bytes: true })
       } else {
         // all fragments will have the same previous packetId
         // the index is used to stitch them back together in order.
-        packets[i].previousId = packets[0].packetId
+        packets[i].previousId = Buffer.from(packets[0].packetId)
       }
 
       if (packets[i + 1]) {
@@ -1021,7 +1025,8 @@ export class Peer {
           ]),
           { bytes: true }
         )
-        packets[i].nextId = packets[i + 1].packetId
+
+        packets[i].nextId = Buffer.from(packets[i + 1].packetId)
       }
     }
 
@@ -1071,9 +1076,11 @@ export class Peer {
     // peer a consistent view of the data as it has been published.
     if (this.onPacket && head) {
       const p = await this.cache.compose(head)
-      this.onPacket(p, this.port, this.address, true)
-      this._onDebug(`-> PUBLISH (multicasted=true, packetId=${p.packetId.toString('hex').slice(0, 8)})`)
-      return [p]
+      if (p) {
+        this.onPacket(p, this.port, this.address, true)
+        this._onDebug(`-> PUBLISH (multicasted=true, packetId=${p.packetId.toString('hex').slice(0, 8)})`)
+        return [p]
+      }
     }
 
     return packets
@@ -1159,6 +1166,7 @@ export class Peer {
    * @ignore
    */
   async _onConnection (packet, peerId, port, address, proxy, socket) {
+    this._onDebug('<- CONNECTION')
     if (this.closing) return
 
     const natType = packet.message.natType
@@ -1176,9 +1184,12 @@ export class Peer {
         if (oldPeerIndex > -1) this.peers.splice(oldPeerIndex, 1)
       }
 
+      this._onDebug(`<- CONNECTION ADDING PEER ${peer.peerId}@${address}:${port}`)
+
       this.peers.push(peer)
     }
 
+    this._onDebug(`<- CONNECTION AF BRA ${peer.peerId}@${address}:${port}`)
     peer.connected = true
     peer.lastUpdate = Date.now()
     peer.port = port
@@ -1204,8 +1215,8 @@ export class Peer {
       `peerId=${peer.peerId.slice(0, 6)}, ` +
       `address=${address}:${port}, ` +
       `type=${packet.type}, ` +
-      `cluster=${cid.slice(0, 8)}, ` +
-      `sub-cluster=${scid.slice(0, 8)})`
+      `clusterId=${cid.slice(0, 6)}, ` +
+      `subclusterId=${scid.slice(0, 6)})`
     )
 
     if (this.onJoin && this.clusters[cid]) {
@@ -1614,7 +1625,8 @@ export class Peer {
       `isRendezvous=${packet.message.isRendezvous}, ` +
       `from=${address}:${port}, ` +
       `to=${packet.message.address}:${packet.message.port}, ` +
-      `clustering=${cid.slice(0, 4)}/${scid.slice(0, 4)}` +
+      `clusterId=${cid.slice(0, 6)}, ` +
+      `subclusterId=${scid.slice(0, 6)}` +
     ')')
 
     if (this.onIntro) this.onIntro(packet, peer, peerPort, peerAddress)
@@ -1825,8 +1837,8 @@ export class Peer {
       `peerId=${peerId.slice(0, 6)}, ` +
       `clock=${packet.clock}, ` +
       `hops=${packet.hops}, ` +
-      `clusterId=${cid}, ` +
-      `subclusterId=${scid}, ` +
+      `clusterId=${cid.slice(0, 6)}, ` +
+      `subclusterId=${scid.slice(0, 6)}, ` +
       `address=${address}:${port})`
     )
 
@@ -1987,11 +1999,11 @@ export class Peer {
       this.metrics.i.DROPPED++
       const cid = packet.clusterId.toString('base64')
       const scid = packet.subclusterId.toString('base64')
-      this._onDebug(`<- DROP (packetId=${pid.slice(0, 8)}, clusterId=${cid}, subclueterId=${scid}, from=${address}:${port}, hops=${packet.hops})`)
+      this._onDebug(`<- DROP (packetId=${pid.slice(0, 6)}, clusterId=${cid.slice(0, 6)}, subclueterId=${scid.slice(0, 6)}, from=${address}:${port}, hops=${packet.hops})`)
       return
     }
 
-    this._onDebug(`<- PUBLISH (packetId=${pid.slice(0, 8)}, from=${address}:${port}, is-sync=${packet.usr4.toString() === 'SYNC'})`)
+    this._onDebug(`<- PUBLISH (packetId=${pid.slice(0, 6)}, from=${address}:${port}, is-sync=${packet.usr4.toString() === 'SYNC'})`)
     this.cacheInsert(packet)
 
     const ignorelist = [{ address, port }]
@@ -2019,8 +2031,6 @@ export class Peer {
     this.metrics.i[packet.type]++
 
     const pid = packet.packetId.toString('hex')
-    if (this.gate.has(pid)) return
-    this.gate.set(pid, 1)
 
     const streamTo = packet.usr3.toString('hex')
     const streamFrom = packet.usr4.toString('hex')
@@ -2028,35 +2038,44 @@ export class Peer {
     // only help packets with a higher hop count if they are in our cluster
     // if (packet.hops > 2 && !this.clusters[packet.cluster]) return
 
-    const peerFrom = this.peers.find(p => p.peerId === streamFrom)
-    if (!peerFrom) return
+    this._onDebug(`<- STREAM (from=${address}:${port}, pid=${pid}, hops=${packet.hops}, to=${streamTo}, from=${streamFrom})`)
 
     // stream message is for this peer
     if (streamTo === this.peerId) {
+      if (this.gate.has(pid)) return
+      this.gate.set(pid, 1)
+
+      this._onDebug(`<- STREAM ACCEPTED (received=true, from=${address}:${port})`)
       const scid = packet.subclusterId.toString('base64')
 
       if (this.encryption.has(scid)) {
         let p = packet.copy() // clone the packet so it's not modified
 
         if (packet.index > -1) { // if it needs to be composed...
+          if (packet.index === 0) this.streamBuffer.clear()
           p.timestamp = Date.now()
-          this.streamBuffer.set(p.packetId.toString('hex'), p) // cache the partial
+          this.streamBuffer.set(pid, p) // cache the partial
 
           p = await this.cache.compose(p, this.streamBuffer) // try to compose
           if (!p) return // could not compose
 
-          if (p) { // if successful, delete the artifacts
-            const previousId = p.index === 0 ? p.packetId : p.previousId
-            const pid = previousId.toString('hex')
+          this._onDebug(`<- STREAM COMPOSED (pid=${pid.slice(0, 6)}, bufsize=${this.streamBuffer.size})`)
 
-            this.streamBuffer.forEach((v, k) => {
-              if (k === pid) this.streamBuffer.delete(k)
-              if (v.previousId.toString('hex') === pid) this.streamBuffer.delete(k)
-            })
-          }
+          const previousId = p.index === 0 ? p.packetId : p.previousId
+          const parentId = previousId.toString('hex')
+
+          this.streamBuffer.forEach((v, k) => {
+            if (k === parentId) this.streamBuffer.delete(k)
+            if (v.previousId.compare(previousId) === 0) this.streamBuffer.delete(k)
+          })
         }
 
-        if (this.onStream) this.onStream(p, peerFrom, port, address)
+        this._onDebug(`<- STREAM COMPLETE (pid=${pid.slice(0, 6)}, bufsize=${this.streamBuffer.size})`)
+
+        if (this.onStream) {
+          const peerFrom = this.peers.find(p => p.peerId === streamFrom)
+          if (peerFrom) this.onStream(p, peerFrom, port, address)
+        }
       }
 
       return
@@ -2075,11 +2094,16 @@ export class Peer {
     }
 
     this._onDebug(`>> STREAM RELAY (to=${peerTo.address}:${peerTo.port}, id=${peerTo.peerId.slice(0, 6)})`)
+    // I am the proxy!
     this.send(await Packet.encode(packet), peerTo.port, peerTo.address)
 
-    if (packet.hops <= 2 && this.natType === NAT.UNRESTRICTED) {
-      this.mcast(packet, [{ port, address }, { port: peerFrom.port, address: peerFrom.address }])
-    }
+    //
+    // What % of packets hit the server.
+    //
+
+    // if (packet.hops === 1 && this.natType === NAT.UNRESTRICTED) {
+    //   this.mcast(packet, [{ port, address }, { port: peerFrom.port, address: peerFrom.address }])
+    // }
   }
 
   /**

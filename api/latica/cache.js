@@ -189,17 +189,19 @@ export class Cache {
   async compose (packet, source = this.data) {
     let previous = packet
 
-    if (packet?.index > 0) previous = source.get(Buffer.from(packet.previousId).toString('hex'))
+    if (packet?.index > 0) previous = source.get(packet.previousId?.toString('hex'))
     if (!previous) return null
 
     const { meta, size, indexes, ts } = previous.message
 
     // follow the chain to get the buffers in order
-    const bufs = [...source.values()]
-      .filter(p => Buffer.from(p.previousId || '').toString('hex') === Buffer.from(previous.packetId).toString('hex'))
-      .sort((a, b) => a.index - b.index)
+    let bufs = [...source.values()].filter(p => {
+      if (!p.previousId) return
+      return Buffer.from(p.previousId).compare(Buffer.from(previous.packetId)) === 0
+    })
 
     if (!indexes || bufs.length < indexes) return null
+    bufs = bufs.sort((a, b) => a.index - b.index) // sort after confirming they are all there
 
     // concat and then hash, the original should match
     const messages = bufs.map(p => p.message)

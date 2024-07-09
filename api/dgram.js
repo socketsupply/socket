@@ -155,7 +155,7 @@ async function startReading (socket, callback) {
   }
 
   try {
-    if (socket.conduit.isActive) {
+    if (socket?.conduit?.isActive) {
       const opts = {
         route: 'udp.readStart'
       }
@@ -519,7 +519,7 @@ async function send (socket, options, callback) {
       address: options.address
     })
 
-    if (socket.conduit.isActive) {
+    if (socket?.conduit?.isActive) {
       const opts = {
         route: 'udp.send',
         port: options.port,
@@ -785,6 +785,8 @@ export class Socket extends EventEmitter {
         this.conduit = new Conduit({ id: this.id })
 
         this.conduit.receive((err, decoded) => {
+          if (!decoded || !decoded.options) return
+
           const rinfo = {
             port: Number(decoded.options.port),
             address: decoded.options.address,
@@ -797,7 +799,7 @@ export class Socket extends EventEmitter {
             this.emit('message', message, rinfo)
           })
 
-          dc.channel('message').publish({ socket, buffer: message, info })
+          dc.channel('message').publish({ socket: this, buffer: message, info })
         })
 
         this.conduit.socket.onopen = () => {

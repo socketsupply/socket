@@ -36,21 +36,21 @@ async function api (options = {}, events, dgram) {
 
   if (clusterId) clusterId = Buffer.from(clusterId) // some peers don't have clusters
 
-  const Ctor = globalThis.isSocketRuntime ? PeerWorkerProxy : Peer
+  const Ctor = globalThis.window ? PeerWorkerProxy : Peer
   const _peer = new Ctor(options, dgram)
 
   _peer.onJoin = (packet, ...args) => {
-    if (!Buffer.from(packet.clusterId).equals(clusterId)) return
+    if (Buffer.from(packet.clusterId).compare(clusterId) !== 0) return
     bus._emit('#join', packet, ...args)
   }
 
   _peer.onPacket = (packet, ...args) => {
-    if (!Buffer.from(packet.clusterId).equals(clusterId)) return
+    if (Buffer.from(packet.clusterId).compare(clusterId) !== 0) return
     bus._emit('#packet', packet, ...args)
   }
 
   _peer.onStream = (packet, ...args) => {
-    if (!Buffer.from(packet.clusterId).equals(clusterId)) return
+    if (Buffer.from(packet.clusterId).compare(clusterId) !== 0) return
     bus._emit('#stream', packet, ...args)
   }
 
@@ -239,9 +239,13 @@ async function api (options = {}, events, dgram) {
 
       const args = await pack(eventName, value, opts)
 
+      let packets
+
       for (const p of sub.peers.values()) {
-        await _peer.stream(p.peerId, sub.sharedKey, args)
+        const result = await _peer.stream(p.peerId, sub.sharedKey, args)
+        if (!packets) packets = result
       }
+      return packets
     }
 
     sub.emit = async (eventName, value, opts = {}) => {
