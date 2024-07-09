@@ -332,7 +332,11 @@ export class ServiceWorkerContainer extends EventTarget {
     }
 
     if (globalThis.isWorkerScope) {
-      currentScope = new URL('.', globalThis.RUNTIME_WORKER_LOCATION).pathname
+      if (globalThis.RUNTIME_WORKER_LOCATION.startsWith('blob:')) {
+        currentScope = new URL('.', new URL(globalThis.RUNTIME_WORKER_LOCATION).pathname).pathname
+      } else {
+        currentScope = new URL('.', globalThis.RUNTIME_WORKER_LOCATION).pathname
+      }
     } else if (globalThis.location.protocol === 'blob:') {
       currentScope = new URL('.', globalThis.location.pathname).pathname
     } else {
