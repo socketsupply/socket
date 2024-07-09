@@ -7963,10 +7963,10 @@ declare module "socket:shared-worker/index" {
     export class SharedWorker extends EventTarget {
         /**
          * `SharedWorker` class constructor.
-         * @param {string} aURL
+         * @param {string|URL|Blob} aURL
          * @param {string|object=} [nameOrOptions]
          */
-        constructor(aURL: string, nameOrOptions?: (string | object) | undefined);
+        constructor(aURL: string | URL | Blob, nameOrOptions?: (string | object) | undefined);
         set onerror(onerror: any);
         get onerror(): any;
         get ready(): any;
