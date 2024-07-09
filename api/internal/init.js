@@ -1,4 +1,4 @@
-/* global requestAnimationFrame, Blob, DataTransfer, DragEvent, FileList, MessageEvent, reportError */
+/* global XMLHttpRequest, requestAnimationFrame, Blob, DataTransfer, DragEvent, FileList, MessageEvent, reportError */
 /* eslint-disable import/first */
 // mark when runtime did init
 console.assert(
@@ -320,8 +320,25 @@ class RuntimeWorker extends GlobalWorker {
   constructor (filename, options, ...args) {
     options = { ...options }
 
+    if (typeof filename === 'string' && !URL.canParse(filename, location.href)) {
+      const blob = new Blob([filename], { type: 'text/javascript' })
+      filename = URL.createObjectURL(blob).toString()
+    } else if (String(filename).startsWith('blob')) {
+      const request = new XMLHttpRequest()
+      request.open('GET', String(filename), false)
+      request.send()
+
+      const blob = new Blob([request.responseText || request.response], {
+        type: 'text/javascript'
+      })
+
+      filename = URL
+        .createObjectURL(blob)
+        .toString()
+    }
+
     const workerType = options[Symbol.for('socket.runtime.internal.worker.type')] ?? 'worker'
-    const url = encodeURIComponent(new URL(filename, globalThis.location.href).toString())
+    const url = encodeURIComponent(new URL(filename, location.href).toString())
     const id = String(rand64())
 
     const topClient = globalThis.__args.client.top || globalThis.__args.client
