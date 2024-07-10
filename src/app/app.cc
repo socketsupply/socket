@@ -863,6 +863,7 @@ namespace SSC {
   }
 
   void App::kill () {
+    applicationInstance = nullptr;
     this->killed = true;
     this->core->shutdown();
     // Distinguish window closing with app exiting
