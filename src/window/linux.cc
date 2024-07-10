@@ -240,8 +240,8 @@ namespace SSC {
         .id = this->bridge.client.id,
         .index = this->bridge.client.index
       },
-      .conduit = this->core->conduit.port,
       .index = options.index,
+      .conduit = this->core->conduit.port,
       .userScript = options.userScript
     });
 
