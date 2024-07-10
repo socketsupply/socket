@@ -784,7 +784,7 @@ export class Socket extends EventEmitter {
       if (!this.legacy) {
         this.conduit = new Conduit({ id: this.id })
 
-        this.conduit.receive((err, decoded) => {
+        this.conduit.receive((_, decoded) => {
           if (!decoded || !decoded.options) return
 
           const rinfo = {
@@ -802,9 +802,7 @@ export class Socket extends EventEmitter {
           dc.channel('message').publish({ socket: this, buffer: message, info })
         })
 
-        this.conduit.socket.onopen = () => {
-          this.conduit.isActive = true
-
+        this.conduit.onopen = () => {
           startReading(this, (err) => {
             this.#resource.runInAsyncScope(() => {
               if (err) {
