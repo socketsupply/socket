@@ -1174,6 +1174,7 @@ export class Peer {
     if (this.closing) return
 
     const natType = packet.message.natType
+    if (!NAT.isValid(natType)) return
 
     const { clusterId, subclusterId } = packet
 
@@ -1406,7 +1407,7 @@ export class Peer {
     this.metrics.i[packet.type]++
 
     this.lastUpdate = Date.now()
-    const { reflectionId, isReflection, isConnection, requesterPeerId } = packet.message
+    const { reflectionId, isReflection, isConnection, requesterPeerId, natType } = packet.message
 
     if (!Peer.isValidPeerId(requesterPeerId)) return // required field
     if (requesterPeerId === this.peerId) return // from self?
@@ -1438,7 +1439,7 @@ export class Peer {
       message.natType = this.natType
     }
 
-    if (isConnection) {
+    if (isConnection && natType) {
       this._onConnection(packet, requesterPeerId, port, address)
 
       message.isConnection = true
@@ -1498,7 +1499,15 @@ export class Peer {
         this.reflectionFirstResponder = { port, address, responderPeerId, reflectionId, packet }
         if (this.onConnecting) this.onConnecting({ code: 2.5, status: `Received reflection from ${address}:${port}` })
         this._onDebug('<- NAT REFLECT - STAGE2: FIRST RESPONSE', port, address, this.reflectionId)
+        this.reflectionFirstReponderTimeout = this._setTimeout(() => {
+          this.reflectionStage = 0
+          this.lastUpdate = 0
+          this.reflectionId = null
+          this.requestReflection()
+          this._onDebug('<- NAT REFLECTi FAILED TO ACQUIRE SECOND RESPONSE', this.reflectionId)
+        }, PROBE_WAIT)
       } else {
+        this._clearTimeout(this.reflectionFirstReponderTimeout)
         if (this.onConnecting) this.onConnecting({ code: 2.5, status: `Received reflection from ${address}:${port}` })
         this._onDebug('<- NAT REFLECT - STAGE2: SECOND RESPONSE', port, address, this.reflectionId)
         if (packet.message.address !== this.address) return
