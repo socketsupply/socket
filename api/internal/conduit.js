@@ -1,11 +1,45 @@
+/* global CloseEvent, ErrorEvent, MessageEvent, WebSocket */
+import client from '../application/client.js'
+
+export const DEFALUT_MAX_RECONNECT_RETRIES = 32
+export const DEFAULT_MAX_RECONNECT_TIMEOUT = 256
+
 /**
  * @class Conduit
+ * @ignore
  *
  * @classdesc A class for managing WebSocket connections with custom options and payload encoding.
  */
-export class Conduit {
+export class Conduit extends EventTarget {
+  static get port () {
+    return globalThis.__args.conduit
+  }
+
+  isConnecting = false
   isActive = false
+  socket = null
+  port = 0
   id = null
+
+  /**
+   * @type {function(MessageEvent)}
+   */
+  #onmessage = null
+
+  /**
+   * @type {function(CloseEvent)}
+   */
+  #onclose = null
+
+  /**
+   * @type {function(ErrorEvent)}
+   */
+  #onerror = null
+
+  /**
+   * @type {function(Event)}
+   */
+  #onopen = null
 
   /**
    * Creates an instance of Conduit.
@@ -15,11 +49,179 @@ export class Conduit {
    * @param {string} params.method - The method to use for the connection.
    */
   constructor ({ id }) {
-    const port = globalThis.__args.conduit
-    const clientId = globalThis.__args.client.top.id
-    const uri = `ws://localhost:${port}/${id}/${clientId}`
-    this.socket = new globalThis.WebSocket(uri)
+    super()
+
+    this.id = id
+    // @ts-ignore
+    this.port = this.constructor.port
+    this.connect((err) => {
+      if (err) {
+        this.reconnect()
+      }
+    })
+
+    this.addEventListener('close', () => {
+      this.reconnect()
+    })
+  }
+
+  /**
+   * The URL string for the WebSocket server.
+   * @type {string}
+   */
+  get url () {
+    return `ws://localhost:${this.port}/${this.id}/${client.top.id}`
+  }
+
+  /**
+   * @type {function(MessageEvent)}
+   */
+  get onmessage () { return this.#onmessage }
+  set onmessage (onmessage) {
+    if (typeof this.#onmessage === 'function') {
+      this.removeEventListener('message', this.#onmessage)
+    }
+
+    this.#onmessage = null
+
+    if (typeof onmessage === 'function') {
+      this.#onmessage = onmessage
+      this.addEventListener('message', onmessage)
+    }
+  }
+
+  /**
+   * @type {function(ErrorEvent)}
+   */
+  get onerror () { return this.#onerror }
+  set onerror (onerror) {
+    if (typeof this.#onerror === 'function') {
+      this.removeEventListener('error', this.#onerror)
+    }
+
+    this.#onerror = null
+
+    if (typeof onerror === 'function') {
+      this.#onerror = onerror
+      this.addEventListener('error', onerror)
+    }
+  }
+
+  /**
+   * @type {function(CloseEvent)}
+   */
+  get onclose () { return this.#onclose }
+  set onclose (onclose) {
+    if (typeof this.#onclose === 'function') {
+      this.removeEventListener('close', this.#onclose)
+    }
+
+    this.#onclose = null
+
+    if (typeof onclose === 'function') {
+      this.#onclose = onclose
+      this.addEventListener('close', onclose)
+    }
+  }
+
+  /**
+   * @type {function(Event)}
+   */
+  get onopen () { return this.#onopen }
+  set onopen (onopen) {
+    if (typeof this.#onopen === 'function') {
+      this.removeEventListener('open', this.#onopen)
+    }
+
+    this.#onopen = null
+
+    if (typeof onopen === 'function') {
+      this.#onopen = onopen
+      this.addEventListener('open', onopen)
+    }
+  }
+
+  /**
+   * Connects the underlying conduit `WebSocket`.
+   * @param {function(Error?)=} [callback]
+   * @return {Conduit}
+   */
+  connect (callback = null) {
+    if (this.isConnecting) {
+      return this
+    }
+
+    if (this.socket) {
+      this.socket.close()
+    }
+
+    console.log('connect', this.url)
+
+    // reset
+    this.isActive = false
+    this.isConnecting = true
+
+    this.socket = new WebSocket(this.url)
     this.socket.binaryType = 'arraybuffer'
+    this.socket.onerror = (e) => {
+      this.isActive = false
+      this.isConnecting = false
+      this.dispatchEvent(new ErrorEvent('error', e))
+      if (typeof callback === 'function') {
+        callback(e.error || new Error('Failed to connect Conduit'))
+        callback = null
+      }
+    }
+
+    this.socket.onclose = (e) => {
+      this.isActive = false
+      this.isConnecting = false
+      this.dispatchEvent(new CloseEvent('close', e))
+    }
+
+    this.socket.onopen = (e) => {
+      this.isActive = true
+      this.isConnecting = false
+      this.dispatchEvent(new Event('open'))
+      if (typeof callback === 'function') {
+        callback(null)
+        callback = null
+      }
+    }
+
+    this.socket.onmessage = (e) => {
+      this.isActive = true
+      this.isConnecting = false
+      this.dispatchEvent(new MessageEvent('message', e))
+    }
+
+    return this
+  }
+
+  /**
+   * Reconnects a `Conduit` socket.
+   * @param {{retries?: number, timeout?: number}} [options]
+   * @return {Conduit}
+   */
+  reconnect (options = null) {
+    if (this.isConnecting) {
+      return this
+    }
+
+    const retries = options?.retries ?? DEFALUT_MAX_RECONNECT_RETRIES
+    const timeout = options?.timeout ?? DEFAULT_MAX_RECONNECT_TIMEOUT
+
+    return this.connect((err) => {
+      if (err) {
+        this.isActive = false
+        if (retries > 0) {
+          setTimeout(() => this.reconnect({
+            retries: retries - 1,
+            timeout
+          }), timeout)
+        }
+      }
+    })
   }
 
   /**
@@ -53,7 +255,7 @@ export class Conduit {
    * Encodes options and payload into a single Uint8Array message.
    *
    * @private
-   * @param {Object} options - The options to encode.
+   * @param {object} options - The options to encode.
    * @param {Uint8Array} payload - The payload to encode.
    * @returns {Uint8Array} The encoded message.
    */
@@ -124,31 +326,34 @@ export class Conduit {
    * Registers a callback to handle incoming messages.
    * The callback will receive an error object and an object containing decoded options and payload.
    *
-   * @param {Function} cb - The callback function to handle incoming messages.
-   * @param {Error} cb.error - The error object, if an error occurs. Null if no error.
-   * @param {Object} cb.message - The decoded message object.
-   * @param {Object} cb.message.options - The decoded options as key-value pairs.
-   * @param {Uint8Array} cb.message.payload - The actual data of the payload.
+   * @param {function(Error?, { options: object, payload: Uint8Array })} cb - The callback function to handle incoming messages.
    */
   receive (cb) {
-    this.socket.onerror = err => {
-      cb(err)
-    }
+    this.addEventListener('error', (event) => {
+      // @ts-ignore
+      cb(event.error)
+    })
 
-    this.socket.onmessage = event => {
-      const arrayBuffer = event.data
-      const data = new Uint8Array(arrayBuffer)
+    this.addEventListener('message', (event) => {
+      // @ts-ignore
+      const data = new Uint8Array(event.data)
       cb(null, this.decodeMessage(data))
-    }
+    })
   }
 
   /**
    * Sends a message with the specified options and payload over the WebSocket connection.
    *
-   * @param {Object} options - The options to send.
+   * @param {object} options - The options to send.
    * @param {Uint8Array} payload - The payload to send.
+   * @return {boolean}
    */
   send (options, payload) {
-    this.socket.send(this.encodeMessage(options, payload))
+    if (this.isActive) {
+      this.socket.send(this.encodeMessage(options, payload))
+      return true
+    }
+
+    return false
   }
 }
