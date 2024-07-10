@@ -328,22 +328,28 @@ namespace SSC {
       });
     });
 
-    return true; 
+    return true;
   }
 
   void CoreConduit::open () {
-    std::promise<int> p;
-    std::future<int> future = p.get_future();
+    if (this->port != 0) {
+      return;
+    }
 
-    this->core->dispatchEventLoop([=, &p, this]() mutable {
-      auto loop = this->core->getEventLoop();
+    auto loop = this->core->getEventLoop();
 
-      uv_tcp_init(loop, &this->conduitSocket);
-      uv_ip4_addr("0.0.0.0", 0, &addr);
-      uv_tcp_bind(&this->conduitSocket, (const struct sockaddr *)&this->addr, 0);
+    uv_tcp_init(loop, &this->conduitSocket);
+    uv_ip4_addr("0.0.0.0", 0, &addr);
+    uv_tcp_bind(&this->conduitSocket, (const struct sockaddr *)&this->addr, 0);
 
-      this->conduitSocket.data = (void*)this;
+    this->conduitSocket.data = (void*)this;
+    struct sockaddr_in sockname;
+    int namelen = sizeof(sockname);
+    uv_tcp_getsockname(&this->conduitSocket, (struct sockaddr *)&sockname, &namelen);
 
+    this->port = ntohs(sockname.sin_port);
+
+    this->core->dispatchEventLoop([=, this]() mutable {
       int r = uv_listen((uv_stream_t*)&this->conduitSocket, 128, [](uv_stream_t *stream, int status) {
         if (status < 0) {
           // debug("New connection error %s\n", uv_strerror(status));
@@ -402,19 +408,10 @@ namespace SSC {
       });
 
       if (r) {
+        this->port = -1;
         // debug("Listen error %s\n", uv_strerror(r));
-        p.set_value(0);
-        return;
       }
-
-      struct sockaddr_in sockname;
-      int namelen = sizeof(sockname);
-      uv_tcp_getsockname(&this->conduitSocket, (struct sockaddr *)&sockname, &namelen);
-
-      p.set_value(ntohs(sockname.sin_port));
     });
-
-    this->port = future.get();
   }
 
   void CoreConduit::close () {

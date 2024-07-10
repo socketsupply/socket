@@ -130,6 +130,7 @@ namespace SSC {
       Atomic<bool> didTimersStart = false;
       Atomic<bool> isLoopRunning = false;
       Atomic<bool> shuttingDown = false;
+      Atomic<bool> isPaused = true;
 
       uv_loop_t eventLoop;
       uv_async_t eventLoopAsync;
@@ -168,14 +169,8 @@ namespace SSC {
         timers(this),
         udp(this)
       {
-        initEventLoop();
-        if (options.features.useNetworkStatus) {
-          this->networkStatus.start();
-        }
-
-        if (options.features.useConduit) {
-          this->conduit.open();
-        }
+        this->initEventLoop();
+        this->resume();
       }
 
       Core ()
@@ -188,6 +183,8 @@ namespace SSC {
 
       // called when the application is shutting down
       void shutdown ();
+      void resume ();
+      void pause ();
 
       void retainSharedPointerBuffer (SharedPointer<char[]> pointer, unsigned int ttl);
       void releaseSharedPointerBuffer (SharedPointer<char[]> pointer);
