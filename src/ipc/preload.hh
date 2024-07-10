@@ -70,13 +70,13 @@ namespace SSC::IPC {
         };
 
       bool headless = false;
-      int conduit = 0;
       bool debug = false;
 
       Features features;
-
       UniqueClient client;
+
       int index = 0;
+      int conduit = 0;
 
       Headers headers = {}; // depends on 'features.useHTMLMarkup'
       Map metadata; // depends on 'features.useHTMLMarkup'
