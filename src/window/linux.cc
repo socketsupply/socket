@@ -843,8 +843,12 @@ namespace SSC {
       G_OBJECT(this->window),
       "destroy",
       G_CALLBACK((+[](GtkWidget* object, gpointer arg) {
-        auto w = reinterpret_cast<Window*>(arg);
         auto app = App::sharedApplication();
+        if (app == nullptr) {
+          return FALSE;
+        }
+
+        auto w = reinterpret_cast<Window*>(arg);
         int index = w != nullptr ? w->index : -1;
 
         for (auto& window : app->windowManager.windows) {
