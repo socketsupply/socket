@@ -241,13 +241,15 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
     serviceWorkerWindow->navigate(
       "socket://" + self.app->userConfig["meta_bundle_identifier"] + "/socket/service-worker/index.html"
     );
-  } else if (self.app->userConfig["webview_service_worker_mode"] == "hybrid") {
-    self.app->serviceWorkerContainer.init(&defaultWindow->bridge);
   }
 
   auto defaultWindow = self.app->windowManager.createDefaultWindow(Window::Options {
      .shouldExitApplicationOnClose = true
-    });
+  });
+
+  if (self.app->userConfig["webview_service_worker_mode"] == "hybrid") {
+    self.app->serviceWorkerContainer.init(&defaultWindow->bridge);
+  }
 
   defaultWindow->setTitle(self.app->userConfig["meta_title"]);
 
