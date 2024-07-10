@@ -15,12 +15,57 @@ namespace SSC {
       return;
     }
 
+    this->pause();
     this->shuttingDown = true;
-  #if SOCKET_RUNTIME_PLATFORM_DESKTOP
+
+  #if !SOCKET_RUNTIME_PLATFORM_IOS
     this->childProcess.shutdown();
   #endif
+
     this->stopEventLoop();
     this->shuttingDown = false;
+  }
+
+  void Core::resume () {
+    if (!this->isPaused) {
+      return;
+    }
+
+    if (this->options.features.useUDP) {
+      this->udp.resumeAllSockets();
+    }
+
+    if (options.features.useNetworkStatus) {
+      this->networkStatus.start();
+    }
+
+    if (options.features.useConduit) {
+      this->conduit.open();
+    }
+
+    this->runEventLoop();
+    this->isPaused = false;
+  }
+
+  void Core::pause () {
+    if (this->isPaused) {
+      return;
+    }
+
+    if (this->options.features.useUDP) {
+      this->udp.pauseAllSockets();
+    }
+
+    if (options.features.useNetworkStatus) {
+      this->networkStatus.stop();
+    }
+
+    if (options.features.useConduit) {
+      this->conduit.close();
+    }
+
+    this->stopEventLoop();
+    this->isPaused = true;
   }
 
   bool Core::hasPost (uint64_t id) {

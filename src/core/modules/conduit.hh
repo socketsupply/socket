@@ -84,10 +84,10 @@ namespace SSC {
       CoreConduit::Client* get (uint64_t id) const;
 
       std::map<uint64_t, Client*> clients;
-      int port = 0;
+      Atomic<int> port = 0;
 
-      void open();
-      void close();
+      void open ();
+      void close ();
 
     private:
       void handshake (Client *client, const char *request);
