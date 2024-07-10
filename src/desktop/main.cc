@@ -884,8 +884,6 @@ MAIN {
       process = nullptr;
     }
 
-    app.windowManager.destroy();
-
   #if SOCKET_RUNTIME_PLATFORM_APPLE
     if (app.wasLaunchedFromCli) {
       debug("__EXIT_SIGNAL__=%d", 0);
