@@ -36,7 +36,10 @@ async function api (options = {}, events, dgram) {
 
   if (clusterId) clusterId = Buffer.from(clusterId) // some peers don't have clusters
 
-  const Ctor = globalThis.window ? PeerWorkerProxy : Peer
+  let useWorker = globalThis.isSocketRuntime
+  if (options.worker === false) useWorker = false
+
+  const Ctor = useWorker ? PeerWorkerProxy : Peer
   const _peer = new Ctor(options, dgram)
 
   _peer.onJoin = (packet, ...args) => {
@@ -362,7 +365,7 @@ async function api (options = {}, events, dgram) {
     const sub = bus.subclusters.get(scid)
     if (!sub) return
 
-    const eventName = Buffer.from(packet.usr1).toString('hex')
+    const eventName = packet.usr1.toString('hex')
     const { verified, opened } = await unpack(packet)
     if (verified) packet.verified = true
 

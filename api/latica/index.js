@@ -1175,12 +1175,15 @@ export class Peer {
 
     const natType = packet.message.natType
     if (!NAT.isValid(natType)) return
+    if (!Peer.isValidPeerId(peerId)) return
+    if (peerId === this.peerId) return
 
     const { clusterId, subclusterId } = packet
 
     let peer = this.getPeer(peerId)
+    const firstContact = !peer
 
-    if (!peer) {
+    if (firstContact) {
       peer = new RemotePeer({ peerId })
 
       if (this.peers.length >= 256) {
@@ -1214,7 +1217,6 @@ export class Peer {
     }
 
     if (!peer.localPeer) peer.localPeer = this
-    if (!this.connections) this.connections = new Map()
 
     this._onDebug('<- CONNECTION (' +
       `peerId=${peer.peerId.slice(0, 6)}, ` +
@@ -1228,9 +1230,8 @@ export class Peer {
       this.onJoin(packet, peer, port, address)
     }
 
-    if (!this.connections.has(peer)) {
-      this.onConnection && this.onConnection(packet, peer, port, address)
-      this.connections.set(peer, packet.message.cacheSummaryHash)
+    if (firstContact && this.onConnection) {
+      this.onConnection(packet, peer, port, address)
     }
   }
 
@@ -1503,8 +1504,8 @@ export class Peer {
           this.reflectionStage = 0
           this.lastUpdate = 0
           this.reflectionId = null
+          this._onDebug('<- NAT REFLECT FAILED TO ACQUIRE SECOND RESPONSE', this.reflectionId)
           this.requestReflection()
-          this._onDebug('<- NAT REFLECTi FAILED TO ACQUIRE SECOND RESPONSE', this.reflectionId)
         }, PROBE_WAIT)
       } else {
         this._clearTimeout(this.reflectionFirstReponderTimeout)
