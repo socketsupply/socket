@@ -8947,6 +8947,120 @@ declare module "socket:constants" {
     export default _default;
 }
 
+declare module "socket:internal/conduit" {
+    export const DEFALUT_MAX_RECONNECT_RETRIES: 32;
+    export const DEFAULT_MAX_RECONNECT_TIMEOUT: 256;
+    /**
+     * @class Conduit
+     * @ignore
+     *
+     * @classdesc A class for managing WebSocket connections with custom options and payload encoding.
+     */
+    export class Conduit extends EventTarget {
+        static get port(): any;
+        /**
+         * Creates an instance of Conduit.
+         *
+         * @param {Object} params - The parameters for the Conduit.
+         * @param {string} params.id - The ID for the connection.
+         * @param {string} params.method - The method to use for the connection.
+         */
+        constructor({ id }: {
+            id: string;
+            method: string;
+        });
+        isConnecting: boolean;
+        isActive: boolean;
+        socket: any;
+        port: number;
+        id: any;
+        /**
+         * The URL string for the WebSocket server.
+         * @type {string}
+         */
+        get url(): string;
+        set onmessage(onmessage: (arg0: MessageEvent) => any);
+        /**
+         * @type {function(MessageEvent)}
+         */
+        get onmessage(): (arg0: MessageEvent) => any;
+        set onerror(onerror: (arg0: ErrorEvent) => any);
+        /**
+         * @type {function(ErrorEvent)}
+         */
+        get onerror(): (arg0: ErrorEvent) => any;
+        set onclose(onclose: (arg0: CloseEvent) => any);
+        /**
+         * @type {function(CloseEvent)}
+         */
+        get onclose(): (arg0: CloseEvent) => any;
+        set onopen(onopen: (arg0: Event) => any);
+        /**
+         * @type {function(Event)}
+         */
+        get onopen(): (arg0: Event) => any;
+        /**
+         * Connects the underlying conduit `WebSocket`.
+         * @param {function(Error?)=} [callback]
+         * @return {Conduit}
+         */
+        connect(callback?: ((arg0: Error | null) => any) | undefined): Conduit;
+        /**
+         * Reconnects a `Conduit` socket.
+         * @param {{retries?: number, timeout?: number}} [options]
+         * @return {Conduit}
+         */
+        reconnect(options?: {
+            retries?: number;
+            timeout?: number;
+        }): Conduit;
+        /**
+         * Encodes a single header into a Uint8Array.
+         *
+         * @private
+         * @param {string} key - The header key.
+         * @param {string} value - The header value.
+         * @returns {Uint8Array} The encoded header.
+         */
+        private encodeOption;
+        /**
+         * Encodes options and payload into a single Uint8Array message.
+         *
+         * @private
+         * @param {object} options - The options to encode.
+         * @param {Uint8Array} payload - The payload to encode.
+         * @returns {Uint8Array} The encoded message.
+         */
+        private encodeMessage;
+        /**
+         * Decodes a Uint8Array message into options and payload.
+         * @param {Uint8Array} data - The data to decode.
+         * @returns {Object} The decoded message containing options and payload.
+         * @throws Will throw an error if the data is invalid.
+         */
+        decodeMessage(data: Uint8Array): any;
+        /**
+         * Registers a callback to handle incoming messages.
+         * The callback will receive an error object and an object containing decoded options and payload.
+         *
+         * @param {function(Error?, { options: object, payload: Uint8Array })} cb - The callback function to handle incoming messages.
+         */
+        receive(cb: (arg0: Error | null, arg1: {
+            options: object;
+            payload: Uint8Array;
+        }) => any): void;
+        /**
+         * Sends a message with the specified options and payload over the WebSocket connection.
+         *
+         * @param {object} options - The options to send.
+         * @param {Uint8Array} payload - The payload to send.
+         * @return {boolean}
+         */
+        send(options: object, payload: Uint8Array): boolean;
+        #private;
+    }
+}
+
 declare module "socket:ip" {
     /**
      * Normalizes input as an IPv4 address string
@@ -9063,6 +9177,7 @@ declare module "socket:dgram" {
         dataListener: ({ detail }: {
             detail: any;
         }) => any;
+        conduit: Conduit;
         /**
          * Associates the dgram.Socket to a remote address and port. Every message sent
          * by this handle is automatically sent to that destination. Also, the socket
@@ -9271,6 +9386,7 @@ declare module "socket:dgram" {
     export default exports;
     export type SocketOptions = any;
     import { EventEmitter } from "socket:events";
+    import { Conduit } from "socket:internal/conduit";
     import { InternalError } from "socket:errors";
     import * as exports from "socket:dgram";
     
@@ -12486,13 +12602,20 @@ declare module "socket:latica/index" {
         lastUpdate: number;
         lastRequest: number;
         localPeer: any;
-        write(sharedKey: any, args: any): Promise<any>;
+        write(sharedKey: any, args: any): Promise<any[]>;
     }
     /**
      * `Peer` class factory.
      * @param {{ createSocket: function('udp4', null, object?): object }} options
      */
     export class Peer {
+        /**
+         * Test a peerID is valid
+         *
+         * @param {string} pid
+         * @returns boolean
+         */
+        static isValidPeerId(pid: string): boolean;
         /**
          * `Peer` class constructor.
          * @param {object=} opts - Options
@@ -12622,6 +12745,10 @@ declare module "socket:latica/index" {
          * @ignore
          */
         send(data: Buffer, port: number, address: string, socket?: any): undefined;
+        /**
+         * @private
+         */
+        private stream;
         /**
          * @private
          */
@@ -12879,6 +13006,7 @@ declare module "socket:latica/proxy" {
         cacheInsert(...args: any[]): Promise<any>;
         mcast(...args: any[]): Promise<any>;
         requestReflection(...args: any[]): Promise<any>;
+        stream(...args: any[]): Promise<any>;
         join(...args: any[]): Promise<any>;
         publish(...args: any[]): Promise<any>;
         sync(...args: any[]): Promise<any>;
