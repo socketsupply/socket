@@ -20,6 +20,18 @@ static dispatch_queue_t queue = dispatch_queue_create(
   self.statusItem = [NSStatusBar.systemStatusBar statusItemWithLength: NSVariableStatusItemLength];
 }
 
+- (void) applicationWillBecomeActive: (NSNotification*) notification {
+  dispatch_async(queue, ^{
+    self.app->core->resume();
+  });
+}
+
+- (void) applicationWillResignActive: (NSNotification*) notification {
+  dispatch_async(queue, ^{
+    self.app->core->pause();
+  });
+}
+
 - (void) menuWillOpen: (NSMenu*) menu {
   auto app = self.app;
   auto window = app->windowManager.getWindow(0);
@@ -287,15 +299,13 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
 
 - (void) applicationDidBecomeActive: (UIApplication*) application {
   dispatch_async(queue, ^{
-    self.app->core->udp.resumeAllSockets();
-    self.app->core->runEventLoop();
+    self.app->core->resume();
   });
 }
 
 - (void) applicationWillResignActive: (UIApplication*) application {
   dispatch_async(queue, ^{
-    self.app->core->stopEventLoop();
-    self.app->core->udp.pauseAllSockets();
+    self.app->core->pause();
   });
 }
 
@@ -1269,8 +1279,7 @@ extern "C" {
     app->jni = nullptr;
     app->self = nullptr;
 
-    app->core->udp.pauseAllSockets();
-    app->core->stopEventLoop();
+    app->core->pause();
   }
 
   void ANDROID_EXTERNAL(app, App, onStart)(JNIEnv *env, jobject self) {
@@ -1279,8 +1288,7 @@ extern "C" {
       ANDROID_THROW(env, "Missing 'App' in environment");
     }
 
-    app->core->udp.resumeAllSockets();
-    app->core->runEventLoop();
+    app->core->resume();
   }
 
   void ANDROID_EXTERNAL(app, App, onStop)(JNIEnv *env, jobject self) {
@@ -1289,8 +1297,7 @@ extern "C" {
       ANDROID_THROW(env, "Missing 'App' in environment");
     }
 
-    app->core->udp.pauseAllSockets();
-    app->core->stopEventLoop();
+    app->core->pause();
   }
 
   void ANDROID_EXTERNAL(app, App, onResume)(JNIEnv *env, jobject self) {
@@ -1299,8 +1306,7 @@ extern "C" {
       ANDROID_THROW(env, "Missing 'App' in environment");
     }
 
-    app->core->udp.resumeAllSockets();
-    app->core->runEventLoop();
+    app->core->resume();
   }
 
   void ANDROID_EXTERNAL(app, App, onPause)(JNIEnv *env, jobject self) {
@@ -1309,8 +1315,7 @@ extern "C" {
       ANDROID_THROW(env, "Missing 'App' in environment");
     }
 
-    app->core->udp.pauseAllSockets();
-    app->core->stopEventLoop();
+    app->core->pause();
   }
 
   void ANDROID_EXTERNAL(app, App, onPermissionChange)(
