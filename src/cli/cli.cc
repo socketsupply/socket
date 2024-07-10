@@ -74,6 +74,7 @@ Thread* sourcesWatcherSupportThread = nullptr;
 Mutex signalHandlerMutex;
 
 Path targetPath;
+String settingsSource = "";
 Map settings;
 Map rc;
 
@@ -154,24 +155,30 @@ bool equal (const String& s1, const String& s2) {
   return s1.compare(s2) == 0;
 };
 
-const Map SSC::getUserConfig () {
-  return settings;
-}
-
-const String SSC::getDevHost () {
-  return settings["host"];
-}
-
-int SSC::getDevPort () {
-  if (settings.contains("port")) {
-    return std::stoi(settings["port"].c_str());
+extern "C" {
+  const unsigned char* socket_runtime_init_get_user_config_bytes () {
+    return reinterpret_cast<const unsigned char*>(settingsSource.c_str());
   }
 
-  return 0;
-}
+  unsigned int socket_runtime_init_get_user_config_bytes_size () {
+    return settingsSource.size();
+  }
 
-bool SSC::isDebugEnabled () {
-  return DEBUG == 1;
+  bool socket_runtime_init_is_debug_enabled () {
+    return DEBUG == 1;
+  }
+
+  const char* socket_runtime_init_get_dev_host () {
+    return settings["host"].c_str();
+  }
+
+  int socket_runtime_init_get_dev_port () {
+    if (settings.contains("port")) {
+      return std::stoi(settings["port"].c_str());
+    }
+
+    return 0;
+  }
 }
 
 void printHelp (const String& command) {
@@ -2083,12 +2090,14 @@ int main (const int argc, const char* argv[]) {
           );
         }
 
-        settings = INI::parse(tmpl(ini, Map {
+        settingsSource = tmpl(ini, Map {
           {"platform.arch", platform.arch},
           {"platform.arch.short", replace(platform.arch, "x86_64", "x64")},
           {"platform.os", platform.os},
           {"platform.os.short", replace(platform.os, "win32", "win")}
-        }));
+        });
+
+        settings = INI::parse(settingsSource);
 
         if (settings["meta_type"] == "extension" || settings["build_type"] == "extension") {
           auto extension = settings["build_name"];
