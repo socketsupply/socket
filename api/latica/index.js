@@ -964,7 +964,7 @@ export class Peer {
     const siblings = packet && [...this.cache.data.values()]
       .filter(Boolean)
       .filter(p => {
-        if (!p.previousId || !packet.packetId) return
+        if (!p.previousId || !packet.packetId) return false
         return Buffer.from(p.previousId).compare(Buffer.from(packet.packetId)) === 0
       })
 
