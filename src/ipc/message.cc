@@ -28,6 +28,7 @@ namespace SSC::IPC {
     // bail if malformed
     if (str.compare("ipc://") == 0) return;
     if (str.compare("ipc://?") == 0) return;
+    if (str.compare("ipc:///?") == 0) return;
 
     String query;
     String path;
@@ -37,7 +38,7 @@ namespace SSC::IPC {
     if (raw.size() > 1) query = raw[1];
 
     auto parts = split(path, '/');
-    if (parts.size() >= 1) name = parts[1];
+    if (parts.size() > 1) name = parts[1];
 
     if (raw.size() != 2) return;
     auto pairs = split(raw[1], '&');
