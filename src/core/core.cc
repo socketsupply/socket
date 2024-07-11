@@ -40,7 +40,7 @@ namespace SSC {
     }
 
     if (options.features.useConduit) {
-      this->conduit.open();
+      this->conduit.start();
     }
 
     this->runEventLoop();
@@ -61,7 +61,8 @@ namespace SSC {
     }
 
     if (options.features.useConduit) {
-      this->conduit.close();
+      // FIXME(@jwerle)
+      // this->conduit.stop();
     }
 
     this->stopEventLoop();

@@ -92,6 +92,11 @@ namespace SSC {
         JSON::Object json () const override;
       };
 
+      struct ConduitDiagnostic : public Diagnostic {
+        Handles handles;
+        JSON::Object json () const override;
+      };
+
       struct QueryDiagnostic : public Diagnostic {
         PostsDiagnostic posts;
         ChildProcessDiagnostic childProcess;
@@ -100,6 +105,7 @@ namespace SSC {
         TimersDiagnostic timers;
         UDPDiagnostic udp;
         UVDiagnostic uv;
+        ConduitDiagnostic conduit;
 
         JSON::Object json () const override;
       };

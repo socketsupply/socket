@@ -16,6 +16,23 @@ namespace SSC {
       attrs
     );
 
+  #elif SOCKET_RUNTIME_PLATFORM_LINUX
+    this->monitor = g_network_monitor_get_default();
+  #endif
+  }
+
+  CoreNetworkStatus::~CoreNetworkStatus () {
+  #if SOCKET_RUNTIME_PLATFORM_APPLE
+    this->stop();
+    dispatch_release(this->queue);
+    this->monitor = nullptr;
+    this->queue = nullptr;
+  #endif
+  }
+
+  bool CoreNetworkStatus::start () {
+    this->stop();
+  #if SOCKET_RUNTIME_PLATFORM_APPLE
     this->monitor = nw_path_monitor_create();
 
     nw_path_monitor_set_queue(this->monitor, this->queue);
@@ -59,22 +76,6 @@ namespace SSC {
 
       this->observers.dispatch(json);
     });
-  #elif SOCKET_RUNTIME_PLATFORM_LINUX
-    this->monitor = g_network_monitor_get_default();
-  #endif
-  }
-
-  CoreNetworkStatus::~CoreNetworkStatus () {
-  #if SOCKET_RUNTIME_PLATFORM_APPLE
-    dispatch_release(this->queue);
-    nw_release(this->monitor);
-    this->monitor = nullptr;
-    this->queue = nullptr;
-  #endif
-  }
-
-  bool CoreNetworkStatus::start () {
-  #if SOCKET_RUNTIME_PLATFORM_APPLE
     nw_path_monitor_start(this->monitor);
     return true;
   #elif SOCKET_RUNTIME_PLATFORM_LINUX
@@ -101,7 +102,11 @@ namespace SSC {
 
   bool CoreNetworkStatus::stop () {
   #if SOCKET_RUNTIME_PLATFORM_APPLE
-    nw_path_monitor_cancel(this->monitor);
+    if (this->monitor) {
+      nw_path_monitor_cancel(this->monitor);
+      nw_release(this->monitor);
+    }
+    this->monitor = nullptr;
     return true;
   #elif SOCKET_RUNTIME_PLATFORM_LINUX
     if (this->signal) {
