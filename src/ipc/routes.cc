@@ -1858,6 +1858,10 @@ static void mapIPCRoutes (Router *router) {
       }];
     }
   #endif
+
+    // not implemented
+    auto data = JSON::Object::Entries {{"state", "denied"}};
+    return reply(Result::Data { message, data });
   });
 
   router->map("permissions.request", [=](auto message, auto router, auto reply) {
