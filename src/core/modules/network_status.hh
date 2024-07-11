@@ -11,10 +11,10 @@ namespace SSC {
       using Observers = CoreModule::Observers<Observer>;
 
     #if SOCKET_RUNTIME_PLATFORM_APPLE
-      dispatch_queue_t queue;
-      nw_path_monitor_t monitor;
+      dispatch_queue_t queue = nullptr;
+      nw_path_monitor_t monitor = nullptr;
     #elif SOCKET_RUNTIME_PLATFORM_LINUX
-      GNetworkMonitor* monitor;
+      GNetworkMonitor* monitor = nullptr;
       guint signal = 0;
     #endif
 

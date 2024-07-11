@@ -6,30 +6,32 @@
 
 namespace SSC {
   class Core;
-  class CoreConduit;
-
 
   class CoreConduit : public CoreModule {
-    uv_tcp_t conduitSocket;
-    struct sockaddr_in addr;
-    mutable std::mutex clientsMutex;
-
     public:
       using Options = std::unordered_map<String, String>;
 
       struct EncodedMessage {
         Options options;
-        std::vector<uint8_t> payload;
+        Vector<uint8_t> payload;
 
-        String get (const String& key) const {
-          auto it = options.find(key);
+        inline String get (const String& key) const {
+          const auto it = options.find(key);
           if (it != options.end()) {
             return it->second;
           }
           return "";
         }
 
-        String pluck (const String& key) {
+        inline bool has (const String& key) const {
+          const auto it = options.find(key);
+          if (it != options.end()) {
+            return true;
+          }
+          return false;
+        }
+
+        inline String pluck (const String& key) {
           auto it = options.find(key);
           if (it != options.end()) {
             String value = it->second;
@@ -39,60 +41,89 @@ namespace SSC {
           return "";
         }
 
-        std::map<String, String> getOptionsAsMap () {
-          std::map<String, String> omap;
+        inline Map getOptionsAsMap () {
+          Map map;
 
           for (const auto& pair : this->options) {
-            omap.insert(pair);
+            map.insert(pair);
           }
-          return omap;
+          return map;
         }
       };
 
       class Client {
         public:
+          // client state
           uint64_t id;
           uint64_t clientId;
+          Atomic<bool> isHandshakeDone;
+
+          // uv statae
           uv_tcp_t handle;
-          uv_write_t write_req;
-          uv_shutdown_t shutdown_req;
           uv_buf_t buffer;
-          int is_handshake_done;
-          unsigned char *frame_buffer;
-          size_t frame_buffer_size;
 
-          CoreConduit* self;
-          bool emit(const CoreConduit::Options& options, std::shared_ptr<char[]> payload_data, size_t length);
+          // websocket frame buffer state
+          unsigned char *frameBuffer;
+          size_t frameBufferSize;
 
-          Client(CoreConduit* self) : self(self), id(0), clientId(0), is_handshake_done(0) {
-          }
+          CoreConduit* conduit;
 
-          ~Client() {
-            if (frame_buffer) {
-              delete[] frame_buffer;
+          Client (CoreConduit* conduit)
+            : conduit(conduit),
+              id(0),
+              clientId(0),
+              isHandshakeDone(0)
+          {}
+
+          ~Client () {
+            auto handle = reinterpret_cast<uv_handle_t*>(&this->handle);
+
+            if (frameBuffer) {
+              delete [] frameBuffer;
             }
-            uv_close((uv_handle_t*)&handle, nullptr);
+
+            if (handle->loop != nullptr && !uv_is_closing(handle)) {
+              uv_close(handle, nullptr);
+            }
           }
+
+          bool emit (
+            const CoreConduit::Options& options,
+            SharedPointer<char[]> payload,
+            size_t length
+          );
       };
+
+      // state
+      std::map<uint64_t, Client*> clients;
+      Mutex mutex;
+      Atomic<bool> isStarted = false;
+      Atomic<int> port = 0;
 
       CoreConduit (Core* core) : CoreModule(core) {};
       ~CoreConduit ();
 
-      EncodedMessage decodeMessage (std::vector<uint8_t>& data);
-      std::vector<uint8_t> encodeMessage (const CoreConduit::Options& options, const std::vector<uint8_t>& payload);
-      bool has (uint64_t id) const;
-      CoreConduit::Client* get (uint64_t id) const;
+      // codec
+      EncodedMessage decodeMessage (const Vector<uint8_t>& data);
+      Vector<uint8_t> encodeMessage (
+        const Options& options,
+        const Vector<uint8_t>& payload
+      );
 
-      std::map<uint64_t, Client*> clients;
-      Atomic<int> port = 0;
+      // client access
+      bool has (uint64_t id);
+      CoreConduit::Client* get (uint64_t id);
 
-      void open ();
-      void close ();
+      // lifecycle
+      void start ();
+      void stop ();
 
     private:
-      void handshake (Client *client, const char *request);
-      void processFrame (Client *client, const char *frame, ssize_t len);
+      uv_tcp_t socket;
+      struct sockaddr_in addr;
+
+      void handshake (Client* client, const char *request);
+      void processFrame (Client* client, const char *frame, ssize_t size);
   };
 }
-
 #endif

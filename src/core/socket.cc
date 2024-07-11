@@ -498,7 +498,7 @@ namespace SSC {
     return this->close(nullptr);
   }
 
-  void Socket::close (std::function<void()> onclose) {
+  void Socket::close (Function<void()> onclose) {
     if (this->isClosed()) {
       this->core->udp.removeSocket(this->id);
       if (onclose != nullptr) {
