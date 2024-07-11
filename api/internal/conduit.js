@@ -5,6 +5,11 @@ export const DEFALUT_MAX_RECONNECT_RETRIES = 32
 export const DEFAULT_MAX_RECONNECT_TIMEOUT = 256
 
 /**
+ * @typedef {{ options: object, payload: Uint8Array }} ReceiveMessage
+ * @typedef {function(Error?, ReceiveCallback | undefined)} ReceiveCallback
+ */
+
+/**
  * @class Conduit
  * @ignore
  *
@@ -15,23 +20,56 @@ export class Conduit extends EventTarget {
     return globalThis.__args.conduit
   }
 
+  /**
+   * @type {boolean}
+   */
+  shouldReconnect = true
+
+  /**
+   * @type {boolean}
+   */
   isConnecting = false
+
+  /**
+   * @type {boolean}
+   */
   isActive = false
+
+  /**
+   * @type {WebSocket?}
+   */
   socket = null
+
+  /**
+   * @type {number}
+   */
   port = 0
+
+  /**
+   * @type {number?}
+   */
   id = null
 
   /**
+   * @private
+   * @type {number}
+   */
+  #loop = 0
+
+  /**
+   * @private
    * @type {function(MessageEvent)}
    */
   #onmessage = null
 
   /**
+   * @private
    * @type {function(CloseEvent)}
    */
   #onclose = null
 
   /**
+   * @private
    * @type {function(ErrorEvent)}
    */
   #onerror = null
@@ -54,15 +92,19 @@ export class Conduit extends EventTarget {
     this.id = id
     // @ts-ignore
     this.port = this.constructor.port
-    this.connect((err) => {
-      if (err) {
-        this.reconnect()
-      }
-    })
+    this.connect()
 
-    this.addEventListener('close', () => {
-      this.reconnect()
-    })
+    const reconnectState = {
+      // TODO(@jwerle): consume from 'options'
+      retries: DEFALUT_MAX_RECONNECT_RETRIES
+    }
+    this.#loop = setInterval(() => {
+      if (!this.isActive && !this.isConnecting && this.shouldReconnect) {
+        this.reconnect({
+          retries: --reconnectState.retries
+        })
+      }
+    }, 256)
   }
 
   /**
@@ -154,8 +196,6 @@ export class Conduit extends EventTarget {
     if (this.socket) {
       this.socket.close()
     }
-
-    console.log('connect', this.url)
 
     // reset
     this.isActive = false
@@ -324,9 +364,9 @@ export class Conduit extends EventTarget {
 
   /**
    * Registers a callback to handle incoming messages.
-   * The callback will receive an error object and an object containing decoded options and payload.
-   *
-   * @param {function(Error?, { options: object, payload: Uint8Array })} cb - The callback function to handle incoming messages.
+   * The callback will receive an error object and an object containing
+   * decoded options and payload.
+   * @param {ReceiveCallback} cb - The callback function to handle incoming messages.
    */
   receive (cb) {
     this.addEventListener('error', (event) => {
@@ -342,8 +382,8 @@ export class Conduit extends EventTarget {
   }
 
   /**
-   * Sends a message with the specified options and payload over the WebSocket connection.
-   *
+   * Sends a message with the specified options and payload over the
+   * WebSocket connection.
    * @param {object} options - The options to send.
    * @param {Uint8Array} payload - The payload to send.
    * @return {boolean}
@@ -355,5 +395,20 @@ export class Conduit extends EventTarget {
     }
 
     return false
+  }
+
+  /**
+   * Closes the WebSocket connection, preventing reconnects.
+   */
+  close () {
+    this.shouldReconnect = false
+    if (this.#loop) {
+      clearInterval(this.#loop)
+      this.#loop = 0
+    }
+    if (this.socket) {
+      this.socket.close()
+      this.socket = null
+    }
   }
 }
