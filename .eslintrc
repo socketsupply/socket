@@ -1,9 +1,9 @@
 {
   "parserOptions": {
-    "ecmaVersion": 2020
+    "ecmaVersion": "latest",
+    "sourceType": "module"
   },
   "env": {
     "es6": true
-  },
-  "sourceType": "module"
+  }
 }
