@@ -61,8 +61,7 @@ namespace SSC {
     }
 
     if (options.features.useConduit) {
-      // FIXME(@jwerle)
-      // this->conduit.stop();
+      this->conduit.stop();
     }
 
     this->stopEventLoop();

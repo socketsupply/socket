@@ -115,7 +115,7 @@ namespace SSC {
       CoreConduit::Client* get (uint64_t id);
 
       // lifecycle
-      void start ();
+      void start (const Function<void()>& callback = nullptr);
       void stop ();
 
     private:
