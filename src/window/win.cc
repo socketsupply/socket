@@ -1680,4 +1680,12 @@ namespace SSC {
 
     return string;
   }
+
+  void Window::handleApplicationURL (const String& url) {
+    JSON::Object json = JSON::Object::Entries {{
+      "url", url
+    }};
+
+    this->bridge.emit("applicationurl", json.str());
+  }
 }

@@ -1667,4 +1667,20 @@ namespace SSC {
       event
     );
   }
+
+  void Window::handleApplicationURL (const String& url) {
+    JSON::Object json = JSON::Object::Entries {{
+      "url", url
+    }};
+
+    if (this->index == 0 && this->window && this->webview) {
+      gtk_widget_show_all(GTK_WIDGET(this->window));
+      gtk_widget_grab_focus(GTK_WIDGET(this->webview));
+      gtk_widget_grab_focus(GTK_WIDGET(this->window));
+      gtk_window_activate_focus(GTK_WINDOW(this->window));
+      gtk_window_present(GTK_WINDOW(this->window));
+    }
+
+    this->bridge.emit("applicationurl", json.str());
+  }
 }

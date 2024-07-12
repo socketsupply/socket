@@ -89,14 +89,33 @@ namespace SSC {
    */
   class Window {
     public:
+      /**
+       * A container for representing the window position in a
+       * Cartesian coordinate system (screen coordinates)
+       */
       struct Position {
         float x = 0.0f;
         float y = 0.0f;
       };
 
+      /**
+       * A container for representing the size of a window.
+       */
       struct Size {
         int width = 0;
         int height = 0;
+      };
+
+      /**
+       * An enumeration of the "ready state" of a window.
+       * These values closel relate to the `globalThis.document.readyState`
+       * possible values (loading, interactive, complete)
+       */
+      enum class ReadyState {
+        None,
+        Loading,
+        Interactive,
+        Complete
       };
 
       /**
@@ -252,6 +271,11 @@ namespace SSC {
          */
         ExitCallback onExit = nullptr;
       };
+
+      /**
+       * The current "ready state" of the window
+       */
+      ReadyState readyState = ReadyState::None;
 
       /**
        * The options used to create this window.
@@ -433,6 +457,8 @@ namespace SSC {
       void setTrayMenu (const String& dsl);
       void showInspector ();
 
+      void handleApplicationURL (const String& url);
+
       void resolvePromise (
         const String& seq,
         const String& state,
@@ -548,7 +574,6 @@ namespace SSC {
       SharedPointer<ManagedWindow> createDefaultWindow (const Window::Options& options);
 
       void destroyWindow (int index);
-
       JSON::Array json (const Vector<int>& indices);
   };
 }

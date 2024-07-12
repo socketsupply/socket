@@ -215,11 +215,18 @@ open class Window (val fragment: WindowFragment) {
     webview.setLayoutParams(layout)
   }
 
+  fun handleApplicationURL (url: String) {
+    return this.handleApplicationURL(this.index, url)
+  }
+
   @Throws(Exception::class)
   external fun onMessage (index: Int, value: String, bytes: ByteArray? = null): Unit
 
   @Throws(Exception::class)
   external fun getPendingNavigationLocation (index: Int): String
+
+  @Throws(Exception::class)
+  external fun handleApplicationURL (index: Int, url: String): Unit
 }
 
 /**

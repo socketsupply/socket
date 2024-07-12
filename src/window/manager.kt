@@ -22,8 +22,8 @@ import __BUNDLE_IDENTIFIER__.R
  * A `WindowFragmentManager` manages `WindowFragment` instances.
  */
 open class WindowFragmentManager (protected val activity: WindowManagerActivity) {
-  protected val fragments = mutableListOf<WindowFragment>()
-  protected val manager = activity.supportFragmentManager
+  open val fragments = mutableListOf<WindowFragment>()
+  open val manager = activity.supportFragmentManager
 
   /**
    * Creates a new `WindowFragment` from `WindowOptions` if `options.index`
