@@ -1042,3 +1042,34 @@ export * from '{{url}}'
     this->navigator.configureMounts();
   }
 }
+
+#if SOCKET_RUNTIME_PLATFORM_ANDROID
+extern "C" {
+  jboolean ANDROID_EXTERNAL(ipc, Bridge, emit) (
+    JNIEnv* env,
+    jobject self,
+    jint index,
+    jstring eventString,
+    jstring dataString
+  ) {
+    using namespace SSC;
+    auto app = App::sharedApplication();
+
+    if (!app) {
+      ANDROID_THROW(env, "Missing 'App' in environment");
+      return false;
+    }
+
+    const auto window = app->windowManager.getWindow(index);
+
+    if (!window) {
+      ANDROID_THROW(env, "Invalid window requested");
+      return false;
+    }
+
+    const auto event = Android::StringWrap(env, eventString).str();
+    const auto data = Android::StringWrap(env, dataString).str();
+    return window->bridge.emit(event, data);
+  }
+}
+#endif

@@ -384,6 +384,14 @@ namespace SSC::IPC {
             }
           })
 
+          globalThis.document.addEventListener('readystatechange', async (e) => {
+            const ipc = await import('socket:ipc')
+            ipc.send('platform.event', {
+              value: 'readystatechange',
+              state: globalThis.document.readyState
+            })
+          })
+
           globalThis.addEventListener('applicationurl', (event) => {
             if (globalThis.document.readyState !== 'complete') {
               globalThis.RUNTIME_APPLICATION_URL_EVENT_BACKLOG.push(event)

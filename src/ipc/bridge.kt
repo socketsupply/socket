@@ -101,4 +101,11 @@ open class Bridge (
   ): WebResourceResponse? {
     return this.schemeHandlers.handleRequest(request)
   }
+
+  fun emit (event: String, data: String): Boolean {
+    return this.emit(this.index, event, data)
+  }
+
+  @Throws(Exception::class)
+  external fun emit (index: Int, event: String, data: String): Boolean
 }
