@@ -2037,13 +2037,34 @@ static void mapIPCRoutes (Router *router) {
    */
   router->map("platform.event", [=](auto message, auto router, auto reply) {
     const auto err = validateMessageParameters(message, {"value"});
-    const auto frameType = message.get("runtime-frame-type");
-    const auto frameSource = message.get("runtime-frame-source");
-    auto userConfig = router->bridge->userConfig;
+    const auto app = App::sharedApplication();
+    const auto window = app->windowManager.getWindowForBridge(router->bridge);
 
     if (err.type != JSON::Type::Null) {
       return reply(Result { message.seq, message, err });
     }
+
+    if (message.value == "readystatechange") {
+      const auto err = validateMessageParameters(message, {"state"});
+
+      if (err.type != JSON::Type::Null) {
+        return reply(Result { message.seq, message, err });
+      }
+
+      const auto state = message.get("state");
+
+      if (state == "loading") {
+        window->readyState = Window::ReadyState::Loading;
+      } else if (state == "interactive") {
+        window->readyState = Window::ReadyState::Interactive;
+      } else if (state == "complete") {
+        window->readyState = Window::ReadyState::Complete;
+      }
+    }
+
+    const auto frameType = message.get("runtime-frame-type");
+    const auto frameSource = message.get("runtime-frame-source");
+    auto userConfig = router->bridge->userConfig;
 
     if (frameType == "top-level" && frameSource != "serviceworker") {
       if (message.value == "load") {
@@ -2062,7 +2083,7 @@ static void mapIPCRoutes (Router *router) {
       }
 
       if (router->bridge == router->bridge->navigator.serviceWorker.bridge) {
-        if (router->bridge->userConfig["webview_service_worker_mode"] == "hybrid" || platform.ios || platform.android) {
+        if (router->bridge->userConfig["webview_service_worker_mode"] == "hybrid") {
           if (router->bridge->navigator.location.href.size() > 0 && message.value == "beforeruntimeinit") {
             router->bridge->navigator.serviceWorker.reset();
             router->bridge->navigator.serviceWorker.isReady = false;
@@ -2135,6 +2156,7 @@ static void mapIPCRoutes (Router *router) {
    */
   router->map("platform.openExternal", [=](auto message, auto router, auto reply) mutable {
     const auto applicationProtocol = router->bridge->userConfig["meta_application_protocol"];
+    const auto app = App::sharedApplication();
     auto err = validateMessageParameters(message, {"value"});
 
     if (err.type != JSON::Type::Null) {
@@ -2146,7 +2168,12 @@ static void mapIPCRoutes (Router *router) {
         { "url", message.value }
       };
 
-      router->bridge->emit("applicationurl", json.str());
+      const auto window = app->windowManager.getWindowForBridge(router->bridge);
+
+      if (window) {
+        window->handleApplicationURL(message.value);
+      }
+
       reply(Result {
         message.seq,
         message,

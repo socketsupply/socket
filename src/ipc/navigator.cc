@@ -290,7 +290,9 @@ namespace SSC::IPC {
     const String& requestedURL
   ) {
     auto userConfig = this->bridge->userConfig;
+    const auto app = App::sharedApplication();
     const auto links = parseStringList(userConfig["meta_application_links"], ' ');
+    const auto window = app->windowManager.getWindowForBridge(this->bridge);
     const auto applinks = parseStringList(userConfig["meta_application_links"], ' ');
     const auto currentURLComponents = URL::Components::parse(currentURL);
 
@@ -307,12 +309,13 @@ namespace SSC::IPC {
     }
 
     if (hasAppLink) {
-      JSON::Object json = JSON::Object::Entries {{
-        "url", requestedURL
-      }};
+      if (window) {
+        window->handleApplicationURL(requestedURL);
+        return false;
+      }
 
-      this->bridge->emit("applicationurl", json.str());
-      return false;
+      // should be unreachable, but...
+      return true;
     }
 
     if (
@@ -321,12 +324,13 @@ namespace SSC::IPC {
       !requestedURL.starts_with("socket://" + userConfig["meta_bundle_identifier"])
     ) {
 
-      SSC::JSON::Object json = SSC::JSON::Object::Entries {{
-        "url", requestedURL
-      }};
+      if (window) {
+        window->handleApplicationURL(requestedURL);
+        return false;
+      }
 
-      this->bridge->emit("applicationurl", json.str());
-      return false;
+      // should be unreachable, but...
+      return true;
     }
 
     if (!this->isNavigationRequestAllowed(currentURL, requestedURL)) {
