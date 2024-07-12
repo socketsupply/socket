@@ -446,17 +446,17 @@ namespace SSC {
         } else if (WEBKIT_IS_USER_MEDIA_PERMISSION_REQUEST(request)) {
           if (webkit_user_media_permission_is_for_audio_device(WEBKIT_USER_MEDIA_PERMISSION_REQUEST(request))) {
             name = "microphone";
-            result = userConfig["permissions_allow_microphone"] == "false";
+            result = userConfig["permissions_allow_microphone"] != "false";
             description = "{{meta_title}} would like access to your microphone.";
           }
 
           if (webkit_user_media_permission_is_for_video_device(WEBKIT_USER_MEDIA_PERMISSION_REQUEST(request))) {
             name = "camera";
-            result = userConfig["permissions_allow_camera"] == "false";
+            result = userConfig["permissions_allow_camera"] != "false";
             description = "{{meta_title}} would like access to your camera.";
           }
 
-          result = userConfig["permissions_allow_user_media"] == "false";
+          result = userConfig["permissions_allow_user_media"] != "false";
         } else if (WEBKIT_IS_WEBSITE_DATA_ACCESS_PERMISSION_REQUEST(request)) {
           name = "storage-access";
           result = userConfig["permissions_allow_data_access"] != "false";
@@ -464,6 +464,10 @@ namespace SSC {
         } else if (WEBKIT_IS_DEVICE_INFO_PERMISSION_REQUEST(request)) {
           result = userConfig["permissions_allow_device_info"] != "false";
           description = "{{meta_title}} would like access to your device information.";
+          if (result) {
+            webkit_permission_request_allow(request);
+            return result;
+          }
         } else if (WEBKIT_IS_MEDIA_KEY_SYSTEM_PERMISSION_REQUEST(request)) {
           result = userConfig["permissions_allow_media_key_system"] != "false";
           description = "{{meta_title}} would like access to your media key system.";
@@ -493,11 +497,12 @@ namespace SSC {
         }
 
         if (name.size() > 0) {
-          JSON::Object::Entries json = JSON::Object::Entries {
+          JSON::Object json = JSON::Object::Entries {
             {"name", name},
             {"state", result ? "granted" : "denied"}
           };
           // TODO(@heapwolf): properly return this data
+          // TODO(@jwerle): maybe this could be dispatched to webview
         }
 
         return result;
