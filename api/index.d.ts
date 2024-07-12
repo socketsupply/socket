@@ -3597,7 +3597,7 @@ declare module "socket:process" {
      * Adds callback to the 'nextTick' queue.
      * @param {Function} callback
      */
-    export function nextTick(callback: Function): void;
+    export function nextTick(callback: Function, ...args: any[]): void;
     /**
      * Computed high resolution time as a `BigInt`.
      * @param {Array<number>?} [time]
@@ -8951,17 +8951,27 @@ declare module "socket:internal/conduit" {
     export const DEFALUT_MAX_RECONNECT_RETRIES: 32;
     export const DEFAULT_MAX_RECONNECT_TIMEOUT: 256;
     /**
+     * @typedef {{ options: object, payload: Uint8Array }} ReceiveMessage
+     * @typedef {function(Error?, ReceiveCallback | undefined)} ReceiveCallback
+     * @typedef {{ id?: string|BigInt|number, reconnect?: {} }} ConduitOptions
+     */
+    /**
      * @class Conduit
      * @ignore
      *
      * @classdesc A class for managing WebSocket connections with custom options and payload encoding.
      */
     export class Conduit extends EventTarget {
-        static get port(): any;
+        static set port(port: number);
+        /**
+         * The global `Conduit` port
+         * @type {number}
+         */
+        static get port(): number;
         /**
          * Creates an instance of Conduit.
          *
-         * @param {Object} params - The parameters for the Conduit.
+         * @param {object} params - The parameters for the Conduit.
          * @param {string} params.id - The ID for the connection.
          * @param {string} params.method - The method to use for the connection.
          */
@@ -8969,11 +8979,30 @@ declare module "socket:internal/conduit" {
             id: string;
             method: string;
         });
+        /**
+         * @type {boolean}
+         */
+        shouldReconnect: boolean;
+        /**
+         * @type {boolean}
+         */
         isConnecting: boolean;
+        /**
+         * @type {boolean}
+         */
         isActive: boolean;
-        socket: any;
+        /**
+         * @type {WebSocket?}
+         */
+        socket: WebSocket | null;
+        /**
+         * @type {number}
+         */
         port: number;
-        id: any;
+        /**
+         * @type {number?}
+         */
+        id: number | null;
         /**
          * The URL string for the WebSocket server.
          * @type {string}
@@ -9002,18 +9031,18 @@ declare module "socket:internal/conduit" {
         /**
          * Connects the underlying conduit `WebSocket`.
          * @param {function(Error?)=} [callback]
-         * @return {Conduit}
+         * @return {Promise<Conduit>}
          */
-        connect(callback?: ((arg0: Error | null) => any) | undefined): Conduit;
+        connect(callback?: ((arg0: Error | null) => any) | undefined): Promise<Conduit>;
         /**
          * Reconnects a `Conduit` socket.
          * @param {{retries?: number, timeout?: number}} [options]
-         * @return {Conduit}
+         * @return {Promise<Conduit>}
          */
         reconnect(options?: {
             retries?: number;
             timeout?: number;
-        }): Conduit;
+        }): Promise<Conduit>;
         /**
          * Encodes a single header into a Uint8Array.
          *
@@ -9035,30 +9064,40 @@ declare module "socket:internal/conduit" {
         /**
          * Decodes a Uint8Array message into options and payload.
          * @param {Uint8Array} data - The data to decode.
-         * @returns {Object} The decoded message containing options and payload.
+         * @return {ReceiveMessage} The decoded message containing options and payload.
          * @throws Will throw an error if the data is invalid.
          */
-        decodeMessage(data: Uint8Array): any;
+        decodeMessage(data: Uint8Array): ReceiveMessage;
         /**
          * Registers a callback to handle incoming messages.
-         * The callback will receive an error object and an object containing decoded options and payload.
-         *
-         * @param {function(Error?, { options: object, payload: Uint8Array })} cb - The callback function to handle incoming messages.
+         * The callback will receive an error object and an object containing
+         * decoded options and payload.
+         * @param {ReceiveCallback} callback - The callback function to handle incoming messages.
          */
-        receive(cb: (arg0: Error | null, arg1: {
-            options: object;
-            payload: Uint8Array;
-        }) => any): void;
+        receive(callback: ReceiveCallback): void;
         /**
-         * Sends a message with the specified options and payload over the WebSocket connection.
-         *
+         * Sends a message with the specified options and payload over the
+         * WebSocket connection.
          * @param {object} options - The options to send.
          * @param {Uint8Array} payload - The payload to send.
          * @return {boolean}
          */
         send(options: object, payload: Uint8Array): boolean;
+        /**
+         * Closes the WebSocket connection, preventing reconnects.
+         */
+        close(): void;
         #private;
     }
+    export type ReceiveMessage = {
+        options: object;
+        payload: Uint8Array;
+    };
+    export type ReceiveCallback = (arg0: Error | null, arg1: ReceiveCallback | undefined) => any;
+    export type ConduitOptions = {
+        id?: string | BigInt | number;
+        reconnect?: {};
+    };
 }
 
 declare module "socket:ip" {
@@ -12879,7 +12918,6 @@ declare module "socket:latica/index" {
          * @ignore
          */
         _onConnection(packet: any, peerId: any, port: any, address: any, proxy: any, socket: any): undefined;
-        connections: Map<any, any>;
         /**
          * Received a Sync Packet
          * @return {undefined}
@@ -12920,6 +12958,7 @@ declare module "socket:latica/index" {
          * @ignore
          */
         _onPong(packet: any, port: any, address: any): undefined;
+        reflectionFirstReponderTimeout: number;
         /**
          * Received an Intro Packet
          * @return {undefined}
