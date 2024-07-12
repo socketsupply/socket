@@ -140,8 +140,8 @@ class Process extends EventEmitter {
     return exit(code)
   }
 
-  nextTick (callback) {
-    return nextTick(callback)
+  nextTick (callback, ...args) {
+    return nextTick(callback, ...args)
   }
 
   hrtime (time = [0, 0]) {
@@ -194,23 +194,25 @@ export default process
  * Adds callback to the 'nextTick' queue.
  * @param {Function} callback
  */
-export function nextTick (callback) {
+export function nextTick (callback, ...args) {
   if (isNode && typeof process.nextTick === 'function' && process.nextTick !== nextTick) {
-    process.nextTick(callback)
-  } else if (typeof globalThis.setImmediate === 'function') {
-    globalThis.setImmediate(callback)
+    process.nextTick(callback, ...args)
   } else if (typeof globalThis.queueMicrotask === 'function') {
     globalThis.queueMicrotask(() => {
       try {
-        callback()
+        // eslint-disable-next-line
+        callback(...args)
       } catch (err) {
         setTimeout(() => { throw err })
       }
     })
+  } else if (typeof globalThis.setImmediate === 'function') {
+    globalThis.setImmediate(callback, ...args)
   } else if (typeof globalThis.setTimeout === 'function') {
-    globalThis.setTimeout(callback)
+    globalThis.setTimeout(callback, ...args)
   } else if (typeof globalThis.requestAnimationFrame === 'function') {
-    globalThis.requestAnimationFrame(callback)
+    // eslint-disable-next-line
+    globalThis.requestAnimationFrame(() => callback(...args))
   } else {
     throw new TypeError('\'process.nextTick\' is not supported in environment.')
   }

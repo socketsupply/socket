@@ -1,12 +1,16 @@
 /* global CloseEvent, ErrorEvent, MessageEvent, WebSocket */
 import client from '../application/client.js'
+import ipc from '../ipc.js'
 
 export const DEFALUT_MAX_RECONNECT_RETRIES = 32
 export const DEFAULT_MAX_RECONNECT_TIMEOUT = 256
 
+let defaultConduitPort = globalThis.__args.conduit
+
 /**
  * @typedef {{ options: object, payload: Uint8Array }} ReceiveMessage
  * @typedef {function(Error?, ReceiveCallback | undefined)} ReceiveCallback
+ * @typedef {{ id?: string|BigInt|number, reconnect?: {} }} ConduitOptions
  */
 
 /**
@@ -16,8 +20,15 @@ export const DEFAULT_MAX_RECONNECT_TIMEOUT = 256
  * @classdesc A class for managing WebSocket connections with custom options and payload encoding.
  */
 export class Conduit extends EventTarget {
-  static get port () {
-    return globalThis.__args.conduit
+  /**
+   * The global `Conduit` port
+   * @type {number}
+   */
+  static get port () { return defaultConduitPort }
+  static set port (port) {
+    if (port && typeof port === 'number') {
+      defaultConduitPort = port
+    }
   }
 
   /**
@@ -82,7 +93,7 @@ export class Conduit extends EventTarget {
   /**
    * Creates an instance of Conduit.
    *
-   * @param {Object} params - The parameters for the Conduit.
+   * @param {object} params - The parameters for the Conduit.
    * @param {string} params.id - The ID for the connection.
    * @param {string} params.method - The method to use for the connection.
    */
@@ -95,9 +106,10 @@ export class Conduit extends EventTarget {
     this.connect()
 
     const reconnectState = {
-      // TODO(@jwerle): consume from 'options'
+      // TODO(@jwerle): eventually consume from 'options' when it exists
       retries: DEFALUT_MAX_RECONNECT_RETRIES
     }
+
     this.#loop = setInterval(() => {
       if (!this.isActive && !this.isConnecting && this.shouldReconnect) {
         this.reconnect({
@@ -186,9 +198,9 @@ export class Conduit extends EventTarget {
   /**
    * Connects the underlying conduit `WebSocket`.
    * @param {function(Error?)=} [callback]
-   * @return {Conduit}
+   * @return {Promise<Conduit>}
    */
-  connect (callback = null) {
+  async connect (callback = null) {
     if (this.isConnecting) {
       return this
     }
@@ -201,16 +213,33 @@ export class Conduit extends EventTarget {
     this.isActive = false
     this.isConnecting = true
 
+    // @ts-ignore
+    const resolvers = Promise.withResolvers()
+    const result = await ipc.send('internal.conduit.start')
+
+    if (result.err) {
+      if (typeof callback === 'function') {
+        callback(result.err)
+        return this
+      } else {
+        throw result.err
+      }
+    }
+
+    this.port = result.data.port
     this.socket = new WebSocket(this.url)
     this.socket.binaryType = 'arraybuffer'
     this.socket.onerror = (e) => {
       this.isActive = false
       this.isConnecting = false
       this.dispatchEvent(new ErrorEvent('error', e))
+
       if (typeof callback === 'function') {
         callback(e.error || new Error('Failed to connect Conduit'))
         callback = null
       }
+
+      resolvers.reject(e.error ?? new Error())
     }
 
     this.socket.onclose = (e) => {
@@ -223,10 +252,13 @@ export class Conduit extends EventTarget {
       this.isActive = true
       this.isConnecting = false
       this.dispatchEvent(new Event('open'))
+
       if (typeof callback === 'function') {
         callback(null)
         callback = null
       }
+
+      resolvers.resolve()
     }
 
     this.socket.onmessage = (e) => {
@@ -235,15 +267,16 @@ export class Conduit extends EventTarget {
       this.dispatchEvent(new MessageEvent('message', e))
     }
 
+    await resolvers.promise
     return this
   }
 
   /**
    * Reconnects a `Conduit` socket.
    * @param {{retries?: number, timeout?: number}} [options]
-   * @return {Conduit}
+   * @return {Promise<Conduit>}
    */
-  reconnect (options = null) {
+  async reconnect (options = null) {
     if (this.isConnecting) {
       return this
     }
@@ -251,7 +284,7 @@ export class Conduit extends EventTarget {
     const retries = options?.retries ?? DEFALUT_MAX_RECONNECT_RETRIES
     const timeout = options?.timeout ?? DEFAULT_MAX_RECONNECT_TIMEOUT
 
-    return this.connect((err) => {
+    return await this.connect((err) => {
       if (err) {
         this.isActive = false
         if (retries > 0) {
@@ -328,7 +361,7 @@ export class Conduit extends EventTarget {
   /**
    * Decodes a Uint8Array message into options and payload.
    * @param {Uint8Array} data - The data to decode.
-   * @returns {Object} The decoded message containing options and payload.
+   * @return {ReceiveMessage} The decoded message containing options and payload.
    * @throws Will throw an error if the data is invalid.
    */
   decodeMessage (data) {
@@ -366,18 +399,18 @@ export class Conduit extends EventTarget {
    * Registers a callback to handle incoming messages.
    * The callback will receive an error object and an object containing
    * decoded options and payload.
-   * @param {ReceiveCallback} cb - The callback function to handle incoming messages.
+   * @param {ReceiveCallback} callback - The callback function to handle incoming messages.
    */
-  receive (cb) {
+  receive (callback) {
     this.addEventListener('error', (event) => {
       // @ts-ignore
-      cb(event.error)
+      callback(event.error || new Error())
     })
 
     this.addEventListener('message', (event) => {
       // @ts-ignore
       const data = new Uint8Array(event.data)
-      cb(null, this.decodeMessage(data))
+      callback(null, this.decodeMessage(data))
     })
   }
 

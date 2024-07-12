@@ -25,7 +25,7 @@ export class Timer extends AsyncResource {
     }
 
     this.#create = (callback, ...args) => {
-      return create(() => this.runInAsyncScope(callback), ...args)
+      return create((...args) => this.runInAsyncScope(callback, globalThis, ...args), ...args)
     }
 
     this.#destroy = (...args) => {
