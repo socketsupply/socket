@@ -34,6 +34,8 @@ namespace SSC::IPC {
       Mutex mutex;
       Table table;
 
+      std::atomic<int> logSeq{0};
+
       Bridge *bridge = nullptr;
 
       Router () = default;

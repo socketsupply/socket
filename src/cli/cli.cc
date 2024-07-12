@@ -319,9 +319,10 @@ static std::atomic<int> appStatus = -1;
 static std::mutex appMutex;
 static uv_loop_t *loop = nullptr;
 static uv_udp_t logsocket;
+static NSDate* lastLogTime = [NSDate now];
+static int lastLogSequence = 0;
 
 #if defined(__APPLE__)
-
 unsigned short createLogSocket() {
   std::promise<int> p;
   std::future<int> future = p.get_future();
@@ -334,59 +335,64 @@ unsigned short createLogSocket() {
     struct sockaddr_in addr;
     int port;
 
-    NSDate* lastLogTime = [NSDate now];
-    logsocket.data = (void*) lastLogTime;
-
     uv_ip4_addr("0.0.0.0", 0, &addr);
     uv_udp_bind(&logsocket, (const struct sockaddr*)&addr, UV_UDP_REUSEADDR);
 
     uv_udp_recv_start(
-      &logsocket,
-      [](uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
-        *buf = uv_buf_init(new char[suggested_size], suggested_size);
-      },
-      [](uv_udp_t *req, ssize_t nread, const uv_buf_t *buf, const struct sockaddr *addr, unsigned flags) {
-        if (nread > 0) {
-          NSDate* lastLogTime = (NSDate*)req->data;
+        &logsocket,
+        [](uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf) {
+          *buf = uv_buf_init(new char[suggested_size], suggested_size);
+        },
+        [](uv_udp_t* req, ssize_t nread, const uv_buf_t* buf, const struct sockaddr* addr, unsigned flags) {
+          if (nread > 0) {
+            std::string data(buf->base, nread);
+            data = trim(data); // Assuming trim is defined elsewhere
+            if (data[0] != '+') return;
 
-          String data = trim(String(buf->base, nread));
-          if (data[0] != '+') return;
+            @autoreleasepool {
+              NSError* err = nil;
+              auto logs = [OSLogStore storeWithScope: OSLogStoreSystem error: &err]; // get snapshot
 
-          @autoreleasepool {
-            NSError *err = nil;
-            auto logs = [OSLogStore storeWithScope: OSLogStoreSystem error: &err]; // get snapshot
+              if (err) {
+                std::cerr << "ERROR: Failed to open logstore" << std::endl;
+                return;
+              }
 
-            if (err) {
-              debug("ERROR: Failed to open logstore");
-              return;
-            }
+              NSDate* adjustedLogTime = [lastLogTime dateByAddingTimeInterval: -1]; // adjust by subtracting 1 second
+              auto position = [logs positionWithDate: adjustedLogTime];
+              auto predicate = [NSPredicate predicateWithFormat: @"(category == 'socket.runtime')"];
+              auto enumerator = [logs entriesEnumeratorWithOptions: 0 position: position predicate: predicate error: &err];
 
-            auto position = [logs positionWithDate: lastLogTime];
-            auto predicate = [NSPredicate predicateWithFormat: @"(category == 'socket.runtime')"];
-            auto enumerator = [logs entriesEnumeratorWithOptions: 0 position: position predicate: predicate error: &err];
+              if (err) {
+                std::cerr << "ERROR: Failed to open logstore" << std::endl;
+                return;
+              }
 
-            if (err) {
-              debug("ERROR: Failed to open logstore");
-              return;
-            }
+              id logEntry;
 
-            int count = 0;
-            id logEntry;
+              while ((logEntry = [enumerator nextObject]) != nil) {
+                OSLogEntryLog* entry = (OSLogEntryLog*)logEntry;
+                std::string message = entry.composedMessage.UTF8String;
+                int seq = 0;
+                Vector<String> parts;
 
-            while ((logEntry = [enumerator nextObject]) != nil) {
-              OSLogEntryLog *entry = (OSLogEntryLog *)logEntry;
+                try {
+                  parts = split(message, "\xFF\xFF");
+                  seq = std::stoi(parts[0]);
+                } catch (...) {
+                  continue;
+                }
 
-              count++;
+                if (seq <= lastLogSequence && lastLogSequence > 0) continue;
+                lastLogSequence = seq;
 
-              NSString *message = [entry composedMessage];
-              std::cout << message.UTF8String << std::endl;
-              req->data = (void*) [NSDate now];
+                std::cout << parts[1] << std::endl;
+              }
             }
           }
-        }
 
-        if (buf->base) delete[] buf->base;
-      }
+          if (buf->base) delete[] buf->base;
+        }
     );
 
     int len = sizeof(addr);
@@ -401,6 +407,7 @@ unsigned short createLogSocket() {
 
   port = future.get();
   t.detach();
+
   return port;
 }
 #endif
