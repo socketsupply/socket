@@ -358,8 +358,11 @@ namespace SSC {
     return true;
   }
 
-  void CoreConduit::start () {
+  void CoreConduit::start (const Function<void()>& callback) {
     if (this->isStarted) {
+      if (callback != nullptr) {
+        callback();
+      }
       return;
     }
 
@@ -438,6 +441,10 @@ namespace SSC {
       if (r) {
         this->isStarted = false;
         // debug("Listen error %s\n", uv_strerror(r));
+      }
+
+      if (callback != nullptr) {
+        callback();
       }
     });
   }
