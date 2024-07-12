@@ -53,13 +53,9 @@ static dispatch_queue_t queue = dispatch_queue_create(
   auto app = self.app;
   if (app != nullptr) {
     for (NSURL* url in urls) {
-      JSON::Object json = JSON::Object::Entries {{
-        "url", [url.absoluteString UTF8String]
-      }};
-
       for (auto& window : self.app->windowManager.windows) {
         if (window != nullptr) {
-          window->bridge.emit("applicationurl", json);
+          window->handleApplicationURL(url.absoluteString.UTF8String);
         }
       }
     }
@@ -122,13 +118,12 @@ continueUserActivity: (NSUserActivity*) userActivity
   }
 
   const auto url = String(webpageURL.absoluteString.UTF8String);
-  const auto json = JSON::Object::Entries {{ "url", url }};
 
   bool emitted = false;
 
   for (auto& window : self.app->windowManager.windows) {
     if (window != nullptr) {
-      window->bridge.emit("applicationurl", json);
+      window->handleApplicationURL(url);
       emitted = true;
     }
   }
@@ -369,9 +364,7 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
   bool emitted = false;
   for (const auto& window : self.app->windowManager.windows) {
     if (window != nullptr) {
-      window->bridge.emit("applicationurl", JSON::Object::Entries {
-        { "url", webpageURL.absoluteString.UTF8String}
-      });
+      window->handleApplicationURL(webpageURL.absoluteString.UTF8String);
       emitted = true;
     }
   }
@@ -471,10 +464,8 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
 {
   for (const auto window : self.app->windowManager.windows) {
     if (window) {
-      // TODO can this be escaped or is the url encoded property already?
-      return window->bridge.emit("applicationurl", JSON::Object::Entries {
-        {"url", url.absoluteString.UTF8String}
-      });
+      window->handleApplicationURL(url.absoluteString.UTF8String);
+      return YES;
     }
   }
 
@@ -674,19 +665,16 @@ namespace SSC {
       case WM_HOTKEY: {
         if (window != nullptr) {
           window->hotkey.onHotKeyBindingCallback((HotKeyBinding::ID) wParam);
-	}
+        }
         break;
       }
 
       case WM_HANDLE_DEEP_LINK: {
-        auto url = SSC::String(reinterpret_cast<const char*>(lParam), wParam);
-        const JSON::Object json = JSON::Object::Entries {
-          {"url", url}
-        };
+        const auto url = String(reinterpret_cast<const char*>(lParam), wParam);
 
         for (auto window : app->windowManager.windows) {
           if (window != nullptr) {
-            window->bridge.emit("applicationurl", json);
+            window->handleApplicationURL(url);
           }
         }
         break;

@@ -112,6 +112,12 @@ open class AppActivity : WindowManagerActivity() {
 
   override fun onStart () {
     super.onStart()
+    val action: String? = this.intent?.action
+    val data: android.net.Uri? = this.intent?.data
+
+    if (action != null && data != null) {
+      this.onNewIntent(this.intent)
+    }
   }
 
   override fun onResume () {
@@ -133,6 +139,46 @@ open class AppActivity : WindowManagerActivity() {
 
   override fun onNewIntent (intent: Intent) {
     super.onNewIntent(intent)
+    val action = intent.action
+    val data = intent.data
+    val id = intent.extras?.getCharSequence("id")?.toString()
+
+    when (action) {
+      "android.intent.action.MAIN",
+      "android.intent.action.VIEW" -> {
+        val scheme = data?.scheme ?: return
+        val applicationProtocol = App.getInstance().getUserConfigValue("meta_application_protocol")
+        if (
+          applicationProtocol.length > 0 &&
+          scheme.startsWith(applicationProtocol)
+        ) {
+          for (fragment in this.windowFragmentManager.fragments) {
+            val window = fragment.window ?: continue
+            window.handleApplicationURL(data.toString())
+          }
+        }
+      }
+
+      "notification.response.default" -> {
+        for (fragment in this.windowFragmentManager.fragments) {
+          val bridge = fragment.window?.bridge ?: continue
+          bridge.emit("notificationresponse", """{
+            "id": "$id",
+            "action": "default"
+          }""")
+        }
+      }
+
+      "notification.response.dismiss" -> {
+        for (fragment in this.windowFragmentManager.fragments) {
+          val bridge = fragment.window?.bridge ?: continue
+          bridge.emit("notificationresponse", """{
+            "id": "$id",
+            "action": "dismiss"
+          }""")
+        }
+      }
+    }
   }
 
   override fun onActivityResult (
