@@ -366,9 +366,18 @@ namespace SSC {
   }
 
   JSON::Object WindowManager::ManagedWindow::json () const {
-    const auto index = this->index;
-    const auto size = this->getSize();
     const auto id = this->bridge.id;
+    const auto size = this->getSize();
+    const auto index = this->index;
+    const auto readyState = String(
+      this->readyState == Window::ReadyState::Loading
+        ? "loading"
+        : this->readyState == Window::ReadyState::Interactive
+          ? "interactive"
+          : this->readyState == Window::ReadyState::Complete
+            ? "complete"
+            : "none"
+    );
 
     return JSON::Object::Entries {
       {"id", std::to_string(id)},
@@ -377,6 +386,7 @@ namespace SSC {
       {"width", size.width},
       {"height", size.height},
       {"status", this->status},
+      {"readyState", readyState},
       {"position", JSON::Object::Entries {
         {"x", this->position.x},
         {"y", this->position.y}

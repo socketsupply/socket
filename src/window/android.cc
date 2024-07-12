@@ -263,6 +263,14 @@ namespace SSC {
 
   void Window::showInspector () {
   }
+
+  void Window::handleApplicationURL (const String& url) {
+    JSON::Object json = JSON::Object::Entries {{
+      "url", url
+    }};
+
+    this->bridge.emit("applicationurl", json.str());
+  }
 }
 
 extern "C" {
@@ -341,5 +349,27 @@ extern "C" {
     const auto pendingNavigationLocation = window->pendingNavigationLocation;
     window->pendingNavigationLocation = "";
     return attachment.env->NewStringUTF(pendingNavigationLocation.c_str());
+  }
+
+  void ANDROID_EXTERNAL(window, Window, handleApplicationURL) (
+    JNIEnv* env,
+    jobject self,
+    jint index,
+    jstring urlString
+  ) {
+    const auto app = App::sharedApplication();
+
+    if (!app) {
+      return ANDROID_THROW(env, "Missing 'App' in environment");
+    }
+
+    const auto window = app->windowManager.getWindow(index);
+
+    if (!window) {
+      return ANDROID_THROW(env, "Invalid window index (%d) requested", index);
+    }
+
+    const auto url = Android::StringWrap(env, urlString).str();
+    window->handleApplicationURL(url);
   }
 }
