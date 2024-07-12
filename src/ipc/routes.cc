@@ -1656,6 +1656,47 @@ static void mapIPCRoutes (Router *router) {
   });
 
   /**
+   * A private API for starting the Runtime `Core::Conduit`, if it isn't running.
+   */
+  router->map("internal.conduit.start", [=](auto message, auto router, auto reply) {
+    router->bridge->core->conduit.start([=]() {
+      if (router->bridge->core->conduit.isStarted) {
+        reply(Result::Data {
+          message,
+          JSON::Object::Entries {
+            {"started", true},
+            {"port", router->bridge->core->conduit.port.load()}
+          }
+        });
+      } else {
+        const auto err = JSON::Object::Entries {{ "message", "Failed to start Conduit"}};
+        reply(Result::Err  { message, err });
+      }
+    });
+  });
+
+  /**
+   * A private API for stopping the Runtime `Core::Conduit`, if it is running.
+   */
+  router->map("internal.conduit.stop", [=](auto message, auto router, auto reply) {
+    router->bridge->core->conduit.stop();
+    reply(Result { message.seq, message, JSON::Object{} });
+  });
+
+  /**
+   * A private API for getting the status of the Runtime `Core::Conduit.
+   */
+  router->map("internal.conduit.status", [=](auto message, auto router, auto reply) {
+    reply(Result::Data {
+      message,
+      JSON::Object::Entries {
+        {"started", router->bridge->core->conduit.isStarted.load()},
+        {"port", router->bridge->core->conduit.port.load()}
+      }
+    });
+  });
+
+  /**
    * Log `value to stdout` with platform dependent logger.
    * @param value
    */
