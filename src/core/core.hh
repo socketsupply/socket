@@ -67,9 +67,9 @@ namespace SSC {
 
       struct Options : SSC::Options {
         struct Features {
-        #if !SOCKET_RUNTIME_PLATFORM_IOS
-          bool useChildProcess = true;
-        #endif
+          #if !SOCKET_RUNTIME_PLATFORM_IOS
+            bool useChildProcess = true;
+          #endif
 
           bool useDNS = true;
           bool useFS = true;
@@ -86,13 +86,13 @@ namespace SSC {
 
         Features features;
 
-      #if SOCKET_RUNTIME_PLATFORM_LINUX
-        // this is turned on in the WebKitWebProcess extension to avoid
-        // deadlocking the GTK loop AND WebKit WebView thread as they
-        // are shared and we typically "interpolate" loop execution
-        // with the GTK thread on the main runtime process
-        bool dedicatedLoopThread = false;
-      #endif
+        #if SOCKET_RUNTIME_PLATFORM_LINUX
+          // this is turned on in the WebKitWebProcess extension to avoid
+          // deadlocking the GTK loop AND WebKit WebView thread as they
+          // are shared and we typically "interpolate" loop execution
+          // with the GTK thread on the main runtime process
+          bool dedicatedLoopThread = false;
+        #endif
       };
 
       struct SharedPointerBuffer {
@@ -100,9 +100,9 @@ namespace SSC {
         unsigned int ttl = 0;
       };
 
-    #if !SOCKET_RUNTIME_PLATFORM_IOS
-      ChildProcess childProcess;
-    #endif
+      #if !SOCKET_RUNTIME_PLATFORM_IOS
+        ChildProcess childProcess;
+      #endif
       Diagnostics diagnostics;
       DNS dns;
       FS fs;
@@ -185,6 +185,8 @@ namespace SSC {
       void shutdown ();
       void resume ();
       void pause ();
+
+      int logSeq{0};
 
       void retainSharedPointerBuffer (SharedPointer<char[]> pointer, unsigned int ttl);
       void releaseSharedPointerBuffer (SharedPointer<char[]> pointer);
