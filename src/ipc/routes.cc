@@ -2359,8 +2359,8 @@ static void mapIPCRoutes (Router *router) {
   router->map("stdout", [=](auto message, auto router, auto reply) {
     if (message.value.size() > 0) {
       #if SOCKET_RUNTIME_PLATFORM_APPLE
-        int seq = ++router->logSeq;
-        auto msg = String(std::to_string(seq) + "\xFF\xFF" + message.value.c_str());
+        int seq = ++router->bridge->core->logSeq;
+        auto msg = String(std::to_string(seq) + "::::" + message.value.c_str());
         os_log_with_type(SOCKET_RUNTIME_OS_LOG_BUNDLE, OS_LOG_TYPE_INFO, "%{public}s", msg.c_str());
 
         if (Env::get("SSC_LOG_SOCKET").size() > 0) {
@@ -2392,8 +2392,8 @@ static void mapIPCRoutes (Router *router) {
       }
     } else if (message.value.size() > 0) {
       #if SOCKET_RUNTIME_PLATFORM_APPLE
-        int seq = ++router->logSeq;
-        auto msg = String(std::to_string(seq) + "\xFF\xFF" + message.value.c_str());
+        int seq = ++router->bridge->core->logSeq;
+        auto msg = String(std::to_string(seq) + "::::" + message.value.c_str());
         os_log_with_type(SOCKET_RUNTIME_OS_LOG_BUNDLE, OS_LOG_TYPE_ERROR, "%{public}s", msg.c_str());
 
         if (Env::get("SSC_LOG_SOCKET").size() > 0) {

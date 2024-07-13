@@ -372,13 +372,16 @@ unsigned short createLogSocket() {
 
               while ((logEntry = [enumerator nextObject]) != nil) {
                 OSLogEntryLog* entry = (OSLogEntryLog*)logEntry;
-                std::string message = entry.composedMessage.UTF8String;
+                String message = entry.composedMessage.UTF8String;
+                String body;
                 int seq = 0;
-                Vector<String> parts;
+                Vector<String> parts = split(message, "::::");
+                if (parts.size() < 2) continue;
 
                 try {
-                  parts = split(message, "\xFF\xFF");
                   seq = std::stoi(parts[0]);
+                  body = parts[1];
+                  if (body.size() == 0) continue;
                 } catch (...) {
                   continue;
                 }
@@ -386,7 +389,7 @@ unsigned short createLogSocket() {
                 if (seq <= lastLogSequence && lastLogSequence > 0) continue;
                 lastLogSequence = seq;
 
-                std::cout << parts[1] << std::endl;
+                std::cout << body << std::endl;
               }
             }
           }
