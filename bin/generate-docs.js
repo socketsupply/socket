@@ -8,7 +8,15 @@ import { generateCli } from './docs-generator/cli.js'
 
 const VERSION = `v${(await fs.readFile('./VERSION.txt', 'utf8')).trim()}`
 const isCurrentTag = execSync('git describe --tags --always').toString().trim() === VERSION
-const tagNotPresentOnRemote = execSync(`git ls-remote --tags origin ${VERSION}`).toString().length === 0
+
+let tagNotPresentOnRemote = false
+if (!isCurrentTag) {
+  try {
+    tagNotPresentOnRemote = execSync(`git ls-remote --tags origin ${VERSION}`).toString().length === 0
+  } catch (err) {
+    console.warn(err.message)
+  }
+}
 
 const gitTagOrBranch = (isCurrentTag || tagNotPresentOnRemote) ? VERSION : 'master'
 
