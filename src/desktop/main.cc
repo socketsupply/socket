@@ -115,25 +115,12 @@ void signalHandler (int signum) {
 }
 
 #if SOCKET_RUNTIME_PLATFORM_LINUX
-static void handleApplicationURLEvent (const String url) {
+static void handleApplicationURLEvent (const String& url) {
   auto app = App::sharedApplication();
-
-  JSON::Object json = JSON::Object::Entries {{
-    "url", url
-  }};
-
-  if (app != nullptr) {
+  if (app != nullptr && url.size() > 0) {
     for (auto window : app->windowManager.windows) {
       if (window != nullptr) {
-        if (window->index == 0 && window->window && window->webview) {
-          gtk_widget_show_all(GTK_WIDGET(window->window));
-          gtk_widget_grab_focus(GTK_WIDGET(window->webview));
-          gtk_widget_grab_focus(GTK_WIDGET(window->window));
-          gtk_window_activate_focus(GTK_WINDOW(window->window));
-          gtk_window_present(GTK_WINDOW(window->window));
-        }
-
-        window->bridge.emit("applicationurl", json.str());
+        window->handleApplicationURL(url);
       }
     }
   }
@@ -146,7 +133,9 @@ static void onGTKApplicationActivation (
   const gchar* hint,
   gpointer userData
 ) {
-  handleApplicationURLEvent(String(hint));
+  if (hint != nullptr) {
+    handleApplicationURLEvent(String(hint));
+  }
 }
 
 static DBusHandlerResult onDBusMessage (
