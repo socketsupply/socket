@@ -30,9 +30,11 @@ export class Location {
   }
 
   get origin () {
-    return this.url.origin && this.url.origin !== 'null'
+    const origin = this.url.origin && this.url.origin !== 'null'
       ? this.url.origin
       : globalThis.origin || globalThis.location.origin
+
+    return origin.replace('https://', 'socket://')
   }
 
   get href () {
