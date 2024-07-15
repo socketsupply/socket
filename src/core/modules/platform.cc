@@ -13,14 +13,9 @@ namespace SSC {
     const String& frameSource,
     const CoreModule::Callback& callback
   ) {
-    this->core->dispatchEventLoop([=, this]() {
-      // init page
-      if (event == "domcontentloaded") {
-        Lock lock(this->core->fs.mutex);
-
-        this->wasFirstDOMContentLoadedEventDispatched = true;
-      }
-    });
+    if (event == "domcontentloaded") {
+      this->wasFirstDOMContentLoadedEventDispatched = true;
+    }
 
     const auto json = JSON::Object::Entries {
       {"source", "platform.event"},
