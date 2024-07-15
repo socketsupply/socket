@@ -1,5 +1,5 @@
 /**
- * @module Process
+ * @module process
  *
  * Example usage:
  * ```js
@@ -8,7 +8,7 @@
  */
 import { primordials, send } from './ipc.js'
 import { EventEmitter } from './events.js'
-import signal from './signal.js'
+import signal from './proces/signal.js'
 import tty from './tty.js'
 import os from './os.js'
 
@@ -31,6 +31,7 @@ export class ProcessEnvironment extends EventTarget {
     return 'ProcessEnvironment'
   }
 }
+
 export const env = Object.defineProperties(new ProcessEnvironment(), {
   proxy: {
     configurable: false,
@@ -130,6 +131,10 @@ class Process extends EventEmitter {
     return {
       socket: this.version
     }
+  }
+
+  uptime () {
+    return os.uptime()
   }
 
   cwd () {

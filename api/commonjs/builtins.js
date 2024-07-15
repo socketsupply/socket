@@ -100,6 +100,7 @@ defineBuiltin('async_hooks', {
   createHook,
   AsyncHook
 })
+defineBuiltin('ai', ai)
 defineBuiltin('assert', assert, false)
 defineBuiltin('buffer', buffer, false)
 defineBuiltin('console', console, false)

@@ -1,6 +1,6 @@
 import { parentPort } from '../worker_threads.js'
 import process from '../process.js'
-import signal from '../signal.js'
+import signal from '../process/signal.js'
 import ipc from '../ipc.js'
 
 const state = {}
