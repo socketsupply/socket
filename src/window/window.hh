@@ -458,6 +458,7 @@ namespace SSC {
       void showInspector ();
 
       void handleApplicationURL (const String& url);
+      void onReadyStateChange (const ReadyState readyState) {}
 
       void resolvePromise (
         const String& seq,
@@ -528,6 +529,8 @@ namespace SSC {
         public:
           WindowStatus status;
           WindowManager &manager;
+          Vector<String> pendingApplicationURLs;
+          Mutex mutex;
           int index = 0;
 
           ManagedWindow (
@@ -545,6 +548,8 @@ namespace SSC {
           void kill ();
           void gc ();
           JSON::Object json () const;
+          void handleApplicationURL (const String& url);
+          void onReadyStateChange (const ReadyState& readyState);
       };
 
       Vector<SharedPointer<ManagedWindow>> windows;

@@ -393,4 +393,26 @@ namespace SSC {
       }}
     };
   }
+
+  void WindowManager::ManagedWindow::onReadyStateChange (const ReadyState& readyState) {
+    if (readyState == ReadyState::Complete) {
+      const auto pendingApplicationURLs = this->pendingApplicationURLs;
+      this->pendingApplicationURLs.clear();
+      for (const auto& url : pendingApplicationURLs) {
+        Window::handleApplicationURL(url);
+      }
+    }
+  }
+
+  void WindowManager::ManagedWindow::handleApplicationURL (const String& url) {
+    Lock lock(this->mutex);
+    this->pendingApplicationURLs.push_back(url);
+    if (this->readyState == ReadyState::Complete) {
+      const auto pendingApplicationURLs = this->pendingApplicationURLs;
+      this->pendingApplicationURLs.clear();
+      for (const auto& url : pendingApplicationURLs) {
+        Window::handleApplicationURL(url);
+      }
+    }
+  }
 }
