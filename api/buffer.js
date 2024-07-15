@@ -1,5 +1,5 @@
 /**
- * @module Buffer
+ * @module buffer
  *
  * The buffer module from node.js, for the browser.
  *

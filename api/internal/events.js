@@ -211,7 +211,7 @@ export class SignalEvent extends MessageEvent {
 
   /**
    * The code of the signal.
-   * @type {import('../signal.js').signal}
+   * @type {import('../process/signal.js').signal}
    */
   get code () {
     return this.#code ?? 0

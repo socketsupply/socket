@@ -922,7 +922,7 @@ hooks.onReady(async () => {
     await ipc.request('fs.constants', {}, { cache: true })
     await ipc.request('os.constants', {}, { cache: true })
     await import('../diagnostics.js')
-    await import('../signal.js')
+    await import('../process/signal.js')
     await import('../fs/fds.js')
     await import('../constants.js')
     const errors = await import('../errors.js')

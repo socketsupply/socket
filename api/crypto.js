@@ -1,7 +1,7 @@
 /* global console */
 /* eslint-disable no-fallthrough */
 /**
- * @module Crypto
+ * @module crypto
  *
  * Some high-level methods around the `crypto.subtle` API for getting
  * random bytes and hashing.

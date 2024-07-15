@@ -1,5 +1,5 @@
 /**
- * @module Bootstrap
+ * @module bootstrap
  *
  * This module is responsible for downloading the bootstrap file and writing it to disk.
  * It also provides a function to check the hash of the file on disk. This is used to

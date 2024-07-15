@@ -1,5 +1,5 @@
 /**
- * @module Language
+ * @module language
  *
  * A module for querying ISO 639-1 language names and codes and working with
  * RFC 5646 language tags.

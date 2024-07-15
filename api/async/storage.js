@@ -1,5 +1,5 @@
 /**
- * @module AsyncStorage
+ * @module async.storage
  *
  * Primitives for creating user defined async storage contexts.
  */

@@ -1,6 +1,6 @@
 // @ts-check
 /**
- * @module Application
+ * @module application
  *
  * Provides Application level methods
  *

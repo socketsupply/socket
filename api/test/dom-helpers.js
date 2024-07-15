@@ -1,6 +1,6 @@
 // @ts-check
 /**
- * @module Test.DOM-helpers
+ * @module test.dom-helpers
  *
  * Provides a test runner for Socket Runtime.
  *

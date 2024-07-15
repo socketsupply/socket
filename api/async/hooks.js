@@ -1,5 +1,5 @@
 /**
- * @module AsyncHooks
+ * @module async.hooks
  *
  * Primitives for hooks into async lifecycles such as `queueMicrotask`,
  * `setTimeout`, `setInterval`, and `Promise` built-ins as well as user defined

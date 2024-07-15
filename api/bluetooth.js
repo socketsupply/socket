@@ -1,5 +1,5 @@
 /**
- * @module Bluetooth
+ * @module bluetooth
  *
  * A high-level, cross-platform API for Bluetooth Pub-Sub
  *

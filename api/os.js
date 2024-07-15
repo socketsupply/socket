@@ -1,5 +1,5 @@
 /**
- * @module OS
+ * @module os
  *
  * This module provides normalized system information from all the major
  * operating systems.

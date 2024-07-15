@@ -1,5 +1,5 @@
 /**
- * @module Async.AsyncContext
+ * @module async.context
  *
  * Async Context for JavaScript based on the TC39 proposal.
  *

@@ -1,6 +1,6 @@
 // @ts-check
 /**
- * @module Window
+ * @module window
  *
  * Provides ApplicationWindow class and methods
  *

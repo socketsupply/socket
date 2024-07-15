@@ -1,5 +1,5 @@
 /**
- * @module IPC
+ * @module ipc
  *
  * This is a low-level API that you don't need unless you are implementing
  * a library on top of Socket runtime. A Socket app has one or more processes.

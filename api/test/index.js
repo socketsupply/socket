@@ -1,6 +1,6 @@
 // @ts-check
 /**
- * @module Test
+ * @module test
  *
  * Provides a test runner for Socket Runtime.
  *

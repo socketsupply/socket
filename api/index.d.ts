@@ -1,7 +1,7 @@
 
 declare module "socket:async/context" {
     /**
-     * @module Async.AsyncContext
+     * @module async.context
      *
      * Async Context for JavaScript based on the TC39 proposal.
      *
@@ -2230,993 +2230,6 @@ declare module "socket:util" {
     
 }
 
-declare module "socket:async/wrap" {
-    /**
-     * Returns `true` if a given function `fn` has the "async" wrapped tag,
-     * meaning it was "tagged" in a `wrap(fn)` call before, otherwise this
-     * function will return `false`.
-     * @ignore
-     * @param {function} fn
-     * @param {boolean}
-     */
-    export function isTagged(fn: Function): boolean;
-    /**
-     * Tags a function `fn` as being "async wrapped" so subsequent calls to
-     * `wrap(fn)` do not wrap an already wrapped function.
-     * @ignore
-     * @param {function} fn
-     * @return {function}
-     */
-    export function tag(fn: Function): Function;
-    /**
-     * Wraps a function `fn` that captures a snapshot of the current async
-     * context. This function is idempotent and will not wrap a function more
-     * than once.
-     * @ignore
-     * @param {function} fn
-     * @return {function}
-     */
-    export function wrap(fn: Function): Function;
-    export const symbol: unique symbol;
-    export default wrap;
-}
-
-declare module "socket:internal/async/hooks" {
-    export function dispatch(hook: any, asyncId: any, type: any, triggerAsyncId: any, resource: any): void;
-    export function getNextAsyncResourceId(): number;
-    export function executionAsyncResource(): any;
-    export function executionAsyncId(): any;
-    export function triggerAsyncId(): any;
-    export function getDefaultExecutionAsyncId(): any;
-    export function wrap(callback: any, type: any, asyncId?: number, triggerAsyncId?: any, resource?: any): (...args: any[]) => any;
-    export function getTopLevelAsyncResourceName(): any;
-    /**
-     * The default top level async resource ID
-     * @type {number}
-     */
-    export const TOP_LEVEL_ASYNC_RESOURCE_ID: number;
-    export namespace state {
-        let defaultExecutionAsyncId: number;
-    }
-    export namespace hooks {
-        let init: any[];
-        let before: any[];
-        let after: any[];
-        let destroy: any[];
-        let promiseResolve: any[];
-    }
-    /**
-     * A base class for the `AsyncResource` class or other higher level async
-     * resource classes.
-     */
-    export class CoreAsyncResource {
-        /**
-         * `CoreAsyncResource` class constructor.
-         * @param {string} type
-         * @param {object|number=} [options]
-         */
-        constructor(type: string, options?: (object | number) | undefined);
-        /**
-         * The `CoreAsyncResource` type.
-         * @type {string}
-         */
-        get type(): string;
-        /**
-         * `true` if the `CoreAsyncResource` was destroyed, otherwise `false`. This
-         * value is only set to `true` if `emitDestroy()` was called, likely from
-         * destroying the resource manually.
-         * @type {boolean}
-         */
-        get destroyed(): boolean;
-        /**
-         * The unique async resource ID.
-         * @return {number}
-         */
-        asyncId(): number;
-        /**
-         * The trigger async resource ID.
-         * @return {number}
-         */
-        triggerAsyncId(): number;
-        /**
-         * Manually emits destroy hook for the resource.
-         * @return {CoreAsyncResource}
-         */
-        emitDestroy(): CoreAsyncResource;
-        /**
-         * Binds function `fn` with an optional this `thisArg` binding to run
-         * in the execution context of this `CoreAsyncResource`.
-         * @param {function} fn
-         * @param {object=} [thisArg]
-         * @return {function}
-         */
-        bind(fn: Function, thisArg?: object | undefined): Function;
-        /**
-         * Runs function `fn` in the execution context of this `CoreAsyncResource`.
-         * @param {function} fn
-         * @param {object=} [thisArg]
-         * @param {...any} [args]
-         * @return {any}
-         */
-        runInAsyncScope(fn: Function, thisArg?: object | undefined, ...args?: any[]): any;
-        #private;
-    }
-    export class TopLevelAsyncResource extends CoreAsyncResource {
-    }
-    export const asyncContextVariable: Variable<any>;
-    export const topLevelAsyncResource: TopLevelAsyncResource;
-    export default hooks;
-    import { Variable } from "socket:async/context";
-}
-
-declare module "socket:async/resource" {
-    /**
-     * @typedef {{
-     *   triggerAsyncId?: number,
-     *   requireManualDestroy?: boolean
-     * }} AsyncResourceOptions
-     */
-    /**
-     * A container that should be extended that represents a resource with
-     * an asynchronous execution context.
-     */
-    export class AsyncResource extends CoreAsyncResource {
-        /**
-         * Binds function `fn` with an optional this `thisArg` binding to run
-         * in the execution context of an anonymous `AsyncResource`.
-         * @param {function} fn
-         * @param {object|string=} [type]
-         * @param {object=} [thisArg]
-         * @return {function}
-         */
-        static bind(fn: Function, type?: (object | string) | undefined, thisArg?: object | undefined): Function;
-        /**
-         * `AsyncResource` class constructor.
-         * @param {string} type
-         * @param {AsyncResourceOptions|number=} [options]
-         */
-        constructor(type: string, options?: (AsyncResourceOptions | number) | undefined);
-    }
-    export default AsyncResource;
-    export type AsyncResourceOptions = {
-        triggerAsyncId?: number;
-        requireManualDestroy?: boolean;
-    };
-    import { executionAsyncResource } from "socket:internal/async/hooks";
-    import { executionAsyncId } from "socket:internal/async/hooks";
-    import { triggerAsyncId } from "socket:internal/async/hooks";
-    import { CoreAsyncResource } from "socket:internal/async/hooks";
-    export { executionAsyncResource, executionAsyncId, triggerAsyncId };
-}
-
-declare module "socket:async/hooks" {
-    /**
-     * Factory for creating a `AsyncHook` instance.
-     * @param {AsyncHookCallbackOptions|AsyncHookCallbacks=} [callbacks]
-     * @return {AsyncHook}
-     */
-    export function createHook(callbacks?: (AsyncHookCallbackOptions | AsyncHookCallbacks) | undefined): AsyncHook;
-    /**
-     * A container for `AsyncHooks` callbacks.
-     * @ignore
-     */
-    export class AsyncHookCallbacks {
-        /**
-         * `AsyncHookCallbacks` class constructor.
-         * @ignore
-         * @param {AsyncHookCallbackOptions} [options]
-         */
-        constructor(options?: AsyncHookCallbackOptions);
-        init(asyncId: any, type: any, triggerAsyncId: any, resource: any): void;
-        before(asyncId: any): void;
-        after(asyncId: any): void;
-        destroy(asyncId: any): void;
-        promiseResolve(asyncId: any): void;
-    }
-    /**
-     * A container for registering various callbacks for async resource hooks.
-     */
-    export class AsyncHook {
-        /**
-         * @param {AsyncHookCallbackOptions|AsyncHookCallbacks=} [options]
-         */
-        constructor(callbacks?: any);
-        /**
-         * @type {boolean}
-         */
-        get enabled(): boolean;
-        /**
-         * Enable the async hook.
-         * @return {AsyncHook}
-         */
-        enable(): AsyncHook;
-        /**
-         * Disables the async hook
-         * @return {AsyncHook}
-         */
-        disable(): AsyncHook;
-        #private;
-    }
-    export default createHook;
-    import { executionAsyncResource } from "socket:internal/async/hooks";
-    import { executionAsyncId } from "socket:internal/async/hooks";
-    import { triggerAsyncId } from "socket:internal/async/hooks";
-    export { executionAsyncResource, executionAsyncId, triggerAsyncId };
-}
-
-declare module "socket:async/storage" {
-    /**
-     * A container for storing values that remain present during
-     * asynchronous operations.
-     */
-    export class AsyncLocalStorage {
-        /**
-         * Binds function `fn` to run in the execution context of an
-         * anonymous `AsyncResource`.
-         * @param {function} fn
-         * @return {function}
-         */
-        static bind(fn: Function): Function;
-        /**
-         * Captures the current async context and returns a function that runs
-         * a function in that execution context.
-         * @return {function}
-         */
-        static snapshot(): Function;
-        /**
-         * @type {boolean}
-         */
-        get enabled(): boolean;
-        /**
-         * Disables the `AsyncLocalStorage` instance. When disabled,
-         * `getStore()` will always return `undefined`.
-         */
-        disable(): void;
-        /**
-         * Enables the `AsyncLocalStorage` instance.
-         */
-        enable(): void;
-        /**
-         * Enables and sets the `AsyncLocalStorage` instance default store value.
-         * @param {any} store
-         */
-        enterWith(store: any): void;
-        /**
-         * Runs function `fn` in the current asynchronous execution context with
-         * a given `store` value and arguments given to `fn`.
-         * @param {any} store
-         * @param {function} fn
-         * @param {...any} args
-         * @return {any}
-         */
-        run(store: any, fn: Function, ...args: any[]): any;
-        exit(fn: any, ...args: any[]): any;
-        /**
-         * If the `AsyncLocalStorage` instance is enabled, it returns the current
-         * store value for this asynchronous execution context.
-         * @return {any|undefined}
-         */
-        getStore(): any | undefined;
-        #private;
-    }
-    export default AsyncLocalStorage;
-}
-
-declare module "socket:async/deferred" {
-    /**
-     * Dispatched when a `Deferred` internal promise is resolved.
-     */
-    export class DeferredResolveEvent extends Event {
-        /**
-         * `DeferredResolveEvent` class constructor
-         * @ignore
-         * @param {string=} [type]
-         * @param {any=} [result]
-         */
-        constructor(type?: string | undefined, result?: any | undefined);
-        /**
-         * The `Deferred` promise result value.
-         * @type {any?}
-         */
-        result: any | null;
-    }
-    /**
-     * Dispatched when a `Deferred` internal promise is rejected.
-     */
-    export class DeferredRejectEvent {
-        /**
-         * `DeferredRejectEvent` class constructor
-         * @ignore
-         * @param {string=} [type]
-         * @param {Error=} [error]
-         */
-        constructor(type?: string | undefined, error?: Error | undefined);
-    }
-    /**
-     * A utility class for creating deferred promises.
-     */
-    export class Deferred extends EventTarget {
-        /**
-         * `Deferred` class constructor.
-         * @param {Deferred|Promise?} [promise]
-         */
-        constructor(promise?: Deferred | (Promise<any> | null));
-        /**
-         * Function to resolve the associated promise.
-         * @type {function}
-         */
-        resolve: Function;
-        /**
-         * Function to reject the associated promise.
-         * @type {function}
-         */
-        reject: Function;
-        /**
-         * Attaches a fulfillment callback and a rejection callback to the promise,
-         * and returns a new promise resolving to the return value of the called
-         * callback.
-         * @param {function(any)=} [resolve]
-         * @param {function(Error)=} [reject]
-         */
-        then(resolve?: ((arg0: any) => any) | undefined, reject?: ((arg0: Error) => any) | undefined): Promise<any>;
-        /**
-         * Attaches a rejection callback to the promise, and returns a new promise
-         * resolving to the return value of the callback if it is called, or to its
-         * original fulfillment value if the promise is instead fulfilled.
-         * @param {function(Error)=} [callback]
-         */
-        catch(callback?: ((arg0: Error) => any) | undefined): Promise<any>;
-        /**
-         * Attaches a callback for when the promise is settled (fulfilled or rejected).
-         * @param {function(any?)} [callback]
-         */
-        finally(callback?: (arg0: any | null) => any): Promise<any>;
-        /**
-         * The promise associated with this Deferred instance.
-         * @type {Promise<any>}
-         */
-        get promise(): Promise<any>;
-        /**
-         * A string representation of this Deferred instance.
-         * @type {string}
-         * @ignore
-         */
-        get [Symbol.toStringTag](): string;
-        #private;
-    }
-    export default Deferred;
-}
-
-declare module "socket:async" {
-    export default exports;
-    import AsyncLocalStorage from "socket:async/storage";
-    import AsyncResource from "socket:async/resource";
-    import AsyncContext from "socket:async/context";
-    import Deferred from "socket:async/deferred";
-    import { executionAsyncResource } from "socket:async/hooks";
-    import { executionAsyncId } from "socket:async/hooks";
-    import { triggerAsyncId } from "socket:async/hooks";
-    import { createHook } from "socket:async/hooks";
-    import { AsyncHook } from "socket:async/hooks";
-    import * as exports from "socket:async";
-    
-    export { AsyncLocalStorage, AsyncResource, AsyncContext, Deferred, executionAsyncResource, executionAsyncId, triggerAsyncId, createHook, AsyncHook };
-}
-
-declare module "socket:application/menu" {
-    /**
-     * Internal IPC for setting an application menu
-     * @ignore
-     */
-    export function setMenu(options: any, type: any): Promise<ipc.Result>;
-    /**
-     * Internal IPC for setting an application context menu
-     * @ignore
-     */
-    export function setContextMenu(options: any): Promise<any>;
-    /**
-     * A `Menu` is base class for a `ContextMenu`, `SystemMenu`, or `TrayMenu`.
-     */
-    export class Menu extends EventTarget {
-        /**
-         * `Menu` class constructor.
-         * @ignore
-         * @param {string} type
-         */
-        constructor(type: string);
-        /**
-         * The broadcast channel for this menu.
-         * @ignore
-         * @type {BroadcastChannel}
-         */
-        get channel(): BroadcastChannel;
-        /**
-         * The `Menu` instance type.
-         * @type {('context'|'system'|'tray')?}
-         */
-        get type(): "tray" | "system" | "context";
-        /**
-         * Setter for the level 1 'error'` event listener.
-         * @ignore
-         * @type {function(ErrorEvent)?}
-         */
-        set onerror(onerror: (arg0: ErrorEvent) => any);
-        /**
-         * Level 1 'error'` event listener.
-         * @type {function(ErrorEvent)?}
-         */
-        get onerror(): (arg0: ErrorEvent) => any;
-        /**
-         * Setter for the level 1 'menuitem'` event listener.
-         * @ignore
-         * @type {function(MenuItemEvent)?}
-         */
-        set onmenuitem(onmenuitem: (arg0: menuitemEvent) => any);
-        /**
-         * Level 1 'menuitem'` event listener.
-         * @type {function(menuitemEvent)?}
-         */
-        get onmenuitem(): (arg0: menuitemEvent) => any;
-        /**
-         * Set the menu layout for this `Menu` instance.
-         * @param {string|object} layoutOrOptions
-         * @param {object=} [options]
-         */
-        set(layoutOrOptions: string | object, options?: object | undefined): Promise<any>;
-        #private;
-    }
-    /**
-     * A container for various `Menu` instances.
-     */
-    export class MenuContainer extends EventTarget {
-        /**
-         * `MenuContainer` class constructor.
-         * @param {EventTarget} [sourceEventTarget]
-         * @param {object=} [options]
-         */
-        constructor(sourceEventTarget?: EventTarget, options?: object | undefined);
-        /**
-         * Setter for the level 1 'error'` event listener.
-         * @ignore
-         * @type {function(ErrorEvent)?}
-         */
-        set onerror(onerror: (arg0: ErrorEvent) => any);
-        /**
-         * Level 1 'error'` event listener.
-         * @type {function(ErrorEvent)?}
-         */
-        get onerror(): (arg0: ErrorEvent) => any;
-        /**
-         * Setter for the level 1 'menuitem'` event listener.
-         * @ignore
-         * @type {function(MenuItemEvent)?}
-         */
-        set onmenuitem(onmenuitem: (arg0: menuitemEvent) => any);
-        /**
-         * Level 1 'menuitem'` event listener.
-         * @type {function(menuitemEvent)?}
-         */
-        get onmenuitem(): (arg0: menuitemEvent) => any;
-        /**
-         * The `TrayMenu` instance for the application.
-         * @type {TrayMenu}
-         */
-        get tray(): TrayMenu;
-        /**
-         * The `SystemMenu` instance for the application.
-         * @type {SystemMenu}
-         */
-        get system(): SystemMenu;
-        /**
-         * The `ContextMenu` instance for the application.
-         * @type {ContextMenu}
-         */
-        get context(): ContextMenu;
-        #private;
-    }
-    /**
-     * A `Menu` instance that represents a context menu.
-     */
-    export class ContextMenu extends Menu {
-        constructor();
-    }
-    /**
-     * A `Menu` instance that represents the system menu.
-     */
-    export class SystemMenu extends Menu {
-        constructor();
-    }
-    /**
-     * A `Menu` instance that represents the tray menu.
-     */
-    export class TrayMenu extends Menu {
-        constructor();
-    }
-    /**
-     * The application tray menu.
-     * @type {TrayMenu}
-     */
-    export const tray: TrayMenu;
-    /**
-     * The application system menu.
-     * @type {SystemMenu}
-     */
-    export const system: SystemMenu;
-    /**
-     * The application context menu.
-     * @type {ContextMenu}
-     */
-    export const context: ContextMenu;
-    /**
-     * The application menus container.
-     * @type {MenuContainer}
-     */
-    export const container: MenuContainer;
-    export default container;
-    import ipc from "socket:ipc";
-}
-
-declare module "socket:internal/events" {
-    /**
-     * An event dispatched when an application URL is opening the application.
-     */
-    export class ApplicationURLEvent extends Event {
-        /**
-         * `ApplicationURLEvent` class constructor.
-         * @param {string=} [type]
-         * @param {object=} [options]
-         */
-        constructor(type?: string | undefined, options?: object | undefined);
-        /**
-         * `true` if the application URL is valid (parses correctly).
-         * @type {boolean}
-         */
-        get isValid(): boolean;
-        /**
-         * Data associated with the `ApplicationURLEvent`.
-         * @type {?any}
-         */
-        get data(): any;
-        /**
-         * The original source URI
-         * @type {?string}
-         */
-        get source(): string;
-        /**
-         * The `URL` for the `ApplicationURLEvent`.
-         * @type {?URL}
-         */
-        get url(): URL;
-        /**
-         * String tag name for an `ApplicationURLEvent` instance.
-         * @type {string}
-         */
-        get [Symbol.toStringTag](): string;
-        #private;
-    }
-    /**
-     * An event dispacted for a registered global hotkey expression.
-     */
-    export class HotKeyEvent extends MessageEvent<any> {
-        /**
-         * `HotKeyEvent` class constructor.
-         * @ignore
-         * @param {string=} [type]
-         * @param {object=} [data]
-         */
-        constructor(type?: string | undefined, data?: object | undefined);
-        /**
-         * The global unique ID for this hotkey binding.
-         * @type {number?}
-         */
-        get id(): number;
-        /**
-         * The computed hash for this hotkey binding.
-         * @type {number?}
-         */
-        get hash(): number;
-        /**
-         * The normalized hotkey expression as a sequence of tokens.
-         * @type {string[]}
-         */
-        get sequence(): string[];
-        /**
-         * The original expression of the hotkey binding.
-         * @type {string?}
-         */
-        get expression(): string;
-    }
-    /**
-     * An event dispacted when a menu item is selected.
-     */
-    export class MenuItemEvent extends MessageEvent<any> {
-        /**
-         * `MenuItemEvent` class constructor
-         * @ignore
-         * @param {string=} [type]
-         * @param {object=} [data]
-         * @param {import('../application/menu.js').Menu} menu
-         */
-        constructor(type?: string | undefined, data?: object | undefined, menu?: import("socket:application/menu").Menu);
-        /**
-         * The `Menu` this event has been dispatched for.
-         * @type {import('../application/menu.js').Menu?}
-         */
-        get menu(): import("socket:application/menu").Menu;
-        /**
-         * The title of the menu item.
-         * @type {string?}
-         */
-        get title(): string;
-        /**
-         * An optional tag value for the menu item that may also be the
-         * parent menu item title.
-         * @type {string?}
-         */
-        get tag(): string;
-        /**
-         * The parent title of the menu item.
-         * @type {string?}
-         */
-        get parent(): string;
-        #private;
-    }
-    /**
-     * An event dispacted when the application receives an OS signal
-     */
-    export class SignalEvent extends MessageEvent<any> {
-        /**
-         * `SignalEvent` class constructor
-         * @ignore
-         * @param {string=} [type]
-         * @param {object=} [options]
-         */
-        constructor(type?: string | undefined, options?: object | undefined);
-        /**
-         * The code of the signal.
-         * @type {import('../signal.js').signal}
-         */
-        get code(): number;
-        /**
-         * The name of the signal.
-         * @type {string}
-         */
-        get name(): string;
-        /**
-         * An optional message describing the signal
-         * @type {string}
-         */
-        get message(): string;
-        #private;
-    }
-    namespace _default {
-        export { ApplicationURLEvent };
-        export { MenuItemEvent };
-        export { SignalEvent };
-        export { HotKeyEvent };
-    }
-    export default _default;
-}
-
-declare module "socket:path/well-known" {
-    /**
-     * Well known path to the user's "Downloads" folder.
-     * @type {?string}
-     */
-    export const DOWNLOADS: string | null;
-    /**
-     * Well known path to the user's "Documents" folder.
-     * @type {?string}
-     */
-    export const DOCUMENTS: string | null;
-    /**
-     * Well known path to the user's "Pictures" folder.
-     * @type {?string}
-     */
-    export const PICTURES: string | null;
-    /**
-     * Well known path to the user's "Desktop" folder.
-     * @type {?string}
-     */
-    export const DESKTOP: string | null;
-    /**
-     * Well known path to the user's "Videos" folder.
-     * @type {?string}
-     */
-    export const VIDEOS: string | null;
-    /**
-     * Well known path to the user's "Music" folder.
-     * @type {?string}
-     */
-    export const MUSIC: string | null;
-    /**
-     * Well known path to the application's "resources" folder.
-     * @type {?string}
-     */
-    export const RESOURCES: string | null;
-    /**
-     * Well known path to the application's "config" folder.
-     * @type {?string}
-     */
-    export const CONFIG: string | null;
-    /**
-     * Well known path to the application's "data" folder.
-     * @type {?string}
-     */
-    export const DATA: string | null;
-    /**
-     * Well known path to the application's "log" folder.
-     * @type {?string}
-     */
-    export const LOG: string | null;
-    /**
-     * Well known path to the application's "tmp" folder.
-     * @type {?string}
-     */
-    export const TMP: string | null;
-    /**
-     * Well known path to the application's "home" folder.
-     * This may be the user's HOME directory or the application container sandbox.
-     * @type {?string}
-     */
-    export const HOME: string | null;
-    namespace _default {
-        export { DOWNLOADS };
-        export { DOCUMENTS };
-        export { RESOURCES };
-        export { PICTURES };
-        export { DESKTOP };
-        export { VIDEOS };
-        export { CONFIG };
-        export { MUSIC };
-        export { HOME };
-        export { DATA };
-        export { LOG };
-        export { TMP };
-    }
-    export default _default;
-}
-
-declare module "socket:os" {
-    /**
-     * Returns the operating system CPU architecture for which Socket was compiled.
-     * @returns {string} - 'arm64', 'ia32', 'x64', or 'unknown'
-     */
-    export function arch(): string;
-    /**
-     * Returns an array of objects containing information about each CPU/core.
-     * @returns {Array<object>} cpus - An array of objects containing information about each CPU/core.
-     * The properties of the objects are:
-     * - model `<string>` - CPU model name.
-     * - speed `<number>` - CPU clock speed (in MHz).
-     * - times `<object>` - An object containing the fields user, nice, sys, idle, irq representing the number of milliseconds the CPU has spent in each mode.
-     *   - user `<number>` - Time spent by this CPU or core in user mode.
-     *   - nice `<number>` - Time spent by this CPU or core in user mode with low priority (nice).
-     *   - sys `<number>` - Time spent by this CPU or core in system mode.
-     *   - idle `<number>` - Time spent by this CPU or core in idle mode.
-     *   - irq `<number>` - Time spent by this CPU or core in IRQ mode.
-     * @see {@link https://nodejs.org/api/os.html#os_os_cpus}
-     */
-    export function cpus(): Array<object>;
-    /**
-     * Returns an object containing network interfaces that have been assigned a network address.
-     * @returns {object}  - An object containing network interfaces that have been assigned a network address.
-     * Each key on the returned object identifies a network interface. The associated value is an array of objects that each describe an assigned network address.
-     * The properties available on the assigned network address object include:
-     * - address `<string>` - The assigned IPv4 or IPv6 address.
-     * - netmask `<string>` - The IPv4 or IPv6 network mask.
-     * - family `<string>` - The address family ('IPv4' or 'IPv6').
-     * - mac `<string>` - The MAC address of the network interface.
-     * - internal `<boolean>` - Indicates whether the network interface is a loopback interface.
-     * - scopeid `<number>` - The numeric scope ID (only specified when family is 'IPv6').
-     * - cidr `<string>` - The CIDR notation of the interface.
-     * @see {@link https://nodejs.org/api/os.html#os_os_networkinterfaces}
-     */
-    export function networkInterfaces(): object;
-    /**
-     * Returns the operating system platform.
-     * @returns {string} - 'android', 'cygwin', 'freebsd', 'linux', 'darwin', 'ios', 'openbsd', 'win32', or 'unknown'
-     * @see {@link https://nodejs.org/api/os.html#os_os_platform}
-     * The returned value is equivalent to `process.platform`.
-     */
-    export function platform(): string;
-    /**
-     * Returns the operating system name.
-     * @returns {string} - 'CYGWIN_NT', 'Mac', 'Darwin', 'FreeBSD', 'Linux', 'OpenBSD', 'Windows_NT', 'Win32', or 'Unknown'
-     * @see {@link https://nodejs.org/api/os.html#os_os_type}
-     */
-    export function type(): string;
-    /**
-     * @returns {boolean} - `true` if the operating system is Windows.
-     */
-    export function isWindows(): boolean;
-    /**
-     * @returns {string} - The operating system's default directory for temporary files.
-     */
-    export function tmpdir(): string;
-    /**
-     * Get resource usage.
-     */
-    export function rusage(): any;
-    /**
-     * Returns the system uptime in seconds.
-     * @returns {number} - The system uptime in seconds.
-     */
-    export function uptime(): number;
-    /**
-     * Returns the operating system name.
-     * @returns {string} - The operating system name.
-     */
-    export function uname(): string;
-    /**
-     * It's implemented in process.hrtime.bigint()
-     * @ignore
-     */
-    export function hrtime(): any;
-    /**
-     * Node.js doesn't have this method.
-     * @ignore
-     */
-    export function availableMemory(): any;
-    /**
-     * The host operating system. This value can be one of:
-     * - android
-     * - android-emulator
-     * - iphoneos
-     * - iphone-simulator
-     * - linux
-     * - macosx
-     * - unix
-     * - unknown
-     * - win32
-     * @ignore
-     * @return {'android'|'android-emulator'|'iphoneos'|iphone-simulator'|'linux'|'macosx'|unix'|unknown'|win32'}
-     */
-    export function host(): "android" | "android-emulator" | "iphoneos" | iphone;
-    /**
-     * Returns the home directory of the current user.
-     * @return {string}
-     */
-    export function homedir(): string;
-    export { constants };
-    /**
-     * @type {string}
-     * The operating system's end-of-line marker. `'\r\n'` on Windows and `'\n'` on POSIX.
-     */
-    export const EOL: string;
-    export default exports;
-    import constants from "socket:os/constants";
-    import * as exports from "socket:os";
-    
-}
-
-declare module "socket:signal" {
-    /**
-     * Converts an `signal` code to its corresponding string message.
-     * @param {import('./os/constants.js').signal} {code}
-     * @return {string}
-     */
-    export function toString(code: any): string;
-    /**
-     * Gets the code for a given 'signal' name.
-     * @param {string|number} name
-     * @return {signal}
-     */
-    export function getCode(name: string | number): signal;
-    /**
-     * Gets the name for a given 'signal' code
-     * @return {string}
-     * @param {string|number} code
-     */
-    export function getName(code: string | number): string;
-    /**
-     * Gets the message for a 'signal' code.
-     * @param {number|string} code
-     * @return {string}
-     */
-    export function getMessage(code: number | string): string;
-    /**
-     * Add a signal event listener.
-     * @param {string|number} signal
-     * @param {function(SignalEvent)} callback
-     * @param {{ once?: boolean }=} [options]
-     */
-    export function addEventListener(signalName: any, callback: (arg0: SignalEvent) => any, options?: {
-        once?: boolean;
-    } | undefined): void;
-    /**
-     * Remove a signal event listener.
-     * @param {string|number} signal
-     * @param {function(SignalEvent)} callback
-     * @param {{ once?: boolean }=} [options]
-     */
-    export function removeEventListener(signalName: any, callback: (arg0: SignalEvent) => any, options?: {
-        once?: boolean;
-    } | undefined): void;
-    export { constants };
-    export const channel: BroadcastChannel;
-    export const SIGHUP: any;
-    export const SIGINT: any;
-    export const SIGQUIT: any;
-    export const SIGILL: any;
-    export const SIGTRAP: any;
-    export const SIGABRT: any;
-    export const SIGIOT: any;
-    export const SIGBUS: any;
-    export const SIGFPE: any;
-    export const SIGKILL: any;
-    export const SIGUSR1: any;
-    export const SIGSEGV: any;
-    export const SIGUSR2: any;
-    export const SIGPIPE: any;
-    export const SIGALRM: any;
-    export const SIGTERM: any;
-    export const SIGCHLD: any;
-    export const SIGCONT: any;
-    export const SIGSTOP: any;
-    export const SIGTSTP: any;
-    export const SIGTTIN: any;
-    export const SIGTTOU: any;
-    export const SIGURG: any;
-    export const SIGXCPU: any;
-    export const SIGXFSZ: any;
-    export const SIGVTALRM: any;
-    export const SIGPROF: any;
-    export const SIGWINCH: any;
-    export const SIGIO: any;
-    export const SIGINFO: any;
-    export const SIGSYS: any;
-    export const strings: {
-        [x: number]: string;
-    };
-    namespace _default {
-        export { addEventListener };
-        export { removeEventListener };
-        export { constants };
-        export { channel };
-        export { strings };
-        export { toString };
-        export { getName };
-        export { getCode };
-        export { getMessage };
-        export { SIGHUP };
-        export { SIGINT };
-        export { SIGQUIT };
-        export { SIGILL };
-        export { SIGTRAP };
-        export { SIGABRT };
-        export { SIGIOT };
-        export { SIGBUS };
-        export { SIGFPE };
-        export { SIGKILL };
-        export { SIGUSR1 };
-        export { SIGSEGV };
-        export { SIGUSR2 };
-        export { SIGPIPE };
-        export { SIGALRM };
-        export { SIGTERM };
-        export { SIGCHLD };
-        export { SIGCONT };
-        export { SIGSTOP };
-        export { SIGTSTP };
-        export { SIGTTIN };
-        export { SIGTTOU };
-        export { SIGURG };
-        export { SIGXCPU };
-        export { SIGXFSZ };
-        export { SIGVTALRM };
-        export { SIGPROF };
-        export { SIGWINCH };
-        export { SIGIO };
-        export { SIGINFO };
-        export { SIGSYS };
-    }
-    export default _default;
-    export type signal = import("socket:os/constants").signal;
-    import { SignalEvent } from "socket:internal/events";
-    import { signal as constants } from "socket:os/constants";
-}
-
 declare module "socket:internal/streams/web" {
     export class ByteLengthQueuingStrategy {
         constructor(e: any);
@@ -3590,6 +2603,198 @@ declare module "socket:tty" {
     export default _default;
     import { Writable } from "socket:stream";
     import { Readable } from "socket:stream";
+}
+
+declare module "socket:path/well-known" {
+    /**
+     * Well known path to the user's "Downloads" folder.
+     * @type {?string}
+     */
+    export const DOWNLOADS: string | null;
+    /**
+     * Well known path to the user's "Documents" folder.
+     * @type {?string}
+     */
+    export const DOCUMENTS: string | null;
+    /**
+     * Well known path to the user's "Pictures" folder.
+     * @type {?string}
+     */
+    export const PICTURES: string | null;
+    /**
+     * Well known path to the user's "Desktop" folder.
+     * @type {?string}
+     */
+    export const DESKTOP: string | null;
+    /**
+     * Well known path to the user's "Videos" folder.
+     * @type {?string}
+     */
+    export const VIDEOS: string | null;
+    /**
+     * Well known path to the user's "Music" folder.
+     * @type {?string}
+     */
+    export const MUSIC: string | null;
+    /**
+     * Well known path to the application's "resources" folder.
+     * @type {?string}
+     */
+    export const RESOURCES: string | null;
+    /**
+     * Well known path to the application's "config" folder.
+     * @type {?string}
+     */
+    export const CONFIG: string | null;
+    /**
+     * Well known path to the application's "data" folder.
+     * @type {?string}
+     */
+    export const DATA: string | null;
+    /**
+     * Well known path to the application's "log" folder.
+     * @type {?string}
+     */
+    export const LOG: string | null;
+    /**
+     * Well known path to the application's "tmp" folder.
+     * @type {?string}
+     */
+    export const TMP: string | null;
+    /**
+     * Well known path to the application's "home" folder.
+     * This may be the user's HOME directory or the application container sandbox.
+     * @type {?string}
+     */
+    export const HOME: string | null;
+    namespace _default {
+        export { DOWNLOADS };
+        export { DOCUMENTS };
+        export { RESOURCES };
+        export { PICTURES };
+        export { DESKTOP };
+        export { VIDEOS };
+        export { CONFIG };
+        export { MUSIC };
+        export { HOME };
+        export { DATA };
+        export { LOG };
+        export { TMP };
+    }
+    export default _default;
+}
+
+declare module "socket:os" {
+    /**
+     * Returns the operating system CPU architecture for which Socket was compiled.
+     * @returns {string} - 'arm64', 'ia32', 'x64', or 'unknown'
+     */
+    export function arch(): string;
+    /**
+     * Returns an array of objects containing information about each CPU/core.
+     * @returns {Array<object>} cpus - An array of objects containing information about each CPU/core.
+     * The properties of the objects are:
+     * - model `<string>` - CPU model name.
+     * - speed `<number>` - CPU clock speed (in MHz).
+     * - times `<object>` - An object containing the fields user, nice, sys, idle, irq representing the number of milliseconds the CPU has spent in each mode.
+     *   - user `<number>` - Time spent by this CPU or core in user mode.
+     *   - nice `<number>` - Time spent by this CPU or core in user mode with low priority (nice).
+     *   - sys `<number>` - Time spent by this CPU or core in system mode.
+     *   - idle `<number>` - Time spent by this CPU or core in idle mode.
+     *   - irq `<number>` - Time spent by this CPU or core in IRQ mode.
+     * @see {@link https://nodejs.org/api/os.html#os_os_cpus}
+     */
+    export function cpus(): Array<object>;
+    /**
+     * Returns an object containing network interfaces that have been assigned a network address.
+     * @returns {object}  - An object containing network interfaces that have been assigned a network address.
+     * Each key on the returned object identifies a network interface. The associated value is an array of objects that each describe an assigned network address.
+     * The properties available on the assigned network address object include:
+     * - address `<string>` - The assigned IPv4 or IPv6 address.
+     * - netmask `<string>` - The IPv4 or IPv6 network mask.
+     * - family `<string>` - The address family ('IPv4' or 'IPv6').
+     * - mac `<string>` - The MAC address of the network interface.
+     * - internal `<boolean>` - Indicates whether the network interface is a loopback interface.
+     * - scopeid `<number>` - The numeric scope ID (only specified when family is 'IPv6').
+     * - cidr `<string>` - The CIDR notation of the interface.
+     * @see {@link https://nodejs.org/api/os.html#os_os_networkinterfaces}
+     */
+    export function networkInterfaces(): object;
+    /**
+     * Returns the operating system platform.
+     * @returns {string} - 'android', 'cygwin', 'freebsd', 'linux', 'darwin', 'ios', 'openbsd', 'win32', or 'unknown'
+     * @see {@link https://nodejs.org/api/os.html#os_os_platform}
+     * The returned value is equivalent to `process.platform`.
+     */
+    export function platform(): string;
+    /**
+     * Returns the operating system name.
+     * @returns {string} - 'CYGWIN_NT', 'Mac', 'Darwin', 'FreeBSD', 'Linux', 'OpenBSD', 'Windows_NT', 'Win32', or 'Unknown'
+     * @see {@link https://nodejs.org/api/os.html#os_os_type}
+     */
+    export function type(): string;
+    /**
+     * @returns {boolean} - `true` if the operating system is Windows.
+     */
+    export function isWindows(): boolean;
+    /**
+     * @returns {string} - The operating system's default directory for temporary files.
+     */
+    export function tmpdir(): string;
+    /**
+     * Get resource usage.
+     */
+    export function rusage(): any;
+    /**
+     * Returns the system uptime in seconds.
+     * @returns {number} - The system uptime in seconds.
+     */
+    export function uptime(): number;
+    /**
+     * Returns the operating system name.
+     * @returns {string} - The operating system name.
+     */
+    export function uname(): string;
+    /**
+     * It's implemented in process.hrtime.bigint()
+     * @ignore
+     */
+    export function hrtime(): any;
+    /**
+     * Node.js doesn't have this method.
+     * @ignore
+     */
+    export function availableMemory(): any;
+    /**
+     * The host operating system. This value can be one of:
+     * - android
+     * - android-emulator
+     * - iphoneos
+     * - iphone-simulator
+     * - linux
+     * - macosx
+     * - unix
+     * - unknown
+     * - win32
+     * @ignore
+     * @return {'android'|'android-emulator'|'iphoneos'|iphone-simulator'|'linux'|'macosx'|unix'|unknown'|win32'}
+     */
+    export function host(): "android" | "android-emulator" | "iphoneos" | iphone;
+    /**
+     * Returns the home directory of the current user.
+     * @return {string}
+     */
+    export function homedir(): string;
+    export { constants };
+    /**
+     * @type {string}
+     * The operating system's end-of-line marker. `'\r\n'` on Windows and `'\n'` on POSIX.
+     */
+    export const EOL: string;
+    export default exports;
+    import constants from "socket:os/constants";
+    import * as exports from "socket:os";
+    
 }
 
 declare module "socket:process" {
@@ -4271,6 +3476,379 @@ declare module "socket:fs/flags" {
     export default exports;
     import * as exports from "socket:fs/flags";
     
+}
+
+declare module "socket:async/wrap" {
+    /**
+     * Returns `true` if a given function `fn` has the "async" wrapped tag,
+     * meaning it was "tagged" in a `wrap(fn)` call before, otherwise this
+     * function will return `false`.
+     * @ignore
+     * @param {function} fn
+     * @param {boolean}
+     */
+    export function isTagged(fn: Function): boolean;
+    /**
+     * Tags a function `fn` as being "async wrapped" so subsequent calls to
+     * `wrap(fn)` do not wrap an already wrapped function.
+     * @ignore
+     * @param {function} fn
+     * @return {function}
+     */
+    export function tag(fn: Function): Function;
+    /**
+     * Wraps a function `fn` that captures a snapshot of the current async
+     * context. This function is idempotent and will not wrap a function more
+     * than once.
+     * @ignore
+     * @param {function} fn
+     * @return {function}
+     */
+    export function wrap(fn: Function): Function;
+    export const symbol: unique symbol;
+    export default wrap;
+}
+
+declare module "socket:internal/async/hooks" {
+    export function dispatch(hook: any, asyncId: any, type: any, triggerAsyncId: any, resource: any): void;
+    export function getNextAsyncResourceId(): number;
+    export function executionAsyncResource(): any;
+    export function executionAsyncId(): any;
+    export function triggerAsyncId(): any;
+    export function getDefaultExecutionAsyncId(): any;
+    export function wrap(callback: any, type: any, asyncId?: number, triggerAsyncId?: any, resource?: any): (...args: any[]) => any;
+    export function getTopLevelAsyncResourceName(): any;
+    /**
+     * The default top level async resource ID
+     * @type {number}
+     */
+    export const TOP_LEVEL_ASYNC_RESOURCE_ID: number;
+    export namespace state {
+        let defaultExecutionAsyncId: number;
+    }
+    export namespace hooks {
+        let init: any[];
+        let before: any[];
+        let after: any[];
+        let destroy: any[];
+        let promiseResolve: any[];
+    }
+    /**
+     * A base class for the `AsyncResource` class or other higher level async
+     * resource classes.
+     */
+    export class CoreAsyncResource {
+        /**
+         * `CoreAsyncResource` class constructor.
+         * @param {string} type
+         * @param {object|number=} [options]
+         */
+        constructor(type: string, options?: (object | number) | undefined);
+        /**
+         * The `CoreAsyncResource` type.
+         * @type {string}
+         */
+        get type(): string;
+        /**
+         * `true` if the `CoreAsyncResource` was destroyed, otherwise `false`. This
+         * value is only set to `true` if `emitDestroy()` was called, likely from
+         * destroying the resource manually.
+         * @type {boolean}
+         */
+        get destroyed(): boolean;
+        /**
+         * The unique async resource ID.
+         * @return {number}
+         */
+        asyncId(): number;
+        /**
+         * The trigger async resource ID.
+         * @return {number}
+         */
+        triggerAsyncId(): number;
+        /**
+         * Manually emits destroy hook for the resource.
+         * @return {CoreAsyncResource}
+         */
+        emitDestroy(): CoreAsyncResource;
+        /**
+         * Binds function `fn` with an optional this `thisArg` binding to run
+         * in the execution context of this `CoreAsyncResource`.
+         * @param {function} fn
+         * @param {object=} [thisArg]
+         * @return {function}
+         */
+        bind(fn: Function, thisArg?: object | undefined): Function;
+        /**
+         * Runs function `fn` in the execution context of this `CoreAsyncResource`.
+         * @param {function} fn
+         * @param {object=} [thisArg]
+         * @param {...any} [args]
+         * @return {any}
+         */
+        runInAsyncScope(fn: Function, thisArg?: object | undefined, ...args?: any[]): any;
+        #private;
+    }
+    export class TopLevelAsyncResource extends CoreAsyncResource {
+    }
+    export const asyncContextVariable: Variable<any>;
+    export const topLevelAsyncResource: TopLevelAsyncResource;
+    export default hooks;
+    import { Variable } from "socket:async/context";
+}
+
+declare module "socket:async/resource" {
+    /**
+     * @typedef {{
+     *   triggerAsyncId?: number,
+     *   requireManualDestroy?: boolean
+     * }} AsyncResourceOptions
+     */
+    /**
+     * A container that should be extended that represents a resource with
+     * an asynchronous execution context.
+     */
+    export class AsyncResource extends CoreAsyncResource {
+        /**
+         * Binds function `fn` with an optional this `thisArg` binding to run
+         * in the execution context of an anonymous `AsyncResource`.
+         * @param {function} fn
+         * @param {object|string=} [type]
+         * @param {object=} [thisArg]
+         * @return {function}
+         */
+        static bind(fn: Function, type?: (object | string) | undefined, thisArg?: object | undefined): Function;
+        /**
+         * `AsyncResource` class constructor.
+         * @param {string} type
+         * @param {AsyncResourceOptions|number=} [options]
+         */
+        constructor(type: string, options?: (AsyncResourceOptions | number) | undefined);
+    }
+    export default AsyncResource;
+    export type AsyncResourceOptions = {
+        triggerAsyncId?: number;
+        requireManualDestroy?: boolean;
+    };
+    import { executionAsyncResource } from "socket:internal/async/hooks";
+    import { executionAsyncId } from "socket:internal/async/hooks";
+    import { triggerAsyncId } from "socket:internal/async/hooks";
+    import { CoreAsyncResource } from "socket:internal/async/hooks";
+    export { executionAsyncResource, executionAsyncId, triggerAsyncId };
+}
+
+declare module "socket:async/hooks" {
+    /**
+     * Factory for creating a `AsyncHook` instance.
+     * @param {AsyncHookCallbackOptions|AsyncHookCallbacks=} [callbacks]
+     * @return {AsyncHook}
+     */
+    export function createHook(callbacks?: (AsyncHookCallbackOptions | AsyncHookCallbacks) | undefined): AsyncHook;
+    /**
+     * A container for `AsyncHooks` callbacks.
+     * @ignore
+     */
+    export class AsyncHookCallbacks {
+        /**
+         * `AsyncHookCallbacks` class constructor.
+         * @ignore
+         * @param {AsyncHookCallbackOptions} [options]
+         */
+        constructor(options?: AsyncHookCallbackOptions);
+        init(asyncId: any, type: any, triggerAsyncId: any, resource: any): void;
+        before(asyncId: any): void;
+        after(asyncId: any): void;
+        destroy(asyncId: any): void;
+        promiseResolve(asyncId: any): void;
+    }
+    /**
+     * A container for registering various callbacks for async resource hooks.
+     */
+    export class AsyncHook {
+        /**
+         * @param {AsyncHookCallbackOptions|AsyncHookCallbacks=} [options]
+         */
+        constructor(callbacks?: any);
+        /**
+         * @type {boolean}
+         */
+        get enabled(): boolean;
+        /**
+         * Enable the async hook.
+         * @return {AsyncHook}
+         */
+        enable(): AsyncHook;
+        /**
+         * Disables the async hook
+         * @return {AsyncHook}
+         */
+        disable(): AsyncHook;
+        #private;
+    }
+    export default createHook;
+    import { executionAsyncResource } from "socket:internal/async/hooks";
+    import { executionAsyncId } from "socket:internal/async/hooks";
+    import { triggerAsyncId } from "socket:internal/async/hooks";
+    export { executionAsyncResource, executionAsyncId, triggerAsyncId };
+}
+
+declare module "socket:async/storage" {
+    /**
+     * A container for storing values that remain present during
+     * asynchronous operations.
+     */
+    export class AsyncLocalStorage {
+        /**
+         * Binds function `fn` to run in the execution context of an
+         * anonymous `AsyncResource`.
+         * @param {function} fn
+         * @return {function}
+         */
+        static bind(fn: Function): Function;
+        /**
+         * Captures the current async context and returns a function that runs
+         * a function in that execution context.
+         * @return {function}
+         */
+        static snapshot(): Function;
+        /**
+         * @type {boolean}
+         */
+        get enabled(): boolean;
+        /**
+         * Disables the `AsyncLocalStorage` instance. When disabled,
+         * `getStore()` will always return `undefined`.
+         */
+        disable(): void;
+        /**
+         * Enables the `AsyncLocalStorage` instance.
+         */
+        enable(): void;
+        /**
+         * Enables and sets the `AsyncLocalStorage` instance default store value.
+         * @param {any} store
+         */
+        enterWith(store: any): void;
+        /**
+         * Runs function `fn` in the current asynchronous execution context with
+         * a given `store` value and arguments given to `fn`.
+         * @param {any} store
+         * @param {function} fn
+         * @param {...any} args
+         * @return {any}
+         */
+        run(store: any, fn: Function, ...args: any[]): any;
+        exit(fn: any, ...args: any[]): any;
+        /**
+         * If the `AsyncLocalStorage` instance is enabled, it returns the current
+         * store value for this asynchronous execution context.
+         * @return {any|undefined}
+         */
+        getStore(): any | undefined;
+        #private;
+    }
+    export default AsyncLocalStorage;
+}
+
+declare module "socket:async/deferred" {
+    /**
+     * Dispatched when a `Deferred` internal promise is resolved.
+     */
+    export class DeferredResolveEvent extends Event {
+        /**
+         * `DeferredResolveEvent` class constructor
+         * @ignore
+         * @param {string=} [type]
+         * @param {any=} [result]
+         */
+        constructor(type?: string | undefined, result?: any | undefined);
+        /**
+         * The `Deferred` promise result value.
+         * @type {any?}
+         */
+        result: any | null;
+    }
+    /**
+     * Dispatched when a `Deferred` internal promise is rejected.
+     */
+    export class DeferredRejectEvent {
+        /**
+         * `DeferredRejectEvent` class constructor
+         * @ignore
+         * @param {string=} [type]
+         * @param {Error=} [error]
+         */
+        constructor(type?: string | undefined, error?: Error | undefined);
+    }
+    /**
+     * A utility class for creating deferred promises.
+     */
+    export class Deferred extends EventTarget {
+        /**
+         * `Deferred` class constructor.
+         * @param {Deferred|Promise?} [promise]
+         */
+        constructor(promise?: Deferred | (Promise<any> | null));
+        /**
+         * Function to resolve the associated promise.
+         * @type {function}
+         */
+        resolve: Function;
+        /**
+         * Function to reject the associated promise.
+         * @type {function}
+         */
+        reject: Function;
+        /**
+         * Attaches a fulfillment callback and a rejection callback to the promise,
+         * and returns a new promise resolving to the return value of the called
+         * callback.
+         * @param {function(any)=} [resolve]
+         * @param {function(Error)=} [reject]
+         */
+        then(resolve?: ((arg0: any) => any) | undefined, reject?: ((arg0: Error) => any) | undefined): Promise<any>;
+        /**
+         * Attaches a rejection callback to the promise, and returns a new promise
+         * resolving to the return value of the callback if it is called, or to its
+         * original fulfillment value if the promise is instead fulfilled.
+         * @param {function(Error)=} [callback]
+         */
+        catch(callback?: ((arg0: Error) => any) | undefined): Promise<any>;
+        /**
+         * Attaches a callback for when the promise is settled (fulfilled or rejected).
+         * @param {function(any?)} [callback]
+         */
+        finally(callback?: (arg0: any | null) => any): Promise<any>;
+        /**
+         * The promise associated with this Deferred instance.
+         * @type {Promise<any>}
+         */
+        get promise(): Promise<any>;
+        /**
+         * A string representation of this Deferred instance.
+         * @type {string}
+         * @ignore
+         */
+        get [Symbol.toStringTag](): string;
+        #private;
+    }
+    export default Deferred;
+}
+
+declare module "socket:async" {
+    export default exports;
+    import AsyncLocalStorage from "socket:async/storage";
+    import AsyncResource from "socket:async/resource";
+    import AsyncContext from "socket:async/context";
+    import Deferred from "socket:async/deferred";
+    import { executionAsyncResource } from "socket:async/hooks";
+    import { executionAsyncId } from "socket:async/hooks";
+    import { triggerAsyncId } from "socket:async/hooks";
+    import { createHook } from "socket:async/hooks";
+    import { AsyncHook } from "socket:async/hooks";
+    import * as exports from "socket:async";
+    
+    export { AsyncLocalStorage, AsyncResource, AsyncContext, Deferred, executionAsyncResource, executionAsyncId, triggerAsyncId, createHook, AsyncHook };
 }
 
 declare module "socket:diagnostics/channels" {
@@ -6993,6 +6571,426 @@ declare module "socket:application/client" {
         top?: object | null;
         frameType?: "top-level" | "nested" | "none";
     };
+}
+
+declare module "socket:application/menu" {
+    /**
+     * Internal IPC for setting an application menu
+     * @ignore
+     */
+    export function setMenu(options: any, type: any): Promise<ipc.Result>;
+    /**
+     * Internal IPC for setting an application context menu
+     * @ignore
+     */
+    export function setContextMenu(options: any): Promise<any>;
+    /**
+     * A `Menu` is base class for a `ContextMenu`, `SystemMenu`, or `TrayMenu`.
+     */
+    export class Menu extends EventTarget {
+        /**
+         * `Menu` class constructor.
+         * @ignore
+         * @param {string} type
+         */
+        constructor(type: string);
+        /**
+         * The broadcast channel for this menu.
+         * @ignore
+         * @type {BroadcastChannel}
+         */
+        get channel(): BroadcastChannel;
+        /**
+         * The `Menu` instance type.
+         * @type {('context'|'system'|'tray')?}
+         */
+        get type(): "tray" | "system" | "context";
+        /**
+         * Setter for the level 1 'error'` event listener.
+         * @ignore
+         * @type {function(ErrorEvent)?}
+         */
+        set onerror(onerror: (arg0: ErrorEvent) => any);
+        /**
+         * Level 1 'error'` event listener.
+         * @type {function(ErrorEvent)?}
+         */
+        get onerror(): (arg0: ErrorEvent) => any;
+        /**
+         * Setter for the level 1 'menuitem'` event listener.
+         * @ignore
+         * @type {function(MenuItemEvent)?}
+         */
+        set onmenuitem(onmenuitem: (arg0: menuitemEvent) => any);
+        /**
+         * Level 1 'menuitem'` event listener.
+         * @type {function(menuitemEvent)?}
+         */
+        get onmenuitem(): (arg0: menuitemEvent) => any;
+        /**
+         * Set the menu layout for this `Menu` instance.
+         * @param {string|object} layoutOrOptions
+         * @param {object=} [options]
+         */
+        set(layoutOrOptions: string | object, options?: object | undefined): Promise<any>;
+        #private;
+    }
+    /**
+     * A container for various `Menu` instances.
+     */
+    export class MenuContainer extends EventTarget {
+        /**
+         * `MenuContainer` class constructor.
+         * @param {EventTarget} [sourceEventTarget]
+         * @param {object=} [options]
+         */
+        constructor(sourceEventTarget?: EventTarget, options?: object | undefined);
+        /**
+         * Setter for the level 1 'error'` event listener.
+         * @ignore
+         * @type {function(ErrorEvent)?}
+         */
+        set onerror(onerror: (arg0: ErrorEvent) => any);
+        /**
+         * Level 1 'error'` event listener.
+         * @type {function(ErrorEvent)?}
+         */
+        get onerror(): (arg0: ErrorEvent) => any;
+        /**
+         * Setter for the level 1 'menuitem'` event listener.
+         * @ignore
+         * @type {function(MenuItemEvent)?}
+         */
+        set onmenuitem(onmenuitem: (arg0: menuitemEvent) => any);
+        /**
+         * Level 1 'menuitem'` event listener.
+         * @type {function(menuitemEvent)?}
+         */
+        get onmenuitem(): (arg0: menuitemEvent) => any;
+        /**
+         * The `TrayMenu` instance for the application.
+         * @type {TrayMenu}
+         */
+        get tray(): TrayMenu;
+        /**
+         * The `SystemMenu` instance for the application.
+         * @type {SystemMenu}
+         */
+        get system(): SystemMenu;
+        /**
+         * The `ContextMenu` instance for the application.
+         * @type {ContextMenu}
+         */
+        get context(): ContextMenu;
+        #private;
+    }
+    /**
+     * A `Menu` instance that represents a context menu.
+     */
+    export class ContextMenu extends Menu {
+        constructor();
+    }
+    /**
+     * A `Menu` instance that represents the system menu.
+     */
+    export class SystemMenu extends Menu {
+        constructor();
+    }
+    /**
+     * A `Menu` instance that represents the tray menu.
+     */
+    export class TrayMenu extends Menu {
+        constructor();
+    }
+    /**
+     * The application tray menu.
+     * @type {TrayMenu}
+     */
+    export const tray: TrayMenu;
+    /**
+     * The application system menu.
+     * @type {SystemMenu}
+     */
+    export const system: SystemMenu;
+    /**
+     * The application context menu.
+     * @type {ContextMenu}
+     */
+    export const context: ContextMenu;
+    /**
+     * The application menus container.
+     * @type {MenuContainer}
+     */
+    export const container: MenuContainer;
+    export default container;
+    import ipc from "socket:ipc";
+}
+
+declare module "socket:process/signal" {
+    /**
+     * Converts an `signal` code to its corresponding string message.
+     * @param {import('./os/constants.js').signal} {code}
+     * @return {string}
+     */
+    export function toString(code: any): string;
+    /**
+     * Gets the code for a given 'signal' name.
+     * @param {string|number} name
+     * @return {signal}
+     */
+    export function getCode(name: string | number): signal;
+    /**
+     * Gets the name for a given 'signal' code
+     * @return {string}
+     * @param {string|number} code
+     */
+    export function getName(code: string | number): string;
+    /**
+     * Gets the message for a 'signal' code.
+     * @param {number|string} code
+     * @return {string}
+     */
+    export function getMessage(code: number | string): string;
+    /**
+     * Add a signal event listener.
+     * @param {string|number} signal
+     * @param {function(SignalEvent)} callback
+     * @param {{ once?: boolean }=} [options]
+     */
+    export function addEventListener(signalName: any, callback: (arg0: SignalEvent) => any, options?: {
+        once?: boolean;
+    } | undefined): void;
+    /**
+     * Remove a signal event listener.
+     * @param {string|number} signal
+     * @param {function(SignalEvent)} callback
+     * @param {{ once?: boolean }=} [options]
+     */
+    export function removeEventListener(signalName: any, callback: (arg0: SignalEvent) => any, options?: {
+        once?: boolean;
+    } | undefined): void;
+    export { constants };
+    export const channel: BroadcastChannel;
+    export const SIGHUP: any;
+    export const SIGINT: any;
+    export const SIGQUIT: any;
+    export const SIGILL: any;
+    export const SIGTRAP: any;
+    export const SIGABRT: any;
+    export const SIGIOT: any;
+    export const SIGBUS: any;
+    export const SIGFPE: any;
+    export const SIGKILL: any;
+    export const SIGUSR1: any;
+    export const SIGSEGV: any;
+    export const SIGUSR2: any;
+    export const SIGPIPE: any;
+    export const SIGALRM: any;
+    export const SIGTERM: any;
+    export const SIGCHLD: any;
+    export const SIGCONT: any;
+    export const SIGSTOP: any;
+    export const SIGTSTP: any;
+    export const SIGTTIN: any;
+    export const SIGTTOU: any;
+    export const SIGURG: any;
+    export const SIGXCPU: any;
+    export const SIGXFSZ: any;
+    export const SIGVTALRM: any;
+    export const SIGPROF: any;
+    export const SIGWINCH: any;
+    export const SIGIO: any;
+    export const SIGINFO: any;
+    export const SIGSYS: any;
+    export const strings: {
+        [x: number]: string;
+    };
+    namespace _default {
+        export { addEventListener };
+        export { removeEventListener };
+        export { constants };
+        export { channel };
+        export { strings };
+        export { toString };
+        export { getName };
+        export { getCode };
+        export { getMessage };
+        export { SIGHUP };
+        export { SIGINT };
+        export { SIGQUIT };
+        export { SIGILL };
+        export { SIGTRAP };
+        export { SIGABRT };
+        export { SIGIOT };
+        export { SIGBUS };
+        export { SIGFPE };
+        export { SIGKILL };
+        export { SIGUSR1 };
+        export { SIGSEGV };
+        export { SIGUSR2 };
+        export { SIGPIPE };
+        export { SIGALRM };
+        export { SIGTERM };
+        export { SIGCHLD };
+        export { SIGCONT };
+        export { SIGSTOP };
+        export { SIGTSTP };
+        export { SIGTTIN };
+        export { SIGTTOU };
+        export { SIGURG };
+        export { SIGXCPU };
+        export { SIGXFSZ };
+        export { SIGVTALRM };
+        export { SIGPROF };
+        export { SIGWINCH };
+        export { SIGIO };
+        export { SIGINFO };
+        export { SIGSYS };
+    }
+    export default _default;
+    export type signal = any;
+}
+
+declare module "socket:internal/events" {
+    /**
+     * An event dispatched when an application URL is opening the application.
+     */
+    export class ApplicationURLEvent extends Event {
+        /**
+         * `ApplicationURLEvent` class constructor.
+         * @param {string=} [type]
+         * @param {object=} [options]
+         */
+        constructor(type?: string | undefined, options?: object | undefined);
+        /**
+         * `true` if the application URL is valid (parses correctly).
+         * @type {boolean}
+         */
+        get isValid(): boolean;
+        /**
+         * Data associated with the `ApplicationURLEvent`.
+         * @type {?any}
+         */
+        get data(): any;
+        /**
+         * The original source URI
+         * @type {?string}
+         */
+        get source(): string;
+        /**
+         * The `URL` for the `ApplicationURLEvent`.
+         * @type {?URL}
+         */
+        get url(): URL;
+        /**
+         * String tag name for an `ApplicationURLEvent` instance.
+         * @type {string}
+         */
+        get [Symbol.toStringTag](): string;
+        #private;
+    }
+    /**
+     * An event dispacted for a registered global hotkey expression.
+     */
+    export class HotKeyEvent extends MessageEvent<any> {
+        /**
+         * `HotKeyEvent` class constructor.
+         * @ignore
+         * @param {string=} [type]
+         * @param {object=} [data]
+         */
+        constructor(type?: string | undefined, data?: object | undefined);
+        /**
+         * The global unique ID for this hotkey binding.
+         * @type {number?}
+         */
+        get id(): number;
+        /**
+         * The computed hash for this hotkey binding.
+         * @type {number?}
+         */
+        get hash(): number;
+        /**
+         * The normalized hotkey expression as a sequence of tokens.
+         * @type {string[]}
+         */
+        get sequence(): string[];
+        /**
+         * The original expression of the hotkey binding.
+         * @type {string?}
+         */
+        get expression(): string;
+    }
+    /**
+     * An event dispacted when a menu item is selected.
+     */
+    export class MenuItemEvent extends MessageEvent<any> {
+        /**
+         * `MenuItemEvent` class constructor
+         * @ignore
+         * @param {string=} [type]
+         * @param {object=} [data]
+         * @param {import('../application/menu.js').Menu} menu
+         */
+        constructor(type?: string | undefined, data?: object | undefined, menu?: import("socket:application/menu").Menu);
+        /**
+         * The `Menu` this event has been dispatched for.
+         * @type {import('../application/menu.js').Menu?}
+         */
+        get menu(): import("socket:application/menu").Menu;
+        /**
+         * The title of the menu item.
+         * @type {string?}
+         */
+        get title(): string;
+        /**
+         * An optional tag value for the menu item that may also be the
+         * parent menu item title.
+         * @type {string?}
+         */
+        get tag(): string;
+        /**
+         * The parent title of the menu item.
+         * @type {string?}
+         */
+        get parent(): string;
+        #private;
+    }
+    /**
+     * An event dispacted when the application receives an OS signal
+     */
+    export class SignalEvent extends MessageEvent<any> {
+        /**
+         * `SignalEvent` class constructor
+         * @ignore
+         * @param {string=} [type]
+         * @param {object=} [options]
+         */
+        constructor(type?: string | undefined, options?: object | undefined);
+        /**
+         * The code of the signal.
+         * @type {import('../process/signal.js').signal}
+         */
+        get code(): any;
+        /**
+         * The name of the signal.
+         * @type {string}
+         */
+        get name(): string;
+        /**
+         * An optional message describing the signal
+         * @type {string}
+         */
+        get message(): string;
+        #private;
+    }
+    namespace _default {
+        export { ApplicationURLEvent };
+        export { MenuItemEvent };
+        export { SignalEvent };
+        export { HotKeyEvent };
+    }
+    export default _default;
 }
 
 declare module "socket:window/hotkey" {
@@ -16112,6 +16110,12 @@ declare module "socket:shared-worker" {
     export { Environment, SharedWorker };
 }
 
+declare module "socket:signal" {
+    export * from "socket:process/signal";
+    export default signal;
+    import signal from "socket:process/signal";
+}
+
 declare module "socket:service-worker/instance" {
     export function createServiceWorker(currentState?: any, options?: any): any;
     export const SHARED_WORKER_URL: string;
@@ -16833,11 +16837,11 @@ declare module "socket:internal/promise" {
          */
         constructor(resolver: ResolverFunction);
         [resourceSymbol]: {
-            "__#15@#type": any;
-            "__#15@#destroyed": boolean;
-            "__#15@#asyncId": number;
-            "__#15@#triggerAsyncId": any;
-            "__#15@#requireManualDestroy": boolean;
+            "__#16@#type": any;
+            "__#16@#destroyed": boolean;
+            "__#16@#asyncId": number;
+            "__#16@#triggerAsyncId": any;
+            "__#16@#requireManualDestroy": boolean;
             readonly type: string;
             readonly destroyed: boolean;
             asyncId(): number;

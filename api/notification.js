@@ -1,6 +1,6 @@
 /* global CustomEvent, Event, ErrorEvent, EventTarget */
 /**
- * @module Notification
+ * @module notification
  * The Notification modules provides an API to configure and display
  * desktop and mobile notifications to the user. It also includes mechanisms
  * for request permissions to use notifications on the user's device.
