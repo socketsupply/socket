@@ -2060,6 +2060,8 @@ static void mapIPCRoutes (Router *router) {
       } else if (state == "complete") {
         window->readyState = Window::ReadyState::Complete;
       }
+
+      window->onReadyStateChange(window->readyState);
     }
 
     const auto frameType = message.get("runtime-frame-type");
