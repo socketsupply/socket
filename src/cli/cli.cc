@@ -361,7 +361,9 @@ unsigned short createLogSocket() {
 
               NSDate* adjustedLogTime = [lastLogTime dateByAddingTimeInterval: -1]; // adjust by subtracting 1 second
               auto position = [logs positionWithDate: adjustedLogTime];
-              auto predicate = [NSPredicate predicateWithFormat: @"(category == 'socket.runtime')"];
+              auto bid = settings["meta_bundle_identifier"];
+              auto query = String("(category == 'socket.runtime') AND (subsystem == '" + bid + "')");
+              auto predicate = [NSPredicate predicateWithFormat: [NSString stringWithUTF8String: query.c_str()]];
               auto enumerator = [logs entriesEnumeratorWithOptions: 0 position: position predicate: predicate error: &err];
 
               if (err) {
