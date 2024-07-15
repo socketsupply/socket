@@ -318,11 +318,12 @@ static SharedPointer<Process> appProcess = nullptr;
 static std::atomic<int> appStatus = -1;
 static std::mutex appMutex;
 static uv_loop_t *loop = nullptr;
+
 static uv_udp_t logsocket;
-static NSDate* lastLogTime = [NSDate now];
 static int lastLogSequence = 0;
 
-#if defined(__APPLE__)
+#if SOCKET_RUNTIME_PLATFORM_APPLE
+static NSDate* lastLogTime = [NSDate now];
 unsigned short createLogSocket() {
   std::promise<int> p;
   std::future<int> future = p.get_future();
@@ -354,7 +355,7 @@ unsigned short createLogSocket() {
               auto logs = [OSLogStore storeWithScope: OSLogStoreSystem error: &err]; // get snapshot
 
               if (err) {
-                std::cerr << "ERROR: Failed to open logstore" << std::endl;
+                std::cerr << "ERROR: Failed to open OSLogStore" << std::endl;
                 return;
               }
 
@@ -364,7 +365,7 @@ unsigned short createLogSocket() {
               auto enumerator = [logs entriesEnumeratorWithOptions: 0 position: position predicate: predicate error: &err];
 
               if (err) {
-                std::cerr << "ERROR: Failed to open logstore" << std::endl;
+                std::cerr << "ERROR: Failed to open OSLogStore" << std::endl;
                 return;
               }
 
