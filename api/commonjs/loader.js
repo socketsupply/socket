@@ -1,6 +1,6 @@
 /* global XMLHttpRequest */
 /**
- * @module CommonJS.Loader
+ * @module commonjs.loader
  */
 import { CacheCollection, Cache } from './cache.js'
 import { defineBuiltin } from './builtins.js'
@@ -102,8 +102,11 @@ export class RequestStatus {
   set request (request) {
     this.#request = request
 
-    if (!this.#status && request.loader?.cache?.status) {
-      this.#status = request.loader.cache.status.get(request.id)?.value
+    if (
+      !this.#status &&
+      request?.loader?.cache?.status?.has?.(request?.id)
+    ) {
+      this.#status = request.loader.cache.status.get(request.id)?.value ?? null
     }
   }
 

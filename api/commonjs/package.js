@@ -1,5 +1,5 @@
 /**
- * @module CommonJS.Package
+ * @module commonjs.package
  */
 import { ModuleNotFoundError } from '../errors.js'
 import { defineBuiltin } from './builtins.js'

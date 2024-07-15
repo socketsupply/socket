@@ -1,5 +1,5 @@
 /**
- * @module Signal
+ * @module signal
  */
 import { signal as constants } from './os/constants.js'
 import { SignalEvent } from './internal/events.js'
