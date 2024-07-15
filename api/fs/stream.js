@@ -1,5 +1,5 @@
 /**
- * @module FS.Stream
+ * @module fs.stream
  */
 import { Readable, Writable } from '../stream.js'
 import { AbortError } from '../errors.js'

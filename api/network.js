@@ -1,5 +1,5 @@
 /**
- * @module Network
+ * @module network
  *
  * Provides a higher level API over the latica protocol.
  *

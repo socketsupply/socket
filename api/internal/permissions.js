@@ -1,6 +1,6 @@
 /* global EventTarget, CustomEvent, Event */
 /**
- * @module Permissions
+ * @module permissions
  * This module provides an API for querying and requesting permissions.
  */
 import { IllegalConstructorError } from '../errors.js'

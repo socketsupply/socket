@@ -23,7 +23,7 @@
  **/
 
 /**
- * @module Stream
+ * @module stream
  */
 import { EventEmitter } from './events.js'
 import web from './stream/web.js'

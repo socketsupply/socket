@@ -1,5 +1,5 @@
 /**
- * @module VM
+ * @module vm
  *
  * This module enables compiling and running JavaScript source code in an
  * isolated execution context optionally with a user supplied context object.

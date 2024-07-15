@@ -1,5 +1,5 @@
 /**
- * @module AsyncContext
+ * @module async.resource
  *
  * Primitives for creating user defined async resources that implement
  * async hooks.

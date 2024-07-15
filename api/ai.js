@@ -1,6 +1,6 @@
 // @ts-check
 /**
- * @module AI
+ * @module ai
  *
  * Provides high level classes for common AI tasks.
  *

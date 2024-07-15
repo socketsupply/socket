@@ -1,5 +1,5 @@
 /**
- * @module Path
+ * @module path
  *
  * Example usage:
  * ```js

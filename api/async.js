@@ -1,5 +1,5 @@
 /**
- * @module Async
+ * @module async
  *
  * Various primitives for async hooks, storage, resources, and contexts.
  */

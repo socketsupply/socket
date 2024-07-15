@@ -1,5 +1,5 @@
 /**
- * @module FS.promises
+ * @module fs.promises
  *
  *  * This module enables interacting with the file system in a way modeled on
  * standard POSIX functions.

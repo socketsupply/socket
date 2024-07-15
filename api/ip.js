@@ -1,5 +1,5 @@
 /**
- * @module IP
+ * @module ip
  *
  * Various functions for working with IP addresses.
  *

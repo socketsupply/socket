@@ -1,5 +1,5 @@
 /**
- * @module Module
+ * @module module
  */
 import builtins, { defineBuiltin, isBuiltin } from './commonjs/builtins.js'
 import { createRequire, Module } from './commonjs/module.js'
