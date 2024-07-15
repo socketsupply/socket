@@ -118,7 +118,6 @@ continueUserActivity: (NSUserActivity*) userActivity
   }
 
   const auto url = String(webpageURL.absoluteString.UTF8String);
-
   bool emitted = false;
 
   for (auto& window : self.app->windowManager.windows) {
@@ -951,27 +950,6 @@ namespace SSC {
 
     return userConfig.at(key) != "false";
   }
-
-  /*
-#if SOCKET_RUNTIME_PLATFORM_ANDROID
-  bool App::isAndroidPermissionAllowed (const String& permission) {
-    const auto attachment = Android::JNIEnvironmentAttachment(
-      this->jvm.get(),
-      this->jvm.jniVersion
-    );
-
-    return CallClassMethodFromAndroidEnvironment(
-      this->jni,
-      Boolean,
-      this->self,
-      "checkPermission",
-      "("
-      "Ljava/lang/String;" // permission name
-      ")Z" // Boolean return type
-    );
-  }
-#endif
-*/
 
   void App::exit (int code) {
     if (this->onExit != nullptr) {

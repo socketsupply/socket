@@ -91,7 +91,6 @@ namespace SSC {
       AtomicBool killed = false;
       bool wasLaunchedFromCli = false;
 
-      Vector<String> pendingApplicationURLs;
       WindowManager windowManager;
       ServiceWorkerContainer serviceWorkerContainer;
       SharedPointer<Core> core = nullptr;
