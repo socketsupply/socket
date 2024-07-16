@@ -1,9 +1,9 @@
 /**
  * @module signal
  */
-import { signal as constants } from './os/constants.js'
-import { SignalEvent } from './internal/events.js'
-import os from './os.js'
+import { signal as constants } from '../os/constants.js'
+import { SignalEvent } from '../internal/events.js'
+import os from '../os.js'
 
 /**
  * @typedef {import('./os/constants.js').signal} signal
