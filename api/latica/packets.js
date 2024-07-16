@@ -1,6 +1,8 @@
 import { randomBytes } from '../crypto.js'
 import { isBufferLike } from '../util.js'
 import { Buffer } from '../buffer.js'
+import { isIPv4 } from '../ip.js'
+import Peer, { Cache, NAT } from './index.js'
 
 /**
  * Hash function factory.
@@ -140,25 +142,46 @@ export const PACKET_BYTES = FRAME_BYTES + MESSAGE_BYTES
 export const MAX_HOPS = 16
 
 /**
- * @param {object} message
- * @param {{ [key: string]: { required: boolean, type: string }}} constraints
+ * @typedef constraint
+ * @type {Object}
+ * @property {string} type
+ * @property {boolean} [required]
+ * @property {function} [assert] optional validator fn returning boolean
  */
-export const validatePacket = (o, constraints) => {
-  if (!o) throw new Error('Expected object')
+
+/**
+ * @param {object} o
+ * @param {{ [key: string]: constraint }} constraints
+ */
+export const validateMessage = (o, constraints) => {
+  if (({}).toString.call(o) !== '[object Object]') throw new Error('expected object')
+  if (({}).toString.call(constraints) !== '[object Object]') throw new Error('expected constraints')
+
   const allowedKeys = Object.keys(constraints)
   const actualKeys = Object.keys(o)
-  const unknown = actualKeys.filter(k => allowedKeys.indexOf(k) === -1)
-  if (unknown.length) throw new Error(`Unexpected keys [${unknown}]`)
+  const unknownKeys = actualKeys.filter(k => allowedKeys.indexOf(k) === -1)
+  if (unknownKeys.length) throw new Error(`unexpected keys [${unknownKeys}]`)
 
   for (const [key, con] of Object.entries(constraints)) {
-    if (con.required && !o[key]) {
+    const unset = !Object.prototype.hasOwnProperty.call(o, key)
+
+    if (con.required && unset) {
       // console.warn(new Error(`${key} is required (${JSON.stringify(o, null, 2)})`), JSON.stringify(o))
+      throw new Error(`key '${key}' is required`)
     }
 
-    const type = ({}).toString.call(o[key]).slice(8, -1).toLowerCase()
+    const empty = typeof o[key] === 'undefined'
+    if (empty) return // nothing to validate
 
-    if (o[key] && type !== con.type) {
+    const type = ({}).toString.call(o[key]).slice(8, -1).toLowerCase()
+    if (type !== con.type) {
       // console.warn(`expected .${key} to be of type ${con.type}, got ${type} in packet.. ` + JSON.stringify(o))
+      throw new Error(`expected '${key}' to be of type '${con.type}', got '${type}'`)
+    }
+
+    if (typeof con.assert === 'function' && !con.assert(o[key])) {
+      // console.warn(`expected .${key} to be of type ${con.type}, got ${type} in packet.. ` + JSON.stringify(o))
+      throw new Error(`expected '${key}' to pass constraint assertion`)
     }
   }
 }
@@ -193,7 +216,7 @@ export const decode = buf => {
 
   buf = buf.slice(MAGIC_BYTES)
 
-  const o = new Packet()
+  const o = {}
   let offset = 0
 
   for (const [k, spec] of Object.entries(PACKET_SPEC)) {
@@ -228,7 +251,7 @@ export const decode = buf => {
     }
   }
 
-  return o
+  return Packet.from(o)
 }
 
 export const getTypeFromBytes = (buf) => buf.byteLength > 4 ? buf.readUInt8(4) : 0
@@ -250,8 +273,19 @@ export class Packet {
    * @return {Packet}
    */
   static from (packet) {
-    if (packet instanceof Packet) return packet
-    return new Packet(packet)
+    if (packet instanceof Packet && packet.constructor !== Packet) return packet
+
+    switch (packet.type) {
+      case PacketPing.type: return new PacketPing(packet)
+      case PacketPong.type: return new PacketPong(packet)
+      case PacketIntro.type: return new PacketIntro(packet)
+      case PacketJoin.type: return new PacketJoin(packet)
+      case PacketPublish.type: return new PacketPublish(packet)
+      case PacketStream.type: return new PacketStream(packet)
+      case PacketSync.type: return new PacketSync(packet)
+      case PacketQuery.type: return new PacketQuery(packet)
+      default: throw new Error('invalid packet type', packet.type)
+    }
   }
 
   /**
@@ -259,7 +293,8 @@ export class Packet {
    * @return {Packet}
    */
   copy () {
-    return Object.assign(new Packet({}), this)
+    const PacketConstructor = this.constructor
+    return Object.assign(new PacketConstructor({}), this)
   }
 
   /**
@@ -371,22 +406,27 @@ export class Packet {
   }
 
   static decode (buf) {
-    return decode(buf)
+    try {
+      return decode(buf)
+    } catch (e) {
+      console.warn('failed to decode packet', e)
+      return null
+    }
   }
 }
 
 export class PacketPing extends Packet {
   static type = 1
-  constructor ({ message, clusterId, subclusterId }) {
-    super({ type: PacketPing.type, message, clusterId, subclusterId })
+  constructor (args) {
+    super({ ...args, type: PacketPing.type })
 
-    validatePacket(message, {
-      requesterPeerId: { required: true, type: 'string' },
-      cacheSummaryHash: { type: 'string' },
-      probeExternalPort: { type: 'number' },
-      reflectionId: { type: 'string' },
-      pingId: { type: 'string' },
-      natType: { type: 'number' },
+    validateMessage(args.message, {
+      requesterPeerId: { required: true, type: 'string', assert: Peer.isValidPeerId },
+      cacheSummaryHash: { type: 'string', assert: Cache.isValidSummaryHashFormat },
+      probeExternalPort: { type: 'number', assert: isValidPort },
+      reflectionId: { type: 'string', assert: Peer.isValidReflectionId },
+      pingId: { type: 'string', assert: Peer.isValidPingId },
+      natType: { type: 'number', assert: NAT.isValid },
       uptime: { type: 'number' },
       cacheSize: { type: 'number' },
       isConnection: { type: 'boolean' },
@@ -400,22 +440,22 @@ export class PacketPing extends Packet {
 
 export class PacketPong extends Packet {
   static type = 2
-  constructor ({ message, clusterId, subclusterId }) {
-    super({ type: PacketPong.type, message, clusterId, subclusterId })
+  constructor (args) {
+    super({ ...args, type: PacketPong.type })
 
-    validatePacket(message, {
-      requesterPeerId: { required: true, type: 'string' },
-      responderPeerId: { required: true, type: 'string' },
-      cacheSummaryHash: { type: 'string' },
-      port: { type: 'number' },
-      address: { type: 'string' },
+    validateMessage(args.message, {
+      requesterPeerId: { required: true, type: 'string', assert: Peer.isValidPeerId },
+      responderPeerId: { required: true, type: 'string', assert: Peer.isValidPeerId },
+      cacheSummaryHash: { type: 'string', assert: Cache.isValidSummaryHashFormat },
+      port: { type: 'number', assert: isValidPort },
+      address: { type: 'string', assert: isIPv4 },
       uptime: { type: 'number' },
       cacheSize: { type: 'number' },
-      natType: { type: 'number' },
+      natType: { type: 'number', assert: NAT.isValid },
       isReflection: { type: 'boolean' },
       isConnection: { type: 'boolean' },
-      reflectionId: { type: 'string' },
-      pingId: { type: 'string' },
+      reflectionId: { type: 'string', assert: Peer.isValidReflectionId },
+      pingId: { type: 'string', assert: Peer.isValidPingId },
       isDebug: { type: 'boolean' },
       isProbe: { type: 'boolean' },
       rejected: { type: 'boolean' }
@@ -425,16 +465,16 @@ export class PacketPong extends Packet {
 
 export class PacketIntro extends Packet {
   static type = 3
-  constructor ({ clock, hops, clusterId, subclusterId, usr1, message }) {
-    super({ type: PacketIntro.type, clock, hops, clusterId, subclusterId, usr1, message })
+  constructor (args) {
+    super({ ...args, type: PacketIntro.type })
 
-    validatePacket(message, {
-      requesterPeerId: { required: true, type: 'string' },
-      responderPeerId: { required: true, type: 'string' },
+    validateMessage(args.message, {
+      requesterPeerId: { required: true, type: 'string', assert: Peer.isValidPeerId },
+      responderPeerId: { required: true, type: 'string', assert: Peer.isValidPeerId },
       isRendezvous: { type: 'boolean' },
-      natType: { required: true, type: 'number' },
-      address: { required: true, type: 'string' },
-      port: { required: true, type: 'number' },
+      natType: { required: true, type: 'number', assert: NAT.isValid },
+      address: { required: true, type: 'string', assert: isIPv4 },
+      port: { required: true, type: 'number', assert: isValidPort },
       timestamp: { type: 'number' }
     })
   }
@@ -442,52 +482,53 @@ export class PacketIntro extends Packet {
 
 export class PacketJoin extends Packet {
   static type = 4
-  constructor ({ clock, hops, clusterId, subclusterId, message }) {
-    super({ type: PacketJoin.type, clock, hops, clusterId, subclusterId, message })
+  constructor (args) {
+    super({ ...args, type: PacketJoin.type })
 
-    validatePacket(message, {
-      rendezvousAddress: { type: 'string' },
-      rendezvousPort: { type: 'number' },
-      rendezvousType: { type: 'number' },
-      rendezvousPeerId: { type: 'string' },
+    validateMessage(args.message, {
+      rendezvousAddress: { type: 'string', assert: isIPv4 },
+      rendezvousPort: { type: 'number', assert: isValidPort },
+      rendezvousType: { type: 'number', assert: NAT.isValid },
+      rendezvousPeerId: { type: 'string', assert: Peer.isValidPeerId },
       rendezvousDeadline: { type: 'number' },
-      rendezvousRequesterPeerId: { type: 'string' },
-      requesterPeerId: { required: true, type: 'string' },
-      natType: { required: true, type: 'number' },
-      initial: { type: 'boolean' },
-      address: { required: true, type: 'string' },
-      port: { required: true, type: 'number' },
+      rendezvousRequesterPeerId: { type: 'string', assert: Peer.isValidPeerId },
+      requesterPeerId: { required: true, type: 'string', assert: Peer.isValidPeerId },
+      natType: { required: true, type: 'number', assert: NAT.isValid },
+      address: { required: true, type: 'string', assert: isIPv4 },
+      port: { required: true, type: 'number', assert: isValidPort },
       isConnection: { type: 'boolean' }
     })
   }
 }
 
 export class PacketPublish extends Packet {
-  static type = 5 // no need to validatePacket, message is whatever you want
-  constructor ({ message, sig, packetId, clusterId, subclusterId, nextId, clock, hops, usr1, usr2, ttl, previousId }) {
-    super({ type: PacketPublish.type, message, sig, packetId, clusterId, subclusterId, nextId, clock, hops, usr1, usr2, ttl, previousId })
+  static type = 5 // no need to validateMessage, message is whatever you want
+  constructor (args) {
+    super({ ...args, type: PacketPublish.type })
   }
 }
 
 export class PacketStream extends Packet {
   static type = 6
-  constructor ({ message, sig, packetId, clusterId, subclusterId, nextId, clock, ttl, usr1, usr2, usr3, usr4, previousId }) {
-    super({ type: PacketStream.type, message, sig, packetId, clusterId, subclusterId, nextId, clock, ttl, usr1, usr2, usr3, usr4, previousId })
+  constructor (args) {
+    super({ ...args, type: PacketStream.type })
   }
 }
 
 export class PacketSync extends Packet {
   static type = 7
-  constructor ({ packetId, message = Buffer.from([0b0]) }) {
-    super({ type: PacketSync.type, packetId, message })
+  constructor (args) {
+    super({ message: Buffer.from([0b0]), ...args, type: PacketSync.type })
   }
 }
 
 export class PacketQuery extends Packet {
   static type = 8
-  constructor ({ packetId, previousId, subclusterId, usr1, usr2, usr3, usr4, message = {} }) {
-    super({ type: PacketQuery.type, packetId, previousId, subclusterId, usr1, usr2, usr3, usr4, message })
+  constructor (args) {
+    super({ message: {}, ...args, type: PacketQuery.type })
   }
 }
 
 export default Packet
+
+const isValidPort = (n) => typeof n === 'number' && (n & 0xFFFF) === n && n !== 0

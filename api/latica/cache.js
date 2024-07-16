@@ -3,12 +3,6 @@ import { Buffer } from '../buffer.js'
 import { createDigest } from '../crypto.js'
 import { Packet, PacketPublish, PACKET_BYTES, sha256 } from './packets.js'
 
-const EMPTY_CACHE = 'da39a3ee5e6b4b0d3255bfef95601890afd80709'
-
-export const trim = (/** @type {Buffer} */ buf) => {
-  return buf.toString().split('~')[0].split('\x00')[0]
-}
-
 /**
  * Tries to convert input to a `Buffer`, if possible, otherwise `null`.
  * @ignore
@@ -89,6 +83,7 @@ export class Cache {
   maxSize = DEFAULT_MAX_SIZE
 
   static HASH_SIZE_BYTES = 20
+  static HASH_EMPTY = 'da39a3ee5e6b4b0d3255bfef95601890afd80709'
 
   /**
    * `Cache` class constructor.
@@ -196,7 +191,7 @@ export class Cache {
 
     // follow the chain to get the buffers in order
     let bufs = [...source.values()].filter(p => {
-      if (!p.previousId) return false
+      if (!p.previousId) return
       return Buffer.from(p.previousId).compare(Buffer.from(previous.packetId)) === 0
     })
 
@@ -296,7 +291,7 @@ export class Cache {
     if (!buckets.every(b => b === null)) {
       hash = await this.sha1(buckets.join(''), true)
     } else {
-      hash = EMPTY_CACHE
+      hash = Cache.HASH_EMPTY
     }
 
     return { prefix, hash, buckets }
@@ -357,6 +352,16 @@ export class Cache {
     }
 
     return { prefix, hash, buckets }
+  }
+
+  /**
+   * Test a summary hash format is valid
+   *
+   * @param {string} hash
+   * @returns boolean
+   */
+  static isValidSummaryHashFormat (hash) {
+    return typeof hash === 'string' && /^[A-Fa-f0-9]{40}$/.test(hash)
   }
 }
 

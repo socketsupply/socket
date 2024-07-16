@@ -119,7 +119,7 @@ export class RemotePeer {
   peerId = null
   address = null
   port = 0
-  natType = null
+  natType = NAT.UNKNOWN
   clusters = {}
   pingId = null
   distance = 0
@@ -425,9 +425,7 @@ export class Peer {
   async _mainLoop (ts) {
     if (this.closing) return this._clearInterval(this.mainLoopTimer)
 
-    // if `globalThis.navigator` doesn't exist (such as in Node) assume online.
-    const online = !globalThis.navigator || globalThis.navigator.onLine
-    if (!online) {
+    if (!Peer.onLine()) {
       if (this.onConnecting) this.onConnecting({ code: -2, status: 'Offline' })
       return true
     }
@@ -964,7 +962,7 @@ export class Peer {
     const siblings = packet && [...this.cache.data.values()]
       .filter(Boolean)
       .filter(p => {
-        if (!p.previousId || !packet.packetId) return false
+        if (!p.previousId || !packet.packetId) return
         return Buffer.from(p.previousId).compare(Buffer.from(packet.packetId)) === 0
       })
 
@@ -1070,7 +1068,7 @@ export class Peer {
       }
 
       this.unpublished[packet.packetId.toString('hex')] = Date.now()
-      if (globalThis.navigator && !globalThis.navigator.onLine) continue
+      if (!Peer.onLine()) continue
 
       this.mcast(packet)
     }
@@ -1410,7 +1408,6 @@ export class Peer {
     this.lastUpdate = Date.now()
     const { reflectionId, isReflection, isConnection, requesterPeerId, natType } = packet.message
 
-    if (!Peer.isValidPeerId(requesterPeerId)) return // required field
     if (requesterPeerId === this.peerId) return // from self?
 
     const { probeExternalPort, isProbe, pingId } = packet.message
@@ -1477,7 +1474,6 @@ export class Peer {
 
     const { reflectionId, pingId, isReflection, responderPeerId } = packet.message
 
-    if (!Peer.isValidPeerId(responderPeerId)) return // required field
     if (responderPeerId === this.peerId) return // from self?
 
     this._onDebug(`<- PONG (from=${address}:${port}, hash=${packet.message.cacheSummaryHash}, isConnection=${!!packet.message.isConnection})`)
@@ -1601,8 +1597,6 @@ export class Peer {
 
     if (packet.hops >= this.maxHops) return
     if (!isNaN(ts) && ((ts + this.config.keepalive) < Date.now())) return
-    if (!Peer.isValidPeerId(packet.message.requesterPeerId)) return
-    if (!Peer.isValidPeerId(packet.message.responderPeerId)) return
     if (packet.message.requesterPeerId === this.peerId) return // intro to myself?
     if (packet.message.responderPeerId === this.peerId) return // intro from myself?
 
@@ -1643,7 +1637,7 @@ export class Peer {
 
     if (this.onIntro) this.onIntro(packet, peer, peerPort, peerAddress)
 
-    const pingId = Math.random().toString(16).slice(2)
+    const pingId = randomBytes(6).toString('hex').padStart(12, '0')
     const { hash } = await this.cache.summarize('', this.cachePredicate)
 
     const props = {
@@ -1652,7 +1646,7 @@ export class Peer {
       message: {
         natType: this.natType,
         isConnection: true,
-        cacheSummaryHash: hash || null,
+        cacheSummaryHash: hash,
         pingId: packet.message.pingId,
         requesterPeerId: this.peerId
       }
@@ -1711,7 +1705,7 @@ export class Peer {
           subclusterId,
           message: {
             requesterPeerId: this.peerId,
-            cacheSummaryHash: hash || null,
+            cacheSummaryHash: hash,
             natType: this.natType,
             uptime: this.uptime,
             isConnection: true,
@@ -1822,7 +1816,6 @@ export class Peer {
     this.metrics.i[packet.type]++
 
     const pid = packet.packetId.toString('hex')
-    if (!Peer.isValidPeerId(packet.message.requesterPeerId)) return // required field
     if (packet.message.requesterPeerId === this.peerId) return // from self?
     if (this.gate.has(pid)) return
     if (packet.clusterId.length !== 32) return
@@ -2121,13 +2114,9 @@ export class Peer {
     }
 
     this._onDebug(`>> STREAM RELAY (to=${peerTo.address}:${peerTo.port}, id=${peerTo.peerId.slice(0, 6)})`)
-    // I am the proxy!
     this.send(await Packet.encode(packet), peerTo.port, peerTo.address)
 
-    //
-    // What % of packets hit the server.
-    //
-
+    // Might be interesting to allow retransmission in some cases
     // if (packet.hops === 1 && this.natType === NAT.UNRESTRICTED) {
     //   this.mcast(packet, [{ port, address }, { port: peerFrom.port, address: peerFrom.address }])
     // }
@@ -2144,7 +2133,7 @@ export class Peer {
 
     const packet = Packet.decode(data)
     if (!packet || packet.version !== VERSION) return
-    if (packet?.type !== 2) return
+    if (packet?.type !== PacketPong.type) return
 
     const pid = packet.packetId.toString('hex')
     if (this.gate.has(pid)) return
@@ -2251,6 +2240,42 @@ export class Peer {
    */
   static isValidPeerId (pid) {
     return typeof pid === 'string' && PEERID_REGEX.test(pid)
+  }
+
+  /**
+   * Test a reflectionID is valid
+   *
+   * @param {string} rid
+   * @returns boolean
+   */
+  static isValidReflectionId (rid) {
+    return typeof rid === 'string' && /^[A-Fa-f0-9]{12}$/.test(rid)
+  }
+
+  /**
+   * Test a pingID is valid
+   *
+   * @param {string} pid
+   * @returns boolean
+   */
+  static isValidPingId (pid) {
+    return typeof pid === 'string' && /^[A-Fa-f0-9]{12,13}$/.test(pid)
+
+    // the above line is provided for backwards compatibility due to a breaking change introduced in:
+    // https://github.com/socketsupply/latica/commit/f02db9e37ad3ed476cebc7f6269738f4e0c9acaf
+    // once all peers have received that commit we can enforce an exact length of 12 hex chars:
+    // return typeof pid === 'string' && /^[A-Fa-f0-9]{12}$/.test(pid)
+  }
+
+  /**
+   * Returns the online status of the browser, else true.
+   *
+   * note: globalThis.navigator was added to node in v22.
+   *
+   * @returns boolean
+   */
+  static onLine () {
+    return globalThis.navigator?.onLine !== false
   }
 }
 
