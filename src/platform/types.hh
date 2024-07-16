@@ -4,10 +4,12 @@
 #include <array>
 #include <atomic>
 #include <filesystem>
+#include <fstream>
 #include <functional>
 #include <future>
 #include <map>
 #include <mutex>
+#include <ostream>
 #include <queue>
 #include <set>
 #include <sstream>
@@ -29,6 +31,8 @@ namespace SSC {
   using StringStream = std::stringstream;
   using WString = std::wstring;
   using WStringStream = std::wstringstream;
+  using InputFileStream = std::ifstream;
+  using OutputFileStream = std::ofstream;
   using Mutex = std::recursive_mutex;
   using Lock = std::lock_guard<Mutex>;
   using Map = std::map<String, String>;
@@ -46,6 +50,7 @@ namespace SSC {
   template <typename T> using SharedPointer = std::shared_ptr<T>;
   template <typename T> using UniquePointer = std::unique_ptr<T>;
   template <typename T> using Promise = std::promise<T>;
+  template <typename T> using InputStreamBufferIterator = std::istreambuf_iterator<T>;
 
   using ExitCallback = Function<void(int code)>;
   using MessageCallback = Function<void(const String)>;
