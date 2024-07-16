@@ -22,13 +22,13 @@ static dispatch_queue_t queue = dispatch_queue_create(
 
 - (void) applicationWillBecomeActive: (NSNotification*) notification {
   dispatch_async(queue, ^{
-    self.app->core->resume();
+    self.app->resume();
   });
 }
 
 - (void) applicationWillResignActive: (NSNotification*) notification {
   dispatch_async(queue, ^{
-    // self.app->core->pause();
+    // self.app->pause();
   });
 }
 
@@ -295,13 +295,13 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
 
 - (void) applicationDidBecomeActive: (UIApplication*) application {
   dispatch_async(queue, ^{
-    self.app->core->resume();
+    self.app->resume();
   });
 }
 
 - (void) applicationWillResignActive: (UIApplication*) application {
   dispatch_async(queue, ^{
-    self.app->core->pause();
+    self.app->pause();
   });
 }
 
@@ -849,12 +849,31 @@ namespace SSC {
     return shouldExit ? 1 : 0;
   }
 
-  void App::kill () {
-    applicationInstance = nullptr;
-    this->killed = true;
+  void App::resume () {
+    if (this->core != nullptr) {
+      this->core->resume();
+    }
+  }
+
+  void App::pause () {
+    if (this->core != nullptr) {
+      this->core->pause();
+    }
+  }
+
+  void App::stop () {
+    if (this->stopped) {
+      return;
+    }
+
+    this->pause();
+
+    SSC::applicationInstance = nullptr;
+
+    this->stopped = true;
+    this->shouldExit = true;
+
     this->core->shutdown();
-    // Distinguish window closing with app exiting
-    shouldExit = true;
   #if SOCKET_RUNTIME_PLATFORM_LINUX && !SOCKET_RUNTIME_DESKTOP_EXTENSION
     gtk_main_quit();
   #elif SOCKET_RUNTIME_PLATFORM_MACOS
@@ -865,21 +884,6 @@ namespace SSC {
     }
   #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
     PostQuitMessage(0);
-  #endif
-  }
-
-  void App::restart () {
-  #if SOCKET_RUNTIME_PLATFORM_LINUX
-    // @TODO
-  #elif SOCKET_RUNTIME_PLATFORM_MACOS
-    // @TODO
-  #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
-    char filename[MAX_PATH] = "";
-    PROCESS_INFORMATION pi;
-    STARTUPINFO si = { sizeof(STARTUPINFO) };
-    GetModuleFileName(NULL, filename, MAX_PATH);
-    CreateProcess(NULL, filename, NULL, NULL, NULL, NULL, NULL, NULL, &si, &pi);
-    std::exit(0);
   #endif
   }
 
@@ -949,12 +953,6 @@ namespace SSC {
     }
 
     return userConfig.at(key) != "false";
-  }
-
-  void App::exit (int code) {
-    if (this->onExit != nullptr) {
-      this->onExit(code);
-    }
   }
 
 #if SOCKET_RUNTIME_PLATFORM_WINDOWS
@@ -1248,7 +1246,7 @@ extern "C" {
     app->jni = nullptr;
     app->self = nullptr;
 
-    app->core->pause();
+    app->pause();
   }
 
   void ANDROID_EXTERNAL(app, App, onStart)(JNIEnv *env, jobject self) {
@@ -1257,7 +1255,7 @@ extern "C" {
       ANDROID_THROW(env, "Missing 'App' in environment");
     }
 
-    app->core->resume();
+    app->resume();
   }
 
   void ANDROID_EXTERNAL(app, App, onStop)(JNIEnv *env, jobject self) {
@@ -1266,7 +1264,7 @@ extern "C" {
       ANDROID_THROW(env, "Missing 'App' in environment");
     }
 
-    app->core->pause();
+    app->pause();
   }
 
   void ANDROID_EXTERNAL(app, App, onResume)(JNIEnv *env, jobject self) {
@@ -1275,7 +1273,7 @@ extern "C" {
       ANDROID_THROW(env, "Missing 'App' in environment");
     }
 
-    app->core->resume();
+    app->resume();
   }
 
   void ANDROID_EXTERNAL(app, App, onPause)(JNIEnv *env, jobject self) {
@@ -1284,7 +1282,7 @@ extern "C" {
       ANDROID_THROW(env, "Missing 'App' in environment");
     }
 
-    app->core->pause();
+    app->pause();
   }
 
   void ANDROID_EXTERNAL(app, App, onPermissionChange)(

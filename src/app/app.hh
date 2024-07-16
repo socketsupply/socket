@@ -66,8 +66,10 @@ namespace SSC {
       static constexpr int DEFAULT_INSTANCE_ID = 0;
 
     #if SOCKET_RUNTIME_PLATFORM_APPLE
-      // created and set in `App::App()` on macOS or
-      // created by `UIApplicationMain` and set in `application:didFinishLaunchingWithOptions:` on iOS
+      // created and set in `App::App()` on macOS or created by
+      // `UIApplicationMain` and set in the
+      // `application:didFinishLaunchingWithOptions:` delegate methdo on iOS
+      // TODO(@jwerle): remove this field
       SSCApplicationDelegate* applicationDelegate = nullptr;
       #if SOCKET_RUNTIME_PLATFORM_MACOS
         NSAutoreleasePool* pool = [NSAutoreleasePool new];
@@ -88,7 +90,7 @@ namespace SSC {
 
       ExitCallback onExit = nullptr;
       AtomicBool shouldExit = false;
-      AtomicBool killed = false;
+      AtomicBool stopped = false;
       bool wasLaunchedFromCli = false;
 
       WindowManager windowManager;
@@ -134,9 +136,9 @@ namespace SSC {
 
       int run (int argc = 0, char** argv = nullptr);
       void init ();
-      void kill ();
-      void exit (int code);
-      void restart ();
+      void stop ();
+      void resume ();
+      void pause ();
       void dispatch (Function<void()>);
       String getcwd ();
       bool hasRuntimePermission (const String& permission) const;
