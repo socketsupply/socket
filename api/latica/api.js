@@ -274,7 +274,7 @@ async function api (options = {}, events, dgram) {
           _peer.cache.insert(pid, p)
 
           _peer.unpublished[pid] = Date.now()
-          if (globalThis.navigator && !globalThis.navigator.onLine) continue
+          if (!Peer.onLine()) continue
 
           _peer.mcast(packet)
         }
