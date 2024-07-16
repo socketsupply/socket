@@ -209,7 +209,9 @@ export * from '{{url}}'
     };
 
     core->networkStatus.addObserver(this->networkStatusObserver, [this](auto json) {
-      if (json.has("name")) this->emit(json["name"].str(), json.str());
+      if (json.has("name")) {
+        this->emit(json["name"].str(), json.str());
+      }
     });
 
     core->networkStatus.start();
