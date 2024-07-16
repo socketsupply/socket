@@ -12,7 +12,6 @@
 #endif
 
 #include <iostream>
-#include <ostream>
 #include <chrono>
 #include <regex>
 #include <span>
@@ -58,6 +57,22 @@ static void installSignalHandler (int signum, void (*handler)(int)) {
 
 
 using namespace SSC;
+
+static inline String readFile (const Path& path) {
+  static String buffer;
+  auto stream = InputFileStream(path.string());
+  auto begin = InputStreamBufferIterator<char>(stream);
+  auto end = InputStreamBufferIterator<char>();
+  buffer.assign(begin, end);
+  stream.close();
+  return buffer;
+}
+
+static inline void writeFile (const Path& path, const String& source) {
+  auto stream = OutputFileStream(path.string());
+  stream << source;
+  stream.close();
+}
 
 static Function<void(int)> shutdownHandler;
 
@@ -274,22 +289,42 @@ MAIN {
 
 #if SOCKET_RUNTIME_PLATFORM_LINUX
   static const auto TMPDIR = Env::get("TMPDIR", "/tmp");
-  static const auto appInstanceLock = fs::path(TMPDIR) / (bundleIdentifier + ".lock");
+  static const auto appInstanceLock = Path(TMPDIR) / (bundleIdentifier + ".lock");
+  static const auto appInstancePID = Path(TMPDIR) / (bundleIdentifier + ".pid");
+  static const auto appProtocol = userConfig["meta_application_protocol"];
+
+  const auto existingPIDValue = readFile(appInstancePID);
+  if (existingPIDValue.size() > 0) {
+    try {
+      const pid_t pid = std::stoi(existingPIDValue);
+      if (kill(pid, 0) != 0) {
+        throw std::runtime_error("");
+      }
+    } catch (...) {
+      unlink(appInstanceLock.c_str());
+      unlink(appInstancePID.c_str());
+    }
+  }
+
+  // lock + pid files
   auto appInstanceLockFd = open(appInstanceLock.c_str(), O_CREAT | O_EXCL, 0600);
-  auto appProtocol = userConfig["meta_application_protocol"];
+
+  // dbus
   auto dbusError = DBusError {}; dbus_error_init(&dbusError);
   static auto connection = dbus_bus_get(DBUS_BUS_SESSION, &dbusError);
   auto dbusBundleIdentifier = replace(bundleIdentifier, "-", "_");
 
   // instance is running if fd was acquired
-  if (appInstanceLockFd != -1) {
-    auto filter = (
+  if (appInstanceLockFd > 0) {
+    const auto pid = getpid();
+    const auto filter = (
       String("type='method_call',") +
       String("interface='") + dbusBundleIdentifier + String("',") +
       String("member='handleApplicationURLEvent'")
     );
 
     dbus_bus_add_match(connection, filter.c_str(), &dbusError);
+    writeFile(appInstancePID, std::to_string(pid));
 
     if (dbus_error_is_set(&dbusError)) {
       fprintf(stderr, "error: dbus: Failed to add match rule: %s\n", dbusError.message);
@@ -553,7 +588,7 @@ MAIN {
   if (cmd[0] == '.') {
     auto index = cmd.find_first_of('.');
     auto executable = cmd.substr(0, index);
-    auto absPath = fs::path(cwd) / fs::path(executable);
+    auto absPath = Path(cwd) / Path(executable);
     cmd = absPath.string() + cmd.substr(index);
   }
 
@@ -880,7 +915,7 @@ MAIN {
     }
   #endif
 
-    app.kill();
+    app.stop();
     exit(code);
   };
 
