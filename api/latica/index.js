@@ -119,7 +119,7 @@ export class RemotePeer {
   peerId = null
   address = null
   port = 0
-  natType = NAT.UNKNOWN
+  natType = null
   clusters = {}
   pingId = null
   distance = 0
@@ -484,7 +484,7 @@ export class Peer {
       const expired = (peer.lastUpdate + this.config.keepalive) < Date.now()
       if (expired) { // || !NAT.isValid(peer.natType)) {
         const p = this.peers.splice(i, 1)
-        if (this.onDisconnect) this.onDisconnect(p)
+        if (this.onDisconnection) this.onDisconnection(p)
         continue
       }
     }
@@ -1168,7 +1168,6 @@ export class Peer {
    * @ignore
    */
   async _onConnection (packet, peerId, port, address, proxy, socket) {
-    this._onDebug('<- CONNECTION')
     if (this.closing) return
 
     const natType = packet.message.natType
@@ -1176,7 +1175,8 @@ export class Peer {
     if (!Peer.isValidPeerId(peerId)) return
     if (peerId === this.peerId) return
 
-    const { clusterId, subclusterId } = packet
+    const cid = packet.clusterId.toString('base64')
+    const scid = packet.subclusterId.toString('base64')
 
     let peer = this.getPeer(peerId)
     const firstContact = !peer
@@ -1190,22 +1190,18 @@ export class Peer {
         if (oldPeerIndex > -1) this.peers.splice(oldPeerIndex, 1)
       }
 
-      this._onDebug(`<- CONNECTION ADDING PEER ${peer.peerId}@${address}:${port}`)
-
+      this._onDebug(`<- CONNECTION ADDING PEER (id=${peer.peerId}, address=${address}:${port})`)
       this.peers.push(peer)
     }
 
-    this._onDebug(`<- CONNECTION AF BRA ${peer.peerId}@${address}:${port}`)
     peer.connected = true
     peer.lastUpdate = Date.now()
     peer.port = port
     peer.natType = natType
     peer.address = address
+
     if (proxy) peer.proxy = proxy
     if (socket) peer.socket = socket
-
-    const cid = Buffer.from(clusterId).toString('base64')
-    const scid = Buffer.from(subclusterId).toString('base64')
 
     if (cid) peer.clusters[cid] ??= {}
 
@@ -1438,6 +1434,7 @@ export class Peer {
     }
 
     if (isConnection && natType) {
+      this._onDebug(`<- CONNECTION (source=ping)`)
       this._onConnection(packet, requesterPeerId, port, address)
 
       message.isConnection = true
@@ -1481,6 +1478,7 @@ export class Peer {
 
     if (packet.message.isConnection) {
       if (pingId) peer.pingId = pingId
+      this._onDebug(`<- CONNECTION (source=pong)`)
       this._onConnection(packet, responderPeerId, port, address)
       return
     }
@@ -1547,7 +1545,7 @@ export class Peer {
 
               this._onDebug(`-> PING (to=${peer.address}:${peer.port}, peer-id=${peer.peerId.slice(0, 8)}, is-connection=true)`)
 
-              await this.ping(peer, false, {
+              this.ping(peer, false, {
                 message: {
                   requesterPeerId: this.peerId,
                   natType: this.natType,
@@ -1556,6 +1554,8 @@ export class Peer {
                 }
               })
             }
+
+            this._mainLoop(Date.now())
 
             if (this.onNat) this.onNat(this.natType)
 
@@ -1656,6 +1656,7 @@ export class Peer {
     const proxyCandidate = this.peers.find(p => p.peerId === packet.message.responderPeerId)
 
     if (opts.attempts >= 2) {
+      this._onDebug(`<- CONNECTION (source=intro)`)
       this._onConnection(packet, peer.peerId, peerPort, peerAddress, proxyCandidate)
       return false
     }
@@ -1667,10 +1668,10 @@ export class Peer {
     }, 1024 * 2)
 
     if (packet.message.isRendezvous) {
-      this._onDebug(`<- INTRO FROM RENDEZVOUS (to=${packet.message.address}:${packet.message.port}, dest=${packet.message.requesterPeerId.slice(0, 6)}, via=${address}:${port}, strategy=${NAT.toStringStrategy(strategy)})`)
+      this._onDebug(`<- JOIN INTRO FROM RENDEZVOUS (to=${packet.message.address}:${packet.message.port}, dest=${packet.message.requesterPeerId.slice(0, 6)}, via=${address}:${port}, strategy=${NAT.toStringStrategy(strategy)})`)
     }
 
-    this._onDebug(`++ NAT INTRO (strategy=${NAT.toStringStrategy(strategy)}, from=${this.address}:${this.port} [${NAT.toString(this.natType)}], to=${packet.message.address}:${packet.message.port} [${NAT.toString(packet.message.natType)}])`)
+    this._onDebug(`++ JOIN INTRO (strategy=${NAT.toStringStrategy(strategy)}, from=${this.address}:${this.port} [${NAT.toString(this.natType)}], to=${packet.message.address}:${packet.message.port} [${NAT.toString(packet.message.natType)}])`)
 
     if (strategy === NAT.STRATEGY_TRAVERSAL_CONNECT) {
       this._onDebug(`## NAT CONNECT (from=${this.address}:${this.port}, to=${peerAddress}:${peerPort}, pingId=${pingId})`)
@@ -1740,6 +1741,7 @@ export class Peer {
             this._onMessage(msg, rinfo)
           })
 
+          this._onDebug(`<- CONNECTION (source=intro)`)
           this._onConnection(packet, peer.peerId, rinfo.port, rinfo.address, undefined, pooledSocket)
 
           const p = {
@@ -1776,6 +1778,7 @@ export class Peer {
 
     if (strategy === NAT.STRATEGY_PROXY && !peer.proxy) {
       // TODO could allow multiple proxies
+      this._onDebug(`<- CONNECTION (source=proxy)`)
       this._onConnection(packet, peer.peerId, peerPort, peerAddress, proxyCandidate)
       this._onDebug('++ INTRO CHOSE PROXY STRATEGY')
     }
@@ -1866,7 +1869,7 @@ export class Peer {
         // TODO it would tighten up the transition time between dropped peers
         // if we check strategy from (packet.message.natType, this.natType) and
         // make introductions that create more mutually known peers.
-        this._onDebug(`<- JOIN RENDEZVOUS START (to=${peerAddress}:${peerPort}, via=${packet.message.rendezvousAddress}:${packet.message.rendezvousPort})`)
+        this._onDebug(`<- JOIN RENDEZVOUS RECV (dest=${packet.message.requesterPeerId?.slice(0, 6)}, to=${peerAddress}:${peerPort},  via=${packet.message.rendezvousAddress}:${packet.message.rendezvousPort})`)
 
         const data = await Packet.encode(new PacketJoin({
           clock: packet.clock,
@@ -1887,6 +1890,8 @@ export class Peer {
           packet.message.rendezvousPort,
           packet.message.rendezvousAddress
         )
+
+        this._onDebug(`-> JOIN RENDEZVOUS SEND ( to=${packet.message.rendezvousAddress}:${packet.message.rendezvousPort})`)
       }
     }
 
@@ -1980,6 +1985,7 @@ export class Peer {
     this.mcast(packet, [{ port, address }, { port: peerPort, address: peerAddress }])
 
     if (packet.hops <= 1) {
+      this._onDebug(`<- CONNECTION (source=join)`)
       this._onConnection(packet, packet.message.requesterPeerId, port, address)
     }
   }
@@ -2114,9 +2120,13 @@ export class Peer {
     }
 
     this._onDebug(`>> STREAM RELAY (to=${peerTo.address}:${peerTo.port}, id=${peerTo.peerId.slice(0, 6)})`)
+    // I am the proxy!
     this.send(await Packet.encode(packet), peerTo.port, peerTo.address)
 
-    // Might be interesting to allow retransmission in some cases
+    //
+    // What % of packets hit the server.
+    //
+
     // if (packet.hops === 1 && this.natType === NAT.UNRESTRICTED) {
     //   this.mcast(packet, [{ port, address }, { port: peerFrom.port, address: peerFrom.address }])
     // }

@@ -68,7 +68,6 @@ async function api (options = {}, events, dgram) {
   _peer.onSync = (...args) => bus._emit('#sync', ...args)
   _peer.onSyncStart = (...args) => bus._emit('#sync-start', ...args)
   _peer.onSyncEnd = (...args) => bus._emit('#sync-end', ...args)
-  _peer.onConnection = (...args) => bus._emit('#connection', ...args)
   _peer.onDisconnection = (...args) => bus._emit('#disconnection', ...args)
   _peer.onQuery = (...args) => bus._emit('#query', ...args)
   _peer.onNat = (...args) => bus._emit('#network-change', ...args)
