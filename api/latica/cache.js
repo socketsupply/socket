@@ -191,7 +191,7 @@ export class Cache {
 
     // follow the chain to get the buffers in order
     let bufs = [...source.values()].filter(p => {
-      if (!p.previousId) return
+      if (!p.previousId) return false
       return Buffer.from(p.previousId).compare(Buffer.from(previous.packetId)) === 0
     })
 

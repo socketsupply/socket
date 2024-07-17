@@ -1,7 +1,6 @@
 import { randomBytes } from '../crypto.js'
 import { isBufferLike } from '../util.js'
 import { Buffer } from '../buffer.js'
-import { isIPv4 } from '../ip.js'
 import Peer, { Cache, NAT } from './index.js'
 
 /**
@@ -447,8 +446,8 @@ export class PacketPong extends Packet {
       requesterPeerId: { required: true, type: 'string', assert: Peer.isValidPeerId },
       responderPeerId: { required: true, type: 'string', assert: Peer.isValidPeerId },
       cacheSummaryHash: { type: 'string', assert: Cache.isValidSummaryHashFormat },
-      port: { type: 'number', assert: isValidPort },
-      address: { type: 'string', assert: isIPv4 },
+      port: { type: 'number' },
+      address: { type: 'string' },
       uptime: { type: 'number' },
       cacheSize: { type: 'number' },
       natType: { type: 'number', assert: NAT.isValid },
@@ -473,7 +472,7 @@ export class PacketIntro extends Packet {
       responderPeerId: { required: true, type: 'string', assert: Peer.isValidPeerId },
       isRendezvous: { type: 'boolean' },
       natType: { required: true, type: 'number', assert: NAT.isValid },
-      address: { required: true, type: 'string', assert: isIPv4 },
+      address: { required: true, type: 'string' },
       port: { required: true, type: 'number', assert: isValidPort },
       timestamp: { type: 'number' }
     })
@@ -486,7 +485,7 @@ export class PacketJoin extends Packet {
     super({ ...args, type: PacketJoin.type })
 
     validateMessage(args.message, {
-      rendezvousAddress: { type: 'string', assert: isIPv4 },
+      rendezvousAddress: { type: 'string' },
       rendezvousPort: { type: 'number', assert: isValidPort },
       rendezvousType: { type: 'number', assert: NAT.isValid },
       rendezvousPeerId: { type: 'string', assert: Peer.isValidPeerId },
@@ -494,7 +493,7 @@ export class PacketJoin extends Packet {
       rendezvousRequesterPeerId: { type: 'string', assert: Peer.isValidPeerId },
       requesterPeerId: { required: true, type: 'string', assert: Peer.isValidPeerId },
       natType: { required: true, type: 'number', assert: NAT.isValid },
-      address: { required: true, type: 'string', assert: isIPv4 },
+      address: { required: true, type: 'string' },
       port: { required: true, type: 'number', assert: isValidPort },
       isConnection: { type: 'boolean' }
     })
