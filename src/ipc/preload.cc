@@ -298,7 +298,31 @@ namespace SSC::IPC {
       buffers.push_back(R"JAVASCRIPT(
         for (const key in __RAW_CONFIG__) {
           let value = __RAW_CONFIG__[key]
+
           try { value = decodeURIComponent(value) } catch {}
+
+          if (value === 'true') {
+            value = true
+          } else if (value === 'false') {
+            value = false
+          } else if (value === 'null') {
+            value = null
+          } else if (value === 'NaN') {
+            value = Number.NaN
+          } else if (value.startsWith('0x')) {
+            const parsed = parseInt(value.slice(2), 16)
+            if (!Number.isNaN(parsed)) {
+              value = parsed
+            }
+          } else {
+            const parsed = parseFloat(value)
+            if (!Number.isNaN(parsed)) {
+              value = parsed
+            }
+          }
+
+          try { value = JSON.parse(value) } catch {}
+
           globalThis.__args.config[key] = value
           if (key.startsWith('env_')) {
             globalThis.__args.env[key.slice(4)] = value
