@@ -359,7 +359,7 @@ namespace SSC {
   }
 
   void CoreConduit::start (const Function<void()>& callback) {
-    if (this->isStarted) {
+    if (this->isActive()) {
       if (callback != nullptr) {
         callback();
       }
@@ -378,8 +378,6 @@ namespace SSC {
     uv_tcp_getsockname(&this->socket, (struct sockaddr *)&sockname, &namelen);
 
     this->port = ntohs(sockname.sin_port);
-    this->isStarted = true;
-
     this->core->dispatchEventLoop([=, this]() mutable {
       int r = uv_listen((uv_stream_t*)&this->socket, 128, [](uv_stream_t *stream, int status) {
         if (status < 0) {
@@ -439,22 +437,21 @@ namespace SSC {
       });
 
       if (r) {
-        this->isStarted = false;
         // debug("Listen error %s\n", uv_strerror(r));
       }
 
       if (callback != nullptr) {
+        msleep(256);
         callback();
       }
     });
   }
 
   void CoreConduit::stop () {
-    if (!this->isStarted) {
+    if (!this->isActive()) {
       return;
     }
 
-    this->isStarted = false;
     this->core->dispatchEventLoop([this]() mutable {
       if (!uv_is_closing((uv_handle_t*)&this->socket)) {
         uv_close((uv_handle_t*)&this->socket, [](uv_handle_t* handle) {
@@ -482,5 +479,10 @@ namespace SSC {
 
       this->clients.clear();
     });
+  }
+
+  bool CoreConduit::isActive () {
+    Lock lock(this->mutex);
+    return this->port > 0 && uv_is_active(reinterpret_cast<uv_handle_t*>(&this->socket));
   }
 }
