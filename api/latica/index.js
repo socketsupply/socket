@@ -1106,7 +1106,8 @@ export class Peer {
 
     // if we are out of sync send our cache summary
     const data = await Packet.encode(new PacketSync({
-      message: Cache.encodeSummary(summary)
+      message: Cache.encodeSummary(summary),
+      usr4: Buffer.from(String(Date.now()))
     }))
 
     this.send(data, rinfo.port, rinfo.address, peer.socket)
@@ -1157,7 +1158,12 @@ export class Peer {
    *
    */
   cachePredicate (packet) {
-    return packet.version === VERSION && packet.timestamp > Date.now() - Packet.ttl
+    if (packet.usr4.byteLength < 8 || packet.usr4.byteLength > 16) return
+
+    const timestamp = parseInt(Buffer.from(packet.usr4).toString(), 10)
+    const ts = Math.min(Packet.ttl, timestamp)
+
+    return packet.version === VERSION && ts > Date.now() - Packet.ttl
   }
 
   /**
@@ -1285,7 +1291,8 @@ export class Peer {
         //
         const nextLevel = await this.cache.summarize(local.prefix + i.toString(16), this.cachePredicate)
         const data = await Packet.encode(new PacketSync({
-          message: Cache.encodeSummary(nextLevel)
+          message: Cache.encodeSummary(nextLevel),
+          usr4: Buffer.from(String(Date.now()))
         }))
         this.send(data, port, address)
       }
