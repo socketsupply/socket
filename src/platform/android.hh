@@ -26,6 +26,16 @@ namespace SSC::Android {
   using AssetDirectory = ::AAssetDir;
 
   /**
+   * An opaque `Activity` instance.
+   */
+  using Activity = ::jobject;
+
+  /**
+   * An opaque `Application` instance.
+   */
+  using Application = ::jobject;
+
+  /**
    * A container that holds Android OS build information.
    */
   struct BuildInformation {
