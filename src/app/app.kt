@@ -11,6 +11,7 @@ import android.app.NotificationManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.AssetManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.webkit.MimeTypeMap
@@ -61,6 +62,13 @@ open class AppActivity : WindowManagerActivity() {
       permissions,
       request.id
     )
+  }
+
+  fun openExternal (value: String) {
+    val uri = Uri.parse(value)
+    val action = Intent.ACTION_VIEW
+    val intent = Intent(action, uri)
+    this.startActivity(intent)
   }
 
   override fun onCreate (savedInstanceState: Bundle?) {

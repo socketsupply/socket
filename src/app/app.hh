@@ -82,9 +82,9 @@ namespace SSC {
       Android::BuildInformation androidBuildInformation;
       Android::Looper androidLooper;
       Android::JVMEnvironment jvm;
+      Android::Activity activity = nullptr;
+      Android::Application self = nullptr;
       JNIEnv* jni = nullptr;
-      jobject self = nullptr;
-      jobject appActivity = nullptr;
       bool isAndroidEmulator = false;
     #endif
 

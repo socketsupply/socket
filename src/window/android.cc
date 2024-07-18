@@ -44,7 +44,7 @@ namespace SSC {
     // `activity.createWindow(index, shouldExitApplicationOnClose): Unit`
     CallVoidClassMethodFromAndroidEnvironment(
       attachment.env,
-      app->appActivity,
+      app->activity,
       "createWindow",
       "(IZZ)V",
       options.index,
@@ -84,7 +84,7 @@ namespace SSC {
     CallClassMethodFromAndroidEnvironment(
       attachment.env,
       Boolean,
-      app->appActivity,
+      app->activity,
       "evaluateJavaScript",
       "(ILjava/lang/String;)Z",
       this->index,
@@ -102,7 +102,7 @@ namespace SSC {
     CallClassMethodFromAndroidEnvironment(
       attachment.env,
       Boolean,
-      app->appActivity,
+      app->activity,
       "showWindow",
       "(I)Z",
       this->index
@@ -117,7 +117,7 @@ namespace SSC {
     CallClassMethodFromAndroidEnvironment(
       attachment.env,
       Boolean,
-      app->appActivity,
+      app->activity,
       "hideWindow",
       "(I)Z",
       this->index
@@ -140,7 +140,7 @@ namespace SSC {
     CallClassMethodFromAndroidEnvironment(
       attachment.env,
       Boolean,
-      app->appActivity,
+      app->activity,
       "closeWindow",
       "(I)Z",
       this->index
@@ -168,7 +168,7 @@ namespace SSC {
     const auto result = CallClassMethodFromAndroidEnvironment(
       attachment.env,
       Boolean,
-      app->appActivity,
+      app->activity,
       "navigateWindow",
       "(ILjava/lang/String;)Z",
       this->index,
@@ -188,7 +188,7 @@ namespace SSC {
     // `activity.getWindowTitle(index): String`
     const auto titleString = (jstring) CallObjectClassMethodFromAndroidEnvironment(
       attachment.env,
-      app->appActivity,
+      app->activity,
       "getWindowTitle",
       "(I)Ljava/lang/String;",
       this->index
@@ -206,7 +206,7 @@ namespace SSC {
     CallClassMethodFromAndroidEnvironment(
       attachment.env,
       Boolean,
-      app->appActivity,
+      app->activity,
       "setWindowTitle",
       "(ILjava/lang/String;)Z",
       this->index,

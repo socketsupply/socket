@@ -1125,7 +1125,7 @@ extern "C" {
   void ANDROID_EXTERNAL(app, App, onCreateAppActivity)(
     JNIEnv *env,
     jobject self,
-    jobject appActivity
+    jobject activity
   ) {
     auto app = App::sharedApplication();
 
@@ -1133,11 +1133,13 @@ extern "C" {
       ANDROID_THROW(env, "Missing 'App' in environment");
     }
 
-    if (app->appActivity) {
-      app->jni->DeleteGlobalRef(app->appActivity);
+    if (app->activity) {
+      app->jni->DeleteGlobalRef(app->activity);
     }
 
-    app->appActivity = env->NewGlobalRef(appActivity);
+    app->activity = env->NewGlobalRef(activity);
+    app->core->platform.jvm = Android::JVMEnvironment(app->jni);
+    app->core->platform.activity = app->activity;
     app->run();
 
     if (app->windowManager.getWindowStatus(0) == WindowManager::WINDOW_NONE) {
@@ -1218,7 +1220,7 @@ extern "C" {
   void ANDROID_EXTERNAL(app, App, onDestroyAppActivity)(
     JNIEnv *env,
     jobject self,
-    jobject appActivity
+    jobject activity
   ) {
     auto app = App::sharedApplication();
 
@@ -1226,9 +1228,10 @@ extern "C" {
       ANDROID_THROW(env, "Missing 'App' in environment");
     }
 
-    if (app->appActivity) {
-      env->DeleteGlobalRef(app->appActivity);
-      app->appActivity = nullptr;
+    if (app->activity) {
+      env->DeleteGlobalRef(app->activity);
+      app->activity = nullptr;
+      app->core->platform.activity = nullptr;
     }
   }
 
