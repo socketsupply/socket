@@ -97,7 +97,6 @@ namespace SSC {
       // state
       std::map<uint64_t, Client*> clients;
       Mutex mutex;
-      Atomic<bool> isStarted = false;
       Atomic<int> port = 0;
 
       CoreConduit (Core* core) : CoreModule(core) {};
@@ -117,6 +116,7 @@ namespace SSC {
       // lifecycle
       void start (const Function<void()>& callback = nullptr);
       void stop ();
+      bool isActive ();
 
     private:
       uv_tcp_t socket;
