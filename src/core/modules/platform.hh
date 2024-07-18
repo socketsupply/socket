@@ -3,11 +3,20 @@
 
 #include "../module.hh"
 
+#if SOCKET_RUNTIME_PLATFORM_ANDROID
+#include "../../platform/android.hh"
+#endif
+
 namespace SSC {
   class Core;
   class CorePlatform : public CoreModule {
     public:
       Atomic<bool> wasFirstDOMContentLoadedEventDispatched = false;
+
+    #if SOCKET_RUNTIME_PLATFORM_ANDROID
+      Android::JVMEnvironment jvm;
+      Android::Activity activity = nullptr;
+    #endif
 
       CorePlatform (Core* core)
         : CoreModule(core)

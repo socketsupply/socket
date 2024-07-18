@@ -208,7 +208,7 @@ namespace SSC {
             {"source", "platform.openExternal"},
             {"data", JSON::Object::Entries {{ "url", url.absoluteString.UTF8String}}}
           };
-         }
+        }
 
          callback(seq, json, Post{});
       }];
@@ -272,6 +272,33 @@ namespace SSC {
     ShellExecute(nullptr, "Open", uri, nullptr, nullptr, SW_SHOWNORMAL);
     // TODO how to detect success here. do we care?
     callback(seq, JSON::Object{}, Post{});
+  #elif SOCKET_RUNTIME_PLATFORM_ANDROID
+    JSON::Object json;
+    const auto attachment = Android::JNIEnvironmentAttachment(this->jvm);
+    // `activity.openExternal(url)`
+    CallClassMethodFromAndroidEnvironment(
+      attachment.env,
+      Boolean,
+      this->activity,
+      "openExternal",
+      "(Ljava/lang/String;)Z"
+    );
+
+    if (attachment.hasException()) {
+      json = JSON::Object::Entries {
+        {"source", "platform.openExternal"},
+        {"err", JSON::Object::Entries {
+          {"message", "Failed to open external URL"}
+        }}
+      };
+    } else {
+      json = JSON::Object::Entries {
+        {"source", "platform.openExternal"},
+        {"data", JSON::Object::Entries {{ "url", value}}}
+      };
+    }
+
+    callback(seq, json, Post{});
   #else
     const auto json = JSON::Object::Entries {
       {"source", "platform.openExternal"},
