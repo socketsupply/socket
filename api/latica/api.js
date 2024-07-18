@@ -356,7 +356,8 @@ async function api (options = {}, events, dgram) {
     ee._peer = peer
 
     sub.peers.set(peer.peerId, ee)
-    if (!oldPeer || change) sub._emit('#join', ee, packet)
+    const isStateChange = !oldPeer || change
+    sub._emit('#join', ee, packet, isStateChange)
   })
 
   const handlePacket = async (packet, peer, port, address) => {
@@ -378,7 +379,7 @@ async function api (options = {}, events, dgram) {
   bus._on('#packet', handlePacket)
 
   bus._on('#disconnection', peer => {
-    for (const sub of bus.subclusters) {
+    for (const sub of [...bus.subclusters.values()]) {
       sub._emit('#leave', peer)
       sub.peers.delete(peer.peerId)
     }
