@@ -1660,7 +1660,7 @@ static void mapIPCRoutes (Router *router) {
    */
   router->map("internal.conduit.start", [=](auto message, auto router, auto reply) {
     router->bridge->core->conduit.start([=]() {
-      if (router->bridge->core->conduit.isStarted) {
+      if (router->bridge->core->conduit.isActive()) {
         reply(Result::Data {
           message,
           JSON::Object::Entries {
@@ -1690,7 +1690,7 @@ static void mapIPCRoutes (Router *router) {
     reply(Result::Data {
       message,
       JSON::Object::Entries {
-        {"started", router->bridge->core->conduit.isStarted.load()},
+        {"started", router->bridge->core->conduit.isActive()},
         {"port", router->bridge->core->conduit.port.load()}
       }
     });
