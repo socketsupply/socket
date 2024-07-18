@@ -494,6 +494,7 @@ export class PacketJoin extends Packet {
       requesterPeerId: { required: true, type: 'string', assert: Peer.isValidPeerId },
       natType: { required: true, type: 'number', assert: NAT.isValid },
       address: { required: true, type: 'string' },
+      key: { type: 'string' },
       port: { required: true, type: 'number', assert: isValidPort },
       isConnection: { type: 'boolean' }
     })
