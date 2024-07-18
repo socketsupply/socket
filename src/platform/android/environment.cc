@@ -90,11 +90,11 @@ namespace SSC::Android {
     }
   }
 
-  inline bool JNIEnvironmentAttachment::hasException () {
+  bool JNIEnvironmentAttachment::hasException () const {
     return this->env != nullptr && this->env->ExceptionCheck();
   }
 
-  inline void JNIEnvironmentAttachment::printException () {
+  void JNIEnvironmentAttachment::printException () const {
     if (this->env != nullptr) {
       this->env->ExceptionDescribe();
     }

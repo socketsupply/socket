@@ -140,8 +140,8 @@ namespace SSC::Android {
     void attach (JavaVM *jvm, int version);
     void detach ();
 
-    inline bool hasException ();
-    inline void printException ();
+    bool hasException () const;
+    void printException () const;
   };
 }
 #endif
