@@ -357,6 +357,9 @@ async function api (options = {}, events, dgram) {
 
     sub.peers.set(peer.peerId, ee)
     const isStateChange = !oldPeer || change
+
+    _peer.onDebug(_peer.peerId, `<-- API CONNECTION JOIN (scid=${scid}, peerId=${peer.peerId.slice(0, 6)})`)
+
     sub._emit('#join', ee, packet, isStateChange)
   })
 

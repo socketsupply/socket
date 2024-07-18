@@ -263,12 +263,14 @@ class PeerWorkerProxy {
 
       if (arg?.constructor.name === 'RemotePeer' || arg?.constructor.name === 'Peer') {
         args[i] = { // what details we want to expose outside of the protocol
-          peerId: arg.peerId,
           address: arg.address,
-          port: arg.port,
-          natType: arg.natType,
           clusters: arg.clusters,
-          connected: arg.connected
+          connected: arg.connected,
+          lastRequest: arg.lastRequest,
+          lastUpdate: arg.lastUpdate,
+          natType: arg.natType,
+          peerId: arg.peerId,
+          port: arg.port
         }
 
         delete args[i].localPeer // don't copy this over
