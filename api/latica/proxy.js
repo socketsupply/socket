@@ -262,7 +262,7 @@ class PeerWorkerProxy {
       const arg = args[i]
 
       if (arg?.constructor.name === 'RemotePeer' || arg?.constructor.name === 'Peer') {
-        args[i] = { // what details we want to expose outside of the protocol 
+        args[i] = { // what details we want to expose outside of the protocol
           peerId: arg.peerId,
           address: arg.address,
           port: arg.port,

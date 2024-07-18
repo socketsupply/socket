@@ -962,7 +962,7 @@ export class Peer {
     const siblings = packet && [...this.cache.data.values()]
       .filter(Boolean)
       .filter(p => {
-        if (!p.previousId || !packet.packetId) return
+        if (!p.previousId || !packet.packetId) return false
         return Buffer.from(p.previousId).compare(Buffer.from(packet.packetId)) === 0
       })
 
@@ -1441,7 +1441,7 @@ export class Peer {
     }
 
     if (isConnection && natType) {
-      this._onDebug(`<- CONNECTION (source=ping)`)
+      this._onDebug('<- CONNECTION (source=ping)')
       this._onConnection(packet, requesterPeerId, port, address)
 
       message.isConnection = true
@@ -1485,7 +1485,7 @@ export class Peer {
 
     if (packet.message.isConnection) {
       if (pingId) peer.pingId = pingId
-      this._onDebug(`<- CONNECTION (source=pong)`)
+      this._onDebug('<- CONNECTION (source=pong)')
       this._onConnection(packet, responderPeerId, port, address)
       return
     }
@@ -1663,7 +1663,7 @@ export class Peer {
     const proxyCandidate = this.peers.find(p => p.peerId === packet.message.responderPeerId)
 
     if (opts.attempts >= 2) {
-      this._onDebug(`<- CONNECTION (source=intro)`)
+      this._onDebug('<- CONNECTION (source=intro)')
       this._onConnection(packet, peer.peerId, peerPort, peerAddress, proxyCandidate)
       return false
     }
@@ -1748,7 +1748,7 @@ export class Peer {
             this._onMessage(msg, rinfo)
           })
 
-          this._onDebug(`<- CONNECTION (source=intro)`)
+          this._onDebug('<- CONNECTION (source=intro)')
           this._onConnection(packet, peer.peerId, rinfo.port, rinfo.address, undefined, pooledSocket)
 
           const p = {
@@ -1785,7 +1785,7 @@ export class Peer {
 
     if (strategy === NAT.STRATEGY_PROXY && !peer.proxy) {
       // TODO could allow multiple proxies
-      this._onDebug(`<- CONNECTION (source=proxy)`)
+      this._onDebug('<- CONNECTION (source=proxy)')
       this._onConnection(packet, peer.peerId, peerPort, peerAddress, proxyCandidate)
       this._onDebug('++ INTRO CHOSE PROXY STRATEGY')
     }
@@ -1992,7 +1992,7 @@ export class Peer {
     this.mcast(packet, [{ port, address }, { port: peerPort, address: peerAddress }])
 
     if (packet.hops <= 1) {
-      this._onDebug(`<- CONNECTION (source=join)`)
+      this._onDebug('<- CONNECTION (source=join)')
       this._onConnection(packet, packet.message.requesterPeerId, port, address)
     }
   }
