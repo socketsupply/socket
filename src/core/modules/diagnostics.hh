@@ -94,6 +94,7 @@ namespace SSC {
 
       struct ConduitDiagnostic : public Diagnostic {
         Handles handles;
+        bool isActive;
         JSON::Object json () const override;
       };
 
