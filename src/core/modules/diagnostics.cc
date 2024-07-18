@@ -93,6 +93,7 @@ namespace SSC {
       do {
         Lock lock(this->core->conduit.mutex);
         query.conduit.handles.count = this->core->conduit.clients.size();
+        query.conduit.isActive = this->core->conduit.isActive();
         for (const auto& entry : this->core->conduit.clients) {
           query.conduit.handles.ids.push_back(entry.first);
         }
@@ -215,7 +216,8 @@ namespace SSC {
 
   JSON::Object CoreDiagnostics::ConduitDiagnostic::json () const {
     return JSON::Object::Entries {
-      {"handles", this->handles.json()}
+      {"handles", this->handles.json()},
+      {"isActive", this->isActive}
     };
   }
 
