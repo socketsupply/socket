@@ -136,6 +136,8 @@ async function api (options = {}, events, dgram) {
 
   bus.query = (...args) => _peer.query(...args)
 
+  bus.MAX_CACHE_TTL = CACHE_TTL
+
   const pack = async (eventName, value, opts = {}) => {
     if (typeof eventName !== 'string') throw new Error('event name must be a string')
     if (eventName.length === 0) throw new Error('event name too short')
