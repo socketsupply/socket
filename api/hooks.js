@@ -62,6 +62,14 @@
  * hooks.onApplicationURL((event) => {
  *   // called when 'applicationurl' events are dispatched on the global object
  * })
+ *
+ * hooks.onApplicationResume((event) => {
+ *   // called when 'applicationresume' events are dispatched on the global object
+ * })
+ *
+ * hooks.onApplicationPause((event) => {
+ *   // called when 'applicationpause' events are dispatched on the global object
+ * })
  * ```
  */
 import { Event, CustomEvent, ErrorEvent, MessageEvent } from './events.js'
@@ -149,6 +157,8 @@ export const RUNTIME_INIT_EVENT_NAME = '__runtime_init__'
 export const GLOBAL_EVENTS = [
   RUNTIME_INIT_EVENT_NAME,
   'applicationurl',
+  'applicationpause',
+  'applicationresume',
   'data',
   'error',
   'init',
@@ -166,6 +176,8 @@ export const GLOBAL_EVENTS = [
 
 const GLOBAL_TOP_LEVEL_EVENTS = [
   'applicationurl',
+  'applicationpause',
+  'applicationresume',
   'data',
   'languagechange',
   'notificationpresented',
@@ -579,6 +591,26 @@ export class Hooks extends EventTarget {
     this.addEventListener('applicationurl', callback)
     return () => this.removeEventListener('applicationurl', callback)
   }
+
+  /**
+   * Calls callback when an `ApplicationPause` is dispatched.
+   * @param {function} callback
+   * @return {function}
+   */
+  onApplicationPause (callback) {
+    this.addEventListener('applicationpause', callback)
+    return () => this.removeEventListener('applicationpause', callback)
+  }
+
+  /**
+   * Calls callback when an `ApplicationResume` is dispatched.
+   * @param {function} callback
+   * @return {function}
+   */
+  onApplicationResume (callback) {
+    this.addEventListener('applicationresume', callback)
+    return () => this.removeEventListener('applicationresume', callback)
+  }
 }
 
 /**
@@ -718,6 +750,24 @@ export function onNotificationPresented (callback) {
  */
 export function onApplicationURL (callback) {
   return hooks.onApplicationURL(callback)
+}
+
+/**
+ * Calls callback when a `ApplicationPause` is dispatched.
+ * @param {function} callback
+ * @return {function}
+ */
+export function onApplicationPause (callback) {
+  return hooks.onApplicationPause(callback)
+}
+
+/**
+ * Calls callback when a `ApplicationResume` is dispatched.
+ * @param {function} callback
+ * @return {function}
+ */
+export function onApplicationResume (callback) {
+  return hooks.onApplicationResume(callback)
 }
 
 export default hooks
