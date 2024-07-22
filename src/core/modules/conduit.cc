@@ -358,9 +358,10 @@ namespace SSC {
     return true;
   }
 
-  void CoreConduit::start (const Function<void()>& callback) {
+  void CoreConduit::start (const StartCallback& callback) {
     if (this->isActive()) {
       if (callback != nullptr) {
+        msleep(256);
         callback();
       }
       return;

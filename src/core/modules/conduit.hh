@@ -10,6 +10,7 @@ namespace SSC {
   class CoreConduit : public CoreModule {
     public:
       using Options = std::unordered_map<String, String>;
+      using StartCallback = Function<void()>;
 
       struct EncodedMessage {
         Options options;
@@ -114,7 +115,7 @@ namespace SSC {
       CoreConduit::Client* get (uint64_t id);
 
       // lifecycle
-      void start (const Function<void()>& callback = nullptr);
+      void start (const StartCallback& callback = nullptr);
       void stop ();
       bool isActive ();
 
