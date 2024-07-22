@@ -1,23 +1,73 @@
 /* global CloseEvent, ErrorEvent, MessageEvent, WebSocket */
+import diagnostics from '../diagnostics.js'
+import { sleep } from '../timers.js'
 import client from '../application/client.js'
+import hooks from '../hooks.js'
 import ipc from '../ipc.js'
+import gc from '../gc.js'
 
-export const DEFALUT_MAX_RECONNECT_RETRIES = 32
-export const DEFAULT_MAX_RECONNECT_TIMEOUT = 256
+/**
+ * Predicate state to determine if application is paused.
+ * @type {boolean}
+ */
+let isApplicationPaused = false
 
-let defaultConduitPort = globalThis.__args.conduit
+/**
+ * The default Conduit port
+ * @type {number}
+ */
+let defaultConduitPort = globalThis.__args.conduit || 0
 
 /**
  * @typedef {{ options: object, payload: Uint8Array }} ReceiveMessage
  * @typedef {function(Error?, ReceiveCallback | undefined)} ReceiveCallback
  * @typedef {{ id?: string|BigInt|number, reconnect?: {} }} ConduitOptions
+ * @typedef {{ isActive: boolean, handles: { ids: string[], count: number }}} ConduitDiagnostics
+ * @typedef {{ isActive: boolean, port: number }} ConduitStatus
  */
+export const DEFALUT_MAX_RECONNECT_RETRIES = 32
+export const DEFAULT_MAX_RECONNECT_TIMEOUT = 256
 
 /**
- * @class Conduit
- * @ignore
- *
- * @classdesc A class for managing WebSocket connections with custom options and payload encoding.
+ * A pool of known `Conduit` instances.
+ * @type {Set<WeakRef<Conduit>>}
+ */
+export const pool = new Set()
+
+// reconnect when application resumes
+hooks.onApplicationResume(() => {
+  isApplicationPaused = false
+  const refs = Array.from(pool)
+  for (const ref of refs) {
+    // @ts-ignore
+    const conduit = /** @type {WeakRef<Conduit>} */ (ref).deref()
+    if (conduit?.shouldReconnect) {
+      conduit.reconnect()
+    } else {
+      pool.delete(ref)
+    }
+  }
+})
+
+hooks.onApplicationPause(() => {
+  isApplicationPaused = true
+  const refs = Array.from(pool)
+  for (const ref of refs) {
+    // @ts-ignore
+    const conduit = /** @type {WeakRef<Conduit>} */ (ref).deref()
+    if (conduit) {
+      conduit.isConnecting = false
+      conduit.isActive = false
+      if (conduit.socket) {
+        conduit.socket.close()
+      }
+    }
+  }
+})
+
+/**
+ * A container for managing a WebSocket connection to the internal runtime
+ * Conduit WebSocket server.
  */
 export class Conduit extends EventTarget {
   /**
@@ -28,6 +78,52 @@ export class Conduit extends EventTarget {
   static set port (port) {
     if (port && typeof port === 'number') {
       defaultConduitPort = port
+    }
+  }
+
+  /**
+   * Returns diagnostics information about the conduit server
+   * @return {Promise<ConduitDiagnostics>}
+   */
+  static async diagnostics () {
+    const query = await diagnostics.runtime.query()
+    // @ts-ignore
+    return query.conduit
+  }
+
+  /**
+   * Returns the current Conduit server status
+   * @return {Promise<ConduitStatus>}
+   */
+  static async status () {
+    const result = await ipc.request('internal.conduit.status')
+
+    if (result.err) {
+      throw result.err
+    }
+
+    return {
+      port: result.data.port || 0,
+      isActive: result.data.isActive || false
+    }
+  }
+
+  /**
+   * Waits for conduit to be active
+   * @param {{ maxQueriesForStatus?: number }=} [options]
+   * @return {Promise}
+   */
+  static async waitForActiveState (options = null) {
+    const maxQueriesForStatus = options?.maxQueriesForStatus ?? Infinity
+    let queriesForStatus = 0
+    while (queriesForStatus++ < maxQueriesForStatus) {
+      const status = await Conduit.status()
+
+      if (status.isActive) {
+        break
+      }
+
+      await sleep(256)
     }
   }
 
@@ -91,6 +187,11 @@ export class Conduit extends EventTarget {
   #onopen = null
 
   /**
+   * @type {WeakRef<Conduit>}
+   */
+  #ref = null
+
+  /**
    * Creates an instance of Conduit.
    *
    * @param {object} params - The parameters for the Conduit.
@@ -110,13 +211,18 @@ export class Conduit extends EventTarget {
       retries: DEFALUT_MAX_RECONNECT_RETRIES
     }
 
-    this.#loop = setInterval(() => {
+    this.#loop = setInterval(async () => {
       if (!this.isActive && !this.isConnecting && this.shouldReconnect) {
-        this.reconnect({
+        await this.reconnect({
           retries: --reconnectState.retries
         })
+      } else {
+        reconnectState.retries = DEFALUT_MAX_RECONNECT_RETRIES
       }
     }, 256)
+
+    this.#ref = new WeakRef(this)
+    pool.add(this.#ref)
   }
 
   /**
@@ -201,7 +307,7 @@ export class Conduit extends EventTarget {
    * @return {Promise<Conduit>}
    */
   async connect (callback = null) {
-    if (this.isConnecting) {
+    if (this.isConnecting || isApplicationPaused) {
       return this
     }
 
@@ -210,12 +316,13 @@ export class Conduit extends EventTarget {
     }
 
     // reset
+    this.socket = null
     this.isActive = false
     this.isConnecting = true
 
     // @ts-ignore
     const resolvers = Promise.withResolvers()
-    const result = await ipc.send('internal.conduit.start')
+    const result = await ipc.request('internal.conduit.start')
 
     if (result.err) {
       if (typeof callback === 'function') {
@@ -226,7 +333,10 @@ export class Conduit extends EventTarget {
       }
     }
 
+    await Conduit.waitForActiveState()
+
     this.port = result.data.port
+
     this.socket = new WebSocket(this.url)
     this.socket.binaryType = 'arraybuffer'
     this.socket.onerror = (e) => {
@@ -246,12 +356,15 @@ export class Conduit extends EventTarget {
       this.isActive = false
       this.isConnecting = false
       this.dispatchEvent(new CloseEvent('close', e))
+      if (this.shouldReconnect) {
+        this.reconnect()
+      }
     }
 
     this.socket.onopen = (e) => {
       this.isActive = true
       this.isConnecting = false
-      this.dispatchEvent(new Event('open'))
+      this.dispatchEvent(new Event('open', e))
 
       if (typeof callback === 'function') {
         callback(null)
@@ -435,13 +548,31 @@ export class Conduit extends EventTarget {
    */
   close () {
     this.shouldReconnect = false
+
     if (this.#loop) {
       clearInterval(this.#loop)
       this.#loop = 0
     }
+
     if (this.socket) {
       this.socket.close()
       this.socket = null
+    }
+
+    pool.delete(this.#ref)
+  }
+
+  /**
+   * Implements `gc.finalizer` for gc'd resource cleanup.
+   * @ignore
+   * @return {gc.Finalizer}
+   */
+  [gc.finalizer] () {
+    return {
+      args: [this.#ref],
+      handle (ref) {
+        pool.delete(ref)
+      }
     }
   }
 }
