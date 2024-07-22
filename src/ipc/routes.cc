@@ -1664,13 +1664,13 @@ static void mapIPCRoutes (Router *router) {
         reply(Result::Data {
           message,
           JSON::Object::Entries {
-            {"started", true},
+            {"isActive", true},
             {"port", router->bridge->core->conduit.port.load()}
           }
         });
       } else {
         const auto err = JSON::Object::Entries {{ "message", "Failed to start Conduit"}};
-        reply(Result::Err  { message, err });
+        reply(Result::Err { message, err });
       }
     });
   });
@@ -1690,7 +1690,7 @@ static void mapIPCRoutes (Router *router) {
     reply(Result::Data {
       message,
       JSON::Object::Entries {
-        {"started", router->bridge->core->conduit.isActive()},
+        {"isActive", router->bridge->core->conduit.isActive()},
         {"port", router->bridge->core->conduit.port.load()}
       }
     });
