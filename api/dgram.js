@@ -781,7 +781,7 @@ export class Socket extends EventEmitter {
         })
       }
 
-      if (!this.legacy) {
+      if (!this.legacy && !this.conduit) {
         this.conduit = new Conduit({ id: this.id })
 
         this.conduit.receive((_, decoded) => {
