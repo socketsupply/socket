@@ -1,3 +1,4 @@
+/* global Event, MessageEvent */
 // @ts-check
 /**
  * @module application
@@ -10,14 +11,37 @@
  * ```
  */
 
+import { ApplicationURLEvent } from './internal/events.js'
 import ApplicationWindow, { formatURL } from './window.js'
 import { isValidPercentageValue } from './util.js'
 import ipc, { primordials } from './ipc.js'
 import menu, { setMenu } from './application/menu.js'
 import client from './application/client.js'
+import hooks from './hooks.js'
 import os from './os.js'
 
 import * as exports from './application.js'
+
+const eventTarget = new EventTarget()
+
+let isApplicationPaused = false
+hooks.onApplicationResume((event) => {
+  isApplicationPaused = false
+  eventTarget.dispatchEvent(new Event(event.type, event))
+})
+
+hooks.onApplicationPause((event) => {
+  isApplicationPaused = true
+  eventTarget.dispatchEvent(new Event(event.type, event))
+})
+
+hooks.onApplicationURL((event) => {
+  eventTarget.dispatchEvent(new ApplicationURLEvent(event.type, event))
+})
+
+hooks.onMessage((event) => {
+  eventTarget.dispatchEvent(new MessageEvent(event.type, event))
+})
 
 function serializeConfig (config) {
   if (!config || typeof config !== 'object') {
@@ -156,6 +180,25 @@ export class ApplicationWindowList {
     this.#list = []
     return this
   }
+}
+
+/**
+ * Add an application event `type` callback `listener` with `options`.
+ * @param {string} type
+ * @param {function(Event|MessageEvent|CustomEvent|ApplicationURLEvent): boolean} listener
+ * @param {{ once?: boolean }|boolean=} [options]
+ */
+export function addEventListener (type, listener, options = null) {
+  return eventTarget.addEventListener(type, listener, options)
+}
+
+/**
+ * Remove an application event `type` callback `listener` with `options`.
+ * @param {string} type
+ * @param {function(Event|MessageEvent|CustomEvent|ApplicationURLEvent): boolean} listener
+ */
+export function removeEventListener (type, listener) {
+  return eventTarget.removeEventListener(type, listener)
 }
 
 /**
@@ -536,6 +579,14 @@ export async function setTrayMenu (o) {
  */
 export async function setSystemMenuItemEnabled (value) {
   return await ipc.request('application.setSystemMenuItemEnabled', value)
+}
+
+/**
+ * Predicate function to determine if application is in a "paused" state.
+ * @return {boolean}
+ */
+export function isPaused () {
+  return isApplicationPaused
 }
 
 /**
