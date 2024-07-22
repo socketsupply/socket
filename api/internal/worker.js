@@ -1,4 +1,4 @@
-/* global reportError, EventTarget, CustomEvent, MessageEvent */
+/* global reportError, EventTarget, CustomEvent, MessageEvent, ApplicationURLEvent */
 import { rand64 } from '../crypto.js'
 import { Loader } from '../commonjs/loader.js'
 import globals from './globals.js'
@@ -184,8 +184,12 @@ export async function onWorkerMessage (event) {
     return false
   } else if (typeof data?.__runtime_worker_event === 'object') {
     const { type, detail } = data?.__runtime_worker_event || {}
-    if (type) {
+    if (type === 'applicationurl') {
+      globalThis.dispatchEvent(new ApplicationURLEvent(type, detail))
+    } else if (type && detail) {
       globalThis.dispatchEvent(new CustomEvent(type, { detail }))
+    } else if (type) {
+      globalThis.dispatchEvent(new Event(type))
     }
     event.stopImmediatePropagation()
     return false
