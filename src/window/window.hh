@@ -550,6 +550,7 @@ namespace SSC {
           JSON::Object json () const;
           void handleApplicationURL (const String& url);
           void onReadyStateChange (const ReadyState& readyState);
+          bool emit (const String& event, const JSON::Any& json = {});
       };
 
       Vector<SharedPointer<ManagedWindow>> windows;
@@ -580,6 +581,7 @@ namespace SSC {
 
       void destroyWindow (int index);
       JSON::Array json (const Vector<int>& indices);
+      bool emit (const String& event, const JSON::Any& json = {});
   };
 }
 #endif

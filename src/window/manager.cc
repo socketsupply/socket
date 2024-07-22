@@ -313,6 +313,23 @@ namespace SSC {
     return result;
   }
 
+  bool WindowManager::emit (const String& event, const JSON::Any& json) {
+    bool status = false;
+    for (const auto& window : this->windows) {
+      if (
+        window != nullptr &&
+        window->status >= WINDOW_SHOWING &&
+        window->status < WINDOW_CLOSING
+      ) {
+        if (window->emit(event, json)) {
+          status = true;
+        }
+      }
+    }
+
+    return status;
+  }
+
   WindowManager::ManagedWindow::ManagedWindow (
     WindowManager &manager,
     SharedPointer<Core> core,
@@ -414,5 +431,9 @@ namespace SSC {
         Window::handleApplicationURL(url);
       }
     }
+  }
+
+  bool WindowManager::ManagedWindow::emit (const String& event, const JSON::Any& json) {
+    return this->bridge.emit(event, json);
   }
 }
