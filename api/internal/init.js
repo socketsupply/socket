@@ -715,6 +715,46 @@ import { config } from '../application.js'
 import globals from './globals.js'
 import '../console.js'
 
+hooks.onApplicationResume((e) => {
+  for (const ref of RuntimeWorker.pool.values()) {
+    const worker = ref.deref()
+    if (worker) {
+      worker.postMessage({
+        __runtime_worker_event: {
+          type: 'applicationresume'
+        }
+      })
+    }
+  }
+})
+
+hooks.onApplicationPause((e) => {
+  for (const ref of RuntimeWorker.pool.values()) {
+    const worker = ref.deref()
+    if (worker) {
+      worker.postMessage({
+        __runtime_worker_event: {
+          type: 'applicationpause'
+        }
+      })
+    }
+  }
+})
+
+hooks.onApplicationURL((e) => {
+  for (const ref of RuntimeWorker.pool.values()) {
+    const worker = ref.deref()
+    if (worker) {
+      worker.postMessage({
+        __runtime_worker_event: {
+          type: 'applicationurl',
+          detail: { data: e.data, url: String(e.url ?? '') }
+        }
+      })
+    }
+  }
+})
+
 ipc.sendSync('platform.event', {
   value: 'load',
   'location.href': globalThis.location.href
