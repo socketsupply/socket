@@ -106,14 +106,12 @@ namespace SSC {
   }
 
   void CoreUDP::pauseAllSockets () {
-    this->core->dispatchEventLoop([=, this]() {
-      for (auto const &tuple : this->sockets) {
-        auto socket = tuple.second;
-        if (socket != nullptr && (socket->isBound() || socket->isConnected())) {
-          socket->pause();
-        }
+    for (auto const &tuple : this->sockets) {
+      auto socket = tuple.second;
+      if (socket != nullptr && (socket->isBound() || socket->isConnected())) {
+        socket->pause();
       }
-    });
+    }
   }
 
   bool CoreUDP::hasSocket (ID id) {

@@ -33,6 +33,18 @@ namespace SSC {
             this->id = rand64();
           }
 
+          Observer (const Observer& observer) {
+            this->id = observer.id;
+            this->callback = observer.callback;
+          }
+
+          Observer (Observer&& observer) {
+            this->id = observer.id;
+            this->callback = observer.callback;
+            observer.id = 0;
+            observer.callback = nullptr;
+          }
+
           Observer (const Callback& callback)
             : callback(callback)
           {
@@ -42,7 +54,20 @@ namespace SSC {
           Observer (uint64_t id, const Callback& callback)
             : id(id),
               callback(callback)
-        {}
+          {}
+
+          Observer& operator = (const Observer& observer) {
+            this->id = observer.id;
+            this->callback = observer.callback;
+          }
+
+          Observer& operator = (Observer&& observer) {
+            this->id = observer.id;
+            this->callback = observer.callback;
+            observer.id = 0;
+            observer.callback = nullptr;
+            return *this;
+          }
       };
 
       template <class Observer>
@@ -70,17 +95,22 @@ namespace SSC {
 
           bool remove (const Observer& observer) {
             Lock lock(this->mutex);
-            int cursor = -1;
-            while (cursor++ < this->observers.size()) {
-              if (this->observers.at(cursor).id == observer.id) {
-                break;
-              }
-            }
+            auto iterator = this->observers.begin();
 
-            if (cursor >= 0 && cursor < this->observers.size()) {
-              this->observers.erase(this->observers.begin() + cursor);
-              return true;
-            }
+            do {
+              if (iterator->id == 0) {
+                iterator = this->observers.erase(iterator);
+              }
+
+              if (iterator->id == observer.id) {
+                iterator = this->observers.erase(iterator);
+                return true;
+              }
+
+            } while (
+              iterator != this->observers.end() &&
+              ++iterator != this->observers.end()
+            );
 
             return false;
           }
@@ -112,12 +142,19 @@ namespace SSC {
           bool dispatch (Types... arguments) {
             Lock lock(this->mutex);
             bool dispatched = false;
-            for (auto& observer : this->observers) {
-              if (observer.callback != nullptr) {
-                observer.callback(arguments...);
+            auto iterator = this->observers.begin();
+
+            while (iterator != this->observers.end()) {
+              if (iterator->id == 0) {
+                iterator = this->observers.erase(iterator);
+              } else if (iterator->callback != nullptr) {
+                iterator->callback(arguments...);
                 dispatched = true;
               }
+
+              iterator++;
             }
+
             return dispatched;
           }
       };

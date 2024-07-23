@@ -190,12 +190,17 @@ namespace SSC {
   }
 
   bool CoreNotifications::show (const ShowOptions& options, const ShowCallback& callback) {
-  #if SOCKET_RUNTIME_PLATFORM_APPLE
     if (options.id.size() == 0) {
       callback(ShowResult { "Missing 'id' in CoreNotifications::ShowOptions" });
       return false;
     }
 
+    if (!this->core->permissions.hasRuntimePermission("notifications")) {
+      callback(ShowResult { "Runtime permission is disabled for 'notifications'" });
+      return false;
+    }
+
+  #if SOCKET_RUNTIME_PLATFORM_APPLE
     auto notificationCenter = [UNUserNotificationCenter currentNotificationCenter];
     auto attachments = [NSMutableArray array];
     auto userInfo = [NSMutableDictionary dictionary];
@@ -382,11 +387,64 @@ namespace SSC {
     }];
 
     return true;
+  #elif SOCKET_RUNTIME_PLATFORM_ANDROID
+    const auto attachment = Android::JNIEnvironmentAttachment(this->core->platform.jvm);
+    // `activity.showNotification(
+    //    id,
+    //    title,
+    //    body,
+    //    tag,
+    //    channel,
+    //    category,
+    //    silent,
+    //    iconURL,
+    //    imageURL,
+    //    vibratePattern
+    // )`
+    const auto success = CallClassMethodFromAndroidEnvironment(
+      attachment.env,
+      Boolean,
+      this->core->platform.activity,
+      "showNotification",
+      "("
+        "Ljava/lang/String;" // id
+        "Ljava/lang/String;" // title
+        "Ljava/lang/String;" // body
+        "Ljava/lang/String;" // tag
+        "Ljava/lang/String;" // channel
+        "Ljava/lang/String;" // category
+        "Z" // silent
+        "Ljava/lang/String;" // iconURL
+        "Ljava/lang/String;" // imageURL
+        "Ljava/lang/String;" // vibratePattern
+      ")Z",
+      attachment.env->NewStringUTF(options.id.c_str()),
+      attachment.env->NewStringUTF(options.title.c_str()),
+      attachment.env->NewStringUTF(options.body.c_str()),
+      attachment.env->NewStringUTF(options.tag.c_str()),
+      attachment.env->NewStringUTF(options.channel.c_str()),
+      attachment.env->NewStringUTF(options.category.c_str()),
+      options.silent,
+      attachment.env->NewStringUTF(options.icon.c_str()),
+      attachment.env->NewStringUTF(options.image.c_str()),
+      attachment.env->NewStringUTF(options.vibrate.c_str())
+    );
+
+    this->core->dispatchEventLoop([=, this] () {
+      callback(ShowResult { "", options.id });
+      this->notificationPresentedObservers.dispatch(JSON::Object::Entries {
+        {"id", options.id}
+      });
+    });
+    return success;
   #endif
     return false;
   }
 
   bool CoreNotifications::close (const Notification& notification) {
+    if (!this->core->permissions.hasRuntimePermission("notifications")) {
+      return false;
+    }
   #if SOCKET_RUNTIME_PLATFORM_APPLE
     const auto notificationCenter = [UNUserNotificationCenter currentNotificationCenter];
     const auto identifiers = @[@(notification.identifier.c_str())];
@@ -400,6 +458,34 @@ namespace SSC {
 
     this->notificationResponseObservers.dispatch(json);
     return true;
+  #elif SOCKET_RUNTIME_PLATFORM_ANDROID
+    const auto attachment = Android::JNIEnvironmentAttachment(this->core->platform.jvm);
+    // `activity.showNotification(
+    //    id,
+    //    tag,
+    // )`
+    const auto success = CallClassMethodFromAndroidEnvironment(
+      attachment.env,
+      Boolean,
+      this->core->platform.activity,
+      "closeNotification",
+      "("
+        "Ljava/lang/String;" // id
+        "Ljava/lang/String;" // tag
+      ")Z",
+      attachment.env->NewStringUTF(notification.identifier.c_str()),
+      attachment.env->NewStringUTF(notification.tag.c_str())
+    );
+
+    this->core->dispatchEventLoop([=, this] () {
+      const auto json = JSON::Object::Entries {
+        {"id", notification.identifier},
+        {"action", "dismiss"}
+      };
+
+      this->notificationResponseObservers.dispatch(json);
+    });
+    return success;
   #endif
 
     return false;
@@ -417,6 +503,9 @@ namespace SSC {
 
       callback(entries);
     }];
+  #else
+    Vector<Notification> entries;
+    callback(entries);
   #endif
   }
 }
