@@ -46,14 +46,14 @@ namespace SSC {
 
         webkit_security_origin_ref(origin);
 
-        if (origin && allowed && disallowed) {
+        if (origin) {
           if (areNotificationsAllowed) {
             disallowed = g_list_append(disallowed, (gpointer) origin);
           } else {
             allowed = g_list_append(allowed, (gpointer) origin);
           }
 
-          if (allowed && disallowed) {
+          if (allowed || disallowed) {
             webkit_web_context_initialize_notification_permissions(
               webContext,
               allowed,
@@ -370,14 +370,19 @@ namespace SSC {
         WebKitNotification* notification,
         gpointer userData
       ) -> bool {
-        const auto window = reinterpret_cast<Window*>(userData);
+        const auto app = App::sharedApplication();
+        const auto window = app->windowManager.getWindowForWebView(webview);
 
         if (window == nullptr) {
-          return false;
+          return true;
         }
 
         auto userConfig = window->bridge.userConfig;
-        return userConfig["permissions_allow_notifications"] != "false";
+        if (userConfig["permissions_allow_notifications"] == "false") {
+          return true;
+        }
+
+        return false;
       }),
       this
     );
@@ -391,31 +396,30 @@ namespace SSC {
         WebKitPermissionStateQuery* query,
         gpointer user_data
       ) -> bool {
-        static auto userConfig = SSC::getUserConfig();
-        auto name = String(webkit_permission_state_query_get_name(query));
+        const auto app = App::sharedApplication();
+        const auto window = app->windowManager.getWindowForWebView(webview);
+        const auto name = String(webkit_permission_state_query_get_name(query));
 
         if (name == "geolocation") {
           webkit_permission_state_query_finish(
             query,
-            userConfig["permissions_allow_geolocation"] == "false"
+            window->bridge.userConfig["permissions_allow_geolocation"] == "false"
               ? WEBKIT_PERMISSION_STATE_DENIED
-              : WEBKIT_PERMISSION_STATE_PROMPT
+              : WEBKIT_PERMISSION_STATE_GRANTED
           );
-        }
-
-        if (name == "notifications") {
+        } else if (name == "notifications") {
           webkit_permission_state_query_finish(
             query,
-            userConfig["permissions_allow_notifications"] == "false"
+            window->bridge.userConfig["permissions_allow_notifications"] == "false"
               ? WEBKIT_PERMISSION_STATE_DENIED
-              : WEBKIT_PERMISSION_STATE_PROMPT
+              : WEBKIT_PERMISSION_STATE_GRANTED
+          );
+        } else {
+          webkit_permission_state_query_finish(
+            query,
+            WEBKIT_PERMISSION_STATE_PROMPT
           );
         }
-
-        webkit_permission_state_query_finish(
-          query,
-          WEBKIT_PERMISSION_STATE_PROMPT
-        );
         return true;
       })),
       this
