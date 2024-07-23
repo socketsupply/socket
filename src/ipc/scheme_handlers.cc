@@ -995,6 +995,10 @@ namespace SSC::IPC {
     this->setHeader("access-control-allow-methods", "*");
     this->setHeader("access-control-allow-credentials", "true");
 
+    if (request->method == "OPTIONS") {
+      this->setHeader("allow", "GET, POST, PATCH, PUT, DELETE, HEAD");
+    }
+
     for (const auto& entry : defaultHeaders) {
       const auto parts = split(trim(entry), ':');
       this->setHeader(parts[0], parts[1]);
