@@ -8,14 +8,18 @@ import android.app.Activity
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.AssetManager
 import android.graphics.Insets
+import android.graphics.drawable.Icon
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+
 import android.view.WindowInsets
 import android.view.WindowManager
 import android.webkit.MimeTypeMap
@@ -24,12 +28,17 @@ import android.webkit.WebView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.graphics.drawable.IconCompat
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 
 import socket.runtime.core.console
 import socket.runtime.window.WindowManagerActivity
+
+import __BUNDLE_IDENTIFIER__.R
 
 open class AppPermissionRequest (callback: (Boolean) -> Unit) {
   val id: Int = (0..16384).random().toInt()
@@ -57,6 +66,10 @@ open class AppActivity : WindowManagerActivity() {
   fun checkPermission (permission: String): Boolean {
     val status = ContextCompat.checkSelfPermission(this.applicationContext, permission)
     return status == PackageManager.PERMISSION_GRANTED
+  }
+
+  fun requestPermissions (permissions: Array<String>) {
+    return this.requestPermissions(permissions, fun (_: Boolean) {})
   }
 
   fun requestPermissions (permissions: Array<String>, callback: (Boolean) -> Unit) {
@@ -98,12 +111,142 @@ open class AppActivity : WindowManagerActivity() {
     return insets.top + insets.bottom
   }
 
+  fun isNotificationManagerEnabled (): Boolean {
+    return NotificationManagerCompat.from(this).areNotificationsEnabled()
+  }
+
+  fun showNotification (
+    id: String,
+    title: String,
+    body: String,
+    tag: String,
+    channel: String,
+    category: String,
+    silent: Boolean,
+    iconURL: String,
+    imageURL: String,
+    vibratePattern: String
+  ): Boolean {
+    // paramters
+    val identifier = id.toLongOrNull()?.toInt() ?: (0..16384).random().toInt()
+    val vibration = vibratePattern
+      .split(",")
+      .filter({ it.length > 0 })
+      .map({ it.toInt().toLong() })
+      .toTypedArray()
+
+    // intents
+    val intentFlags = (
+      Intent.FLAG_ACTIVITY_SINGLE_TOP
+    )
+
+    val contentIntent = Intent(this, __BUNDLE_IDENTIFIER__.MainActivity::class.java)
+    val deleteIntent = Intent(this, __BUNDLE_IDENTIFIER__.MainActivity::class.java)
+
+    // TODO(@jwerle): move 'action' to a constant
+    contentIntent.addCategory(Intent.CATEGORY_LAUNCHER)
+    contentIntent.setAction("notification.response.default")
+    contentIntent.putExtra("id", id)
+    contentIntent.flags = intentFlags
+
+    // TODO(@jwerle): move 'action' to a constant
+    deleteIntent.setAction("notification.response.dismiss")
+    deleteIntent.putExtra("id", id)
+    deleteIntent.flags = intentFlags
+
+    // pending intents
+    val pendingContentIntent: PendingIntent = PendingIntent.getActivity(
+      this,
+      identifier,
+      contentIntent,
+      (
+        PendingIntent.FLAG_UPDATE_CURRENT or
+        PendingIntent.FLAG_IMMUTABLE or
+        PendingIntent.FLAG_ONE_SHOT
+      )
+    )
+
+    val pendingDeleteIntent: PendingIntent = PendingIntent.getActivity(
+      this,
+      identifier,
+      deleteIntent,
+      (
+        PendingIntent.FLAG_UPDATE_CURRENT or
+        PendingIntent.FLAG_IMMUTABLE
+      )
+    )
+
+    // build notification
+    val builder = NotificationCompat.Builder(this, channel).apply {
+      setPriority(NotificationCompat.PRIORITY_DEFAULT)
+      setContentTitle(title)
+      setContentIntent(pendingContentIntent)
+      setDeleteIntent(pendingDeleteIntent)
+      setAutoCancel(true)
+      setSilent(silent)
+      if (vibration.size > 0) {
+        setVibrate(vibration.toLongArray())
+      }
+
+      if (body.length > 0) {
+        setContentText(body)
+      }
+    }
+
+    if (iconURL.length > 0) {
+      val icon = IconCompat.createWithContentUri(iconURL)
+      builder.setSmallIcon(icon)
+    } else {
+      val icon = IconCompat.createWithResource(
+        this,
+        R.mipmap.ic_launcher_round
+      )
+
+      builder.setSmallIcon(icon)
+    }
+
+    if (imageURL.length > 0) {
+      val icon = Icon.createWithContentUri(imageURL)
+      builder.setLargeIcon(icon)
+    }
+
+    if (category.length > 0) {
+      builder.setCategory(
+        category
+          .replace("msg", "message")
+          .replace("-", "_")
+      )
+    }
+
+    val notification = builder.build()
+    with (NotificationManagerCompat.from(this)) {
+      notify(
+        tag,
+        identifier,
+        notification
+      )
+    }
+
+    return true
+  }
+
+  fun closeNotification (id: String, tag: String): Boolean {
+    val identifier = id.toLongOrNull()?.toInt() ?: (0..16384).random().toInt()
+    with (NotificationManagerCompat.from(this)) {
+      cancel(tag, identifier)
+    }
+    return true
+  }
+
   override fun onCreate (savedInstanceState: Bundle?) {
     this.supportActionBar?.hide()
     this.getWindow()?.statusBarColor = android.graphics.Color.TRANSPARENT
 
     super.onCreate(savedInstanceState)
 
+    val externalStorageDirectory = Environment.getExternalStorageDirectory().absolutePath
+    val externalFilesDirectory = this.getExternalFilesDir(null)?.absolutePath ?: "$externalStorageDirectory/Desktop"
+    val cacheDirectory = this.applicationContext.getCacheDir().absolutePath
     val rootDirectory = this.getRootDirectory()
     val assetManager = this.applicationContext.resources.assets
     val app = App.getInstance()
@@ -119,7 +262,14 @@ open class AppActivity : WindowManagerActivity() {
     app.apply {
       setMimeTypeMap(MimeTypeMap.getSingleton())
       setAssetManager(assetManager)
+
+      // directories
       setRootDirectory(rootDirectory)
+      setExternalCacheDirectory(cacheDirectory)
+      setExternalFilesDirectory(externalFilesDirectory)
+      setExternalStorageDirectory(externalStorageDirectory)
+
+      // build info
       setBuildInformation(
         Build.BRAND,
         Build.DEVICE,
@@ -274,10 +424,8 @@ open class AppActivity : WindowManagerActivity() {
 
       seen.add(name)
 
-      this.runOnUiThread {
-        val state = if (granted) "granted" else "denied"
-        App.getInstance().onPermissionChange(name, state)
-      }
+      val state = if (granted) "granted" else "denied"
+      App.getInstance().onPermissionChange(name, state)
     }
   }
 }
@@ -341,6 +489,15 @@ open class App : Application() {
 
   @Throws(Exception::class)
   external fun setRootDirectory (rootDirectory: String): Boolean
+
+  @Throws(Exception::class)
+  external fun setExternalCacheDirectory (cacheDirectory: String): Boolean
+
+  @Throws(Exception::class)
+  external fun setExternalStorageDirectory (directory: String): Boolean
+
+  @Throws(Exception::class)
+  external fun setExternalFilesDirectory (directory: String): Boolean
 
   @Throws(Exception::class)
   external fun setAssetManager (assetManager: AssetManager): Boolean
