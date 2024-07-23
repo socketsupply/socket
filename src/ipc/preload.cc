@@ -522,6 +522,9 @@ namespace SSC::IPC {
         buffers.push_back(R"JAVASCRIPT(
           if (globalThis.document) {
             ;(async function GlobalCommonJSScope () {
+              const globals = await import('socket:internal/globals')
+              await globals.get('RuntimeReadyPromise')
+
               const href = encodeURIComponent(globalThis.location.href)
               const source = `socket:module?ref=${href}`
 

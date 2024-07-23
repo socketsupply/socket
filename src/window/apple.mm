@@ -416,11 +416,11 @@ namespace SSC {
     }
 
     if (options.width > 0 && options.height > 0) {
-      this->setSize(options.height, options.width);
+      this->setSize(options.width, options.height);
     } else if (options.width > 0) {
-      this->setSize(window.frame.size.height, options.width);
+      this->setSize(options.width, window.frame.size.height);
     } else if (options.height > 0) {
-      this->setSize(options.height, window.frame.size.width);
+      this->setSize(window.frame.size.width, options.height);
     }
 
     this->bridge.configureWebView(this->webview);
@@ -669,8 +669,8 @@ namespace SSC {
     const auto frame = UIScreen.mainScreen.bounds;
   #endif
     return ScreenSize {
-      .height = (int) frame.size.height,
-      .width = (int) frame.size.width
+      .width = (int) frame.size.width,
+      .height = (int) frame.size.height
     };
   }
 

@@ -140,7 +140,7 @@ export async function getCurrentPosition (
   if (isAndroid) {
     await new Promise((resolve) => hooks.onReady(resolve))
 
-    const result = await ipc.send('permissions.request', { name: 'geolocation' })
+    const result = await ipc.request('permissions.request', { name: 'geolocation' })
 
     if (result.err) {
       if (typeof onError === 'function') {
@@ -187,7 +187,7 @@ export async function getCurrentPosition (
     }, options.timeout)
   }
 
-  const result = await ipc.send('geolocation.getCurrentPosition')
+  const result = await ipc.request('geolocation.getCurrentPosition')
 
   if (didTimeout) {
     return
@@ -276,7 +276,7 @@ export function watchPosition (
     }, options.timeout)
   }
 
-  ipc.send('geolocation.watchPosition', { id: identifier }).then((result) => {
+  ipc.request('geolocation.watchPosition', { id: identifier }).then((result) => {
     if (result.err) {
       if (typeof onError === 'function') {
         onError(result.err)
@@ -317,7 +317,7 @@ export function clearWatch (id) {
   watchers[id]?.stop()
   delete watchers[id]
 
-  ipc.send('geolocation.clearWatch', { id })
+  ipc.request('geolocation.clearWatch', { id })
 }
 
 export default {

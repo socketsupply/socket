@@ -78,8 +78,8 @@ namespace SSC {
    * A container for holding an application's screen size
    */
   struct ScreenSize {
-    int height = 0;
     int width = 0;
+    int height = 0;
   };
 
   /**
@@ -355,6 +355,11 @@ namespace SSC {
        */
       Dialog dialog;
 
+      /**
+       * The current background color of the window
+       */
+      Color backgroundColor;
+
     #if SOCKET_RUNTIME_PLATFORM_IOS
       SSCWebViewController* viewController = nullptr;
     #endif
@@ -440,7 +445,7 @@ namespace SSC {
       void setTitle (const String&);
       Size getSize ();
       const Size getSize () const;
-      void setSize (int height, int width, int hints = 0);
+      void setSize (int width, int height, int hints = 0);
       void setPosition (float, float);
       void setContextMenu (const String&, const String&);
       void closeContextMenu (const String&);
@@ -450,6 +455,7 @@ namespace SSC {
     #endif
       void setBackgroundColor (int r, int g, int b, float a);
       void setBackgroundColor (const String& rgba);
+      void setBackgroundColor (const Color& color);
       String getBackgroundColor ();
       void setSystemMenuItemEnabled (bool enabled, int barPos, int menuPos);
       void setSystemMenu (const String& dsl);
@@ -551,6 +557,10 @@ namespace SSC {
           void handleApplicationURL (const String& url);
           void onReadyStateChange (const ReadyState& readyState);
           bool emit (const String& event, const JSON::Any& json = {});
+          void setBackgroundColor (int r, int g, int b, float a);
+          void setBackgroundColor (const String& rgba);
+          void setBackgroundColor (const Color& color);
+          String getBackgroundColor ();
       };
 
       Vector<SharedPointer<ManagedWindow>> windows;

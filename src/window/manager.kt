@@ -3,6 +3,7 @@ package socket.runtime.window
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.view.WindowManager
@@ -163,8 +164,9 @@ open class WindowFragmentManager (protected val activity: WindowManagerActivity)
   }
 
   /**
+   * Evaluates a JavaScript `source` string at a given window `index`.
    */
-  fun evaluateJavaScriptInWindowFragment (index: Int, source: String): Boolean {
+  fun evaluateJavaScriptInWindowFragmentView (index: Int, source: String): Boolean {
     val fragments = this.fragments
     if (this.hasWindowFragment(index)) {
       kotlin.concurrent.thread {
@@ -178,6 +180,90 @@ open class WindowFragmentManager (protected val activity: WindowManagerActivity)
 
     return false
   }
+
+  /**
+   * Gets the window fragment width.
+   */
+  fun getWindowFragmentWidth (index: Int): Int {
+    val fragment = this.fragments.find { it.index == index }
+
+    if (fragment != null) {
+      return fragment.webview.measuredWidth
+    }
+
+    return 0
+  }
+
+  /**
+   * Gets the window fragment height.
+   */
+  fun getWindowFragmentHeight (index: Int): Int {
+    val fragment = this.fragments.find { it.index == index }
+
+    if (fragment != null) {
+      return fragment.webview.measuredHeight
+    }
+
+    return 0
+  }
+
+  /**
+   * Sets the window fragment width and height.
+   */
+  fun setWindowFragmentSize (index: Int, width: Int, height: Int): Boolean {
+    val fragment = this.fragments.find { it.index == index } ?: return false
+    val window = fragment.window ?: return false
+    window.setSize(width, height)
+    return true
+  }
+
+  /**
+   * Gets the window fragment title
+   */
+  fun getWindowFragmentTitle (index: Int): String {
+    val fragment = this.fragments.find { it.index == index } ?: return ""
+    val window = fragment.window ?: return ""
+    return window.title
+  }
+
+  /**
+   * Sets the window fragment title
+   */
+  fun setWindowFragmentTitle (index: Int, title: String): Boolean {
+    val fragment = this.fragments.find { it.index == index } ?: return false
+    val window = fragment.window ?: return false
+    window.title = title
+    return true
+  }
+
+  /**
+   * XXX
+   */
+  fun setWindowFragmentViewBackgroundColor (index: Int, color: Long): Boolean {
+    val fragment = this.fragments.find { it.index == index } ?: return false
+    fragment.webview.setBackgroundColor(color.toInt())
+    return true
+  }
+
+  /**
+   * XXX
+   */
+  fun getWindowFragmentBackgroundColor (index: Int): Int {
+    val fragment = this.fragments.find { it.index == index } ?: return 0
+    val drawable = fragment.webview.background as ColorDrawable
+    val color = drawable.color
+    return 0xFFFFFF and color
+  }
+
+  /**
+   * XXX
+   */
+  fun setWindowFragmentViewPosition(index: Int, x: Float, y: Float): Boolean {
+    val fragment = this.fragments.find { it.index == index } ?: return false
+    fragment.webview.setX(x)
+    fragment.webview.setY(y)
+    return true
+  }
 }
 
 /**
@@ -188,7 +274,7 @@ open class WindowManagerActivity : AppCompatActivity(R.layout.window_container_v
   open val windowFragmentManager = WindowFragmentManager(this)
 
   override fun onBackPressed () {
-    this.windowFragmentManager.popWindowFragment()
+    // this.windowFragmentManager.popWindowFragment()
   }
 
   /**
@@ -235,22 +321,65 @@ open class WindowManagerActivity : AppCompatActivity(R.layout.window_container_v
   }
 
   /**
+   * Get the measured window width at a given `index`.
+   */
+  fun getWindowWidth (index: Int): Int {
+    return this.windowFragmentManager.getWindowFragmentWidth(index)
+  }
+
+  /**
+   * Get the measured window height at a given `index`.
+   */
+  fun getWindowHeight (index: Int): Int {
+    return this.windowFragmentManager.getWindowFragmentHeight(index)
+  }
+
+  /**
+   * Sets the window `width` and `height` at a given `index`.
+   */
+  fun setWindowFragmentSize (index: Int, width: Int, height: Int): Boolean {
+    return this.windowFragmentManager.setWindowFragmentSize(index, width, height)
+  }
+
+  /**
+   * XXX
+   */
+  fun getWindowBackgroundColor (index: Int): Int {
+    return this.windowFragmentManager.getWindowFragmentBackgroundColor(index)
+  }
+
+  /**
+   * Get the window title at a given `index`.
    */
   fun getWindowTitle (index: Int): String {
-    // TODO(@jwerle)
-    return ""
+    return this.windowFragmentManager.getWindowFragmentTitle(index)
   }
 
   /**
+   * Sets the window title at a given `index`.
    */
   fun setWindowTitle (index: Int, title: String): Boolean {
-    // TODO(@jwerle)
-    return false
+    return this.windowFragmentManager.setWindowFragmentTitle(index, title)
   }
 
   /**
+   * Sets the window background color at a given `index`.
+   */
+  fun setWindowBackgroundColor (index: Int, color: Long): Boolean {
+    return this.windowFragmentManager.setWindowFragmentViewBackgroundColor(index, color)
+  }
+
+  /**
+   * XXX
+   */
+  fun setWindowPosition (index: Int, x: Float, y: Float): Boolean {
+    return this.windowFragmentManager.setWindowFragmentViewPosition(index, x, y)
+  }
+
+  /**
+   * Evaluates JavaScript source in a window at a given `index`.
    */
   fun evaluateJavaScript (index: Int, source: String): Boolean {
-    return this.windowFragmentManager.evaluateJavaScriptInWindowFragment(index, source)
+    return this.windowFragmentManager.evaluateJavaScriptInWindowFragmentView(index, source)
   }
 }

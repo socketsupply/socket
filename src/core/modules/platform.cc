@@ -281,7 +281,8 @@ namespace SSC {
       Boolean,
       this->activity,
       "openExternal",
-      "(Ljava/lang/String;)Z"
+      "(Ljava/lang/String;)Z",
+      attachment.env->NewStringUTF(value.c_str())
     );
 
     if (attachment.hasException()) {

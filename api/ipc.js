@@ -419,10 +419,19 @@ export class Headers extends globalThis.Headers {
    * @ignore
    */
   static from (input) {
-    if (input?.headers) return this.from(input.headers)
+    if (input?.headers && typeof input.headers === 'object') {
+      input = input.headers
+    }
 
-    if (typeof input?.entries === 'function') {
-      return new this(input.entries())
+    if (Array.isArray(input) && !Array.isArray(input[0])) {
+      input = input.join('\n')
+    } else if (typeof input?.entries === 'function') {
+      try {
+        return new this(input.entries())
+      } catch (err) {
+        console.log({input})
+        throw err
+      }
     } else if (isPlainObject(input) || isArrayLike(input)) {
       return new this(input)
     } else if (typeof input?.getAllResponseHeaders === 'function') {

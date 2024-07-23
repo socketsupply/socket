@@ -3,6 +3,7 @@ import { DEFAULT_PACKAGE_PREFIX, Package } from './package.js'
 import { ModuleNotFoundError } from '../errors.js'
 import { isFunction } from '../util/types.js'
 import location from '../location.js'
+import URL from '../url.js'
 
 /**
  * @typedef {function(string, import('./module.js').Module, function(string): any): any} RequireResolver

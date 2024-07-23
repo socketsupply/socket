@@ -8,12 +8,16 @@ import android.app.Activity
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.AssetManager
+import android.graphics.Insets
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.view.WindowInsets
+import android.view.WindowManager
 import android.webkit.MimeTypeMap
 import android.webkit.WebView
 
@@ -41,6 +45,7 @@ open class AppPermissionRequest (callback: (Boolean) -> Unit) {
 open class AppActivity : WindowManagerActivity() {
   open protected val TAG = "AppActivity"
   open lateinit var notificationChannel: NotificationChannel
+  open lateinit var notificationManager: NotificationManager
 
   val permissionRequests = mutableListOf<AppPermissionRequest>()
 
@@ -71,6 +76,28 @@ open class AppActivity : WindowManagerActivity() {
     this.startActivity(intent)
   }
 
+  fun getScreenInsets (): Insets {
+    val windowManager = this.applicationContext.getSystemService(
+      Context.WINDOW_SERVICE
+    ) as WindowManager
+    val metrics = windowManager.getCurrentWindowMetrics()
+    val windowInsets = metrics.windowInsets
+    return windowInsets.getInsetsIgnoringVisibility(
+      WindowInsets.Type.navigationBars() or
+      WindowInsets.Type.displayCutout()
+    )
+  }
+
+  fun getScreenSizeWidth (): Int {
+    val insets = this.getScreenInsets()
+    return insets.right + insets.left
+  }
+
+  fun getScreenSizeHeight (): Int {
+    val insets = this.getScreenInsets()
+    return insets.top + insets.bottom
+  }
+
   override fun onCreate (savedInstanceState: Bundle?) {
     this.supportActionBar?.hide()
     this.getWindow()?.statusBarColor = android.graphics.Color.TRANSPARENT
@@ -86,6 +113,8 @@ open class AppActivity : WindowManagerActivity() {
       "__BUNDLE_IDENTIFIER__ Notifications",
       NotificationManager.IMPORTANCE_DEFAULT
     )
+
+    this.notificationManager = this.getSystemService(NOTIFICATION_SERVICE) as NotificationManager
 
     app.apply {
       setMimeTypeMap(MimeTypeMap.getSingleton())
@@ -103,6 +132,10 @@ open class AppActivity : WindowManagerActivity() {
     }
 
     app.onCreateAppActivity(this)
+
+    if (app.hasRuntimePermission("notifications")) {
+      this.notificationManager.createNotificationChannel(this.notificationChannel)
+    }
 
     if (savedInstanceState == null) {
       WebView.setWebContentsDebuggingEnabled(app.isDebugEnabled())

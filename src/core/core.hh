@@ -5,6 +5,7 @@
 
 #include "bluetooth.hh"
 #include "codec.hh"
+#include "color.hh"
 #include "config.hh"
 #include "debug.hh"
 #include "env.hh"
@@ -34,6 +35,7 @@
 #include "modules/network_status.hh"
 #include "modules/notifications.hh"
 #include "modules/os.hh"
+#include "modules/permissions.hh"
 #include "modules/platform.hh"
 #include "modules/timers.hh"
 #include "modules/udp.hh"
@@ -60,6 +62,7 @@ namespace SSC {
       using NetworkStatus = CoreNetworkStatus;
       using Notifications = CoreNotifications;
       using OS = CoreOS;
+      using Permissions = CorePermissions;
       using Platform = CorePlatform;
       using Timers = CoreTimers;
       using UDP = CoreUDP;
@@ -78,6 +81,7 @@ namespace SSC {
           bool useNotifications = true;
           bool useConduit = true;
           bool useOS = true;
+          bool usePermissions = true;
           bool usePlatform = true;
           bool useTimers = true;
           bool useUDP = true;
@@ -111,6 +115,7 @@ namespace SSC {
       NetworkStatus networkStatus;
       Notifications notifications;
       OS os;
+      Permissions permissions;
       Platform platform;
       Timers timers;
       UDP udp;
@@ -165,6 +170,7 @@ namespace SSC {
         networkStatus(this),
         notifications(this),
         os(this),
+        permissions(this),
         platform(this),
         timers(this),
         udp(this)

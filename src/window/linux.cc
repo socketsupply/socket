@@ -1038,7 +1038,7 @@ namespace SSC {
       width = (int) DEFAULT_MONITOR_WIDTH;
     }
 
-    return ScreenSize { height, width };
+    return ScreenSize { width, height };
   }
 
   void Window::eval (const String& source) {

@@ -8,6 +8,7 @@ import InternalSymbols from '../internal/symbols.js'
 import { Headers } from '../ipc.js'
 import location from '../location.js'
 import path from '../path.js'
+import URL from '../url.js'
 
 const RUNTIME_SERVICE_WORKER_FETCH_MODE = 'Runtime-ServiceWorker-Fetch-Mode'
 const RUNTIME_REQUEST_SOURCE_HEADER = 'Runtime-Request-Source'
@@ -199,7 +200,7 @@ export class RequestStatus {
 
     request.open('HEAD', this.#request.id, false)
     request.setRequestHeader(RUNTIME_REQUEST_SOURCE_HEADER, 'module')
-    request.withCredentials = true
+    //request.withCredentials = true
 
     if (globalThis.isServiceWorkerScope) {
       request.setRequestHeader(RUNTIME_SERVICE_WORKER_FETCH_MODE, 'ignore')

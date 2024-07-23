@@ -58,6 +58,7 @@ namespace SSC::IPC {
       String get (const String& key) const;
       String get (const String& key, const String& fallback) const;
       String str () const { return this->uri; }
+      const Map dump () const;
       const char* c_str () const { return this->uri.c_str(); }
   };
 }
