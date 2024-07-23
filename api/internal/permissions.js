@@ -63,7 +63,9 @@ export const types = Enumeration.from([
   'push',
   'persistent-storage',
   'midi',
-  'storage-access'
+  'storage-access',
+  'camera',
+  'microphone'
 ])
 
 /**
@@ -244,13 +246,21 @@ export async function query (descriptor, options) {
     delete options.signal
   }
 
-  const result = await ipc.request('permissions.query', { name }, { signal })
+  if (name === 'notifications' || name === 'geolocation') {
+    const result = await ipc.request('permissions.query', { name }, { signal })
 
-  if (result.err) {
-    throw result.err
+    if (result.err) {
+      throw result.err
+    }
+
+    return new PermissionStatus(name, result.data?.state, options)
   }
 
-  return new PermissionStatus(name, result.data?.state, options)
+  if (typeof platform.query === 'function') {
+    return platform.query(descriptor)
+  }
+
+  throw new TypeError('Not supported')
 }
 
 /**

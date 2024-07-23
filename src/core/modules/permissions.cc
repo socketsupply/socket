@@ -163,6 +163,13 @@ namespace SSC {
         callback(seq, json, Post{});
       #endif
       }
+
+      if (name == "camera" || name == "microphone")  {
+      #if SOCKET_RUNTIME_PLATFORM_APPLE
+      #elif SOCKET_RUNTIME_PLATFORM_ANDROID
+      #else
+      #endif
+      }
     });
   }
 
@@ -187,13 +194,13 @@ namespace SSC {
         JSON::Object json;
 
       #if SOCKET_RUNTIME_PLATFORM_APPLE
-        const auto performedActivation = [router->bridge->core->geolocation.locationObserver attemptActivationWithCompletion: ^(BOOL isAuthorized) {
+        const auto performedActivation = [this->core->geolocation.locationObserver attemptActivationWithCompletion: ^(BOOL isAuthorized) {
           if (!isAuthorized) {
             auto reason = @("Location observer could not be activated");
 
-            if (!router->bridge->core->geolocation.locationObserver.locationManager) {
+            if (!this->core->geolocation.locationObserver.locationManager) {
               reason = @("Location observer manager is not initialized");
-            } else if (!router->bridge->core->geolocation.locationObserver.locationManager.location) {
+            } else if (!this->core->geolocation.locationObserver.locationManager.location) {
               reason = @("Location observer manager could not provide location");
             }
 
@@ -202,7 +209,7 @@ namespace SSC {
 
           if (isAuthorized) {
             json["data"] = JSON::Object::Entries {{"state", "granted"}};
-          } else if (router->bridge->core->geolocation.locationObserver.locationManager.authorizationStatus == kCLAuthorizationStatusNotDetermined) {
+          } else if (this->core->geolocation.locationObserver.locationManager.authorizationStatus == kCLAuthorizationStatusNotDetermined) {
             json["data"] = JSON::Object::Entries {{"state", "prompt"}};
           } else {
             json["data"] = JSON::Object::Entries {{"state", "denied"}};
@@ -306,7 +313,7 @@ namespace SSC {
         }
 
         if (requestBadge) {
-          requestOoptions |= UNAuthorizationOptionBadge;
+          requestOptions |= UNAuthorizationOptionBadge;
         }
 
         if (requestSound) {
@@ -425,6 +432,13 @@ namespace SSC {
         }
       #else
         callback(seq, json, Post{});
+      #endif
+      }
+
+      if (name == "camera" || name == "microphone")  {
+      #if SOCKET_RUNTIME_PLATFORM_APPLE
+      #elif SOCKET_RUNTIME_PLATFORM_ANDROID
+      #else
       #endif
       }
     });
