@@ -529,6 +529,13 @@ export * from '{{url}}'
         return;
       }
 
+      if (request->method == "OPTIONS") {
+        auto response = SchemeHandlers::Response(request);
+        response.writeHead(204);
+        callback(response);
+        return;
+      }
+
       // the location of static application resources
       const auto applicationResources = FileResource::getResourcesPath().string();
       // default response is 404
@@ -701,7 +708,11 @@ export * from '{{url}}'
 
         if (resource.exists()) {
           const auto url = (
+            #if SOCKET_RUNTIME_PLATFORM_ANDROID
+            "https://" +
+            #else
             "socket://" +
+            #endif
             bundleIdentifier +
             contentLocation +
             (request->query.size() > 0 ? "?" + request->query : "")
@@ -750,6 +761,13 @@ export * from '{{url}}'
       auto callbacks,
       auto callback
     ) {
+      if (request->method == "OPTIONS") {
+        auto response = SchemeHandlers::Response(request);
+        response.writeHead(204);
+        callback(response);
+        return;
+      }
+
       auto userConfig = this->userConfig;
       auto bundleIdentifier = userConfig["meta_bundle_identifier"];
       // the location of static application resources
@@ -812,7 +830,16 @@ export * from '{{url}}'
         }
 
         if (resource.exists()) {
-          const auto url = "socket://" + bundleIdentifier + "/socket" + pathname;
+          const auto url = (
+            #if SOCKET_RUNTIME_PLATFORM_ANDROID
+            "https://" +
+            #else
+            "socket://" +
+            #endif
+            bundleIdentifier +
+            "/socket" +
+            pathname
+          );
           const auto moduleImportProxy = tmpl(
             String(resource.read()).find("export default") != String::npos
               ? ESM_IMPORT_PROXY_TEMPLATE_WITH_DEFAULT_EXPORT
@@ -928,6 +955,13 @@ export * from '{{url}}'
         if (window == nullptr) {
           auto response = SchemeHandlers::Response(request);
           response.writeHead(400);
+          callback(response);
+          return;
+        }
+
+        if (request->method == "OPTIONS") {
+          auto response = SchemeHandlers::Response(request);
+          response.writeHead(204);
           callback(response);
           return;
         }

@@ -1728,13 +1728,20 @@ static void mapIPCRoutes (Router *router) {
 
     const auto options = Core::Notifications::ShowOptions {
       message.get("id"),
-      message.get("title"),
+      message.get("title", "Notification"),
       message.get("tag"),
       message.get("lang"),
       message.get("silent") == "true",
       message.get("icon"),
       message.get("image"),
-      message.get("body")
+      message.get("body"),
+      replace(
+        message.get("channel", "default"),
+        "default",
+        router->bridge->userConfig["meta_bundle_identifier"]
+      ),
+      message.get("category"),
+      message.get("vibrate")
     };
 
     router->bridge->core->notifications.show(options, [=] (const auto result) {
@@ -1756,7 +1763,11 @@ static void mapIPCRoutes (Router *router) {
     }
 
 
-    const auto notification = Core::Notifications::Notification { message.get("id") };
+    const auto notification = Core::Notifications::Notification {
+      message.get("id"),
+      message.get("tag")
+    };
+
     router->bridge->core->notifications.close(notification);
 
     reply(Result { message.seq, message, JSON::Object::Entries {
@@ -1968,26 +1979,6 @@ static void mapIPCRoutes (Router *router) {
       message.get("data"),
       frameType,
       frameSource,
-      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
-    );
-  });
-
-  /**
-   * Requests a notification with `title` and `body` to be shown.
-   * @param title
-   * @param body
-   */
-  router->map("platform.notify", [=](auto message, auto router, auto reply) {
-    auto err = validateMessageParameters(message, {"body", "title"});
-
-    if (err.type != JSON::Type::Null) {
-      return reply(Result { message.seq, message, err });
-    }
-
-    router->bridge->core->platform.notify(
-      message.seq,
-      message.get("title"),
-      message.get("body"),
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });

@@ -11,8 +11,6 @@ import kotlin.concurrent.thread
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 
-import androidx.core.app.NotificationManagerCompat
-
 import socket.runtime.app.App
 import socket.runtime.app.AppActivity
 import socket.runtime.core.console
@@ -165,86 +163,6 @@ open class SchemeHandlers (val bridge: Bridge) {
   }
 
   fun handleRequest (webResourceRequest: WebResourceRequest): WebResourceResponse? {
-    if (webResourceRequest.url.scheme == "ipc") {
-      val activity = bridge.activity as AppActivity
-      val message = Message(webResourceRequest.url.toString())
-
-      if (message.name == "permissions.request") {
-        val request = Request(this.bridge, webResourceRequest)
-        val name = message.get("name")
-      }
-
-      if (message.name == "permissions.query") {
-        val request = Request(this.bridge, webResourceRequest)
-        val name = message.get("name")
-
-        if (!App.getInstance().hasRuntimePermission(name)) {
-          request.response.setHeader("content-type", "application/json")
-          request.response.setStatus(200, "OK")
-          request.response.write("""{
-            "data": {
-              "state": "denied",
-              "reason": "Runtime permission is disabled for '${name}'"
-            }
-          }""")
-
-          request.response.finish()
-        } else if (name == "geolocation") {
-          if (
-            !activity.checkPermission("android.permission.ACCESS_COARSE_LOCATION") ||
-            !activity.checkPermission("android.permission.ACCESS_FINE_LOCATION")
-          ) {
-            request.response.setHeader("content-type", "application/json")
-            request.response.setStatus(200, "OK")
-            request.response.write("""{
-              "data": {
-                "state": "prompt"
-              }
-            }""")
-
-            request.response.finish()
-          } else {
-            request.response.setHeader("content-type", "application/json")
-            request.response.setStatus(200, "OK")
-            request.response.write("""{
-              "data": {
-                "state": "granted"
-              }
-            }""")
-
-            request.response.finish()
-          }
-        } else if (name == "notifications" || name == "push") {
-          if (
-            !activity.checkPermission("android.permission.POST_NOTIFICATIONS") ||
-            !NotificationManagerCompat.from(activity).areNotificationsEnabled()
-          ) {
-            request.response.setHeader("content-type", "application/json")
-            request.response.setStatus(200, "OK")
-            request.response.write("""{
-              "data": {
-                "state": "prompt"
-              }
-            }""")
-
-            request.response.finish()
-          } else {
-            request.response.setHeader("content-type", "application/json")
-            request.response.setStatus(200, "OK")
-            request.response.write("""{
-              "data": {
-                "state": "granted"
-              }
-            }""")
-
-            request.response.finish()
-          }
-        }
-
-        return request.getWebResourceResponse()
-      }
-    }
-
     val request = Request(this.bridge, webResourceRequest)
 
     if (this.handleRequest(this.bridge.index, request)) {
