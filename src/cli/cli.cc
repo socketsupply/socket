@@ -3367,41 +3367,41 @@ int main (const int argc, const char* argv[]) {
 
       Map manifestContext;
 
-      manifestContext["android_manifest_xml_permissions"] = "";
+      manifestContext["android_manifest_xml_permissions"] = "\n";
 
       if (settings["permissions_allow_notifications"] != "false") {
-        manifestContext["android_manifest_xml_permissions"] += "<uses-permission android:name=\"android.permission.POST_NOTIFICATIONS\" />\n";
+        manifestContext["android_manifest_xml_permissions"] += "  <uses-permission android:name=\"android.permission.POST_NOTIFICATIONS\" />\n";
       }
 
       if (settings["permissions_allow_geolocation"] != "false") {
-        manifestContext["android_manifest_xml_permissions"] += "<uses-permission android:name=\"android.permission.ACCESS_FINE_LOCATION\" />\n";
-        manifestContext["android_manifest_xml_permissions"] += "<uses-permission android:name=\"android.permission.ACCESS_COARSE_LOCATION\" />\n";
+        manifestContext["android_manifest_xml_permissions"] += "  <uses-permission android:name=\"android.permission.ACCESS_FINE_LOCATION\" />\n";
+        manifestContext["android_manifest_xml_permissions"] += "  <uses-permission android:name=\"android.permission.ACCESS_COARSE_LOCATION\" />\n";
         if (settings["permissions_allow_geolocation_in_background"] != "false") {
-          manifestContext["android_manifest_xml_permissions"] += "<uses-permission android:name=\"android.permission.ACCESS_BACKGROUND_LOCATION\" />\n";
+          manifestContext["android_manifest_xml_permissions"] += "  <uses-permission android:name=\"android.permission.ACCESS_BACKGROUND_LOCATION\" />\n";
         }
       }
 
       if (settings["permissions_allow_user_media"] != "false") {
         if (settings["permissions_allow_camera"] != "false") {
-          manifestContext["android_manifest_xml_permissions"] += "<uses-permission android:name=\"android.permission.CAMERA\" />\n";
+          manifestContext["android_manifest_xml_permissions"] += "  <uses-permission android:name=\"android.permission.CAMERA\" />\n";
         }
 
         if (settings["permissions_allow_microphone"] != "false") {
-          manifestContext["android_manifest_xml_permissions"] += "<uses-permission android:name=\"android.permission.CAPTURE_AUDIO_OUTPUT\" />\n";
+          manifestContext["android_manifest_xml_permissions"] += "  <uses-permission android:name=\"android.permission.CAPTURE_AUDIO_OUTPUT\" />\n";
         }
       }
 
       if (settings["permissions_allow_read_media"] != "false") {
         if (settings["permissions_allow_read_media_images"] != "false") {
-          manifestContext["android_manifest_xml_permissions"] += "<uses-permission android:name=\"android.permission.READ_MEDIA_IMAGES\" />\n";
+          manifestContext["android_manifest_xml_permissions"] += "  <uses-permission android:name=\"android.permission.READ_MEDIA_IMAGES\" />\n";
         }
 
         if (settings["permissions_allow_read_media_video"] != "false") {
-          manifestContext["android_manifest_xml_permissions"] += "<uses-permission android:name=\"android.permission.READ_MEDIA_VIDEO\" />\n";
+          manifestContext["android_manifest_xml_permissions"] += "  <uses-permission android:name=\"android.permission.READ_MEDIA_VIDEO\" />\n";
         }
 
         if (settings["permissions_allow_read_media_audio"] != "false") {
-          manifestContext["android_manifest_xml_permissions"] += "<uses-permission android:name=\"android.permission.READ_MEDIA_AUDIO\" />\n";
+          manifestContext["android_manifest_xml_permissions"] += "  <uses-permission android:name=\"android.permission.READ_MEDIA_AUDIO\" />\n";
         }
       }
 
@@ -3414,7 +3414,7 @@ int main (const int argc, const char* argv[]) {
           std::transform(permission.begin(), permission.end(), permission.begin(), ::toupper);
 
           xml
-            << "<uses-permission android:name="
+            << "  <uses-permission android:name="
             << "\"android.permission." << permission << "\""
             << " />";
 
@@ -3476,7 +3476,7 @@ int main (const int argc, const char* argv[]) {
 
       if (androidIcon.size() > 0) {
         settings["android_application_icon_config"] = (
-          String("    android:roundIcon=\"@mipmap/ic_launcher_round\"\n") +
+          String("  android:roundIcon=\"@mipmap/ic_launcher_round\"\n") +
           String("    android:icon=\"@mipmap/ic_launcher\"\n")
         );
 
