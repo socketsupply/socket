@@ -651,7 +651,7 @@ if (typeof globalThis.XMLHttpRequest === 'function') {
     const value = open.call(this, method, url.toString(), isAsyncRequest !== false, ...args)
 
     if (
-      method != 'OPTIONS' && (
+      method !== 'OPTIONS' && (
         globalThis.__args?.config?.webview_fetch_allow_runtime_headers === true ||
         (url.protocol && /(socket|ipc|node|npm):/.test(url.protocol)) ||
         (url.protocol && protocols.handlers.has(url.protocol.slice(0, -1))) ||
