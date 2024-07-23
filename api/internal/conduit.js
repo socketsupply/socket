@@ -307,7 +307,13 @@ export class Conduit extends EventTarget {
    * @return {Promise<Conduit>}
    */
   async connect (callback = null) {
-    if (this.isConnecting || isApplicationPaused) {
+    if (this.isConnecting) {
+      callback(new Error('Application is connecting'))
+      return this
+    }
+
+    if (isApplicationPaused) {
+      callback(new Error('Application is paused'))
       return this
     }
 
@@ -335,6 +341,11 @@ export class Conduit extends EventTarget {
 
     await Conduit.waitForActiveState()
 
+    if (isApplicationPaused) {
+      callback(new Error('Application is paused'))
+      return this
+    }
+
     this.port = result.data.port
 
     this.socket = new WebSocket(this.url)
@@ -349,7 +360,9 @@ export class Conduit extends EventTarget {
         callback = null
       }
 
-      resolvers.reject(e.error ?? new Error())
+      if (!isApplicationPaused) {
+        resolvers.reject(e.error ?? new Error())
+      }
     }
 
     this.socket.onclose = (e) => {
