@@ -1,3 +1,5 @@
+import Promise from './promise.js'
+
 /**
  * Symbolic global registry
  * @ignore
@@ -23,8 +25,13 @@ export class GlobalsRegistry {
 
 const registry = (
   globalThis.top?.__globals ??
+  globalThis.__globals ??
   new GlobalsRegistry()
 )
+
+const RuntimeReadyPromiseResolvers = Promise.withResolvers()
+registry.register('RuntimeReadyPromiseResolvers', RuntimeReadyPromiseResolvers)
+registry.register('RuntimeReadyPromise', RuntimeReadyPromiseResolvers.promise)
 
 /**
  * Gets a runtime global value by name.

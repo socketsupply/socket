@@ -2,6 +2,7 @@
 package socket.runtime.ipc
 
 import android.content.Intent
+import android.net.Uri
 import android.webkit.WebView
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
@@ -9,12 +10,12 @@ import android.webkit.WebResourceResponse
 import androidx.appcompat.app.AppCompatActivity
 
 import socket.runtime.app.App
-import socket.runtime.ipc.Navigator
-import socket.runtime.ipc.SchemeHandlers
 import socket.runtime.core.console
 import socket.runtime.core.WebViewClient
+import socket.runtime.ipc.Navigator
+import socket.runtime.ipc.SchemeHandlers
 
-private fun isAndroidAssetsUri (uri: android.net.Uri): Boolean {
+private fun isAndroidAssetsUri (uri: Uri): Boolean {
   if (uri.pathSegments.size == 0) {
     return false
   }
@@ -47,7 +48,6 @@ open class Bridge (
     view: WebView,
     request: WebResourceRequest
   ): Boolean {
-    console.log("request.url.scheme: ${request.url.scheme}")
     if (isAndroidAssetsUri(request.url)) {
       return false
     }

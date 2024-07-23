@@ -426,7 +426,7 @@ namespace SSC {
     this->data = Path(Env::get("APPDATA")) / bundleIdentifier;
     this->log = this->config;
   #elif SOCKET_RUNTIME_PLATFORM_ANDROID
-    // TODO
+    // TODO(@jwerle)
   #endif
   }
 

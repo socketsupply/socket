@@ -7,6 +7,7 @@ import { isESMSource } from '../util.js'
 import { Loader } from './loader.js'
 import location from '../location.js'
 import path from '../path.js'
+import URL from '../url.js'
 
 /**
  * `true` if in a worker scope.

@@ -88,4 +88,8 @@ namespace SSC::IPC {
       ? decodeURIComponent(args.at(key))
       : fallback;
   }
+
+  const Map Message::dump () const {
+    return this->args;
+  }
 }

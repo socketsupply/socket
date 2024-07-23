@@ -200,13 +200,21 @@ open class Window (val fragment: WindowFragment) {
     val activity = fragment.activity
     val webview = fragment.webview
     activity?.runOnUiThread {
-      webview.loadUrl(url.replace("socket:", "https:"))
+      if (url.startsWith("socket://__BUNDLE_IDENTIFIER__")) {
+        webview.loadUrl(url.replace("socket:", "https:"))
+      } else {
+        webview.loadUrl(url)
+      }
     }
   }
 
   fun getSize (): Size {
     val webview = this.fragment.webview
-    return Size(webview.width, webview.height)
+    return Size(webview.measuredWidth, webview.measuredHeight)
+  }
+
+  fun setSize (width: Int, height: Int) {
+    return this.setSize(Size(width, height))
   }
 
   fun setSize (size: Size) {

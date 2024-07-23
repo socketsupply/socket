@@ -69,10 +69,31 @@ namespace SSC {
   }
 
   ScreenSize Window::getScreenSize () {
-    return ScreenSize {0, 0};
+    const auto app = App::sharedApplication();
+    const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
+    // `activity.getWindowWidth(index): String`
+    const auto width = CallClassMethodFromAndroidEnvironment(
+      attachment.env,
+      Int,
+      app->activity,
+      "getScreenSizeWidth",
+      "()I"
+    );
+
+    const auto height = CallClassMethodFromAndroidEnvironment(
+      attachment.env,
+      Int,
+      app->activity,
+      "getScreenSizeHeight",
+      "()I"
+    );
+
+    return ScreenSize {width, height};
   }
 
   void Window::about () {
+    // XXX(@jwerle): not supported
+    // TODO(@jwerle): figure out we'll go about making this possible
   }
 
   void Window::eval (const String& source) {
@@ -217,51 +238,178 @@ namespace SSC {
   }
 
   Window::Size Window::getSize () {
-    return Size {0, 0};
+    const auto app = App::sharedApplication();
+    const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
+    // `activity.getWindowWidth(index): String`
+    const auto width = CallClassMethodFromAndroidEnvironment(
+      attachment.env,
+      Int,
+      app->activity,
+      "getWindowWidth",
+      "(I)I",
+      this->index
+    );
+
+    const auto height = CallClassMethodFromAndroidEnvironment(
+      attachment.env,
+      Int,
+      app->activity,
+      "getWindowHeight",
+      "(I)I",
+      this->index
+    );
+    this->size.width = width;
+    this->size.height = height;
+    return Size {width, height};
   }
 
   const Window::Size Window::getSize () const {
-    return Size {0, 0};
+    const auto app = App::sharedApplication();
+    const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
+    // `activity.getWindowWidth(index): Int`
+    const auto width = CallClassMethodFromAndroidEnvironment(
+      attachment.env,
+      Int,
+      app->activity,
+      "getWindowWidth",
+      "(I)I",
+      this->index
+    );
+
+    // `activity.getWindowHeight(index): Int`
+    const auto height = CallClassMethodFromAndroidEnvironment(
+      attachment.env,
+      Int,
+      app->activity,
+      "getWindowHeight",
+      "(I)I",
+      this->index
+    );
+    return Size {width, height};
   }
 
-  void Window::setSize (int height, int width, int _) {
+  void Window::setSize (int width, int height, int _) {
+    const auto app = App::sharedApplication();
+    const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
+    // `activity.setWindowSize(index, w): Int`
+    CallVoidClassMethodFromAndroidEnvironment(
+      attachment.env,
+      app->activity,
+      "setWindowSize",
+      "(III)Z",
+      this->index,
+      width,
+      height
+    );
   }
 
   void Window::setPosition (float x, float y) {
+    const auto app = App::sharedApplication();
+    const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
+    this->position.x = x;
+    this->position.y = y;
+    // `activity.setWindowBackgroundColor(index, color)`
+    CallVoidClassMethodFromAndroidEnvironment(
+      attachment.env,
+      app->activity,
+      "setWindowPosition",
+      "(IFF)Z",
+      this->index,
+      x,
+      y
+    );
   }
 
   void Window::setContextMenu (const String&, const String&) {
+    // XXX(@jwerle): not supported
   }
 
   void Window::closeContextMenu (const String&) {
+    // XXX(@jwerle): not supported
   }
 
   void Window::closeContextMenu () {
+    // XXX(@jwerle): not supported
   }
 
   void Window::setBackgroundColor (int r, int g, int b, float a) {
+    const auto app = App::sharedApplication();
+    const auto color = Color(r, g, b, a);
+    const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
+    // `activity.setWindowBackgroundColor(index, color)`
+    CallVoidClassMethodFromAndroidEnvironment(
+      attachment.env,
+      app->activity,
+      "setWindowBackgroundColor",
+      "(IJ)Z",
+      this->index,
+      color.pack()
+    );
   }
 
   void Window::setBackgroundColor (const String& rgba) {
+    const auto app = App::sharedApplication();
+    const auto color = Color(rgba);
+    const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
+    // `activity.setWindowBackgroundColor(index, color)`
+    CallVoidClassMethodFromAndroidEnvironment(
+      attachment.env,
+      app->activity,
+      "setWindowBackgroundColor",
+      "(IJ)Z",
+      this->index,
+      color.pack()
+    );
+  }
+
+  void Window::setBackgroundColor (const Color& color) {
+    const auto app = App::sharedApplication();
+    const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
+    // `activity.setWindowBackgroundColor(index, color)`
+    CallVoidClassMethodFromAndroidEnvironment(
+      attachment.env,
+      app->activity,
+      "setWindowBackgroundColor",
+      "(I)Z",
+      this->index,
+      color.pack()
+    );
   }
 
   String Window::getBackgroundColor () {
-    return "";
+    const auto app = App::sharedApplication();
+    const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
+    // `activity.getWindowBackgroundColor(index): Int`
+    const auto color = Color(CallClassMethodFromAndroidEnvironment(
+      attachment.env,
+      Int,
+      app->activity,
+      "getWindowBackgroundColor",
+      "(I)I",
+      this->index
+    ));
+
+    return color.str();
   }
 
   void Window::setSystemMenuItemEnabled (bool enabled, int barPos, int menuPos) {
+    // XXX(@jwerle): not supported
   }
 
   void Window::setSystemMenu (const String& dsl) {
+    // XXX(@jwerle): not supported
   }
 
   void Window::setMenu (const String& dsl, const bool& isTrayMenu) {
+    // XXX(@jwerle): not supported
   }
 
   void Window::setTrayMenu (const String& dsl) {
+    // XXX(@jwerle): not supported
   }
 
   void Window::showInspector () {
+    // XXX(@jwerle): not supported
   }
 
   void Window::handleApplicationURL (const String& url) {

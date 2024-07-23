@@ -647,10 +647,12 @@ if (typeof globalThis.XMLHttpRequest === 'function') {
     const value = open.call(this, method, url.toString(), isAsyncRequest !== false, ...args)
 
     if (
-      globalThis.__args?.config?.webview_fetch_allow_runtime_headers === true ||
-      (url.protocol && /(socket|ipc|node|npm):/.test(url.protocol)) ||
-      (url.protocol && protocols.handlers.has(url.protocol.slice(0, -1))) ||
-      url.hostname === globalThis.__args.config.meta_bundle_identifier
+      method != 'OPTIONS' && (
+        globalThis.__args?.config?.webview_fetch_allow_runtime_headers === true ||
+        (url.protocol && /(socket|ipc|node|npm):/.test(url.protocol)) ||
+        (url.protocol && protocols.handlers.has(url.protocol.slice(0, -1))) ||
+        url.hostname === globalThis.__args.config.meta_bundle_identifier
+      )
     ) {
       for (const key in additionalHeaders) {
         this.setRequestHeader(key, additionalHeaders[key])
@@ -986,7 +988,10 @@ Object.defineProperty(globalThis, '__globals', {
   value: globals
 })
 
-ipc.send('platform.event', 'runtimeinit').catch(reportError)
+ipc.send('platform.event', 'runtimeinit')
+  .then(() => {
+    globals.get('RuntimeReadyPromiseResolvers')?.resolve()
+  }, reportError)
 
 export default {
   location

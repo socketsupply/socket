@@ -689,8 +689,12 @@ static void mapIPCRoutes (Router *router) {
           {"abi", SOCKET_RUNTIME_EXTENSION_ABI_VERSION},
           {"name", name},
           {"type", type},
+        #if SOCKET_RUNTIME_PLATFORM_ANDROID
+          {"path", FileResource::getResourcePath(path).string()}
+        #else
           // `path` is absolute to the location of the resources
           {"path", String("/") + std::filesystem::relative(path, getcwd()).string()}
+        #endif
         }}
       };
 
@@ -1853,172 +1857,26 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    auto name = message.get("name");
-
-  #if SOCKET_RUNTIME_PLATFORM_APPLE
-    if (name == "geolocation") {
-      if (router->bridge->core->geolocation.locationObserver.isAuthorized) {
-        auto data = JSON::Object::Entries {{"state", "granted"}};
-        return reply(Result::Data { message, data });
-      } else if (router->bridge->core->geolocation.locationObserver.locationManager) {
-        auto authorizationStatus = (
-          router->bridge->core->geolocation.locationObserver.locationManager.authorizationStatus
-        );
-
-        if (authorizationStatus == kCLAuthorizationStatusDenied) {
-          auto data = JSON::Object::Entries {{"state", "denied"}};
-          return reply(Result::Data { message, data });
-        } else {
-          auto data = JSON::Object::Entries {{"state", "prompt"}};
-          return reply(Result::Data { message, data });
-        }
-      }
-
-      auto data = JSON::Object::Entries {{"state", "denied"}};
-      return reply(Result::Data { message, data });
-    }
-
-    if (name == "notifications") {
-      auto notificationCenter = [UNUserNotificationCenter currentNotificationCenter];
-      [notificationCenter getNotificationSettingsWithCompletionHandler: ^(UNNotificationSettings *settings) {
-        if (!settings) {
-          auto err = JSON::Object::Entries {{ "message", "Failed to reach user notification settings" }};
-          return reply(Result::Err { message, err });
-        }
-
-        if (settings.authorizationStatus == UNAuthorizationStatusDenied) {
-          auto data = JSON::Object::Entries {{"state", "denied"}};
-          return reply(Result::Data { message, data });
-        } else if (settings.authorizationStatus == UNAuthorizationStatusNotDetermined) {
-          auto data = JSON::Object::Entries {{"state", "prompt"}};
-          return reply(Result::Data { message, data });
-        }
-
-        auto data = JSON::Object::Entries {{"state", "granted"}};
-        return reply(Result::Data { message, data });
-      }];
-    }
-  #endif
+    return router->bridge->core->permissions.query(
+      message.seq,
+      message.get("name"),
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
+    );
   });
 
   router->map("permissions.request", [=](auto message, auto router, auto reply) {
-  #if SOCKET_RUNTIME_PLATFORM_APPLE
-    __block auto userConfig = router->bridge->userConfig;
-  #else
-    auto userConfig = router->bridge->userConfig;
-  #endif
-
     auto err = validateMessageParameters(message, {"name"});
 
     if (err.type != JSON::Type::Null) {
       return reply(Result::Err { message, err });
     }
 
-    auto name = message.get("name");
-
-    if (name == "geolocation") {
-    #if SOCKET_RUNTIME_PLATFORM_APPLE
-      auto performedActivation = [router->bridge->core->geolocation.locationObserver attemptActivationWithCompletion: ^(BOOL isAuthorized) {
-        if (!isAuthorized) {
-          auto reason = @("Location observer could not be activated");
-
-          if (!router->bridge->core->geolocation.locationObserver.locationManager) {
-            reason = @("Location observer manager is not initialized");
-          } else if (!router->bridge->core->geolocation.locationObserver.locationManager.location) {
-            reason = @("Location observer manager could not provide location");
-          }
-
-          auto error = [NSError
-            errorWithDomain: @(userConfig["meta_bundle_identifier"].c_str())
-            code: -1
-            userInfo: @{
-              NSLocalizedDescriptionKey: reason
-            }
-          ];
-        }
-
-        if (isAuthorized) {
-          auto data = JSON::Object::Entries {{"state", "granted"}};
-          return reply(Result::Data { message, data });
-        } else if (router->bridge->core->geolocation.locationObserver.locationManager.authorizationStatus == kCLAuthorizationStatusNotDetermined) {
-          auto data = JSON::Object::Entries {{"state", "prompt"}};
-          return reply(Result::Data { message, data });
-        } else {
-          auto data = JSON::Object::Entries {{"state", "denied"}};
-          return reply(Result::Data { message, data });
-        }
-      }];
-
-      if (!performedActivation) {
-        auto err = JSON::Object::Entries {{ "message", "Location observer could not be activated" }};
-        err["type"] = "GeolocationPositionError";
-        return reply(Result::Err { message, err });
-      }
-
-      return;
-    #endif
-    }
-
-    if (name == "notifications") {
-    #if SOCKET_RUNTIME_PLATFORM_APPLE
-      UNAuthorizationOptions options = UNAuthorizationOptionProvisional;
-      auto notificationCenter = [UNUserNotificationCenter currentNotificationCenter];
-      auto requestAlert = message.get("alert") == "true";
-      auto requestBadge = message.get("badge") == "true";
-      auto requestSound = message.get("sound") == "true";
-
-      if (requestAlert) {
-        options |= UNAuthorizationOptionAlert;
-      }
-
-      if (requestBadge) {
-        options |= UNAuthorizationOptionBadge;
-      }
-
-      if (requestSound) {
-        options |= UNAuthorizationOptionSound;
-      }
-
-      if (requestAlert && requestSound) {
-        options |= UNAuthorizationOptionCriticalAlert;
-      }
-
-      [notificationCenter
-        requestAuthorizationWithOptions: options
-                      completionHandler: ^(BOOL granted, NSError *error) {
-        [notificationCenter
-          getNotificationSettingsWithCompletionHandler: ^(UNNotificationSettings *settings) {
-          if (settings.authorizationStatus == UNAuthorizationStatusDenied) {
-            auto data = JSON::Object::Entries {{"state", "denied"}};
-            return reply(Result::Data { message, data });
-          } else if (settings.authorizationStatus == UNAuthorizationStatusNotDetermined) {
-            if (error) {
-              auto message = String(
-                error.localizedDescription.UTF8String != nullptr
-                  ? error.localizedDescription.UTF8String
-                  : "An unknown error occurred"
-              );
-
-              auto err = JSON::Object::Entries {
-                { "message", message }
-              };
-
-              return reply(Result::Err { message, err });
-            }
-
-            auto data = JSON::Object::Entries {
-              {"state", granted ? "granted" : "denied" }
-            };
-
-            return reply(Result::Data { message, data });
-          }
-
-          auto data = JSON::Object::Entries {{"state", "granted"}};
-          return reply(Result::Data { message, data });
-        }];
-      }];
-    #endif
-    }
+    return router->bridge->core->permissions.request(
+      message.seq,
+      message.get("name"),
+      message.dump(),
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
+    );
   });
 
   /**
@@ -3474,7 +3332,7 @@ static void mapIPCRoutes (Router *router) {
       window->maximize();
     #else
       const auto screen = window->getScreenSize();
-      window->setSize(screen.height, screen.width);
+      window->setSize(screen.width, screen.height);
       window->show();
     #endif
       reply(Result::Data { message, window->json() });

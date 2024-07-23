@@ -993,6 +993,7 @@ namespace SSC::IPC {
     this->setHeader("access-control-allow-origin", "*");
     this->setHeader("access-control-allow-headers", "*");
     this->setHeader("access-control-allow-methods", "*");
+    this->setHeader("access-control-allow-credentials", "true");
 
     for (const auto& entry : defaultHeaders) {
       const auto parts = split(trim(entry), ':');

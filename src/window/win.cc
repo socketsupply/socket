@@ -1151,8 +1151,8 @@ namespace SSC {
 
   ScreenSize Window::getScreenSize () {
     return ScreenSize {
-      .height = GetSystemMetrics(SM_CYFULLSCREEN),
-      .width = GetSystemMetrics(SM_CXFULLSCREEN)
+      .width = GetSystemMetrics(SM_CXFULLSCREEN),
+      .height = GetSystemMetrics(SM_CYFULLSCREEN)
     };
   }
 

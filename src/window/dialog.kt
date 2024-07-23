@@ -66,21 +66,25 @@ open class Dialog (val window: Window) {
       { uris -> this.resolve(uris) }
     )
 
+    // XXX(@jwerle): unused at the moment
     val launcherForSingleDocument = activity.registerForActivityResult(
       ActivityResultContracts.OpenDocument(),
       { uri -> this.resolve(uri) }
     )
 
+    // XXX(@jwerle): unused at the moment
     val launcherForMulitpleDocuments = activity.registerForActivityResult(
       ActivityResultContracts.OpenMultipleDocuments(),
       { uris -> this.resolve(uris) }
     )
 
+    // XXX(@jwerle): unused at the moment
     val launcherForSingleVisualMedia = activity.registerForActivityResult(
       ActivityResultContracts.PickVisualMedia(),
       { uri -> this.resolve(uri) }
     )
 
+    // XXX(@jwerle): unused at the moment
     val launcherForMultipleVisualMedia = activity.registerForActivityResult(
       ActivityResultContracts.PickMultipleVisualMedia(),
       { uris -> this.resolve(uris) }

@@ -252,6 +252,14 @@ namespace SSC {
 
     this->windows[options.index] = window;
 
+    #if SOCKET_RUNTIME_PLATFORM_ANDROID
+    if (window->options.headless) {
+      window->status = WindowStatus::WINDOW_HIDDEN;
+    } else {
+      window->status = WindowStatus::WINDOW_SHOWN;
+    }
+    #endif
+
     return this->windows.at(options.index);
   }
 
@@ -318,7 +326,9 @@ namespace SSC {
     for (const auto& window : this->windows) {
       if (
         window != nullptr &&
-        window->status >= WINDOW_SHOWING &&
+        // only "shown" or "hidden" managed windows will
+        // have events dispatched to them
+        window->status >= WINDOW_HIDDEN &&
         window->status < WINDOW_CLOSING
       ) {
         if (window->emit(event, json)) {
@@ -343,6 +353,7 @@ namespace SSC {
 
   void WindowManager::ManagedWindow::show () {
     auto index = std::to_string(this->index);
+    this->backgroundColor = Color(Window::getBackgroundColor());
     status = WindowStatus::WINDOW_SHOWING;
     Window::show();
     status = WindowStatus::WINDOW_SHOWN;
@@ -404,6 +415,7 @@ namespace SSC {
       {"height", size.height},
       {"status", this->status},
       {"readyState", readyState},
+      {"backgroundColor", this->backgroundColor.json()},
       {"position", JSON::Object::Entries {
         {"x", this->position.x},
         {"y", this->position.y}
@@ -435,5 +447,24 @@ namespace SSC {
 
   bool WindowManager::ManagedWindow::emit (const String& event, const JSON::Any& json) {
     return this->bridge.emit(event, json);
+  }
+
+  void WindowManager::ManagedWindow::setBackgroundColor (int r, int g, int b, float a) {
+    this->backgroundColor = Color(r, g, b, a);
+    Window::setBackgroundColor(r, g, b, a);
+  }
+
+  void WindowManager::ManagedWindow::setBackgroundColor (const String& rgba) {
+    this->backgroundColor = Color(rgba);
+    Window::setBackgroundColor(rgba);
+  }
+
+  void WindowManager::ManagedWindow::setBackgroundColor (const Color& color) {
+    this->backgroundColor = color;
+    Window::setBackgroundColor(color.str());
+  }
+
+  String WindowManager::ManagedWindow::getBackgroundColor () {
+    return this->backgroundColor.str();
   }
 }
