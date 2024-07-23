@@ -487,7 +487,6 @@ constexpr auto gAndroidManifest = R"XML(
   <uses-permission android:name="android.permission.INTERNET" />
   <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
   <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-
   {{android_manifest_xml_permissions}}
 
   <application
