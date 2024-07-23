@@ -426,12 +426,7 @@ export class Headers extends globalThis.Headers {
     if (Array.isArray(input) && !Array.isArray(input[0])) {
       input = input.join('\n')
     } else if (typeof input?.entries === 'function') {
-      try {
-        return new this(input.entries())
-      } catch (err) {
-        console.log({input})
-        throw err
-      }
+      return new this(input.entries())
     } else if (isPlainObject(input) || isArrayLike(input)) {
       return new this(input)
     } else if (typeof input?.getAllResponseHeaders === 'function') {
