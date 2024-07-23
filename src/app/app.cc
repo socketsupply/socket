@@ -850,14 +850,16 @@ namespace SSC {
   }
 
   void App::resume () {
-    if (this->core != nullptr) {
+    if (this->core != nullptr && this->paused) {
+      this->paused = false;
       this->core->resume();
       this->windowManager.emit("applicationresume");
     }
   }
 
   void App::pause () {
-    if (this->core != nullptr) {
+    if (this->core != nullptr && !this->paused) {
+      this->paused = true;
       this->core->pause();
       this->windowManager.emit("applicationpause");
     }
@@ -868,12 +870,12 @@ namespace SSC {
       return;
     }
 
+    this->stopped = true;
     this->windowManager.emit("applicationstop");
     this->pause();
 
     SSC::applicationInstance = nullptr;
 
-    this->stopped = true;
     this->shouldExit = true;
 
     this->core->shutdown();
@@ -952,7 +954,7 @@ namespace SSC {
     const auto key = String("permissions_allow_") + replace(permission, "-", "_");
 
     if (!userConfig.contains(key)) {
-      return false;
+      return true;
     }
 
     return userConfig.at(key) != "false";
@@ -987,6 +989,36 @@ extern "C" {
     const auto rootDirectory = Android::StringWrap(env, rootDirectoryString).str();
     setcwd(rootDirectory);
     uv_chdir(rootDirectory.c_str());
+    return true;
+  }
+
+  jboolean ANDROID_EXTERNAL(app, App, setExternalStorageDirectory)(
+    JNIEnv *env,
+    jobject self,
+    jstring externalStorageDirectoryString
+  ) {
+    const auto directory = Android::StringWrap(env, externalStorageDirectoryString).str();
+    FileResource::setExternalAndroidStorageDirectory(Path(directory));
+    return true;
+  }
+
+  jboolean ANDROID_EXTERNAL(app, App, setExternalFilesDirectory)(
+    JNIEnv *env,
+    jobject self,
+    jstring externalFilesDirectoryString
+  ) {
+    const auto directory = Android::StringWrap(env, externalFilesDirectoryString).str();
+    FileResource::setExternalAndroidFilesDirectory(Path(directory));
+    return true;
+  }
+
+  jboolean ANDROID_EXTERNAL(app, App, setExternalCacheDirectory)(
+    JNIEnv *env,
+    jobject self,
+    jstring externalCacheDirectoryString
+  ) {
+    const auto directory = Android::StringWrap(env, externalCacheDirectoryString).str();
+    FileResource::setExternalAndroidCacheDirectory(Path(directory));
     return true;
   }
 

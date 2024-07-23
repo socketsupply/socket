@@ -91,6 +91,7 @@ namespace SSC {
       ExitCallback onExit = nullptr;
       AtomicBool shouldExit = false;
       AtomicBool stopped = false;
+      AtomicBool paused = false;
       bool wasLaunchedFromCli = false;
 
       WindowManager windowManager;
