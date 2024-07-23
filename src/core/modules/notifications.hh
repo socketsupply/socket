@@ -32,6 +32,7 @@ namespace SSC {
 
       struct Notification {
         String identifier;
+        String tag;
         const JSON::Object json () const;
       };
 
@@ -44,6 +45,9 @@ namespace SSC {
         String icon;
         String image;
         String body;
+        String channel;
+        String category;
+        String vibrate;
       };
 
       struct ShowResult {

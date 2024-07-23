@@ -15,7 +15,10 @@ namespace SSC {
   static Mutex mutex;
 
 #if SOCKET_RUNTIME_PLATFORM_ANDROID
-  Android::AssetManager* sharedAndroidAssetManager = nullptr;
+  static Android::AssetManager* sharedAndroidAssetManager = nullptr;
+  static Path externalAndroidStorageDirectory;
+  static Path externalAndroidFilesDirectory;
+  static Path externalAndroidCacheDirectory;
 #endif
 
   std::map<String, Set<String>> FileResource::mimeTypes = {
@@ -73,6 +76,30 @@ namespace SSC {
 
   Android::AssetManager* FileResource::getSharedAndroidAssetManager () {
     return sharedAndroidAssetManager;
+  }
+
+  void FileResource::setExternalAndroidStorageDirectory (const Path& directory) {
+    externalAndroidStorageDirectory = directory;
+  }
+
+  Path FileResource::getExternalAndroidStorageDirectory () {
+    return externalAndroidStorageDirectory;
+  }
+
+  void FileResource::setExternalAndroidFilesDirectory (const Path& directory) {
+    externalAndroidFilesDirectory = directory;
+  }
+
+  Path FileResource::getExternalAndroidFilesDirectory () {
+    return externalAndroidFilesDirectory;
+  }
+
+  void FileResource::setExternalAndroidCacheDirectory (const Path& directory) {
+    externalAndroidCacheDirectory = directory;
+  }
+
+  Path FileResource::getExternalAndroidCacheDirectory () {
+    return externalAndroidCacheDirectory;
   }
 #endif
 
@@ -417,8 +444,8 @@ namespace SSC {
     static const auto USERPROFILE = Env::get("USERPROFILE", HOME);
     this->downloads = Path(USERPROFILE) / "Downloads";
     this->documents = Path(USERPROFILE) / "Documents";
-    this->desktop = Path(USERPROFILE) / "Desktop";
     this->pictures = Path(USERPROFILE) / "Pictures";
+    this->desktop = Path(USERPROFILE) / "Desktop";
     this->videos = Path(USERPROFILE) / "Videos";
     this->music = Path(USERPROFILE) / "Music";
     this->config = Path(Env::get("APPDATA")) / bundleIdentifier;
@@ -426,7 +453,21 @@ namespace SSC {
     this->data = Path(Env::get("APPDATA")) / bundleIdentifier;
     this->log = this->config;
   #elif SOCKET_RUNTIME_PLATFORM_ANDROID
-    // TODO(@jwerle)
+    const auto storage = FileResource::getExternalAndroidStorageDirectory();
+    const auto files = FileResource::getExternalAndroidFilesDirectory();
+    const auto cache = FileResource::getExternalAndroidCacheDirectory();
+    this->resources = "socket://" + bundleIdentifier;
+    this->downloads = storage / "Downloads";
+    this->documents = storage / "Documents";
+    this->pictures = storage / "Pictures";
+    this->desktop = !files.empty() ? files : storage / "Desktop";
+    this->videos = storage / "DCIM" / "Videos";
+    this->music = storage / "Music";
+    this->config = storage;
+    this->home = this->desktop;
+    this->data = storage;
+    this->log = storage / "logs";
+    this->tmp = !cache.empty() ? cache : storage / "tmp";
   #endif
   }
 

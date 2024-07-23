@@ -31,13 +31,6 @@ namespace SSC {
         const CoreModule::Callback& callback
       );
 
-      void notify (
-        const String& seq,
-        const String& title,
-        const String& body,
-        const CoreModule::Callback& callback
-      ) const;
-
       void openExternal (
         const String& seq,
         const String& value,

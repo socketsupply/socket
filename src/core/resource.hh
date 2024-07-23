@@ -138,6 +138,15 @@ namespace SSC {
     #if SOCKET_RUNTIME_PLATFORM_ANDROID
       static void setSharedAndroidAssetManager (Android::AssetManager*);
       static Android::AssetManager* getSharedAndroidAssetManager ();
+
+      static void setExternalAndroidStorageDirectory (const Path&);
+      static Path getExternalAndroidStorageDirectory ();
+
+      static void setExternalAndroidFilesDirectory (const Path&);
+      static Path getExternalAndroidFilesDirectory ();
+
+      static void setExternalAndroidCacheDirectory (const Path&);
+      static Path getExternalAndroidCacheDirectory ();
     #endif
 
       Path path;
