@@ -255,26 +255,28 @@ int lastY = 0;
   self.shouldDrag = false;
   draggablePayload.clear();
 
-  const auto location = [self convertPoint: event.locationInWindow fromView: nil];
-  const auto x = std::to_string(location.x);
-  const auto y = std::to_string(location.y);
+  const auto point = [self convertPoint: event.locationInWindow fromView: nil];
+  const auto x = std::to_string(point.x);
+  const auto y = std::to_string(point.y);
 
-  self.initialWindowPos = location;
+  self.initialWindowPos = point;
 
-  lastX = (int) location.x;
-  lastY = (int) location.y;
+  lastX = (int) point.x;
+  lastY = (int) point.y;
 
   String js(
-    "(() => {                                                                      "
-    "  const v = '--app-region';                                                   "
-    "  let el = document.elementFromPoint(" + x + "," + y + ");                    "
-    "                                                                              "
-    "  while (el) {                                                                "
-    "    if (getComputedStyle(el).getPropertyValue(v) == 'drag') return 'movable'; "
-    "    el = el.parentElement;                                                    "
-    "  }                                                                           "
-    "  return ''                                                                   "
-    "})()                                                                          "
+    "(() => {                                                                  "
+    "  const v = '--app-region';                                               "
+    "  let el = document.elementFromPoint(" + x + "," + y + ");                "
+    "                                                                          "
+    "  while (el) {                                                            "
+    "    if (getComputedStyle(el).getPropertyValue(v) === 'drag') {            "
+    "      return 'movable';                                                   "
+    "    }                                                                     "
+    "    el = el.parentElement;                                                "
+    "  }                                                                       "
+    "  return ''                                                               "
+    "})();                                                                     "
   );
 
   [self
