@@ -493,7 +493,7 @@ constexpr auto gAndroidManifest = R"XML(
     android:name="{{android_application}}"
     android:allowBackup="true"
     android:label="{{meta_title}}"
-    android:theme="@style/Theme.AppCompat.Light"
+    android:theme="@style/Theme.AppCompat.DayNight"
     android:supportsRtl="true"
     {{android_application_icon_config}}
     {{android_allow_cleartext}}
