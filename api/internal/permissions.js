@@ -228,6 +228,20 @@ export async function query (descriptor, options) {
     )
   }
 
+  if (name === 'camera' || name === 'microphone') {
+    if (!globalThis.navigator.mediaDevices) {
+      if (globalThis.isServiceWorkerScope) {
+        throw new TypeError('MediaDevices are not supported in ServiceWorkerGlobalScope.')
+      } else if (globalThis.isSharedWorkerScope) {
+        throw new TypeError('MediaDevices are not supported in SharedWorkerGlobalScope.')
+      } else if (globalThis.isWorkerScope) {
+        throw new TypeError('MediaDevices are not supported in WorkerGlobalScope.')
+      } else {
+        throw new TypeError('MediaDevices are not supported.')
+      }
+    }
+  }
+
   if (!isAndroid && !isApple) {
     if (isLinux) {
       if (name === 'notifications' || name === 'push') {
@@ -301,6 +315,39 @@ export async function request (descriptor, options) {
       'Failed to read the \'name\' property from \'PermissionDescriptor\': ' +
       `The provided value '${name}' is not a valid enum value of type PermissionName.`
     )
+  }
+
+  if (name === 'camera' || name === 'microphone') {
+    // will throw if `MediaDevices` are not supported
+    const status = await query({ name }, options)
+
+    if (status.state === 'granted') {
+      return new PermissionStatus(name, 'granted', options)
+    }
+
+    const constraints = { video: false, audio: false }
+    if (name === 'camera') {
+      constraints.video = true
+      delete constraints.audio
+    } else if (name === 'microphone') {
+      constraints.audio = true
+      delete constraints.video
+    }
+
+    try {
+      const stream = await globalThis.navigator.mediaDevices.getUserMedia(constraints)
+      const tracks = await stream.getTracks()
+      for (const track of tracks) {
+        await track.stop()
+      }
+      return new PermissionStatus(name, 'granted', options)
+    } catch (err) {
+      if (err.name === 'NotAllowedError') {
+        return new PermissionStatus(name, 'denied', options)
+      } else {
+        throw err
+      }
+    }
   }
 
   if (isLinux) {
