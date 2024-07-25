@@ -95,6 +95,11 @@ namespace SSC {
 
           bool remove (const Observer& observer) {
             Lock lock(this->mutex);
+
+            if (this->observers.begin() == this->observers.end()) {
+              return false;
+            }
+
             auto iterator = this->observers.begin();
 
             do {
@@ -141,6 +146,11 @@ namespace SSC {
           template <typename... Types>
           bool dispatch (Types... arguments) {
             Lock lock(this->mutex);
+
+            if (this->observers.begin() == this->observers.end()) {
+              return false;
+            }
+
             bool dispatched = false;
             auto iterator = this->observers.begin();
 
