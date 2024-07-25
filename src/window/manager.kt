@@ -22,7 +22,9 @@ import __BUNDLE_IDENTIFIER__.R
 /**
  * A `WindowFragmentManager` manages `WindowFragment` instances.
  */
-open class WindowFragmentManager (protected val activity: WindowManagerActivity) {
+open class WindowFragmentManager (
+  protected val activity: WindowManagerActivity
+) {
   open val fragments = mutableListOf<WindowFragment>()
   open val manager = activity.supportFragmentManager
 
@@ -40,9 +42,10 @@ open class WindowFragmentManager (protected val activity: WindowManagerActivity)
           // .setCustomAnimations(android.R.anim.slide_in_left, android.R.anim.slide_out_right)
           setReorderingAllowed(true)
           add(R.id.window, fragment)
-          if (!options.headless) {
-            //addToBackStack("window#${options.index}")
-            addToBackStack(null)
+          if (options.headless) {
+            hide(fragment)
+          } else {
+            addToBackStack("window#${options.index}")
           }
         }
       }
@@ -272,9 +275,18 @@ open class WindowFragmentManager (protected val activity: WindowManagerActivity)
  */
 open class WindowManagerActivity : AppCompatActivity(R.layout.window_container_view) {
   open val windowFragmentManager = WindowFragmentManager(this)
+  open val dialog = Dialog(this)
 
   override fun onBackPressed () {
     // this.windowFragmentManager.popWindowFragment()
+  }
+
+  override fun onActivityResult (
+    requestCode: Int,
+    resultCode: Int,
+    intent: Intent?
+  ) {
+    super.onActivityResult(requestCode, resultCode, intent)
   }
 
   /**

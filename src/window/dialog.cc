@@ -19,9 +19,7 @@ using namespace SSC;
       paths.push_back(url.path.UTF8String);
     }
   }
-  debug("before callback");
   self.dialog->callback(paths);
-  debug("after callback");
 }
 
 - (void) documentPickerWasCancelled: (UIDocumentPickerViewController*) controller {
@@ -136,6 +134,8 @@ namespace SSC {
 
     Vector<String> paths;
 
+    this->callback = callback;
+
   #if SOCKET_RUNTIME_PLATFORM_APPLE
     // state
     NSMutableArray<UTType *>* contentTypes = [NSMutableArray new];
@@ -225,7 +225,6 @@ namespace SSC {
 
   #if SOCKET_RUNTIME_PLATFORM_IOS
     UIWindow* window = nullptr;
-    this->callback = callback;
 
     if (this->window) {
       window = this->window->window;
@@ -788,65 +787,103 @@ namespace SSC {
     });
     return true;
   #elif SOCKET_RUNTIME_PLATFORM_ANDROID
-    if (this->window->androidWindowRef) {
-      const auto app = App::sharedApplication();
-      const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
-      const auto dialogRef = CallObjectClassMethodFromAndroidEnvironment(
-        attachment.env,
-        this->window->androidWindowRef,
-        "getDialog",
-        "()Lsocket/runtime/window/Dialog;"
-      );
+    const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
+    const auto dialog = CallObjectClassMethodFromAndroidEnvironment(
+      attachment.env,
+      app->core->platform.activity,
+      "getDialog",
+      "()Lsocket/runtime/window/Dialog;"
+    );
 
-      String mimeTypes;
-      // <mime>:<ext>,<ext>|<mime>:<ext>|...
-      for (const auto& contentTypeSpec : split(options.contentTypes, "|")) {
-        const auto parts = split(contentTypeSpec, ":");
-        const auto mime = trim(parts[0]);
-        const auto classes = split(mime, "/");
-        if (classes.size() == 2) {
-          if (mimeTypes.size() == 0) {
-            mimeTypes = mime;
-          } else {
-            mimeTypes += "|" + mime;
-          }
+    // construct the mime types into a packed string
+    String mimeTypes;
+    // <mime>:<ext>,<ext>|<mime>:<ext>|...
+    for (const auto& contentTypeSpec : split(options.contentTypes, "|")) {
+      const auto parts = split(contentTypeSpec, ":");
+      const auto mime = trim(parts[0]);
+      const auto classes = split(mime, "/");
+      if (classes.size() == 2) {
+        if (mimeTypes.size() == 0) {
+          mimeTypes = mime;
+        } else {
+          mimeTypes += "|" + mime;
         }
       }
-
-      const auto mimeTypesRef = attachment.env->NewStringUTF(mimeTypes.c_str());
-      const auto results = (jobjectArray) CallObjectClassMethodFromAndroidEnvironment(
-        attachment.env,
-        dialogRef,
-        "showFileSystemPicker",
-        "(Ljava/lang/String;ZZZ)[Landroid/net/Uri;",
-        mimeTypesRef,
-        allowDirectories,
-        allowMultiple,
-        allowFiles
-      );
-
-      const auto length = attachment.env->GetArrayLength(results);
-      for (int i = 0; i < length; ++i) {
-        const auto uri = (jstring) attachment.env->GetObjectArrayElement(results, i);
-        if (uri) {
-          const auto string = Android::StringWrap(attachment.env, CallObjectClassMethodFromAndroidEnvironment(
-            attachment.env,
-            uri,
-            "toString",
-            "()Ljava/lang/String;"
-          )).str();
-
-          paths.push_back(string);
-        }
-      }
-
-      app->dispatch([=]() {
-        callback(paths);
-      });
-      return true;
     }
+
+    // we'll set the pointer from this instance in this call so
+    // the `onResults` can reinterpret the `jlong` back into a `Dialog*`
+    CallVoidClassMethodFromAndroidEnvironment(
+      attachment.env,
+      dialog,
+      "showFileSystemPicker",
+      "(Ljava/lang/String;ZZZJ)V",
+      attachment.env->NewStringUTF(mimeTypes.c_str()),
+      allowDirectories,
+      allowMultiple,
+      allowFiles,
+      reinterpret_cast<jlong>(this)
+    );
+
+    return true;
   #endif
 
     return false;
   }
 }
+
+#if SOCKET_RUNTIME_PLATFORM_ANDROID
+extern "C" {
+  void ANDROID_EXTERNAL(window, Dialog, onResults) (
+    JNIEnv* env,
+    jobject self,
+    jlong pointer,
+    jobjectArray results
+  ) {
+    const auto app = App::sharedApplication();
+
+    if (!app) {
+      return ANDROID_THROW(env, "Missing 'App' in environment");
+    }
+
+    const auto dialog = reinterpret_cast<Dialog*>(pointer);
+
+    if (!dialog) {
+      return ANDROID_THROW(
+        env,
+        "Missing 'Dialog' in results callback from 'showFileSystemPicker'"
+      );
+    }
+
+    if (dialog->callback == nullptr) {
+      return ANDROID_THROW(
+        env,
+        "Missing 'Dialog' callback in results callback from 'showFileSystemPicker'"
+      );
+    }
+
+    const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
+    const auto length = attachment.env->GetArrayLength(results);
+
+    Vector<String> paths;
+
+    for (int i = 0; i < length; ++i) {
+      const auto uri = (jstring) attachment.env->GetObjectArrayElement(results, i);
+      if (uri) {
+        const auto string = Android::StringWrap(attachment.env, CallObjectClassMethodFromAndroidEnvironment(
+          attachment.env,
+          uri,
+          "toString",
+          "()Ljava/lang/String;"
+        )).str();
+
+        paths.push_back(string);
+      }
+    }
+
+    const auto callback = dialog->callback;
+    dialog->callback = nullptr;
+    callback(paths);
+  }
+}
+#endif
