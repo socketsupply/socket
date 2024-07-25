@@ -77,6 +77,13 @@ function createDataListener (socket, resource) {
     if (!data || BigInt(data.id) !== socket.id) return
 
     if (source === 'udp.readStart') {
+      if (buffer && buffer instanceof ArrayBuffer) {
+        // @ts-ignore
+        if (buffer.detached) {
+          return
+        }
+      }
+
       const message = Buffer.from(buffer)
       const info = {
         ...data,
@@ -1014,6 +1021,12 @@ export class Socket extends EventEmitter {
     }
 
     buffer = buffer.slice(0, length)
+
+    if (buffer?.buffer?.detacted) {
+      // XXX(@jwerle,@heapwolf): this is likely during a paused application state
+      // how should handle this?
+      return
+    }
 
     return send(this, { id, port, address, buffer }, (...args) => {
       if (typeof cb === 'function') {
