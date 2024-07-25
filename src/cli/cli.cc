@@ -765,9 +765,9 @@ Vector<Path> handleBuildPhaseForCopyMappedFiles (
 }
 
 void signalHandler (int signum) {
-  #if !defined(_WIN32)
+  #if !SOCKET_RUNTIME_PLATFORM_WINDOWS
     if (signum == SIGUSR1) {
-    #if defined(__APPLE__)
+    #if SOCKET_RUNTIME_PLATFORM_APPLE
       checkLogStore = true;
     #endif
       return;
@@ -776,7 +776,7 @@ void signalHandler (int signum) {
 
   Lock lock(signalHandlerMutex);
 
-  #if !defined(_WIN32)
+  #if !SOCKET_RUNTIME_PLATFORM_WINDOWS
     if (appPid > 0) {
       kill(appPid, signum);
     }
@@ -788,12 +788,6 @@ void signalHandler (int signum) {
   }
 
   appPid = 0;
-
-  #if defined(__linux__) && !defined(__ANDROID__)
-    if (gtk_main_level() > 0) {
-      gtk_main_quit();
-    }
-  #endif
 
   if (sourcesWatcher != nullptr) {
     sourcesWatcher->stop();
@@ -820,6 +814,14 @@ void signalHandler (int signum) {
     appStatus = signum;
     log("App result: " + std::to_string(signum));
   }
+
+  #if SOCKET_RUNTIME_PLATFORM_LINUX
+    if (gtk_main_level() > 0) {
+      // FIXME(@jwerle): calling `msleep()` from a signal handler is definitely bad practice
+      msleep(4);
+      gtk_main_quit();
+    }
+  #endif
 
   if (signum == SIGTERM || signum == SIGINT) {
     signal(signum, SIG_DFL);
