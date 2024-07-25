@@ -150,6 +150,10 @@ namespace SSC {
     webkit_settings_set_enable_smooth_scrolling(this->settings, true);
     webkit_settings_set_enable_developer_extras(this->settings, options.debug);
     webkit_settings_set_enable_back_forward_navigation_gestures(this->settings, true);
+    webkit_settings_set_media_content_types_requiring_hardware_support(
+      this->settings,
+      nullptr
+    );
 
     auto userAgent = String(webkit_settings_get_user_agent(settings));
 
@@ -448,19 +452,19 @@ namespace SSC {
           result = userConfig["permissions_allow_notifications"] != "false";
           description = "{{meta_title}} would like display notifications.";
         } else if (WEBKIT_IS_USER_MEDIA_PERMISSION_REQUEST(request)) {
-          if (webkit_user_media_permission_is_for_audio_device(WEBKIT_USER_MEDIA_PERMISSION_REQUEST(request))) {
-            name = "microphone";
-            result = userConfig["permissions_allow_microphone"] != "false";
-            description = "{{meta_title}} would like access to your microphone.";
-          }
+          if (userConfig["permissions_allow_user_media"] != "false") {
+            if (webkit_user_media_permission_is_for_audio_device(WEBKIT_USER_MEDIA_PERMISSION_REQUEST(request))) {
+              name = "microphone";
+              result = userConfig["permissions_allow_microphone"] != "false";
+              description = "{{meta_title}} would like access to your microphone.";
+            }
 
-          if (webkit_user_media_permission_is_for_video_device(WEBKIT_USER_MEDIA_PERMISSION_REQUEST(request))) {
-            name = "camera";
-            result = userConfig["permissions_allow_camera"] != "false";
-            description = "{{meta_title}} would like access to your camera.";
+            if (webkit_user_media_permission_is_for_video_device(WEBKIT_USER_MEDIA_PERMISSION_REQUEST(request))) {
+              name = "camera";
+              result = userConfig["permissions_allow_camera"] != "false";
+              description = "{{meta_title}} would like access to your camera.";
+            }
           }
-
-          result = userConfig["permissions_allow_user_media"] != "false";
         } else if (WEBKIT_IS_WEBSITE_DATA_ACCESS_PERMISSION_REQUEST(request)) {
           name = "storage-access";
           result = userConfig["permissions_allow_data_access"] != "false";
@@ -853,7 +857,7 @@ namespace SSC {
       "destroy",
       G_CALLBACK((+[](GtkWidget* object, gpointer arg) {
         auto app = App::sharedApplication();
-        if (app == nullptr) {
+        if (app == nullptr || app->shouldExit) {
           return FALSE;
         }
 
@@ -1348,8 +1352,8 @@ namespace SSC {
 
     GtkStyleContext* context = gtk_widget_get_style_context(this->window);
 
-    GdkRGBA color;
-    gtk_style_context_get_background_color(context, gtk_widget_get_state_flags(this->window), &color);
+    GdkRGBA color = {0.0, 0.0, 0.0, 0.0};
+    webkit_web_view_set_background_color(WEBKIT_WEB_VIEW(this->webview), &color);
     gtk_widget_override_background_color(menubar, GTK_STATE_FLAG_NORMAL, &color);
 
     auto menus = split(menuSource, ';');
@@ -1364,6 +1368,7 @@ namespace SSC {
       // if this is a tray menu, append directly to the tray instead of a submenu.
       auto* ctx = isTrayMenu ? menutray : gtk_menu_new();
       GtkWidget* menuItem = gtk_menu_item_new_with_label(menuTitle.c_str());
+      gtk_widget_override_background_color(menuItem, GTK_STATE_FLAG_NORMAL, &color);
 
       if (isTrayMenu && menuSource.size() == 1) {
         if (menuParts.size() > 1) {
@@ -1491,6 +1496,7 @@ namespace SSC {
         }
 
         gtk_widget_set_name(item, menuTitle.c_str());
+        gtk_widget_override_background_color(menuItem, GTK_STATE_FLAG_NORMAL, &color);
         gtk_menu_shell_append(GTK_MENU_SHELL(ctx), item);
       }
 
