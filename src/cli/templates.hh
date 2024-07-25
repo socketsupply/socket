@@ -468,8 +468,6 @@ constexpr auto gCredits = R"HTML(
 
 constexpr auto DEFAULT_ANDROID_APPLICATION_NAME = ".App";
 constexpr auto DEFAULT_ANDROID_MAIN_ACTIVITY_NAME = ".MainActivity";
-//constexpr auto DEFAULT_ANDROID_WEBVIEW_WINDOW_ACTIVITY_NAME = "socket.runtime.window.WebViewWindowActivity";
-constexpr auto DEFAULT_ANDROID_WEBVIEW_WINDOW_ACTIVITY_NAME = "socket.runtime.window.WindowActivity";
 
 //
 // Android Manifest
@@ -508,6 +506,7 @@ constexpr auto gAndroidManifest = R"XML(
       android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
       android:launchMode="singleTop"
       android:enableOnBackInvokedCallback="true"
+      android:hardwareAccelerated="true"
     >
       <intent-filter>
         <action android:name="android.intent.action.MAIN" />
@@ -523,20 +522,6 @@ constexpr auto gAndroidManifest = R"XML(
       </intent-filter>
 
       {{android_activity_intent_filters}}
-    </activity>
-    <activity
-      android:name="{{android_webview_window_activity}}"
-      android:exported="true"
-      android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
-      android:launchMode="standard"
-      android:documentLaunchMode="intoExisting"
-      android:hardwareAccelerated="true"
-    >
-      <intent-filter>
-        <action android:name="android.intent.action.VIEW" />
-        <category android:name="android.intent.category.LAUNCHER" />
-        <category android:name="android.intent.category.BROWSABLE" />
-      </intent-filter>
     </activity>
   </application>
 </manifest>
