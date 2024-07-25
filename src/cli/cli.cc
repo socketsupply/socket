@@ -3183,10 +3183,6 @@ int main (const int argc, const char* argv[]) {
         settings["android_main_activity"] = String(DEFAULT_ANDROID_MAIN_ACTIVITY_NAME);
       }
 
-      if (settings["android_webview_window_activity"].size() == 0) {
-        settings["android_webview_window_activity"] = String(DEFAULT_ANDROID_WEBVIEW_WINDOW_ACTIVITY_NAME);
-      }
-
       if (settings["android_application"].size() == 0) {
         settings["android_application"] = String(DEFAULT_ANDROID_APPLICATION_NAME);
       }
@@ -3390,6 +3386,8 @@ int main (const int argc, const char* argv[]) {
 
         if (settings["permissions_allow_microphone"] != "false") {
           manifestContext["android_manifest_xml_permissions"] += "  <uses-permission android:name=\"android.permission.CAPTURE_AUDIO_OUTPUT\" />\n";
+          manifestContext["android_manifest_xml_permissions"] += "  <uses-permission android:name=\"android.permission.MODIFY_AUDIO_SETTINGS\" />\n";
+          manifestContext["android_manifest_xml_permissions"] += "  <uses-permission android:name=\"android.permission.RECORD_AUDIO\" />\n";
         }
       }
 
