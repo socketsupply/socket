@@ -1022,7 +1022,7 @@ export class Socket extends EventEmitter {
 
     buffer = buffer.slice(0, length)
 
-    if (buffer?.buffer?.detacted) {
+    if (buffer?.buffer?.detached) {
       // XXX(@jwerle,@heapwolf): this is likely during a paused application state
       // how should handle this?
       return
