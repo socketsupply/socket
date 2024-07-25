@@ -372,14 +372,6 @@ open class AppActivity : WindowManagerActivity() {
     }
   }
 
-  override fun onActivityResult (
-    requestCode: Int,
-    resultCode: Int,
-    intent: Intent?
-  ) {
-    super.onActivityResult(requestCode, resultCode, intent)
-  }
-
   override fun onRequestPermissionsResult (
     requestCode: Int,
     permissions: Array<String>,
