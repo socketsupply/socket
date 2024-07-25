@@ -7,6 +7,7 @@ import kotlin.concurrent.thread
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.util.AttributeSet
 import android.view.LayoutInflater
@@ -29,7 +30,7 @@ import socket.runtime.core.WebChromeClient
 import socket.runtime.ipc.Bridge
 import socket.runtime.ipc.Message
 import socket.runtime.window.WindowFragment
-import socket.runtime.window.Dialog
+import socket.runtime.window.WebViewFilePickerOptions
 
 import __BUNDLE_IDENTIFIER__.R
 
@@ -76,7 +77,7 @@ open class WindowWebViewUserMessageHandler (window: Window) {
       this.window.bridge.buffers[message.seq] = bytes
     }
 
-    this.window.onMessage(this.window.index, value)
+    this.window.onMessage(value)
     return true
   }
 }
@@ -131,8 +132,15 @@ open class WindowWebChromeClient (val window: Window) : WebChromeClient() {
     callback: android.webkit.ValueCallback<Array<android.net.Uri>>,
     params: android.webkit.WebChromeClient.FileChooserParams
   ): Boolean {
+    if (!super.onShowFileChooser(webview, callback, params)) {
+      return false
+    }
     val fragment = this.window.fragment
     val activity = fragment.requireActivity() as AppCompatActivity
+    val options = WebViewFilePickerOptions(params)
+    activity.dialog.showFileSystemPicker(options, fun (uris: Array<Uri>) {
+      callback.onReceiveValue(uris)
+    })
     return true
   }
 }
@@ -144,7 +152,6 @@ open class Window (val fragment: WindowFragment) {
   val activity = fragment.requireActivity()
   val bridge = Bridge(fragment.index, activity as AppCompatActivity)
   val client = WindowWebChromeClient(this)
-  val dialog = Dialog(this)
   val index = fragment.index
   var title = ""
 
@@ -193,6 +200,7 @@ open class Window (val fragment: WindowFragment) {
   }
 
   fun close () {
+    // TODO
   }
 
   fun navigate (url: String) {
@@ -226,6 +234,19 @@ open class Window (val fragment: WindowFragment) {
   fun handleApplicationURL (url: String) {
     return this.handleApplicationURL(this.index, url)
   }
+
+  fun onReady () {
+    this.bridge.activity.runOnUiThread {
+      this.onReady(this.index)
+    }
+  }
+
+  fun onMessage (value: String, bytes: ByteArray? = null) {
+    this.onMessage(this.index, value, bytes)
+  }
+
+  @Throws(Exception::class)
+  external fun onReady (index: Int): Unit
 
   @Throws(Exception::class)
   external fun onMessage (index: Int, value: String, bytes: ByteArray? = null): Unit
@@ -273,10 +294,12 @@ open class WindowFragment : Fragment(R.layout.web_view) {
   open val options = WindowOptions()
 
   /**
+   * XXX(@jwerle)
    */
   open var window: Window? = null
 
   /**
+   * XXX(@jwerle)
    */
   open val index: Int get () = this.options.index
 
@@ -351,6 +374,8 @@ open class WindowFragment : Fragment(R.layout.web_view) {
       settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
     }
 
-    this.window = Window(this)
+    this.window = Window(this).apply {
+      onReady()
+    }
   }
 }
