@@ -260,7 +260,11 @@ export async function query (descriptor, options) {
     delete options.signal
   }
 
-  if (name === 'notifications' || name === 'geolocation') {
+  if (
+    name === 'notifications' ||
+    name === 'geolocation' ||
+    (isAndroid && (name === 'camera' || name === 'microphone'))
+  ) {
     const result = await ipc.request('permissions.query', { name }, { signal })
 
     if (result.err) {
@@ -325,27 +329,29 @@ export async function request (descriptor, options) {
       return new PermissionStatus(name, 'granted', options)
     }
 
-    const constraints = { video: false, audio: false }
-    if (name === 'camera') {
-      constraints.video = true
-      delete constraints.audio
-    } else if (name === 'microphone') {
-      constraints.audio = true
-      delete constraints.video
-    }
-
-    try {
-      const stream = await globalThis.navigator.mediaDevices.getUserMedia(constraints)
-      const tracks = await stream.getTracks()
-      for (const track of tracks) {
-        await track.stop()
+    if (!isAndroid) {
+      const constraints = { video: false, audio: false }
+      if (name === 'camera') {
+        constraints.video = true
+        delete constraints.audio
+      } else if (name === 'microphone') {
+        constraints.audio = true
+        delete constraints.video
       }
-      return new PermissionStatus(name, 'granted', options)
-    } catch (err) {
-      if (err.name === 'NotAllowedError') {
-        return new PermissionStatus(name, 'denied', options)
-      } else {
-        throw err
+
+      try {
+        const stream = await globalThis.navigator.mediaDevices.getUserMedia(constraints)
+        const tracks = await stream.getTracks()
+        for (const track of tracks) {
+          await track.stop()
+        }
+        return new PermissionStatus(name, 'granted', options)
+      } catch (err) {
+        if (err.name === 'NotAllowedError') {
+          return new PermissionStatus(name, 'denied', options)
+        } else {
+          throw err
+        }
       }
     }
   }
