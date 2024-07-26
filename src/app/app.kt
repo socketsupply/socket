@@ -404,6 +404,14 @@ open class AppActivity : WindowManagerActivity() {
         "android.permission.POST_NOTIFICATIONS" -> {
           name = "notifications"
         }
+
+        "android.permission.CAMERA" -> {
+          name = "camera"
+        }
+
+        "android.permission.RECORD_AUDIO" -> {
+          name = "microphone"
+        }
       }
 
       if (seen.contains(name)) {

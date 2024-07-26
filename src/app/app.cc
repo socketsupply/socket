@@ -1339,12 +1339,21 @@ extern "C" {
 
     if (name == "geolocation") {
       app->core->geolocation.permissionChangeObservers.dispatch(JSON::Object::Entries {
+        {"name", name},
         {"state", state}
       });
     }
 
     if (name == "notification") {
       app->core->notifications.permissionChangeObservers.dispatch(JSON::Object::Entries {
+        {"name", name},
+        {"state", state}
+      });
+    }
+
+    if (name == "camera" || name == "microphone") {
+      app->core->mediaDevices.permissionChangeObservers.dispatch(JSON::Object::Entries {
+        {"name", name},
         {"state", state}
       });
     }
