@@ -164,10 +164,81 @@ namespace SSC {
       #endif
       }
 
-      if (name == "camera" || name == "microphone")  {
-      #if SOCKET_RUNTIME_PLATFORM_APPLE
-      #elif SOCKET_RUNTIME_PLATFORM_ANDROID
+      if (name == "camera")  {
+        JSON::Object json;
+      #if SOCKET_RUNTIME_PLATFORM_ANDROID
+        const auto attachment = Android::JNIEnvironmentAttachment(this->core->platform.jvm);
+        // `activity.checkPermission(permission)`
+        const auto hasCameraPermission = CallClassMethodFromAndroidEnvironment(
+          attachment.env,
+          Boolean,
+          this->core->platform.activity,
+          "checkPermission",
+          "(Ljava/lang/String;)Z",
+          attachment.env->NewStringUTF("android.permission.CAMERA")
+        );
+
+        if (!hasCameraPermission) {
+          json = JSON::Object::Entries {
+            {"data", JSON::Object::Entries {
+              {"state", "prompt"}}
+            }
+          };
+        } else {
+          json = JSON::Object::Entries {
+            {"data", JSON::Object::Entries {
+              {"state", "granted"}}
+            }
+          };
+        }
+
+        callback(seq, json, Post{});
       #else
+        json = JSON::Object::Entries {
+          {"data", JSON::Object::Entries {
+            {"state", "prompt"}}
+          }
+        };
+        callback(seq, json, Post{});
+      #endif
+      }
+
+      if (name == "microphone")  {
+        JSON::Object json;
+      #if SOCKET_RUNTIME_PLATFORM_ANDROID
+        const auto attachment = Android::JNIEnvironmentAttachment(this->core->platform.jvm);
+        // `activity.checkPermission(permission)`
+        const auto hasRecordAudioPermission = CallClassMethodFromAndroidEnvironment(
+          attachment.env,
+          Boolean,
+          this->core->platform.activity,
+          "checkPermission",
+          "(Ljava/lang/String;)Z",
+          attachment.env->NewStringUTF("android.permission.RECORD_AUDIO")
+        );
+
+        if (!hasRecordAudioPermission) {
+          json = JSON::Object::Entries {
+            {"data", JSON::Object::Entries {
+              {"state", "prompt"}}
+            }
+          };
+        } else {
+          json = JSON::Object::Entries {
+            {"data", JSON::Object::Entries {
+              {"state", "granted"}}
+            }
+          };
+        }
+
+        callback(seq, json, Post{});
+      #else
+        json = JSON::Object::Entries {
+          {"data", JSON::Object::Entries {
+            {"state", "prompt"}}
+          }
+        };
+        callback(seq, json, Post{});
       #endif
       }
     });
@@ -435,10 +506,131 @@ namespace SSC {
       #endif
       }
 
-      if (name == "camera" || name == "microphone")  {
-      #if SOCKET_RUNTIME_PLATFORM_APPLE
-      #elif SOCKET_RUNTIME_PLATFORM_ANDROID
+      if (name == "camera") {
+        JSON::Object json = JSON::Object::Entries {
+          {"data", JSON::Object::Entries {
+            {"state", "denied"}
+          }}
+        };
+      #if SOCKET_RUNTIME_PLATFORM_ANDROID
+        const auto attachment = Android::JNIEnvironmentAttachment(this->core->platform.jvm);
+        // `activity.checkPermission(permission)`
+        const auto hasCameraPermission = CallClassMethodFromAndroidEnvironment(
+          attachment.env,
+          Boolean,
+          this->core->platform.activity,
+          "checkPermission",
+          "(Ljava/lang/String;)Z",
+          attachment.env->NewStringUTF("android.permission.CAMERA")
+        );
+
+        if (!hasCameraPermission) {
+          CoreMediaDevices::PermissionChangeObserver observer;
+          auto permissions = attachment.env->NewObjectArray(
+            1,
+            attachment.env->FindClass("java/lang/String"),
+            0
+          );
+
+          attachment.env->SetObjectArrayElement(
+            permissions,
+            0,
+            attachment.env->NewStringUTF("android.permission.CAMERA")
+          );
+
+          this->core->mediaDevices.addPermissionChangeObserver(observer, [=](JSON::Object result) mutable {
+            if (result.get("name").str() == "camera") {
+              JSON::Object json = JSON::Object::Entries {
+                {"data", result}
+              };
+              callback(seq, json, Post{});
+              this->core->dispatchEventLoop([=]() {
+                this->core->mediaDevices.removePermissionChangeObserver(observer);
+              });
+            }
+          });
+
+          CallVoidClassMethodFromAndroidEnvironment(
+            attachment.env,
+            this->core->platform.activity,
+            "requestPermissions",
+            "([Ljava/lang/String;)V",
+            permissions
+          );
+        } else {
+          json = JSON::Object::Entries {
+            {"data", JSON::Object::Entries {
+              {"state", "granted"}}
+            }
+          };
+          callback(seq, json, Post{});
+        }
       #else
+        callback(seq, json, Post{});
+      #endif
+      }
+
+      if (name == "microphone") {
+        JSON::Object json = JSON::Object::Entries {
+          {"data", JSON::Object::Entries {
+            {"state", "denied"}
+          }}
+        };
+      #if SOCKET_RUNTIME_PLATFORM_ANDROID
+        const auto attachment = Android::JNIEnvironmentAttachment(this->core->platform.jvm);
+        // `activity.checkPermission(permission)`
+        const auto hasRecordAudioPermission = CallClassMethodFromAndroidEnvironment(
+          attachment.env,
+          Boolean,
+          this->core->platform.activity,
+          "checkPermission",
+          "(Ljava/lang/String;)Z",
+          attachment.env->NewStringUTF("android.permission.RECORD_AUDIO")
+        );
+
+        if (!hasRecordAudioPermission) {
+          CoreMediaDevices::PermissionChangeObserver observer;
+          auto permissions = attachment.env->NewObjectArray(
+            1,
+            attachment.env->FindClass("java/lang/String"),
+            0
+          );
+
+          attachment.env->SetObjectArrayElement(
+            permissions,
+            0,
+            attachment.env->NewStringUTF("android.permission.RECORD_AUDIO")
+          );
+
+          this->core->mediaDevices.addPermissionChangeObserver(observer, [=](JSON::Object result) mutable {
+            if (result.get("name").str() == "microphone") {
+              JSON::Object json = JSON::Object::Entries {
+                {"data", result}
+              };
+              callback(seq, json, Post{});
+              this->core->dispatchEventLoop([=]() {
+                this->core->mediaDevices.removePermissionChangeObserver(observer);
+              });
+            }
+          });
+
+          CallVoidClassMethodFromAndroidEnvironment(
+            attachment.env,
+            this->core->platform.activity,
+            "requestPermissions",
+            "([Ljava/lang/String;)V",
+            permissions
+          );
+        } else {
+          json = JSON::Object::Entries {
+            {"data", JSON::Object::Entries {
+              {"state", "granted"}}
+            }
+          };
+          callback(seq, json, Post{});
+        }
+      #else
+        callback(seq, json, Post{});
       #endif
       }
     });

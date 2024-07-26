@@ -32,6 +32,7 @@
 #include "modules/dns.hh"
 #include "modules/fs.hh"
 #include "modules/geolocation.hh"
+#include "modules/media_devices.hh"
 #include "modules/network_status.hh"
 #include "modules/notifications.hh"
 #include "modules/os.hh"
@@ -51,14 +52,15 @@ namespace SSC {
 
   class Core {
     public:
-      #if !SOCKET_RUNTIME_PLATFORM_IOS
-        using ChildProcess = CoreChildProcess;
-      #endif
+    #if !SOCKET_RUNTIME_PLATFORM_IOS
+      using ChildProcess = CoreChildProcess;
+    #endif
       using DNS = CoreDNS;
       using Diagnostics = CoreDiagnostics;
       using FS = CoreFS;
       using Conduit = CoreConduit;
       using Geolocation = CoreGeolocation;
+      using MediaDevices = CoreMediaDevices;
       using NetworkStatus = CoreNetworkStatus;
       using Notifications = CoreNotifications;
       using OS = CoreOS;
@@ -112,6 +114,7 @@ namespace SSC {
       FS fs;
       Conduit conduit;
       Geolocation geolocation;
+      MediaDevices mediaDevices;
       NetworkStatus networkStatus;
       Notifications notifications;
       OS os;
@@ -167,6 +170,7 @@ namespace SSC {
         dns(this),
         fs(this),
         geolocation(this),
+        mediaDevices(this),
         networkStatus(this),
         notifications(this),
         os(this),
