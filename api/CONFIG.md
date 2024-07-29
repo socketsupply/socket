@@ -49,216 +49,216 @@ simulator_device = "iPhone 15"
 
 ### `build`
 
-Key | Default Value | Description
-:--- | :--- | :---
-copy | "src" |  ssc will copy everything in this directory to the build output directory. This is useful when you want to avoid bundling or want to use tools like vite, webpack, rollup, etc. to build your project and then copy output to the Socket bundle resources directory.
-copy_map |  |  An ini file that maps files from the source directory to the build directory.
-env |  |  An list of environment variables, separated by commas.
-flags |  |  Advanced Compiler Settings (ie C++ compiler -02, -03, etc).
-headless | false |  If true, the window will never be displayed.
-name |  |  The name of the program and executable to be output. Can't contain spaces or special characters. Required field.
-output | "build" |  The binary output path. It's recommended to add this path to .gitignore.
-script |  |  The build script. It runs before the `[build] copy` phase.
+| Key | Default Value | Description |
+| :--- | :--- | :--- |
+| copy | "src" |  ssc will copy everything in this directory to the build output directory. This is useful when you want to avoid bundling or want to use tools like vite, webpack, rollup, etc. to build your project and then copy output to the Socket bundle resources directory. |
+| copy_map |  |  An ini file that maps files from the source directory to the build directory. |
+| env |  |  An list of environment variables, separated by commas. |
+| flags |  |  Advanced Compiler Settings (ie C++ compiler -02, -03, etc). |
+| headless | false |  If true, the window will never be displayed. |
+| name |  |  The name of the program and executable to be output. Can't contain spaces or special characters. Required field. |
+| output | "build" |  The binary output path. It's recommended to add this path to .gitignore. |
+| script |  |  The build script. It runs before the `[build] copy` phase. |
 
 ### `build.script`
 
-Key | Default Value | Description
-:--- | :--- | :---
-forward_arguments | false |  If true, it will pass build arguments to the build script. WARNING: this could be deprecated in the future.
+| Key | Default Value | Description |
+| :--- | :--- | :--- |
+| forward_arguments | false |  If true, it will pass build arguments to the build script. WARNING: this could be deprecated in the future. |
 
 ### `build.watch`
 
-Key | Default Value | Description
-:--- | :--- | :---
-sources[] |  |  Configure your project to watch for sources that could change when running `ssc`. Could be a string or an array of strings
+| Key | Default Value | Description |
+| :--- | :--- | :--- |
+| sources[] |  |  Configure your project to watch for sources that could change when running `ssc`. Could be a string or an array of strings |
 
 ### `webview`
 
-Key | Default Value | Description
-:--- | :--- | :---
-root | "/" |  Make root open index.html
-default_index | "" |  Set default 'index.html' path to open for implicit routes
-watch | false |  Tell the webview to watch for changes in its resources
-headers[] | "" |  Custom headers injected on all webview routes
+| Key | Default Value | Description |
+| :--- | :--- | :--- |
+| root | "/" |  Make root open index.html |
+| default_index | "" |  Set default 'index.html' path to open for implicit routes |
+| watch | false |  Tell the webview to watch for changes in its resources |
+| headers[] | "" |  Custom headers injected on all webview routes |
 
 ### `webview.watch`
 
-Key | Default Value | Description
-:--- | :--- | :---
-reload | true |  Configure webview to reload when a file changes
-service_worker_reload_timeout | 500 |  Timeout in milliseconds to wait for service worker to reload before reloading webview
+| Key | Default Value | Description |
+| :--- | :--- | :--- |
+| reload | true |  Configure webview to reload when a file changes |
+| service_worker_reload_timeout | 500 |  Timeout in milliseconds to wait for service worker to reload before reloading webview |
 
 ### `webview.navigator.mounts`
 
-Key | Default Value | Description
-:--- | :--- | :---
-$HOST_HOME/directory-in-home-folder/ |  | 
-$HOST_CONTAINER/directory-app-container/ |  | 
-$HOST_PROCESS_WORKING_DIRECTORY/directory-in-app-process-working-directory/ |  | 
+| Key | Default Value | Description |
+| :--- | :--- | :--- |
+| $HOST_HOME/directory-in-home-folder/ |  |  |
+| $HOST_CONTAINER/directory-app-container/ |  |  |
+| $HOST_PROCESS_WORKING_DIRECTORY/directory-in-app-process-working-directory/ |  |  |
 
 ### `webview.navigator.policies`
 
-Key | Default Value | Description
-:--- | :--- | :---
-allowed[] |  | 
+| Key | Default Value | Description |
+| :--- | :--- | :--- |
+| allowed[] |  |  |
 
 ### `permissions`
 
-Key | Default Value | Description
-:--- | :--- | :---
-allow_fullscreen | true |  Allow/Disallow fullscreen in application
-allow_microphone | true |  Allow/Disallow microphone in application
-allow_camera | true |  Allow/Disallow camera in application
-allow_user_media | true |  Allow/Disallow user media (microphone + camera) in application
-allow_geolocation | true |  Allow/Disallow geolocation in application
-allow_notifications | true |  Allow/Disallow notifications in application
-allow_sensors | true |  Allow/Disallow sensors in application
-allow_clipboard | true |  Allow/Disallow clipboard in application
-allow_bluetooth | true |  Allow/Disallow bluetooth in application
-allow_data_access | true |  Allow/Disallow data access in application
-allow_airplay | true |  Allow/Disallow AirPlay access in application (macOS/iOS) only
-allow_hotkeys | true |  Allow/Disallow HotKey binding registration (desktop only)
+| Key | Default Value | Description |
+| :--- | :--- | :--- |
+| allow_fullscreen | true |  Allow/Disallow fullscreen in application |
+| allow_microphone | true |  Allow/Disallow microphone in application |
+| allow_camera | true |  Allow/Disallow camera in application |
+| allow_user_media | true |  Allow/Disallow user media (microphone + camera) in application |
+| allow_geolocation | true |  Allow/Disallow geolocation in application |
+| allow_notifications | true |  Allow/Disallow notifications in application |
+| allow_sensors | true |  Allow/Disallow sensors in application |
+| allow_clipboard | true |  Allow/Disallow clipboard in application |
+| allow_bluetooth | true |  Allow/Disallow bluetooth in application |
+| allow_data_access | true |  Allow/Disallow data access in application |
+| allow_airplay | true |  Allow/Disallow AirPlay access in application (macOS/iOS) only |
+| allow_hotkeys | true |  Allow/Disallow HotKey binding registration (desktop only) |
 
 ### `debug`
 
-Key | Default Value | Description
-:--- | :--- | :---
-flags |  |  Advanced Compiler Settings for debug purposes (ie C++ compiler -g, etc).
+| Key | Default Value | Description |
+| :--- | :--- | :--- |
+| flags |  |  Advanced Compiler Settings for debug purposes (ie C++ compiler -g, etc). |
 
 ### `meta`
 
-Key | Default Value | Description
-:--- | :--- | :---
-bundle_identifier |  |  A unique ID that identifies the bundle (used by all app stores). It's required when `[meta] type` is not `"extension"`. It should be in a reverse DNS notation https://developer.apple.com/documentation/bundleresources/information_property_list/cfbundleidentifier#discussion
-application_protocol |  |  A unique application protocol scheme to support deep linking If this value is not defined, then it is derived from the `[meta] bundle_identifier` value
-copyright |  |  A string that gets used in the about dialog and package meta info.
-description |  |  A short description of the app.
-file_limit |  |  Set the limit of files that can be opened by your process.
-lang |  |  Localization
-maintainer |  |  A String used in the about dialog and meta info.
-title |  |  The title of the app used in metadata files. This is NOT a window title. Can contain spaces and special characters. Defaults to name in a [build] section.
-type | "" |  Builds an extension when set to "extension".
-version |  |  A string that indicates the version of the application. It should be a semver triple like 1.2.3. Defaults to 1.0.0.
+| Key | Default Value | Description |
+| :--- | :--- | :--- |
+| bundle_identifier |  |  A unique ID that identifies the bundle (used by all app stores). It's required when `[meta] type` is not `"extension"`. It should be in a reverse DNS notation https://developer.apple.com/documentation/bundleresources/information_property_list/cfbundleidentifier#discussion |
+| application_protocol |  |  A unique application protocol scheme to support deep linking If this value is not defined, then it is derived from the `[meta] bundle_identifier` value |
+| copyright |  |  A string that gets used in the about dialog and package meta info. |
+| description |  |  A short description of the app. |
+| file_limit |  |  Set the limit of files that can be opened by your process. |
+| lang |  |  Localization |
+| maintainer |  |  A String used in the about dialog and meta info. |
+| title |  |  The title of the app used in metadata files. This is NOT a window title. Can contain spaces and special characters. Defaults to name in a [build] section. |
+| type | "" |  Builds an extension when set to "extension". |
+| version |  |  A string that indicates the version of the application. It should be a semver triple like 1.2.3. Defaults to 1.0.0. |
 
 ### `android`
 
-Key | Default Value | Description
-:--- | :--- | :---
-aapt_no_compress |  |  Extensions of files that will not be stored compressed in the APK.
-enable_standard_ndk_build |  |  Enables gradle based ndk build rather than using external native build (standard ndk is the old slow way)
-main_activity |  |  Name of the MainActivity class. Could be overwritten by custom native code.
-manifest_permissions |  |  Which permissions does your application need: https://developer.android.com/guide/topics/permissions/overview
-native_abis |  |  To restrict the set of ABIs that your application supports, set them here.
-native_cflags |  |  Used for adding custom source files and related compiler attributes.
-native_sources |  | 
-native_makefile |  | 
-sources |  | 
-icon |  |  The icon to use for identifying your app on Android.
-icon_sizes |  |  The various sizes and scales of the icons to create, required minimum are listed by default.
+| Key | Default Value | Description |
+| :--- | :--- | :--- |
+| aapt_no_compress |  |  Extensions of files that will not be stored compressed in the APK. |
+| enable_standard_ndk_build |  |  Enables gradle based ndk build rather than using external native build (standard ndk is the old slow way) |
+| main_activity |  |  Name of the MainActivity class. Could be overwritten by custom native code. |
+| manifest_permissions |  |  Which permissions does your application need: https://developer.android.com/guide/topics/permissions/overview |
+| native_abis |  |  To restrict the set of ABIs that your application supports, set them here. |
+| native_cflags |  |  Used for adding custom source files and related compiler attributes. |
+| native_sources |  |  |
+| native_makefile |  |  |
+| sources |  |  |
+| icon |  |  The icon to use for identifying your app on Android. |
+| icon_sizes |  |  The various sizes and scales of the icons to create, required minimum are listed by default. |
 
 ### `ios`
 
-Key | Default Value | Description
-:--- | :--- | :---
-codesign_identity |  |  signing guide: https://socketsupply.co/guides/#ios-1
-distribution_method |  |  Describes how Xcode should export the archive. Available options: app-store, package, release-testing, enterprise, development, and developer-id.
-provisioning_profile |  |  A path to the provisioning profile used for signing iOS app.
-simulator_device |  |  which device to target when building for the simulator.
-nonexempt_encryption | false |  Indicate to Apple if you are using encryption that is not exempt.
-icon |  |  The icon to use for identifying your app on iOS.
-icon_sizes |  |  The various sizes and scales of the icons to create, required minimum are listed by default.
+| Key | Default Value | Description |
+| :--- | :--- | :--- |
+| codesign_identity |  |  signing guide: https://socketsupply.co/guides/#ios-1 |
+| distribution_method |  |  Describes how Xcode should export the archive. Available options: app-store, package, release-testing, enterprise, development, and developer-id. |
+| provisioning_profile |  |  A path to the provisioning profile used for signing iOS app. |
+| simulator_device |  |  which device to target when building for the simulator. |
+| nonexempt_encryption | false |  Indicate to Apple if you are using encryption that is not exempt. |
+| icon |  |  The icon to use for identifying your app on iOS. |
+| icon_sizes |  |  The various sizes and scales of the icons to create, required minimum are listed by default. |
 
 ### `linux`
 
-Key | Default Value | Description
-:--- | :--- | :---
-categories |  |  Helps to make your app searchable in Linux desktop environments.
-cmd |  |  The command to execute to spawn the "back-end" process.
-icon |  |  The icon to use for identifying your app in Linux desktop environments.
-icon_sizes |  |  The various sizes and scales of the icons to create, required minimum are listed by default.
+| Key | Default Value | Description |
+| :--- | :--- | :--- |
+| categories |  |  Helps to make your app searchable in Linux desktop environments. |
+| cmd |  |  The command to execute to spawn the "back-end" process. |
+| icon |  |  The icon to use for identifying your app in Linux desktop environments. |
+| icon_sizes |  |  The various sizes and scales of the icons to create, required minimum are listed by default. |
 
 ### `mac`
 
-Key | Default Value | Description
-:--- | :--- | :---
-category |  |  A category in the App Store
-cmd |  |  The command to execute to spawn the "back-end" process.
-codesign_identity |  |  TODO Signing guide: https://socketsupply.co/guides/#code-signing-certificates
-codesign_paths |  |  Additional paths to codesign
-minimum_supported_version | "13.0.0" |  Minimum supported MacOS version
-window_control_offsets |  |  If titlebar_style is "hiddenInset", this will determine the x and y offsets of the window controls (traffic lights).
-icon |  |  The icon to use for identifying your app on MacOS.
-icon_sizes |  |  The various sizes and scales of the icons to create, required minimum are listed by default.
+| Key | Default Value | Description |
+| :--- | :--- | :--- |
+| category |  |  A category in the App Store |
+| cmd |  |  The command to execute to spawn the "back-end" process. |
+| codesign_identity |  |  TODO Signing guide: https://socketsupply.co/guides/#code-signing-certificates |
+| codesign_paths |  |  Additional paths to codesign |
+| minimum_supported_version | "13.0.0" |  Minimum supported MacOS version |
+| window_control_offsets |  |  If titlebar_style is "hiddenInset", this will determine the x and y offsets of the window controls (traffic lights). |
+| icon |  |  The icon to use for identifying your app on MacOS. |
+| icon_sizes |  |  The various sizes and scales of the icons to create, required minimum are listed by default. |
 
 ### `native`
 
-Key | Default Value | Description
-:--- | :--- | :---
-files |  |  Files that should be added to the compile step.
-headers |  |  Extra Headers
+| Key | Default Value | Description |
+| :--- | :--- | :--- |
+| files |  |  Files that should be added to the compile step. |
+| headers |  |  Extra Headers |
 
 ### `win`
 
-Key | Default Value | Description
-:--- | :--- | :---
-cmd |  |  The command to execute to spawn the “back-end” process.
-logo |  |  The icon to use for identifying your app on Windows, relative to copied path resources
-pfx |  |  A relative path to the pfx file used for signing.
-icon |  |  The signing information needed by the appx api. The icon to use for identifying your app on Windows.
-icon_sizes |  |  The various sizes and scales of the icons to create, required minimum are listed by default.
+| Key | Default Value | Description |
+| :--- | :--- | :--- |
+| cmd |  |  The command to execute to spawn the “back-end” process. |
+| logo |  |  The icon to use for identifying your app on Windows, relative to copied path resources |
+| pfx |  |  A relative path to the pfx file used for signing. |
+| icon |  |  The signing information needed by the appx api. The icon to use for identifying your app on Windows. |
+| icon_sizes |  |  The various sizes and scales of the icons to create, required minimum are listed by default. |
 
 ### `window`
 
-Key | Default Value | Description
-:--- | :--- | :---
-height |  |  The initial height of the first window in pixels or as a percentage of the screen.
-width |  |  The initial width of the first window in pixels or as a percentage of the screen.
-backgroundColorDark | "" |  The initial color of the window in dark mode. If not provided, matches the current theme.
-backgroundColorLight | "" |  The initial color of the window in light mode. If not provided, matches the current theme.
-titlebar_style | "" |  Determine if the titlebar style (hidden, hiddenInset)
-max_height | 100% |  Maximum height of the window in pixels or as a percentage of the screen.
-max_width | 100% |  Maximum width of the window in pixels or as a percentage of the screen.
-min_height | 0 |  Minimum height of the window in pixels or as a percentage of the screen.
-min_width | 0 |  Minimum width of the window in pixels or as a percentage of the screen.
-frameless | false |  Determines if the window has a title bar and border.
-resizable | true |  Determines if the window is resizable.
-maximizable | true |  Determines if the window is maximizable.
-minimizable | true |  Determines if the window is minimizable.
-closable | true |  Determines if the window is closable.
-utility | false |  Determines the window is utility window.
+| Key | Default Value | Description |
+| :--- | :--- | :--- |
+| height |  |  The initial height of the first window in pixels or as a percentage of the screen. |
+| width |  |  The initial width of the first window in pixels or as a percentage of the screen. |
+| backgroundColorDark | "" |  The initial color of the window in dark mode. If not provided, matches the current theme. |
+| backgroundColorLight | "" |  The initial color of the window in light mode. If not provided, matches the current theme. |
+| titlebar_style | "" |  Determine if the titlebar style (hidden, hiddenInset) |
+| max_height | 100% |  Maximum height of the window in pixels or as a percentage of the screen. |
+| max_width | 100% |  Maximum width of the window in pixels or as a percentage of the screen. |
+| min_height | 0 |  Minimum height of the window in pixels or as a percentage of the screen. |
+| min_width | 0 |  Minimum width of the window in pixels or as a percentage of the screen. |
+| frameless | false |  Determines if the window has a title bar and border. |
+| resizable | true |  Determines if the window is resizable. |
+| maximizable | true |  Determines if the window is maximizable. |
+| minimizable | true |  Determines if the window is minimizable. |
+| closable | true |  Determines if the window is closable. |
+| utility | false |  Determines the window is utility window. |
 
 ### `window.alert`
 
-Key | Default Value | Description
-:--- | :--- | :---
-title |  |  The title that appears in the 'alert', 'prompt', and 'confirm' dialogs. If this value is not present, then the application title is used instead. Currently only supported on iOS/macOS. defalut value = ""
+| Key | Default Value | Description |
+| :--- | :--- | :--- |
+| title |  |  The title that appears in the 'alert', 'prompt', and 'confirm' dialogs. If this value is not present, then the application title is used instead. Currently only supported on iOS/macOS. defalut value = "" |
 
 ### `application`
 
-Key | Default Value | Description
-:--- | :--- | :---
-agent | false |  If agent is set to true, the app will not display in the tab/window switcher or dock/task-bar etc. Useful if you are building a tray-only app.
+| Key | Default Value | Description |
+| :--- | :--- | :--- |
+| agent | false |  If agent is set to true, the app will not display in the tab/window switcher or dock/task-bar etc. Useful if you are building a tray-only app. |
 
 ### `tray`
 
-Key | Default Value | Description
-:--- | :--- | :---
-icon |  |  The icon to be displayed in the operating system tray. On Windows, you may need to use ICO format. defalut value = ""
+| Key | Default Value | Description |
+| :--- | :--- | :--- |
+| icon |  |  The icon to be displayed in the operating system tray. On Windows, you may need to use ICO format. defalut value = "" |
 
 ### `headless`
 
-Key | Default Value | Description
-:--- | :--- | :---
-runner |  |  The headless runner command. It is used when no OS specific runner is set.
-runner_flags |  |  The headless runner command flags. It is used when no OS specific runner is set.
-runner_android |  |  The headless runner command for Android
-runner_android_flags |  |  The headless runner command flags for Android
-runner_ios |  |  The headless runner command for iOS
-runner_ios_flags |  |  The headless runner command flags for iOS
-runner_linux |  |  The headless runner command for Linux
-runner_linux_flags |  |  The headless runner command flags for Linux
-runner_mac |  |  The headless runner command for MacOS
-runner_mac_flags |  |  The headless runner command flags for MacOS
-runner_win32 |  |  The headless runner command for Windows
-runner_win32_flags |  |  The headless runner command flags for Windows
+| Key | Default Value | Description |
+| :--- | :--- | :--- |
+| runner |  |  The headless runner command. It is used when no OS specific runner is set. |
+| runner_flags |  |  The headless runner command flags. It is used when no OS specific runner is set. |
+| runner_android |  |  The headless runner command for Android |
+| runner_android_flags |  |  The headless runner command flags for Android |
+| runner_ios |  |  The headless runner command for iOS |
+| runner_ios_flags |  |  The headless runner command flags for iOS |
+| runner_linux |  |  The headless runner command for Linux |
+| runner_linux_flags |  |  The headless runner command flags for Linux |
+| runner_mac |  |  The headless runner command for MacOS |
+| runner_mac_flags |  |  The headless runner command flags for MacOS |
+| runner_win32 |  |  The headless runner command for Windows |
+| runner_win32_flags |  |  The headless runner command flags for Windows |
 
