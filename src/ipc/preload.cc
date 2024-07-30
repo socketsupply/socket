@@ -158,7 +158,7 @@ namespace SSC::IPC {
       buffers.push_back(";(() => {");
       buffers.push_back(trim(tmpl(
         R"JAVASCRIPT(
-          if (globalThiss.__RUNTIME_INIT_NOW__) return
+          if (globalThis.__RUNTIME_INIT_NOW__) return
           if (!globalThis.__args) {
             Object.defineProperty(globalThis, '__args', {
               configurable: false,
