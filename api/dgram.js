@@ -542,7 +542,9 @@ async function send (socket, options, callback) {
       }, options.buffer)
     }
 
-    callback(result.err, result.data)
+    if (result.data?.detached !== true) {
+      callback(result.err, result.data)
+    }
   } catch (err) {
     callback(err)
     return { err }
