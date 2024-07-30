@@ -1,12 +1,8 @@
-#include "../window/window.hh"
 #include "../app/app.hh"
+#include "../window/window.hh"
 
-#include "navigator.hh"
 #include "bridge.hh"
-
-#if SOCKET_RUNTIME_PLATFORM_ANDROID
-#include "../platform/android.hh"
-#endif
+#include "navigator.hh"
 
 #if SOCKET_RUNTIME_PLATFORM_APPLE
 @implementation SSCNavigationDelegate
