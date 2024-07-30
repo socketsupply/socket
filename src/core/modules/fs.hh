@@ -2,13 +2,9 @@
 #define SOCKET_RUNTIME_CORE_MODULE_FS_H
 
 #include "../file_system_watcher.hh"
-#include "../resource.hh"
 #include "../module.hh"
+#include "../resource.hh"
 #include "../trace.hh"
-
-#if SOCKET_RUNTIME_PLATFORM_ANDROID
-#include "../../platform/android.hh"
-#endif
 
 namespace SSC {
   class Core;
@@ -25,6 +21,23 @@ namespace SSC {
         uv_dir_t *dir = nullptr;
         uv_file fd = 0;
         CoreFS* fs = nullptr;
+
+      #if SOCKET_RUNTIME_PLATFORM_ANDROID
+        // asset state
+        Android::Asset* androidAsset = nullptr;
+        Queue<String> androidAssetDirectoryEntries;
+        Queue<String> androidContentDirectoryEntries;
+        Android::ContentResolver::FileDescriptor androidContent = nullptr;
+        // type predicates
+        bool isAndroidAssetDirectory = false;
+        bool isAndroidContentDirectory = false;
+        bool isAndroidContent = false;
+        // descriptor offsets
+        off_t androidAssetOffset = 0;
+        off_t androidAssetLength = 0;
+        off_t androidContentOffset = 0;
+        off_t androidContentLength = 0;
+      #endif
 
         Descriptor (CoreFS* fs, ID id, const String& filename);
         bool isDirectory () const;
@@ -101,7 +114,7 @@ namespace SSC {
         const String& path,
         int mode,
         const CoreModule::Callback& callback
-      ) const;
+      );
 
       void chmod (
         const String& seq,
@@ -138,7 +151,7 @@ namespace SSC {
         const String& dst,
         int flags,
         const CoreModule::Callback& callback
-      ) const;
+      );
 
       void closedir (
         const String& seq,
@@ -167,7 +180,7 @@ namespace SSC {
         const String& seq,
         ID id,
         const CoreModule::Callback& callback
-      ) const;
+      );
 
       void fsync (
         const String& seq,
@@ -226,7 +239,7 @@ namespace SSC {
         const String& seq,
         const String& path,
         const CoreModule::Callback& callback
-      ) const;
+      );
 
       void open (
         const String& seq,
@@ -282,7 +295,7 @@ namespace SSC {
         const String& seq,
         const String& path,
         const CoreModule::Callback& callback
-      ) const;
+      );
 
       void stopWatch (
         const String& seq,

@@ -5,6 +5,18 @@
 #include "platform.hh"
 
 namespace SSC {
+#if SOCKET_RUNTIME_PLATFORM_ANDROID
+  void CorePlatform::configureAndroidContext (
+    Android::JVMEnvironment jvm,
+    Android::Activity activity
+  ) {
+    this->jvm = jvm;
+    this->activity = activity;
+    this->contentResolver.activity = activity;
+    this->contentResolver.jvm = jvm;
+  }
+
+#endif
   void CorePlatform::event (
     const String& seq,
     const String& event,

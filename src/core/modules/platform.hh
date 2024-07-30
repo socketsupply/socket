@@ -3,10 +3,6 @@
 
 #include "../module.hh"
 
-#if SOCKET_RUNTIME_PLATFORM_ANDROID
-#include "../../platform/android.hh"
-#endif
-
 namespace SSC {
   class Core;
   class CorePlatform : public CoreModule {
@@ -16,11 +12,19 @@ namespace SSC {
     #if SOCKET_RUNTIME_PLATFORM_ANDROID
       Android::JVMEnvironment jvm;
       Android::Activity activity = nullptr;
+      Android::ContentResolver contentResolver;
     #endif
 
       CorePlatform (Core* core)
         : CoreModule(core)
       {}
+
+    #if SOCKET_RUNTIME_PLATFORM_ANDROID
+      void configureAndroidContext (
+        Android::JVMEnvironment jvm,
+        Android::Activity activity
+      );
+    #endif
 
       void event (
         const String& seq,
