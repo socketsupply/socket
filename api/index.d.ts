@@ -2940,6 +2940,11 @@ declare module "socket:path/well-known" {
      */
     export const CONFIG: string | null;
     /**
+     * Well known path to the application's public "media" folder.
+     * @type {?string}
+     */
+    export const MEDIA: string | null;
+    /**
      * Well known path to the application's "data" folder.
      * @type {?string}
      */
@@ -2968,6 +2973,7 @@ declare module "socket:path/well-known" {
         export { DESKTOP };
         export { VIDEOS };
         export { CONFIG };
+        export { MEDIA };
         export { MUSIC };
         export { HOME };
         export { DATA };
@@ -3943,6 +3949,7 @@ declare module "socket:path/win32" {
     import { DESKTOP } from "socket:path/well-known";
     import { VIDEOS } from "socket:path/well-known";
     import { CONFIG } from "socket:path/well-known";
+    import { MEDIA } from "socket:path/well-known";
     import { MUSIC } from "socket:path/well-known";
     import { HOME } from "socket:path/well-known";
     import { DATA } from "socket:path/well-known";
@@ -3950,7 +3957,7 @@ declare module "socket:path/win32" {
     import { TMP } from "socket:path/well-known";
     import * as exports from "socket:path/win32";
     
-    export { mounts, posix, Path, DOWNLOADS, DOCUMENTS, RESOURCES, PICTURES, DESKTOP, VIDEOS, CONFIG, MUSIC, HOME, DATA, LOG, TMP };
+    export { mounts, posix, Path, DOWNLOADS, DOCUMENTS, RESOURCES, PICTURES, DESKTOP, VIDEOS, CONFIG, MEDIA, MUSIC, HOME, DATA, LOG, TMP };
 }
 
 declare module "socket:path/posix" {
@@ -4038,6 +4045,7 @@ declare module "socket:path/posix" {
     import { DESKTOP } from "socket:path/well-known";
     import { VIDEOS } from "socket:path/well-known";
     import { CONFIG } from "socket:path/well-known";
+    import { MEDIA } from "socket:path/well-known";
     import { MUSIC } from "socket:path/well-known";
     import { HOME } from "socket:path/well-known";
     import { DATA } from "socket:path/well-known";
@@ -4045,7 +4053,7 @@ declare module "socket:path/posix" {
     import { TMP } from "socket:path/well-known";
     import * as exports from "socket:path/posix";
     
-    export { mounts, win32, Path, DOWNLOADS, DOCUMENTS, RESOURCES, PICTURES, DESKTOP, VIDEOS, CONFIG, MUSIC, HOME, DATA, LOG, TMP };
+    export { mounts, win32, Path, DOWNLOADS, DOCUMENTS, RESOURCES, PICTURES, DESKTOP, VIDEOS, CONFIG, MEDIA, MUSIC, HOME, DATA, LOG, TMP };
 }
 
 declare module "socket:path/index" {
@@ -4061,6 +4069,7 @@ declare module "socket:path/index" {
     import { DESKTOP } from "socket:path/well-known";
     import { VIDEOS } from "socket:path/well-known";
     import { CONFIG } from "socket:path/well-known";
+    import { MEDIA } from "socket:path/well-known";
     import { MUSIC } from "socket:path/well-known";
     import { HOME } from "socket:path/well-known";
     import { DATA } from "socket:path/well-known";
@@ -4068,7 +4077,7 @@ declare module "socket:path/index" {
     import { TMP } from "socket:path/well-known";
     import * as exports from "socket:path/index";
     
-    export { mounts, posix, win32, Path, DOWNLOADS, DOCUMENTS, RESOURCES, PICTURES, DESKTOP, VIDEOS, CONFIG, MUSIC, HOME, DATA, LOG, TMP };
+    export { mounts, posix, win32, Path, DOWNLOADS, DOCUMENTS, RESOURCES, PICTURES, DESKTOP, VIDEOS, CONFIG, MEDIA, MUSIC, HOME, DATA, LOG, TMP };
 }
 
 declare module "socket:path" {
@@ -4098,12 +4107,13 @@ declare module "socket:path" {
     import { DESKTOP } from "socket:path/index";
     import { VIDEOS } from "socket:path/index";
     import { CONFIG } from "socket:path/index";
+    import { MEDIA } from "socket:path/index";
     import { MUSIC } from "socket:path/index";
     import { HOME } from "socket:path/index";
     import { DATA } from "socket:path/index";
     import { LOG } from "socket:path/index";
     import { TMP } from "socket:path/index";
-    export { Path, posix, win32, mounts, DOWNLOADS, DOCUMENTS, RESOURCES, PICTURES, DESKTOP, VIDEOS, CONFIG, MUSIC, HOME, DATA, LOG, TMP };
+    export { Path, posix, win32, mounts, DOWNLOADS, DOCUMENTS, RESOURCES, PICTURES, DESKTOP, VIDEOS, CONFIG, MEDIA, MUSIC, HOME, DATA, LOG, TMP };
 }
 
 declare module "socket:fs/stream" {
