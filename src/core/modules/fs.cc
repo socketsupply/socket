@@ -1,7 +1,9 @@
-#include "../headers.hh"
-#include "../trace.hh"
-#include "../json.hh"
 #include "../core.hh"
+#include "../headers.hh"
+#include "../json.hh"
+#include "../resource.hh"
+#include "../trace.hh"
+
 #include "fs.hh"
 
 namespace SSC {
@@ -215,16 +217,26 @@ namespace SSC {
   }
 
   CoreFS::Descriptor::Descriptor (CoreFS* fs, ID id, const String& filename)
-    : resource(filename),
+    : resource(filename, { false, fs->core }),
       fs(fs),
       id(id)
   {}
 
   bool CoreFS::Descriptor::isDirectory () const {
+  #if SOCKET_RUNTIME_PLATFORM_ANDROID
+    if (this->isAndroidAssetDirectory) {
+      return true;
+    }
+  #endif
     return this->dir != nullptr;
   }
 
   bool CoreFS::Descriptor::isFile () const {
+  #if SOCKET_RUNTIME_PLATFORM_ANDROID
+    if (this->androidAsset != nullptr) {
+      return true;
+    }
+  #endif
     return this->fd > 0 && this->dir == nullptr;
   }
 
@@ -299,24 +311,103 @@ namespace SSC {
     const String& path,
     int mode,
     const CoreModule::Callback& callback
-  ) const {
-    this->core->dispatchEventLoop([=, this]() {
+  ) {
+    this->core->dispatchEventLoop([=, this]() mutable {
       auto filename = path.c_str();
       auto loop = &this->core->eventLoop;
-      auto ctx = new RequestContext(seq, callback);
+      auto desc = std::make_shared<Descriptor>(this, 0, filename);
+
+    #if SOCKET_RUNTIME_PLATFORM_ANDROID
+      if (desc->resource.url.scheme == "socket") {
+        if (desc->resource.access(mode) == mode) {
+          const auto json = JSON::Object::Entries {
+            {"source", "fs.access"},
+            {"data", JSON::Object::Entries {
+              {"mode", mode},
+            }}
+          };
+
+          return callback(seq, json, Post{});
+        } else if (mode == R_OK || mode == F_OK) {
+          auto name = desc->resource.name;
+
+          if (name.starts_with("/")) {
+            name = name.substr(1);
+          } else if (name.starts_with("./")) {
+            name = name.substr(2);
+          }
+
+          const auto attachment = Android::JNIEnvironmentAttachment(desc->fs->core->platform.jvm);
+          const auto assetManager = CallObjectClassMethodFromAndroidEnvironment(
+            attachment.env,
+            this->core->platform.activity,
+            "getAssetManager",
+            "()Landroid/content/res/AssetManager;"
+          );
+
+          const auto entries = (jobjectArray) CallObjectClassMethodFromAndroidEnvironment(
+            attachment.env,
+            assetManager,
+            "list",
+            "(Ljava/lang/String;)[Ljava/lang/String;",
+            attachment.env->NewStringUTF(name.c_str())
+          );
+
+          const auto length = attachment.env->GetArrayLength(entries);
+          if (length > 0) {
+            const auto json = JSON::Object::Entries {
+              {"source", "fs.access"},
+              {"data", JSON::Object::Entries {
+                {"mode", mode},
+              }}
+            };
+
+            return callback(seq, json, Post{});
+          }
+        }
+      } else if (
+        desc->resource.url.scheme == "content" ||
+        desc->resource.url.scheme == "android.resource"
+      ) {
+        if (this->core->platform.contentResolver.hasAccess(desc->resource.url.str())) {
+          const auto json = JSON::Object::Entries {
+            {"source", "fs.access"},
+            {"data", JSON::Object::Entries {
+              {"mode", mode},
+            }}
+          };
+
+          return callback(seq, json, Post{});
+        }
+      }
+    #endif
+
+      auto ctx = new RequestContext(desc, seq, callback);
       auto req = &ctx->req;
       auto err = uv_fs_access(loop, req, filename, mode, [](uv_fs_t* req) {
         auto ctx = (RequestContext *) req->data;
         auto json = JSON::Object {};
 
         if (uv_fs_get_result(req) < 0) {
-          json = JSON::Object::Entries {
-            {"source", "fs.access"},
-            {"err", JSON::Object::Entries {
-              {"code", req->result},
-              {"message", String(uv_strerror((int) req->result))}
-            }}
-          };
+        #if SOCKET_RUNTIME_PLATFORM_ANDROID
+          if (ctx->descriptor->resource.access(req->flags) == req->flags) {
+            json = JSON::Object::Entries {
+              {"source", "fs.access"},
+              {"data", JSON::Object::Entries {
+                {"mode", req->flags},
+              }}
+            };
+          } else
+        #endif
+          {
+            json = JSON::Object::Entries {
+              {"source", "fs.access"},
+              {"err", JSON::Object::Entries {
+                {"code", req->result},
+                {"message", String(uv_strerror((int) req->result))}
+              }}
+            };
+          }
         } else {
           json = JSON::Object::Entries {
             {"source", "fs.access"},
@@ -405,7 +496,7 @@ namespace SSC {
   ) const {
     core->dispatchEventLoop([=, this]() {
       const auto ctx = new RequestContext(seq, callback);
-      const auto uv_callback = [](uv_fs_t* req) {
+      const auto err = uv_fs_chown(&core->eventLoop, &ctx->req, path.c_str(), uid, gid, [](uv_fs_t* req) {
         auto ctx = static_cast<RequestContext*>(req->data);
         auto json = JSON::Object{};
 
@@ -428,15 +519,7 @@ namespace SSC {
 
         ctx->callback(ctx->seq, json, Post {});
         delete ctx;
-      };
-
-      const auto err = uv_fs_chown(
-        &core->eventLoop,
-        &ctx->req,
-        path.c_str(),
-        uid, gid,
-        uv_callback
-      );
+      });
 
       if (err < 0) {
         auto json = JSON::Object::Entries {
@@ -461,7 +544,7 @@ namespace SSC {
   ) const {
     core->dispatchEventLoop([=, this]() {
       const auto ctx = new RequestContext(seq, callback);
-      const auto uv_callback = [](uv_fs_t* req) {
+      const auto err = uv_fs_lchown(&core->eventLoop, &ctx->req, path.c_str(), uid, gid, [](uv_fs_t* req) {
         auto ctx = static_cast<RequestContext*>(req->data);
         auto json = JSON::Object{};
 
@@ -484,16 +567,7 @@ namespace SSC {
 
         ctx->callback(ctx->seq, json, Post {});
         delete ctx;
-      };
-
-      const auto err = uv_fs_lchown(
-        &core->eventLoop,
-        &ctx->req,
-        path.c_str(),
-        uid,
-        gid,
-        uv_callback
-      );
+      });
 
       if (err < 0) {
         auto json = JSON::Object::Entries {
@@ -530,6 +604,44 @@ namespace SSC {
 
         return callback(seq, json, Post{});
       }
+
+    #if SOCKET_RUNTIME_PLATFORM_ANDROID
+      if (desc->androidAsset != nullptr) {
+        Lock lock(this->mutex);
+        AAsset_close(desc->androidAsset);
+        desc->androidAsset = nullptr;
+        const auto json = JSON::Object::Entries {
+          {"source", "fs.close"},
+          {"data", JSON::Object::Entries {
+            {"id", std::to_string(desc->id)},
+            {"fd", desc->fd}
+          }}
+        };
+
+        this->removeDescriptor(desc->id);
+        return callback(seq, json, Post{});
+      } else if (
+        desc->resource.url.scheme == "content" ||
+        desc->resource.url.scheme == "android.resource"
+      ) {
+        Lock lock(this->mutex);
+        this->core->platform.contentResolver.closeFileDescriptor(
+          desc->androidContent
+        );
+
+        desc->androidContent = nullptr;
+        const auto json = JSON::Object::Entries {
+          {"source", "fs.close"},
+          {"data", JSON::Object::Entries {
+            {"id", std::to_string(desc->id)},
+            {"fd", desc->fd}
+          }}
+        };
+
+        this->removeDescriptor(desc->id);
+        return callback(seq, json, Post{});
+      }
+    #endif
 
       auto loop = &this->core->eventLoop;
       auto ctx = new RequestContext(desc, seq, callback);
@@ -591,6 +703,78 @@ namespace SSC {
     this->core->dispatchEventLoop([=, this]() {
       auto filename = path.c_str();
       auto desc = std::make_shared<Descriptor>(this, id, filename);
+
+    #if SOCKET_RUNTIME_PLATFORM_ANDROID
+      if (desc->resource.url.scheme == "socket") {
+        auto assetManager = FileResource::getSharedAndroidAssetManager();
+        desc->androidAsset = AAssetManager_open(
+          assetManager,
+          desc->resource.name.c_str(),
+          AASSET_MODE_RANDOM
+        );
+
+        desc->fd = AAsset_openFileDescriptor(
+          desc->androidAsset,
+          &desc->androidAssetOffset,
+          &desc->androidAssetLength
+        );
+
+        const auto json = JSON::Object::Entries {
+          {"source", "fs.open"},
+          {"data", JSON::Object::Entries {
+            {"id", std::to_string(desc->id)},
+            {"fd", desc->fd}
+          }}
+        };
+
+        // insert into `descriptors` map
+        Lock lock(desc->fs->mutex);
+        this->descriptors.insert_or_assign(desc->id, desc);
+        return callback(seq, json, Post{});
+      } else if (
+        desc->resource.url.scheme == "content" ||
+        desc->resource.url.scheme == "android.resource"
+      ) {
+        auto fileDescriptor = this->core->platform.contentResolver.openFileDescriptor(
+          desc->resource.url.str(),
+          &desc->androidContentOffset,
+          &desc->androidContentLength
+        );
+
+        if (fileDescriptor == nullptr) {
+          const auto json = JSON::Object::Entries {
+            {"source", "fs.open"},
+            {"err", JSON::Object::Entries {
+              {"id", std::to_string(desc->id)},
+              {"type", "NotFoundError"},
+              {"message", "Content does not exist at given URI"}
+            }}
+          };
+
+          return callback(seq, json, Post{});
+        }
+
+        desc->fd = this->core->platform.contentResolver.getFileDescriptorFD(
+          fileDescriptor
+        );
+
+        desc->androidContent = fileDescriptor;
+
+        const auto json = JSON::Object::Entries {
+          {"source", "fs.open"},
+          {"data", JSON::Object::Entries {
+            {"id", std::to_string(desc->id)},
+            {"fd", desc->fd}
+          }}
+        };
+
+        // insert into `descriptors` map
+        Lock lock(desc->fs->mutex);
+        this->descriptors.insert_or_assign(desc->id, desc);
+        return callback(seq, json, Post{});
+      }
+    #endif
+
       auto loop = &this->core->eventLoop;
       auto ctx = new RequestContext(desc, seq, callback);
       auto req = &ctx->req;
@@ -600,14 +784,43 @@ namespace SSC {
         auto json = JSON::Object {};
 
         if (uv_fs_get_result(req) < 0) {
-          json = JSON::Object::Entries {
-            {"source", "fs.open"},
-            {"err", JSON::Object::Entries {
-              {"id", std::to_string(desc->id)},
-              {"code", req->result},
-              {"message", String(uv_strerror((int) req->result))}
-            }}
-          };
+        #if SOCKET_RUNTIME_PLATFORM_ANDROID
+          if (ctx->descriptor->resource.isAndroidLocalAsset()) {
+            auto assetManager = FileResource::getSharedAndroidAssetManager();
+            desc->androidAsset = AAssetManager_open(
+              assetManager,
+              ctx->descriptor->resource.name.c_str(),
+              AASSET_MODE_RANDOM
+            );
+
+            desc->fd = AAsset_openFileDescriptor(
+              desc->androidAsset,
+              &desc->androidAssetOffset,
+              &desc->androidAssetLength
+            );
+            json = JSON::Object::Entries {
+              {"source", "fs.open"},
+              {"data", JSON::Object::Entries {
+                {"id", std::to_string(desc->id)},
+                {"fd", desc->fd}
+              }}
+            };
+
+            // insert into `descriptors` map
+            Lock lock(desc->fs->mutex);
+            desc->fs->descriptors.insert_or_assign(desc->id, desc);
+          } else
+        #endif
+          {
+            json = JSON::Object::Entries {
+              {"source", "fs.open"},
+              {"err", JSON::Object::Entries {
+                {"id", std::to_string(desc->id)},
+                {"code", req->result},
+                {"message", String(uv_strerror((int) req->result))}
+              }}
+            };
+          }
         } else {
           json = JSON::Object::Entries {
             {"source", "fs.open"},
@@ -652,6 +865,87 @@ namespace SSC {
     this->core->dispatchEventLoop([=, this]() {
       auto filename = path.c_str();
       auto desc =  std::make_shared<Descriptor>(this, id, filename);
+
+    #if SOCKET_RUNTIME_PLATFORM_ANDROID
+      if (desc->resource.url.scheme == "socket") {
+        auto name = desc->resource.name;
+
+        if (name.starts_with("/")) {
+          name = name.substr(1);
+        } else if (name.starts_with("./")) {
+          name = name.substr(2);
+        }
+
+        const auto attachment = Android::JNIEnvironmentAttachment(desc->fs->core->platform.jvm);
+        const auto assetManager = CallObjectClassMethodFromAndroidEnvironment(
+          attachment.env,
+          desc->fs->core->platform.activity,
+          "getAssetManager",
+          "()Landroid/content/res/AssetManager;"
+        );
+
+        const auto entries = (jobjectArray) CallObjectClassMethodFromAndroidEnvironment(
+          attachment.env,
+          assetManager,
+          "list",
+          "(Ljava/lang/String;)[Ljava/lang/String;",
+          attachment.env->NewStringUTF(name.c_str())
+        );
+
+        const auto length = attachment.env->GetArrayLength(entries);
+
+        for (int i = 0; i < length; ++i) {
+          const auto entry = (jstring) attachment.env->GetObjectArrayElement(entries, i);
+          const auto filename = attachment.env->GetStringUTFChars(entry, nullptr);
+          if (filename != nullptr) {
+            desc->androidAssetDirectoryEntries.push(filename);
+            attachment.env->ReleaseStringUTFChars(entry, filename);
+          }
+        }
+
+        if (length > 0) {
+          desc->isAndroidAssetDirectory = true;
+          const auto json = JSON::Object::Entries {
+            {"source", "fs.opendir"},
+            {"data", JSON::Object::Entries {
+              {"id", std::to_string(desc->id)}
+            }}
+          };
+
+          // insert into `descriptors` map
+          Lock lock(desc->fs->mutex);
+          desc->fs->descriptors.insert_or_assign(desc->id, desc);
+          return callback(seq, json, Post{});
+        }
+      } else if (
+        desc->resource.url.scheme == "content" ||
+        desc->resource.url.scheme == "android.resource"
+      ) {
+        const auto entries = this->core->platform.contentResolver.getPathnameEntriesFromContentURI(
+          desc->resource.url.str()
+        );
+
+        for (const auto& entry : entries) {
+          desc->androidContentDirectoryEntries.push(entry);
+        }
+
+        if (entries.size() > 0) {
+          desc->isAndroidContentDirectory = true;
+          const auto json = JSON::Object::Entries {
+            {"source", "fs.opendir"},
+            {"data", JSON::Object::Entries {
+              {"id", std::to_string(desc->id)}
+            }}
+          };
+
+          // insert into `descriptors` map
+          Lock lock(desc->fs->mutex);
+          desc->fs->descriptors.insert_or_assign(desc->id, desc);
+          return callback(seq, json, Post{});
+        }
+      }
+    #endif
+
       auto loop = &this->core->eventLoop;
       auto ctx = new RequestContext(desc, seq, callback);
       auto req = &ctx->req;
@@ -661,14 +955,69 @@ namespace SSC {
         auto json = JSON::Object {};
 
         if (uv_fs_get_result(req) < 0) {
-          json = JSON::Object::Entries {
-            {"source", "fs.opendir"},
-            {"err", JSON::Object::Entries {
-              {"id", std::to_string(desc->id)},
-              {"code", req->result},
-              {"message", String(uv_strerror((int) req->result))}
-            }}
-          };
+        #if SOCKET_RUNTIME_PLATFORM_ANDROID
+          auto name = ctx->descriptor->resource.name;
+
+          if (name.starts_with("/")) {
+            name = name.substr(1);
+          } else if (name.starts_with("./")) {
+            name = name.substr(2);
+          }
+
+          const auto attachment = Android::JNIEnvironmentAttachment(ctx->descriptor->fs->core->platform.jvm);
+          const auto assetManager = CallObjectClassMethodFromAndroidEnvironment(
+            attachment.env,
+            ctx->descriptor->fs->core->platform.activity,
+            "getAssetManager",
+            "()Landroid/content/res/AssetManager;"
+          );
+
+          const auto entries = (jobjectArray) CallObjectClassMethodFromAndroidEnvironment(
+            attachment.env,
+            assetManager,
+            "list",
+            "(Ljava/lang/String;)[Ljava/lang/String;",
+            attachment.env->NewStringUTF(name.c_str())
+          );
+
+          const auto length = attachment.env->GetArrayLength(entries);
+
+          for (int i = 0; i < length; ++i) {
+            const auto entry = (jstring) attachment.env->GetObjectArrayElement(entries, i);
+            const auto filename = attachment.env->GetStringUTFChars(entry, nullptr);
+            if (filename != nullptr) {
+              desc->androidAssetDirectoryEntries.push(filename);
+              attachment.env->ReleaseStringUTFChars(entry, filename);
+            }
+          }
+
+          if (length > 0) {
+            desc->isAndroidAssetDirectory = true;
+          }
+
+          if (desc->isAndroidAssetDirectory) {
+            json = JSON::Object::Entries {
+              {"source", "fs.opendir"},
+              {"data", JSON::Object::Entries {
+                {"id", std::to_string(desc->id)}
+              }}
+            };
+
+            // insert into `descriptors` map
+            Lock lock(desc->fs->mutex);
+            desc->fs->descriptors.insert_or_assign(desc->id, desc);
+          } else
+        #endif
+          {
+            json = JSON::Object::Entries {
+              {"source", "fs.opendir"},
+              {"err", JSON::Object::Entries {
+                {"id", std::to_string(desc->id)},
+                {"code", req->result},
+                {"message", String(uv_strerror((int) req->result))}
+              }}
+            };
+          }
         } else {
           json = JSON::Object::Entries {
             {"source", "fs.opendir"},
@@ -725,6 +1074,66 @@ namespace SSC {
 
         return callback(seq, json, Post{});
       }
+
+    #if SOCKET_RUNTIME_PLATFORM_ANDROID
+      if (desc->isAndroidAssetDirectory) {
+        Vector<JSON::Any> entries;
+
+        for (
+          int i = 0;
+          i < nentries && i < desc->androidAssetDirectoryEntries.size();
+          ++i
+        ) {
+          const auto name = desc->androidAssetDirectoryEntries.front();
+          const auto encodedName = name.ends_with("/")
+            ? encodeURIComponent(name.substr(0, name.size() - 1))
+            : encodeURIComponent(name);
+
+          const auto entry = JSON::Object::Entries {
+            {"type", name.ends_with("/") ? 2 : 1},
+            {"name", encodedName}
+          };
+
+          entries.push_back(entry);
+          desc->androidAssetDirectoryEntries.pop();
+        }
+
+        const auto json = JSON::Object::Entries {
+          {"source", "fs.readdir"},
+          {"data", entries}
+        };
+
+        return callback(seq, json, Post{});
+      } else if (desc->isAndroidContentDirectory) {
+        Vector<JSON::Any> entries;
+
+        for (
+          int i = 0;
+          i < nentries && i < desc->androidContentDirectoryEntries.size();
+          ++i
+        ) {
+          const auto name = desc->androidContentDirectoryEntries.front();
+          const auto encodedName = name.ends_with("/")
+            ? encodeURIComponent(name.substr(0, name.size() - 1))
+            : encodeURIComponent(name);
+
+          const auto entry = JSON::Object::Entries {
+            {"type", name.ends_with("/") ? 2 : 1},
+            {"name", encodedName}
+          };
+
+          entries.push_back(entry);
+          desc->androidContentDirectoryEntries.pop();
+        }
+
+        const auto json = JSON::Object::Entries {
+          {"source", "fs.readdir"},
+          {"data", entries}
+        };
+
+        return callback(seq, json, Post{});
+      }
+    #endif
 
       if (!desc->isDirectory()) {
         auto json = JSON::Object::Entries {
@@ -820,6 +1229,36 @@ namespace SSC {
 
         return callback(seq, json, Post{});
       }
+
+    #if SOCKET_RUNTIME_PLATFORM_ANDROID
+      if (desc->isAndroidAssetDirectory) {
+        Lock lock(this->mutex);
+        desc->isAndroidAssetDirectory = false;
+        desc->androidAssetDirectoryEntries = {};
+        const auto json = JSON::Object::Entries {
+          {"source", "fs.closedir"},
+          {"data", JSON::Object::Entries {
+            {"id", std::to_string(desc->id)}
+          }}
+        };
+
+        this->removeDescriptor(desc->id);
+        return callback(seq, json, Post{});
+      } else if (desc->isAndroidContentDirectory) {
+        Lock lock(this->mutex);
+        desc->isAndroidContentDirectory = false;
+        desc->androidContentDirectoryEntries = {};
+        const auto json = JSON::Object::Entries {
+          {"source", "fs.closedir"},
+          {"data", JSON::Object::Entries {
+            {"id", std::to_string(desc->id)}
+          }}
+        };
+
+        this->removeDescriptor(desc->id);
+        return callback(seq, json, Post{});
+      }
+    #endif
 
       if (!desc->isDirectory()) {
         auto json = JSON::Object::Entries {
@@ -990,10 +1429,58 @@ namespace SSC {
         return callback(seq, json, Post{});
       }
 
+    #if SOCKET_RUNTIME_PLATFORM_ANDROID
+      if (desc->androidAsset != nullptr) {
+        const auto length = AAsset_getLength(desc->androidAsset);
+
+        if (offset >= static_cast<size_t>(length)) {
+          const auto headers = Headers {{
+            {"content-type" ,"application/octet-stream"},
+            {"content-length", 0}
+          }};
+
+          Post post {0};
+          post.id = rand64();
+          post.body = std::make_shared<char[]>(size);
+          post.length = 0;
+          post.headers = headers.str();
+          return callback(seq, JSON::Object{}, post);
+        } else {
+          if (size > length - offset) {
+            size = length - offset;
+          }
+
+          offset += desc->androidAssetOffset;
+        }
+      } else if (desc->androidContent != nullptr) {
+        const auto length = desc->androidContentLength;
+
+        if (offset >= static_cast<size_t>(length)) {
+          const auto headers = Headers {{
+            {"content-type" ,"application/octet-stream"},
+            {"content-length", 0}
+          }};
+
+          Post post {0};
+          post.id = rand64();
+          post.body = std::make_shared<char[]>(size);
+          post.length = 0;
+          post.headers = headers.str();
+          return callback(seq, JSON::Object{}, post);
+        } else {
+          if (size > length - offset) {
+            size = length - offset;
+          }
+
+          offset += desc->androidContentOffset;
+        }
+      }
+    #endif
+
+      auto bytes = std::make_shared<char[]>(size);
       auto loop = &this->core->eventLoop;
       auto ctx = new RequestContext(desc, seq, callback);
       auto req = &ctx->req;
-      SharedPointer<char[]> bytes = std::make_shared<char[]>(size);
 
       ctx->setBuffer(bytes, size);
 
@@ -1051,7 +1538,7 @@ namespace SSC {
     const CoreModule::Callback& callback
   ) {
     this->core->dispatchEventLoop([=, this]() {
-    #if defined(__ANDROID__)
+    #if SOCKET_RUNTIME_PLATFORM_ANDROID
       auto json = JSON::Object::Entries {
         {"source", "fs.watch"},
         {"err", JSON::Object::Entries {
@@ -1153,6 +1640,22 @@ namespace SSC {
         return callback(seq, json, Post{});
       }
 
+    #if SOCKET_RUNTIME_PLATFORM_ANDROID
+      if (desc->androidAsset != nullptr) {
+        auto json = JSON::Object::Entries {
+          {"source", "fs.write"},
+          {"err", JSON::Object::Entries {
+            {"id", std::to_string(id)},
+            {"code", "EPERM"},
+            {"type", "NotAllowedError"},
+            {"message", "Cannot write to an Android Asset file descriptor."}
+          }}
+        };
+
+        return callback(seq, json, Post{});
+      }
+    #endif
+
       auto loop = &this->core->eventLoop;
       auto ctx = new RequestContext(desc, seq, callback);
       auto req = &ctx->req;
@@ -1206,11 +1709,40 @@ namespace SSC {
     const String& seq,
     const String& path,
     const CoreModule::Callback& callback
-  ) const {
+  ) {
     this->core->dispatchEventLoop([=, this]() {
       auto filename = path.c_str();
+      auto desc = std::make_shared<Descriptor>(this, 0, filename);
+
+    #if SOCKET_RUNTIME_PLATFORM_ANDROID
+      if (desc->resource.isAndroidLocalAsset()) {
+        const auto json = JSON::Object::Entries {
+          {"source", "fs.stat"},
+          {"data", JSON::Object::Entries {
+            {"st_mode", R_OK},
+            {"st_size", desc->resource.size()}
+          }}
+        };
+
+        return callback(seq, json, Post{});
+      } else if (
+        desc->resource.url.scheme == "content" ||
+        desc->resource.url.scheme == "android.resource"
+      ) {
+        const auto json = JSON::Object::Entries {
+          {"source", "fs.stat"},
+          {"data", JSON::Object::Entries {
+            {"st_mode", R_OK},
+            {"st_size", desc->resource.size()}
+          }}
+        };
+
+        return callback(seq, json, Post{});
+      }
+    #endif
+
       auto loop = &this->core->eventLoop;
-      auto ctx = new RequestContext(seq, callback);
+      auto ctx = new RequestContext(desc, seq, callback);
       auto req = &ctx->req;
       auto err = uv_fs_stat(loop, req, filename, [](uv_fs_t *req) {
         auto ctx = (RequestContext *) req->data;
@@ -1253,7 +1785,7 @@ namespace SSC {
     const CoreModule::Callback& callback
   ) {
     this->core->dispatchEventLoop([=, this]() {
-    #if defined(__ANDROID__)
+    #if SOCKET_RUNTIME_PLATFORM_ANDROID
       auto json = JSON::Object::Entries {
         {"source", "fs.stopWatch"},
         {"err", JSON::Object::Entries {
@@ -1427,7 +1959,7 @@ namespace SSC {
     const String& seq,
     ID id,
     const CoreModule::Callback& callback
-  ) const {
+  ) {
     this->core->dispatchEventLoop([=, this]() {
       auto desc = getDescriptor(id);
 
@@ -1444,6 +1976,20 @@ namespace SSC {
 
         return callback(seq, json, Post{});
       }
+
+    #if SOCKET_RUNTIME_PLATFORM_ANDROID
+      if (desc->androidAsset != nullptr) {
+        const auto json = JSON::Object::Entries {
+          {"source", "fs.stat"},
+          {"data", JSON::Object::Entries {
+            {"st_mode", R_OK},
+            {"st_size", desc->resource.size()}
+          }}
+        };
+
+        return callback(seq, json, Post{});
+      }
+    #endif
 
       auto loop = &this->core->eventLoop;
       auto ctx = new RequestContext(desc, seq, callback);
@@ -1569,7 +2115,7 @@ namespace SSC {
   ) const {
     this->core->dispatchEventLoop([=, this]() {
       auto ctx = new RequestContext(seq, callback);
-      auto uv_callback = [](uv_fs_t* req) {
+      auto err = uv_fs_link(&core->eventLoop, &ctx->req, src.c_str(), dest.c_str(), [](uv_fs_t* req) {
         auto ctx = static_cast<RequestContext*>(req->data);
         auto json = JSON::Object{};
 
@@ -1592,10 +2138,7 @@ namespace SSC {
 
         ctx->callback(ctx->seq, json, Post {});
         delete ctx;
-      };
-
-      auto err = uv_fs_link(
-        &core->eventLoop, &ctx->req, src.c_str(), dest.c_str(), uv_callback);
+      });
 
       if (err < 0) {
         auto json = JSON::Object::Entries {
@@ -1620,7 +2163,7 @@ namespace SSC {
   ) const {
     this->core->dispatchEventLoop([=, this]() {
       auto ctx = new RequestContext(seq, callback);
-      auto uv_callback = [](uv_fs_t* req) {
+      auto err = uv_fs_symlink(&core->eventLoop, &ctx->req, src.c_str(), dest.c_str(), flags, [](uv_fs_t* req) {
         auto ctx = static_cast<RequestContext*>(req->data);
         auto json = JSON::Object{};
 
@@ -1643,10 +2186,7 @@ namespace SSC {
 
         ctx->callback(ctx->seq, json, Post {});
         delete ctx;
-      };
-
-      auto err = uv_fs_symlink(
-        &core->eventLoop, &ctx->req, src.c_str(), dest.c_str(), flags, uv_callback);
+      });
 
       if (err < 0) {
         auto json = JSON::Object::Entries {
@@ -1719,7 +2259,7 @@ namespace SSC {
   ) const {
     this->core->dispatchEventLoop([=, this]() {
       auto ctx = new RequestContext(seq, callback);
-      auto uv_callback = [](uv_fs_t* req) {
+      auto err = uv_fs_readlink(&core->eventLoop, &ctx->req, path.c_str(), [](uv_fs_t* req) {
         auto ctx = static_cast<RequestContext*>(req->data);
         auto json = JSON::Object{};
 
@@ -1742,14 +2282,7 @@ namespace SSC {
 
         ctx->callback(ctx->seq, json, Post {});
         delete ctx;
-      };
-
-      auto err = uv_fs_readlink(
-        &core->eventLoop,
-        &ctx->req,
-        path.c_str(),
-        uv_callback
-      );
+      });
 
       if (err < 0) {
         auto json = JSON::Object::Entries {
@@ -1769,21 +2302,41 @@ namespace SSC {
     const String& seq,
     const String& path,
     const CoreModule::Callback& callback
-  ) const {
+  ) {
     this->core->dispatchEventLoop([=, this]() {
-      auto ctx = new RequestContext(seq, callback);
-      auto uv_callback = [](uv_fs_t* req) {
+      auto filename = path.c_str(); auto desc = std::make_shared<Descriptor>(this, 0, filename);
+      auto ctx = new RequestContext(desc, seq, callback);
+      auto err = uv_fs_realpath(&core->eventLoop, &ctx->req, path.c_str(), [](uv_fs_t* req) {
         auto ctx = static_cast<RequestContext*>(req->data);
         auto json = JSON::Object{};
 
         if (uv_fs_get_result(req) < 0) {
-          json = JSON::Object::Entries {
-            {"source", "fs.realpath"},
-            {"err", JSON::Object::Entries {
-              {"code", uv_fs_get_result(req)},
-              {"message", String(uv_strerror(uv_fs_get_result(req)))}
-            }}
-          };
+        #if SOCKET_RUNTIME_PLATFORM_ANDROID
+          if (ctx->descriptor->resource.isAndroidLocalAsset()) {
+            json = JSON::Object::Entries {
+              {"source", "fs.realpath"},
+              {"data", JSON::Object::Entries {
+                {"path", ctx->descriptor->resource.path}
+              }}
+            };
+          } else if (ctx->descriptor->resource.isAndroidContent()) {
+            json = JSON::Object::Entries {
+              {"source", "fs.realpath"},
+              {"data", JSON::Object::Entries {
+                {"path", ctx->descriptor->resource.url.str()}
+              }}
+            };
+          } else
+        #endif
+          {
+            json = JSON::Object::Entries {
+              {"source", "fs.realpath"},
+              {"err", JSON::Object::Entries {
+                {"code", uv_fs_get_result(req)},
+                {"message", String(uv_strerror(uv_fs_get_result(req)))}
+              }}
+            };
+          }
         } else {
           json = JSON::Object::Entries {
             {"source", "fs.realpath"},
@@ -1795,10 +2348,7 @@ namespace SSC {
 
         ctx->callback(ctx->seq, json, Post {});
         delete ctx;
-      };
-
-      auto err = uv_fs_realpath(
-          &core->eventLoop, &ctx->req, path.c_str(), uv_callback);
+      });
 
       if (err < 0) {
         auto json = JSON::Object::Entries {
@@ -1872,8 +2422,29 @@ namespace SSC {
     const String& pathB,
     int flags,
     const CoreModule::Callback& callback
-  ) const {
+  ) {
     this->core->dispatchEventLoop([=, this]() {
+      auto desc = std::make_shared<Descriptor>(this, 0, pathA);
+
+    #if SOCKET_RUNTIME_PLATFORM_ANDROID
+      if (desc->resource.isAndroidLocalAsset() || desc->resource.isAndroidLocalAsset()) {
+        auto bytes = desc->resource.read();
+        fs::remove(pathB);
+        std::ofstream stream(pathB);
+        stream << bytes;
+        stream.close();
+
+        auto json = JSON::Object::Entries {
+          {"source", "fs.copyFile"},
+          {"data", JSON::Object::Entries {
+            {"result", 0}
+          }}
+        };
+
+        return callback(seq, json, Post{});
+      }
+    #endif
+
       auto loop = &this->core->eventLoop;
       auto ctx = new RequestContext(seq, callback);
       auto req = &ctx->req;
