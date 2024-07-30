@@ -64,7 +64,7 @@ namespace SSC {
       this->conduit.stop();
     }
 
-    this->stopEventLoop();
+    this->pauseEventLoop();
     this->isPaused = true;
   }
 
@@ -292,24 +292,33 @@ namespace SSC {
     return uv_loop_alive(getEventLoop());
   }
 
+  void Core::pauseEventLoop() {
+    isLoopRunning = false;
+    uv_stop(&eventLoop);
+  }
+
   void Core::stopEventLoop() {
+    if (isLoopRunning) {
+      return;
+    }
+
     isLoopRunning = false;
     uv_stop(&eventLoop);
   #if !SOCKET_RUNTIME_PLATFORM_APPLE
-  #if SOCKET_RUNTIME_PLATFORM_LINUX
-    if (this->options.dedicatedLoopThread) {
-  #endif
-    if (eventLoopThread != nullptr) {
-      if (eventLoopThread->joinable()) {
-        eventLoopThread->join();
-      }
+    #if SOCKET_RUNTIME_PLATFORM_LINUX
+      if (this->options.dedicatedLoopThread) {
+    #endif
+      if (eventLoopThread != nullptr) {
+        if (eventLoopThread->joinable()) {
+          eventLoopThread->join();
+        }
 
-      delete eventLoopThread;
-      eventLoopThread = nullptr;
-    }
-  #if SOCKET_RUNTIME_PLATFORM_LINUX
-    }
-  #endif
+        delete eventLoopThread;
+        eventLoopThread = nullptr;
+      }
+    #if SOCKET_RUNTIME_PLATFORM_LINUX
+      }
+    #endif
   #endif
   }
 

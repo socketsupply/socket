@@ -3,18 +3,18 @@
 
 #include "../platform/platform.hh"
 
-#if SOCKET_RUNTIME_PLATFORM_ANDROID
-#include "../platform/android.hh"
-#endif
-
 #include "trace.hh"
+#include "url.hh"
 
 namespace SSC {
+  // forward
+  class Core;
+
   class Resource {
     public:
       Atomic<bool> accessing = false;
-      const String name;
-      const String type;
+      String name;
+      String type;
       Tracer tracer;
       Resource (const String& type, const String& name);
       bool hasAccess () const noexcept;
@@ -29,10 +29,6 @@ namespace SSC {
         size_t size = 0;
       };
 
-      struct Options {
-        bool cache;
-      };
-
       struct WellKnownPaths {
         Path resources;
         Path downloads;
@@ -42,10 +38,13 @@ namespace SSC {
         Path videos;
         Path config;
         Path music;
+        Path media;
         Path home;
         Path data;
         Path log;
         Path tmp;
+
+        static void setDefaults (const WellKnownPaths& paths);
 
         WellKnownPaths ();
         const Vector<Path> entries () const;
@@ -95,8 +94,6 @@ namespace SSC {
         #elif SOCKET_RUNTIME_PLATFORM_LINUX
           GFileInputStream* stream = nullptr;
           GFile* file = nullptr;
-        #elif SOCKET_RUNTIME_PLATFORM_ANDROID
-        #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
         #endif
 
           Options options;
@@ -113,6 +110,11 @@ namespace SSC {
 
           const Buffer read (off_t offset = -1, size_t highWaterMark = -1);
           size_t remaining (off_t offset = -1) const;
+      };
+
+      struct Options {
+        bool cache;
+        Core* core;
       };
 
       Cache cache;
@@ -150,13 +152,22 @@ namespace SSC {
     #endif
 
       Path path;
+      URL url;
 
     #if SOCKET_RUNTIME_PLATFORM_APPLE
-      NSURL* url = nullptr;
+      NSURL* nsURL = nullptr;
     #endif
 
-      FileResource (const Path& resourcePath, const Options& options = {});
-      FileResource (const String& resourcePath, const Options& options = {});
+      FileResource (
+        const Path& resourcePath,
+        const Options& options = {0}
+      );
+
+      FileResource (
+        const String& resourcePath,
+        const Options& options = {0}
+      );
+
       ~FileResource ();
       FileResource (const FileResource&);
       FileResource (FileResource&&);
@@ -166,6 +177,7 @@ namespace SSC {
       bool startAccessing ();
       bool stopAccessing ();
       bool exists () const noexcept;
+      int access (int mode = F_OK) const noexcept;
       const String mimeType () const noexcept;
       size_t size (bool cached = false) noexcept;
       size_t size () const noexcept;
@@ -173,6 +185,11 @@ namespace SSC {
       const char* read (bool cached = false);
       const String str (bool cached = false);
       ReadStream stream (const ReadStream::Options& options = {});
+
+    #if SOCKET_RUNTIME_PLATFORM_ANDROID
+      bool isAndroidLocalAsset () const noexcept;
+      bool isAndroidContent () const noexcept;
+    #endif
   };
 }
 #endif

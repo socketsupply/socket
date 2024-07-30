@@ -1,18 +1,18 @@
-#include "resource.hh"
 #include "config.hh"
-#include "debug.hh"
 #include "core.hh"
+#include "debug.hh"
+#include "resource.hh"
 
 #include "../platform/platform.hh"
 
 #if SOCKET_RUNTIME_PLATFORM_ANDROID
-#include "../platform/android.hh"
 #include <fstream>
 #endif
 
 namespace SSC {
   static std::map<String, FileResource::Cache> caches;
   static Mutex mutex;
+  static FileResource::WellKnownPaths defaultWellKnownPaths;
 
 #if SOCKET_RUNTIME_PLATFORM_ANDROID
   static Android::AssetManager* sharedAndroidAssetManager = nullptr;
@@ -60,8 +60,11 @@ namespace SSC {
   static Path getRelativeAndroidAssetManagerPath (const Path& resourcePath) {
     auto resourcesPath = FileResource::getResourcesPath();
     auto assetPath = replace(resourcePath.string(), resourcesPath.string(), "");
+
     if (assetPath.starts_with("/")) {
       assetPath = assetPath.substr(1);
+    } else if (assetPath.starts_with("./")) {
+      assetPath = assetPath.substr(2);
     }
 
     return Path(assetPath);
@@ -333,6 +336,10 @@ namespace SSC {
   #endif
   }
 
+  void FileResource::WellKnownPaths::setDefaults (const WellKnownPaths& paths) {
+    defaultWellKnownPaths = paths;
+  }
+
   const FileResource::WellKnownPaths& FileResource::getWellKnownPaths () {
     static const auto paths = WellKnownPaths {};
     return paths;
@@ -341,6 +348,20 @@ namespace SSC {
   FileResource::WellKnownPaths::WellKnownPaths () {
     static auto userConfig = getUserConfig();
     static auto bundleIdentifier = userConfig["meta_bundle_identifier"];
+
+    // initialize default values
+    this->resources = defaultWellKnownPaths.resources;
+    this->downloads = defaultWellKnownPaths.downloads;
+    this->documents = defaultWellKnownPaths.documents;
+    this->pictures = defaultWellKnownPaths.pictures;
+    this->desktop = defaultWellKnownPaths.desktop;
+    this->videos = defaultWellKnownPaths.videos;
+    this->music = defaultWellKnownPaths.music;
+    this->config = defaultWellKnownPaths.config;
+    this->home = defaultWellKnownPaths.home;
+    this->data = defaultWellKnownPaths.data;
+    this->log = defaultWellKnownPaths.log;
+    this->tmp = defaultWellKnownPaths.tmp;
 
     this->resources = FileResource::getResourcesPath();
     this->tmp = fs::temp_directory_path();
@@ -371,6 +392,7 @@ namespace SSC {
     this->videos = Path(DIRECTORY_PATH_FROM_FILE_MANAGER(NSMoviesDirectory));
     this->music = Path(DIRECTORY_PATH_FROM_FILE_MANAGER(NSMusicDirectory));
     this->config = Path(HOME + "/Library/Application Support/" + bundleIdentifier);
+    this->music = Path(DIRECTORY_PATH_FROM_FILE_MANAGER(NSSharedPublicDirectory));
     this->home = Path(String(NSHomeDirectory().UTF8String));
     this->data = Path(HOME + "/Library/Application Support/" + bundleIdentifier);
     this->log = Path(HOME + "/Library/Logs/" + bundleIdentifier);
@@ -391,6 +413,7 @@ namespace SSC {
     static const auto XDG_DESKTOP_DIR = Env::get("XDG_DESKTOP_DIR");
     static const auto XDG_VIDEOS_DIR = Env::get("XDG_VIDEOS_DIR");
     static const auto XDG_MUSIC_DIR = Env::get("XDG_MUSIC_DIR");
+    static const auto XDG_PUBLICSHARE_DIR = Env::get("XDG_PUBLICSHARE_DIR");
 
     static const auto XDG_CONFIG_HOME = Env::get("XDG_CONFIG_HOME", HOME + "/.config");
     static const auto XDG_DATA_HOME = Env::get("XDG_DATA_HOME", HOME + "/.local/share");
@@ -435,6 +458,10 @@ namespace SSC {
       this->music = Path(HOME) / "Music";
     }
 
+    if (XDG_PUBLICSHARE_DIR.size() > 0) {
+      this->media  = Path(XDG_PUBLICSHARE_DIR);
+    }
+
     this->config = Path(XDG_CONFIG_HOME) / bundleIdentifier;
     this->home = Path(HOME);
     this->data = Path(XDG_DATA_HOME) / bundleIdentifier;
@@ -454,19 +481,8 @@ namespace SSC {
     this->log = this->config;
   #elif SOCKET_RUNTIME_PLATFORM_ANDROID
     const auto storage = FileResource::getExternalAndroidStorageDirectory();
-    const auto files = FileResource::getExternalAndroidFilesDirectory();
     const auto cache = FileResource::getExternalAndroidCacheDirectory();
     this->resources = "socket://" + bundleIdentifier;
-    this->downloads = storage / "Downloads";
-    this->documents = storage / "Documents";
-    this->pictures = storage / "Pictures";
-    this->desktop = !files.empty() ? files : storage / "Desktop";
-    this->videos = storage / "DCIM" / "Videos";
-    this->music = storage / "Music";
-    this->config = storage;
-    this->home = this->desktop;
-    this->data = storage;
-    this->log = storage / "logs";
     this->tmp = !cache.empty() ? cache : storage / "tmp";
   #endif
   }
@@ -479,8 +495,9 @@ namespace SSC {
       {"pictures", this->pictures},
       {"desktop", this->desktop},
       {"videos", this->videos},
-      {"music", this->music},
       {"config", this->config},
+      {"media", this->media},
+      {"music", this->music},
       {"home", this->home},
       {"data", this->data},
       {"log", this->log},
@@ -497,6 +514,7 @@ namespace SSC {
     entries.push_back(this->desktop);
     entries.push_back(this->videos);
     entries.push_back(this->music);
+    entries.push_back(this->media);
     entries.push_back(this->config);
     entries.push_back(this->home);
     entries.push_back(this->data);
@@ -521,10 +539,35 @@ namespace SSC {
   FileResource::FileResource (
     const Path& resourcePath,
     const Options& options
-  ) : Resource("FileResource", resourcePath.string()) {
-    this->path = fs::absolute(resourcePath);
+  ) :
+    Resource("FileResource", resourcePath.string())
+  {
+    this->url = URL(resourcePath.string());
+
+    if (url.scheme == "socket") {
+      const auto resourcesPath = FileResource::getResourcesPath();
+      this->path = resourcesPath / url.pathname;
+    #if SOCKET_RUNTIME_PLATFORM_ANDROID
+      this->path = Path(url.pathname);
+      this->name = getRelativeAndroidAssetManagerPath(this->path).string();
+    #endif
+    } else if (url.scheme == "content" || url.scheme == "android.resource") {
+      this->path = resourcePath;
+    } else if (url.scheme == "file") {
+      this->path = Path(url.pathname);
+    } else {
+      this->path = fs::absolute(resourcePath);
+      this->url = URL("file://" + this->path.string());
+    }
+
     this->options = options;
     this->startAccessing();
+
+  #if SOCKET_RUNTIME_PLATFORM_ANDROID
+    if (this->isAndroidLocalAsset()) {
+      this->name = getRelativeAndroidAssetManagerPath(this->path).string();
+    }
+  #endif
   }
 
   FileResource::FileResource (const String& resourcePath, const Options& options)
@@ -603,8 +646,8 @@ namespace SSC {
     }
 
   #if SOCKET_RUNTIME_PLATFORM_APPLE
-    if (this->url == nullptr) {
-      this->url = [NSURL fileURLWithPath: @(this->path.string().c_str())];
+    if (this->nsURL == nullptr) {
+      this->nsURL = [NSURL fileURLWithPath: @(this->path.string().c_str())];
     }
   #endif
 
@@ -615,8 +658,8 @@ namespace SSC {
 
   #if SOCKET_RUNTIME_PLATFORM_APPLE
     if (!this->path.string().starts_with(resourcesPath.string())) {
-      if (![this->url startAccessingSecurityScopedResource]) {
-        this->url = nullptr;
+      if (![this->nsURL startAccessingSecurityScopedResource]) {
+        this->nsURL = nullptr;
         return false;
       }
     }
@@ -631,8 +674,8 @@ namespace SSC {
       return false;
     }
   #if SOCKET_RUNTIME_PLATFORM_APPLE
-    if (this->url != nullptr) {
-      [this->url stopAccessingSecurityScopedResource];
+    if (this->nsURL != nullptr) {
+      [this->nsURL stopAccessingSecurityScopedResource];
     }
   #endif
     this->accessing = false;
@@ -669,6 +712,24 @@ namespace SSC {
   #else
     return fs::exists(this->path);
   #endif
+  }
+
+  int FileResource::access (int mode) const noexcept {
+    if (this->accessing) {
+      if (mode == ::access(this->path.string().c_str(), mode)) {
+        return mode;
+      }
+
+    #if SOCKET_RUNTIME_PLATFORM_ANDROID
+      if (this->isAndroidLocalAsset() || this->isAndroidContent()) {
+        if (mode == F_OK || mode == R_OK) {
+          return mode;
+        }
+      }
+    #endif
+    }
+
+    return -1; // `EPERM`
   }
 
   const String FileResource::mimeType () const noexcept {
@@ -758,9 +819,18 @@ namespace SSC {
       }
     #elif SOCKET_RUNTIME_PLATFORM_ANDROID
       if (extension.size() > 1) {
-        return Android::MimeTypeMap::sharedMimeTypeMap()->getMimeTypeFromExtension(
+        const auto value = Android::MimeTypeMap::sharedMimeTypeMap()->getMimeTypeFromExtension(
           extension.starts_with(".") ? extension.substr(1) : extension
         );
+
+        if (value.size() > 0) {
+          return value;
+        }
+
+        if (this->options.core && this->url.scheme == "content") {
+          auto core = this->options.core;
+          return core->platform.contentResolver.getContentType(this->url.str());
+        }
       }
     #endif
 
@@ -781,10 +851,10 @@ namespace SSC {
     }
 
   #if SOCKET_RUNTIME_PLATFORM_APPLE
-    if (this->url != nullptr) {
+    if (this->nsURL != nullptr) {
       NSNumber* size = nullptr;
       NSError* error = nullptr;
-      [this->url getResourceValue: &size
+      [this->nsURL getResourceValue: &size
         forKey: NSURLFileSizeKey
          error: &error
       ];
@@ -817,22 +887,38 @@ namespace SSC {
   #elif SOCKET_RUNTIME_PLATFORM_ANDROID
     bool success = false;
     if (sharedAndroidAssetManager) {
-      const auto assetPath = getRelativeAndroidAssetManagerPath(this->path);
-      const auto asset = AAssetManager_open(
-        sharedAndroidAssetManager,
-        assetPath.c_str(),
-        AASSET_MODE_BUFFER
-      );
+      if (this->isAndroidLocalAsset()) {
+        const auto assetPath = getRelativeAndroidAssetManagerPath(this->path);
+        const auto asset = AAssetManager_open(
+          sharedAndroidAssetManager,
+          assetPath.c_str(),
+          AASSET_MODE_BUFFER
+        );
 
-      if (asset) {
-        this->cache.size = AAsset_getLength(asset);
-        AAsset_close(asset);
+        if (asset) {
+          this->cache.size = AAsset_getLength(asset);
+          AAsset_close(asset);
+        }
       }
-    }
 
-    if (!success) {
-      if (fs::exists(this->path)) {
-        this->cache.size = fs::file_size(this->path);
+      if (!success) {
+        if (fs::exists(this->path)) {
+          this->cache.size = fs::file_size(this->path);
+        }
+      }
+    } else if (this->url.scheme == "content" || this->url.scheme == "android.resource") {
+      auto core = this->options.core;
+      if (core != nullptr) {
+        off_t offset = 0;
+        off_t length = 0;
+        auto fileDescriptor = core->platform.contentResolver.openFileDescriptor (
+          this->url.str(),
+          &offset,
+          &length
+        );
+
+        core->platform.contentResolver.closeFileDescriptor(fileDescriptor);
+        return length;
       }
     }
   #else
@@ -863,11 +949,11 @@ namespace SSC {
     }
 
   #if SOCKET_RUNTIME_PLATFORM_APPLE
-    if (this->url == nullptr) {
+    if (this->nsURL == nullptr) {
       return nullptr;
     }
 
-    const auto data = [NSData dataWithContentsOfURL: this->url];
+    const auto data = [NSData dataWithContentsOfURL: this->nsURL];
     if (data.length > 0) {
       this->bytes.reset(new char[data.length]{0});
       memcpy(this->bytes.get(), data.bytes, data.length);
@@ -1264,4 +1350,37 @@ namespace SSC {
   bool FileResource::ReadStream::Buffer::isEmpty () const {
     return this->size == 0 || this->bytes == nullptr;
   }
+
+#if SOCKET_RUNTIME_PLATFORM_ANDROID
+  bool FileResource::isAndroidLocalAsset () const noexcept {
+    if (sharedAndroidAssetManager) {
+      const auto assetPath = getRelativeAndroidAssetManagerPath(this->path);
+      const auto asset = AAssetManager_open(
+        sharedAndroidAssetManager,
+        assetPath.c_str(),
+        AASSET_MODE_BUFFER
+      );
+
+      if (asset) {
+        AAsset_close(asset);
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  bool FileResource::isAndroidContent () const noexcept {
+    const auto core = this->options.core;
+
+    if (core != nullptr) {
+      const auto uri = this->path.string();
+      if (core->platform.contentResolver.isContentURI(uri)) {
+        const auto pathname = core->platform.contentResolver.getPathnameFromURI(uri);
+        return pathname.size() > 0;
+      }
+    }
+    return false;
+  }
+#endif
 }
