@@ -552,13 +552,15 @@ extern "C" {
     const auto app = App::sharedApplication();
 
     if (!app) {
-      return ANDROID_THROW(env, "Missing 'App' in environment");
+      ANDROID_THROW(env, "Missing 'App' in environment");
+      return nullptr;
     }
 
     const auto window = app->windowManager.getWindow(index);
 
     if (!window) {
-      return ANDROID_THROW(env, "Invalid window index (%d) requested", index);
+      ANDROID_THROW(env, "Invalid window index (%d) requested", index);
+      return nullptr;
     }
 
     auto preloadUserScriptSource = IPC::Preload::compile({
@@ -579,7 +581,7 @@ extern "C" {
       .userScript = window->options.userScript
     });
 
-    return env->NewStringUTF(preloadUserScriptSource.compile().str().c_str());
+    return env->NewStringUTF(preloadUserScriptSource.compile().c_str());
   }
 
   void ANDROID_EXTERNAL(window, Window, handleApplicationURL) (

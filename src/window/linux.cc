@@ -225,7 +225,7 @@ namespace SSC {
     });
 
     auto preloadUserScript = webkit_user_script_new(
-      preloadUserScriptSource.compile().str().c_str(),
+      preloadUserScriptSource.str().c_str(),
       WEBKIT_USER_CONTENT_INJECT_ALL_FRAMES,
       WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START,
       nullptr,
