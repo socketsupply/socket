@@ -158,62 +158,65 @@ namespace SSC::IPC {
       buffers.push_back(";(() => {");
       buffers.push_back(trim(tmpl(
         R"JAVASCRIPT(
-          Object.defineProperty(globalThis, '__args', {
-            configurable: false,
-            enumerable: false,
-            writable: false,
-            value: {}
-          })
-          Object.defineProperties(globalThis.__args, {
-            argv: {
+          if (globalThiss.__RUNTIME_INIT_NOW__) return
+          if (!globalThis.__args) {
+            Object.defineProperty(globalThis, '__args', {
               configurable: false,
-              enumerable: true,
-              writable: false,
-              value: {{argv}}
-            },
-            client: {
-              configurable: false,
-              enumerable: true,
+              enumerable: false,
               writable: false,
               value: {}
-            },
-            conduit: {
-              configurable: false,
-              enumerable: true,
-              writable: false,
-              value: {{conduit}}
-            },
-            config: {
-              configurable: false,
-              enumerable: true,
-              writable: false,
-              value: {}
-            },
-            debug: {
-              configurable: false,
-              enumerable: true,
-              writable: false,
-              value: {{debug}}
-            },
-            env: {
-              configurable: false,
-              enumerable: true,
-              writable: false,
-              value: {}
-            },
-            headless: {
-              configurable: false,
-              enumerable: true,
-              writable: false,
-              value: {{headless}}
-            },
-            index: {
-              configurable: false,
-              enumerable: true,
-              writable: false,
-              value: {{index}}
-            },
-          })
+            })
+            Object.defineProperties(globalThis.__args, {
+              argv: {
+                configurable: false,
+                enumerable: true,
+                writable: false,
+                value: {{argv}}
+              },
+              client: {
+                configurable: false,
+                enumerable: true,
+                writable: false,
+                value: {}
+              },
+              conduit: {
+                configurable: false,
+                enumerable: true,
+                writable: false,
+                value: {{conduit}}
+              },
+              config: {
+                configurable: false,
+                enumerable: true,
+                writable: false,
+                value: {}
+              },
+              debug: {
+                configurable: false,
+                enumerable: true,
+                writable: false,
+                value: {{debug}}
+              },
+              env: {
+                configurable: false,
+                enumerable: true,
+                writable: false,
+                value: {}
+              },
+              headless: {
+                configurable: false,
+                enumerable: true,
+                writable: false,
+                value: {{headless}}
+              },
+              index: {
+                configurable: false,
+                enumerable: true,
+                writable: false,
+                value: {{index}}
+              },
+            })
+          }
         )JAVASCRIPT",
         Map {
           {"argv", args["argv"].str()},
@@ -227,49 +230,51 @@ namespace SSC::IPC {
       // 6. compile `globalThis.__args.client` values
       buffers.push_back(trim(tmpl(
         R"JAVASCRIPT(
-        Object.defineProperties(globalThis.__args.client, {
-          id: {
-            configurable: false,
-            enumerable: true,
-            writable: false,
-            value: globalThis.window && globalThis.top !== globalThis.window
-              ? '{{id}}'
-              : globalThis.window && globalThis.top
-                ? '{{clientId}}'
-                : null
-          },
-          type: {
-            configurable: false,
-            enumerable: true,
-            writable: true,
-            value: globalThis.window ? 'window' : 'worker'
-          },
-          parent: {
-            configurable: false,
-            enumerable: true,
-            writable: false,
-            value: globalThis.parent !== globalThis
-	            ? globalThis.parent?.__args?.client ?? null
-	            : null
-          },
-          top: {
-            configurable: false,
-            enumerable: true,
-            get: () => globalThis.top
-	            ? globalThis.top.__args?.client ?? null
-	            : globalThis.__args.client
-          },
-          frameType: {
-            configurable: false,
-            enumerable: true,
-            writable: true,
-            value: globalThis.window && globalThis.top !== globalThis.window
-              ? 'nested'
-              : globalThis.window && globalThis.top
-                ? 'top-level'
-                : 'none'
-          },
-        })
+        if (!globalThis.__args.client?.id) {
+          Object.defineProperties(globalThis.__args.client, {
+            id: {
+              configurable: false,
+              enumerable: true,
+              writable: false,
+              value: globalThis.window && globalThis.top !== globalThis.window
+                ? '{{id}}'
+                : globalThis.window && globalThis.top
+                  ? '{{clientId}}'
+                  : null
+            },
+            type: {
+              configurable: false,
+              enumerable: true,
+              writable: true,
+              value: globalThis.window ? 'window' : 'worker'
+            },
+            parent: {
+              configurable: false,
+              enumerable: true,
+              writable: false,
+              value: globalThis.parent !== globalThis
+	              ? globalThis.parent?.__args?.client ?? null
+	              : null
+            },
+            top: {
+              configurable: false,
+              enumerable: true,
+              get: () => globalThis.top
+	              ? globalThis.top.__args?.client ?? null
+	              : globalThis.__args.client
+            },
+            frameType: {
+              configurable: false,
+              enumerable: true,
+              writable: true,
+              value: globalThis.window && globalThis.top !== globalThis.window
+                ? 'nested'
+                : globalThis.window && globalThis.top
+                  ? 'top-level'
+                  : 'none'
+            },
+          })
+        }
         )JAVASCRIPT",
         Map {
           {"id", std::to_string(rand64())},
@@ -384,12 +389,14 @@ namespace SSC::IPC {
         } else {
           buffers.push_back(tmpl(
             R"JAVASCRIPT(
-              Object.defineProperty(globalThis, 'RUNTIME_TEST_FILENAME', {
-                configurable: false,
-                enumerable: false,
-                writable: false,
-                value: String(new URL('{{pathname}}', globalThis.location.href)
-              })
+              if (!globalThis.RUNTIME_TEST_FILENAME) {
+                Object.defineProperty(globalThis, 'RUNTIME_TEST_FILENAME', {
+                  configurable: false,
+                  enumerable: false,
+                  writable: false,
+                  value: String(new URL('{{pathname}}', globalThis.location.href)
+                })
+              }
             )JAVASCRIPT",
             Map {{"pathname", pathname}}
           ));
@@ -398,7 +405,7 @@ namespace SSC::IPC {
 
       // 10. compile listeners for `globalThis`
       buffers.push_back(R"JAVASCRIPT(
-        if (globalThis.document) {
+        if (globalThis.document && !globalThis.RUNTIME_APPLICATION_URL_EVENT_BACKLOG) {
           Object.defineProperties(globalThis, {
             RUNTIME_APPLICATION_URL_EVENT_BACKLOG: {
               configurable: false,
@@ -448,10 +455,10 @@ namespace SSC::IPC {
 
       // 11. freeze `globalThis.__args` values
       buffers.push_back(R"JAVASCRIPT(
-        Object.freeze(globalThis.__args.client)
-        Object.freeze(globalThis.__args.config)
-        Object.freeze(globalThis.__args.argv)
-        Object.freeze(globalThis.__args.env)
+        try { Object.freeze(globalThis.__args.client) } catch {}
+        try { Object.freeze(globalThis.__args.config) } catch {}
+        try { Object.freeze(globalThis.__args.argv) } catch {}
+        try { Object.freeze(globalThis.__args.env) } catch {}
       )JAVASCRIPT");
       buffers.push_back("})();");
 
@@ -520,7 +527,7 @@ namespace SSC::IPC {
         }
 
         buffers.push_back(R"JAVASCRIPT(
-          if (globalThis.document) {
+          if (globalThis.document && !globalThis.module) {
             ;(async function GlobalCommonJSScope () {
               const globals = await import('socket:internal/globals')
               await globals.get('RuntimeReadyPromise')
@@ -577,7 +584,7 @@ namespace SSC::IPC {
           buffers.push_back(RUNTIME_PRELOAD_JAVASCRIPT_BEGIN_TAG);
         }
         buffers.push_back(R"JAVASCRIPT(
-          if (globalThis.document) {
+          if (globalThis.document && !globalThis.process) {
             ;(async function GlobalNodeJSScope () {
               const process = await import('socket:process')
               Object.defineProperties(globalThis, {
@@ -611,12 +618,14 @@ namespace SSC::IPC {
 
         buffers.push_back(tmpl(
           R"JAVASCRIPT(
-            Object.defineProperty(globalThis, '__RUNTIME_PRIMORDIAL_OVERRIDES__', {
-              configurable: false,
-              enumerable: false,
-              writable: false,
-              value: {{RUNTIME_PRIMORDIAL_OVERRIDES}}
-            })
+            if (!globalThis.RUNTIME_PRIMORDIAL_OVERRIDES) {
+              Object.defineProperty(globalThis, '__RUNTIME_PRIMORDIAL_OVERRIDES__', {
+                configurable: false,
+                enumerable: false,
+                writable: false,
+                value: {{RUNTIME_PRIMORDIAL_OVERRIDES}}
+              })
+            }
           )JAVASCRIPT",
           Map {{"RUNTIME_PRIMORDIAL_OVERRIDES", this->options.RUNTIME_PRIMORDIAL_OVERRIDES}}
         ));
