@@ -238,6 +238,35 @@ namespace SSC {
                          name: @"external"
     ];
 
+    auto preloadUserScript= [WKUserScript alloc];
+    auto preloadUserScriptSource = IPC::Preload::compile({
+      .features = IPC::Preload::Options::Features {
+        .useGlobalCommonJS = false,
+        .useGlobalNodeJS = false,
+        .useTestScript = false,
+        .useHTMLMarkup = false,
+        .useESM = false,
+        .useGlobalArgs = true
+      },
+      .client = UniqueClient {
+        .id = this->bridge.client.id,
+        .index = this->bridge.client.index
+      },
+      .index = options.index,
+      .conduit = this->core->conduit.port,
+      .userScript = options.userScript
+    });
+
+    [preloadUserScript
+        initWithSource: @(preloadUserScriptSource.str().c_str())
+         injectionTime: WKUserScriptInjectionTimeAtDocumentStart
+      forMainFrameOnly: NO
+    ];
+
+    [configuration.userContentController
+      addUserScript: preloadUserScript
+    ];
+
     [configuration
       setValue: @NO
         forKey: @"crossOriginAccessControlCheckEnabled"
@@ -805,7 +834,7 @@ namespace SSC {
           debug("JavaScriptError: %@", error);
 
           if (callback != nullptr) {
-            callback(JSON::Error([error UTF8String]));
+            callback(JSON::Error(error.localizedDescription.UTF8String));
           }
 
           return;
