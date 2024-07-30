@@ -1142,7 +1142,9 @@ export function sendSync (command, value = '', options = {}, buffer = null) {
     debug.log('ipc.sendSync: %s', uri)
   }
 
-  request.responseType = options?.responseType ?? ''
+  if (!(/android/i.test(primordials.platform) && globalThis.document)) {
+    request.responseType = options?.responseType ?? ''
+  }
 
   if (buffer) {
     request.open('POST', uri, false)
