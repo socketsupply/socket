@@ -30,7 +30,7 @@ import socket.runtime.core.WebChromeClient
 import socket.runtime.ipc.Bridge
 import socket.runtime.ipc.Message
 import socket.runtime.window.WindowFragment
-import socket.runtime.window.WebViewFilePickerOptions
+import socket.runtime.window.Dialog
 
 import __BUNDLE_IDENTIFIER__.R
 
@@ -135,12 +135,15 @@ open class WindowWebChromeClient (val window: Window) : WebChromeClient() {
     if (!super.onShowFileChooser(webview, callback, params)) {
       return false
     }
+
     val fragment = this.window.fragment
-    val activity = fragment.requireActivity() as AppCompatActivity
-    val options = WebViewFilePickerOptions(params)
+    val activity = fragment.requireActivity() as WindowManagerActivity
+    val options = Dialog.FileSystemPickerOptions(params)
+
     activity.dialog.showFileSystemPicker(options, fun (uris: Array<Uri>) {
       callback.onReceiveValue(uris)
     })
+
     return true
   }
 }
@@ -250,6 +253,9 @@ open class Window (val fragment: WindowFragment) {
 
   @Throws(Exception::class)
   external fun onMessage (index: Int, value: String, bytes: ByteArray? = null): Unit
+
+  @Throws(Exception::class)
+  external fun onEvaluateJavascriptResult (index: Int, token: String, result: String): Unit
 
   @Throws(Exception::class)
   external fun getPendingNavigationLocation (index: Int): String

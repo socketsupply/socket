@@ -2,7 +2,9 @@ package socket.runtime.window
 
 import java.lang.Runtime
 
+import android.content.Intent
 import android.net.Uri
+import android.Manifest
 import android.webkit.WebChromeClient
 
 import androidx.activity.result.contract.ActivityResultContracts
@@ -81,6 +83,19 @@ open class Dialog (val activity: WindowManagerActivity) {
 
   fun resolve (uris: Array<Uri>) {
     val callback = this.callback
+
+    /*
+    for (uri in uris) {
+      this.activity.applicationContext.contentResolver.takePersistableUriPermission(
+        uri,
+        (
+          Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION or
+          Intent.FLAG_GRANT_READ_URI_PERMISSION
+        )
+      )
+    }
+    */
+
     if (callback != null) {
       this.callback = null
       callback(uris)
@@ -91,6 +106,7 @@ open class Dialog (val activity: WindowManagerActivity) {
     options: FileSystemPickerOptions,
     callback: ((Array<Uri>) -> Unit)? = null
   ) {
+    val activity = this.activity as socket.runtime.app.AppActivity
     val mimeType =
       if (options.mimeTypes.size > 0 && options.mimeTypes[0].length > 0) {
         options.mimeTypes[0]
@@ -98,15 +114,23 @@ open class Dialog (val activity: WindowManagerActivity) {
 
     this.callback = callback
 
-    this.activity.runOnUiThread {
-      // TODO(@jwerle): support the other launcher types above
-      // through the `showFileSystemPicker()` method some how
-      if (options.multiple) {
-        launcherForMulitpleItems.launch(mimeType)
-      } else {
-        launcherForSingleItem.launch(mimeType)
+    val permissions = arrayOf(
+      Manifest.permission.CAMERA,
+      Manifest.permission.READ_EXTERNAL_STORAGE
+    )
+
+    activity.requestPermissions(permissions, { _ ->
+      activity.runOnUiThread {
+        // TODO(@jwerle): support the other launcher types above
+        // through the `showFileSystemPicker()` method some how
+        if (options.multiple) {
+          launcherForMulitpleItems.launch(mimeType)
+        } else {
+          //launcherForSingleDocument.launch(arrayOf(mimeType))
+          launcherForSingleItem.launch(mimeType)
+        }
       }
-    }
+    })
   }
 
   fun showFileSystemPicker (

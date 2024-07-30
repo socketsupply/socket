@@ -169,13 +169,18 @@ open class WindowFragmentManager (
   /**
    * Evaluates a JavaScript `source` string at a given window `index`.
    */
-  fun evaluateJavaScriptInWindowFragmentView (index: Int, source: String): Boolean {
+  fun evaluateJavaScriptInWindowFragmentView (index: Int, source: String, token: String): Boolean {
     val fragments = this.fragments
     if (this.hasWindowFragment(index)) {
       kotlin.concurrent.thread {
         activity.runOnUiThread {
           val fragment = fragments.find { it.index == index }
-          fragment?.webview?.evaluateJavascript(source, fun (_) {})
+          fragment?.webview?.evaluateJavascript(source, { result ->
+            val window = fragment.window
+            if (window != null) {
+              window.onEvaluateJavascriptResult(index, token, result)
+            }
+          })
         }
       }
       return true
@@ -391,7 +396,7 @@ open class WindowManagerActivity : AppCompatActivity(R.layout.window_container_v
   /**
    * Evaluates JavaScript source in a window at a given `index`.
    */
-  fun evaluateJavaScript (index: Int, source: String): Boolean {
-    return this.windowFragmentManager.evaluateJavaScriptInWindowFragmentView(index, source)
+  fun evaluateJavaScript (index: Int, source: String, token: String): Boolean {
+    return this.windowFragmentManager.evaluateJavaScriptInWindowFragmentView(index, source, token)
   }
 }

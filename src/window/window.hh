@@ -89,6 +89,8 @@ namespace SSC {
    */
   class Window {
     public:
+      using EvalCallback = Function<void(const JSON::Any)>;
+
       /**
        * A container for representing the window position in a
        * Cartesian coordinate system (screen coordinates)
@@ -423,6 +425,7 @@ namespace SSC {
     #elif SOCKET_RUNTIME_PLATFORM_ANDROID
       String pendingNavigationLocation;
       jobject androidWindowRef;
+      std::map<String, EvalCallback> evaluateJavaScriptCallbacks;
     #endif
 
       Window (SharedPointer<Core> core, const Window::Options&);
@@ -431,7 +434,7 @@ namespace SSC {
       static ScreenSize getScreenSize ();
 
       void about ();
-      void eval (const String&);
+      void eval (const String&, const EvalCallback& callback = nullptr);
       void show ();
       void hide ();
       void kill ();

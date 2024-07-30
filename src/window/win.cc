@@ -1272,7 +1272,7 @@ namespace SSC {
     controller->put_Bounds(bounds);
   }
 
-  void Window::eval (const String& source) {
+  void Window::eval (const String& source, const EvalCallback& callback) {
     auto app = App::sharedApplication();
     app->dispatch([=, this] {
       if (this->webview == nullptr) {
@@ -1281,7 +1281,39 @@ namespace SSC {
 
       this->webview->ExecuteScript(
         convertStringToWString(source).c_str(),
-        nullptr
+        Microsoft::WRL::Callback<ICoreWebView2ExecuteScriptCompletedHandler>(
+          [=, this](HRESULT error, LPCWSTR result) {
+            if (callback != nullptr) {
+              if (error != S_OK) {
+                // TODO(@jwerle): figure out how to get the error message here
+                callback(JSON::Error("An unknown error occurred"))
+                return;
+              }
+
+              const auto string = convertWStringToString(result);
+              if (string == "null" || string == "undefined") {
+                callback(nullptr);
+              } else if (string == "true") {
+                callback(true);
+              } else if (string == "false") {
+                callback(false);
+              } else {
+                double number = 0.0f;
+
+                try {
+                  number = std::stod(string);
+                } catch (...) {
+                  callback(string);
+                  return;
+                }
+
+                callback(number);
+              }
+            }
+
+            return S_OK;
+          }
+        )
       );
     });
   }

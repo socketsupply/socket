@@ -1,10 +1,7 @@
-#include "../core/debug.hh"
 #include "../app/app.hh"
-#include "window.hh"
+#include "../core/debug.hh"
 
-#if SOCKET_RUNTIME_PLATFORM_ANDROID
-#include "../platform/android.hh"
-#endif
+#include "window.hh"
 
 using namespace SSC;
 

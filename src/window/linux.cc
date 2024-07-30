@@ -1049,7 +1049,7 @@ namespace SSC {
     return ScreenSize { width, height };
   }
 
-  void Window::eval (const String& source) {
+  void Window::eval (const String& source, const EvalCallback& callback) {
     auto app = App::sharedApplication();
     app->dispatch([=, this] () {
       if (this->webview) {
@@ -1065,9 +1065,88 @@ namespace SSC {
             GAsyncResult* result,
             gpointer userData
           ) {
-            webkit_web_view_evaluate_javascript_finish(WEBKIT_WEB_VIEW(object), result, nullptr);
+            const auto callback = reinterpret_cast<const EvalCallback*>(userData);
+            if (callback == nullptr || *callback == nullptr) {
+              auto value = webkit_web_view_evaluate_javascript_finish(WEBKIT_WEB_VIEW(object), result, nullptr);
+              return;
+            }
+
+            GError* error = nullptr;
+            auto value = webkit_web_view_evaluate_javascript_finish(WEBKIT_WEB_VIEW(object), result, &error);
+
+            if (!value) {
+              if (error != nullptr) {
+                (*callback)(JSON::Error(error->message));
+                g_error_free(error);
+              } else {
+                (*callback)(JSON::Error("An unknown error occurred"));
+              }
+            } else if (jsc_value_is_string(value)) {
+              const auto context = jsc_value_get_context(value);
+              const auto exception = jsc_context_get_exception(context);
+              const auto stringValue = jsc_value_to_string(value);
+
+              if (exception) {
+                const auto message = jsc_exception_get_message(exception);
+                (*callback)(JSON::Error(message));
+              } else {
+                (*callback)(stringValue);
+              }
+
+              g_free(stringValue);
+            } else if (jsc_value_is_boolean(value)) {
+              const auto context = jsc_value_get_context(value);
+              const auto exception = jsc_context_get_exception(context);
+              const auto booleanValue = jsc_value_to_boolean(value);
+
+              if (exception) {
+                const auto message = jsc_exception_get_message(exception);
+                (*callback)(JSON::Error(message));
+              } else {
+                (*callback)(booleanValue);
+              }
+            } else if (jsc_value_is_null(value)) {
+              const auto context = jsc_value_get_context(value);
+              const auto exception = jsc_context_get_exception(context);
+
+              if (exception) {
+                const auto message = jsc_exception_get_message(exception);
+                (*callback)(JSON::Error(message));
+              } else {
+                (*callback)(nullptr);
+              }
+            } else if (jsc_value_is_number(value)) {
+              const auto context = jsc_value_get_context(value);
+              const auto exception = jsc_context_get_exception(context);
+              const auto numberValue = jsc_value_to_double(value);
+
+              if (exception) {
+                const auto message = jsc_exception_get_message(exception);
+                (*callback)(JSON::Error(message));
+              } else {
+                (*callback)(numberValue);
+              }
+            } else if (jsc_value_is_undefined(value)) {
+              const auto context = jsc_value_get_context(value);
+              const auto exception = jsc_context_get_exception(context);
+
+              if (exception) {
+                const auto message = jsc_exception_get_message(exception);
+                (*callback)(JSON::Error(message));
+              } else {
+                (*callback)(nullptr);
+              }
+            }
+
+            if (value) {
+              //webkit_javascript_result_unref(reinterpret_cast<WebKitJavascriptResult*>(value));
+            }
+
+            delete callback;
           },
-          nullptr // user data
+          callback == nullptr
+            ? nullptr
+            : new EvalCallback(std::move(callback))
         );
       }
     });

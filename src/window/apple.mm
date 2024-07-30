@@ -795,7 +795,7 @@ namespace SSC {
     this->eval(getEmitToRenderProcessJavaScript("window-hidden", "{}"));
   }
 
-  void Window::eval (const String& source) {
+  void Window::eval (const String& source, const EvalCallback& callback) {
     if (this->webview != nullptr) {
       [this->webview
         evaluateJavaScript: @(source.c_str())
@@ -803,6 +803,38 @@ namespace SSC {
       {
         if (error) {
           debug("JavaScriptError: %@", error);
+
+          if (callback != nullptr) {
+            callback(JSON::Error([error UTF8String]));
+          }
+
+          return;
+        }
+
+        if (callback != nullptr) {
+          if ([result isKindOfClass: NSString.class]) {
+            const auto value = String([result UTF8String]);
+            if (value == "null" || value == "undefined") {
+              callback(nullptr);
+            } else if (value == "true") {
+              callback(true);
+            } else if (value == "false") {
+              callback(value);
+            } else {
+              double number = 0.0f;
+
+              try {
+                number = std::stod(result);
+              } catch (...) {
+                callback(value);
+                return;
+              }
+
+              callback(number);
+            }
+          } else if ([result isKindOfClass: NSNumber.class]) {
+            callback([result doubleValue]);
+          }
         }
       }];
     }
