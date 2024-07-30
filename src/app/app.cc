@@ -1113,6 +1113,44 @@ extern "C" {
     );
   }
 
+  void ANDROID_EXTERNAL(app, App, setWellKnownDirectories)(
+    JNIEnv *env,
+    jobject self,
+    jstring downloadsString,
+    jstring documentsString,
+    jstring picturesString,
+    jstring desktopString,
+    jstring videosString,
+    jstring configString,
+    jstring mediaString,
+    jstring musicString,
+    jstring homeString,
+    jstring dataString,
+    jstring logString,
+    jstring tmpString
+  ) {
+    const auto app = App::sharedApplication();
+
+    if (!app) {
+      ANDROID_THROW(env, "Missing 'App' in environment");
+    }
+
+    FileResource::WellKnownPaths defaults;
+    defaults.downloads = Path(Android::StringWrap(env, downloadsString).str());
+    defaults.documents = Path(Android::StringWrap(env, documentsString).str());
+    defaults.pictures = Path(Android::StringWrap(env, picturesString).str());
+    defaults.desktop = Path(Android::StringWrap(env, desktopString).str());
+    defaults.videos = Path(Android::StringWrap(env, videosString).str());
+    defaults.config = Path(Android::StringWrap(env, configString).str());
+    defaults.media = Path(Android::StringWrap(env, mediaString).str());
+    defaults.music = Path(Android::StringWrap(env, musicString).str());
+    defaults.home = Path(Android::StringWrap(env, homeString).str());
+    defaults.data = Path(Android::StringWrap(env, dataString).str());
+    defaults.log = Path(Android::StringWrap(env, logString).str());
+    defaults.tmp = Path(Android::StringWrap(env, tmpString).str());
+    FileResource::WellKnownPaths::setDefaults(defaults);
+  }
+
   jstring ANDROID_EXTERNAL(app, App, getUserConfigValue)(
     JNIEnv *env,
     jobject self,
@@ -1173,8 +1211,11 @@ extern "C" {
     }
 
     app->activity = env->NewGlobalRef(activity);
-    app->core->platform.jvm = Android::JVMEnvironment(app->jni);
-    app->core->platform.activity = app->activity;
+    app->core->platform.configureAndroidContext(
+      Android::JVMEnvironment(app->jni),
+      app->activity
+    );
+
     app->run();
 
     if (app->windowManager.getWindowStatus(0) == WindowManager::WINDOW_NONE) {

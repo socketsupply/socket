@@ -9,17 +9,22 @@ import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.AssetManager
+import android.content.res.AssetFileDescriptor
+import android.content.ContentResolver
+import android.database.Cursor
 import android.graphics.Insets
 import android.graphics.drawable.Icon
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
-
+import android.provider.DocumentsContract
+import android.provider.MediaStore
 import android.view.WindowInsets
 import android.view.WindowManager
 import android.webkit.MimeTypeMap
@@ -45,6 +50,185 @@ open class AppPermissionRequest (callback: (Boolean) -> Unit) {
   val callback = callback
 }
 
+open class AppPlatform (val activity: AppActivity) {
+  fun isDocumentURI (url: String): Boolean {
+    return DocumentsContract.isDocumentUri(
+      this.activity.applicationContext,
+      Uri.parse(url)
+    )
+  }
+
+  fun getDocumentID (url: String): String {
+    return DocumentsContract.getDocumentId(Uri.parse(url))
+  }
+
+  fun getContentURI (baseURL: String, documentID: Long): String {
+    val uri = ContentUris.withAppendedId(
+      Uri.parse(baseURL),
+      documentID
+    )
+
+    return uri.toString()
+  }
+
+  fun getContentType (url: String): String {
+    return this.activity.applicationContext.contentResolver.getType(Uri.parse(url)) ?: ""
+  }
+
+  fun getPathnameEntriesFromContentURI (url: String): Array<String> {
+    val context = this.activity.applicationContext
+    val column = MediaStore.MediaColumns.DATA
+    var cursor: Cursor? = null
+    val uri = Uri.parse(url)
+    val results = mutableListOf<String>()
+
+    try {
+      cursor = context.contentResolver.query(
+        uri,
+        arrayOf(column),
+        null,
+        null,
+        null
+      )
+
+      if (cursor != null) {
+        cursor.moveToFirst()
+
+        do {
+          val result = cursor.getString(cursor.getColumnIndex(column))
+
+          if (result != null && result.length > 0) {
+            results += result
+          } else {
+            val tmp = try {
+              cursor.getString(cursor.getColumnIndex(MediaStore.MediaColumns._ID))
+            } catch (e: Exception) {
+              null
+            }
+
+            if (tmp != null) {
+              results += cursor.getString(cursor.getColumnIndex(column))
+            }
+          }
+        } while (cursor.moveToNext())
+      }
+    } catch (_: Exception) {
+      // not handled
+    } finally {
+      if (cursor != null) {
+        cursor.close()
+      }
+    }
+
+    return results.toTypedArray()
+  }
+
+  fun getPathnameFromContentURIDataColumn (
+    url: String,
+    id: String
+  ): String {
+    val context = this.activity.applicationContext
+    val column = MediaStore.MediaColumns.DATA
+    var cursor: Cursor? = null
+    var result: String? = null
+    val uri = Uri.parse(url)
+
+    try {
+      cursor = context.contentResolver.query(
+        uri,
+        arrayOf(column),
+        null,
+        null,
+        null
+      )
+
+      if (cursor != null) {
+        cursor.moveToFirst()
+        do {
+          if (id.length > 0 && (result == null || result.length == 0)) {
+            result = cursor.getString(cursor.getColumnIndex(column))
+            break
+          } else {
+            var index = cursor.getColumnIndex(MediaStore.MediaColumns._ID)
+            var tmp: String? = null
+
+            try {
+              tmp = cursor.getString(index)
+            } catch (e: Exception) {}
+
+            if (tmp == id) {
+              index = cursor.getColumnIndex(column)
+              result = cursor.getString(index)
+              break
+            }
+          }
+        } while (cursor.moveToNext())
+      }
+    } catch (err: Exception) {
+      return ""
+    } finally {
+      if (cursor != null) {
+        cursor.close()
+      }
+    }
+
+    return result ?: ""
+  }
+
+  fun getExternalContentURIForType (type: String): String {
+    val contentURI = (
+      if (type == "image") {
+        MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+      } else if (type == "video") {
+        MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+      } else if (type == "audio") {
+        MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+      } else {
+        MediaStore.Files.getContentUri("external")
+      }
+    )
+
+    if (contentURI == null) {
+      return ""
+    }
+
+    return contentURI.toString()
+  }
+
+  fun getContentResolver (): ContentResolver {
+    return this.activity.getContentResolver()
+  }
+
+  fun openContentResolverFileDescriptor (url: String): AssetFileDescriptor? {
+    val contentResolver = this.activity.applicationContext.contentResolver
+    console.log("url: $url")
+    try {
+      return contentResolver.openAssetFileDescriptor(Uri.parse(url), "r")
+    } catch (err: Exception) {
+      console.log("error: $err")
+      return null
+    }
+  }
+
+  fun hasContentResolverAccess (url: String): Boolean {
+    val contentResolver = this.activity.applicationContext.contentResolver
+
+    try {
+      val fd = contentResolver.openAssetFileDescriptor(Uri.parse(url), "r")
+
+      if (fd == null) {
+        return false
+      }
+
+      fd.close()
+    } catch (_: Exception) {
+      return false
+    }
+
+    return true
+  }
+}
+
 /**
  * The `AppActivity` represents the root activity for the application.
  * It is an extended `WindowManagerActivity` that considers application
@@ -56,11 +240,16 @@ open class AppActivity : WindowManagerActivity() {
   open lateinit var notificationChannel: NotificationChannel
   open lateinit var notificationManager: NotificationManager
 
-  val permissionRequests = mutableListOf<AppPermissionRequest>()
+  open val platform = AppPlatform(this)
+  open val permissionRequests = mutableListOf<AppPermissionRequest>()
 
   open fun getRootDirectory (): String {
     return this.getExternalFilesDir(null)?.absolutePath
       ?: "/sdcard/Android/data/__BUNDLE_IDENTIFIER__/files"
+  }
+
+  fun getAppPlatform (): AppPlatform {
+    return this.platform
   }
 
   fun checkPermission (permission: String): Boolean {
@@ -109,6 +298,10 @@ open class AppActivity : WindowManagerActivity() {
   fun getScreenSizeHeight (): Int {
     val insets = this.getScreenInsets()
     return insets.top + insets.bottom
+  }
+
+  fun getAssetManager (): AssetManager {
+    return this.applicationContext.resources.assets
   }
 
   fun isNotificationManagerEnabled (): Boolean {
@@ -279,6 +472,33 @@ open class AppActivity : WindowManagerActivity() {
         Build.MANUFACTURER,
         Build.PRODUCT
       )
+
+      setWellKnownDirectories(
+        // 'Downloads/'
+        this.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath ?: "",
+        // 'Documents/'
+        this.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS)?.absolutePath ?: "",
+        // 'Pictures/'
+        this.getExternalFilesDir(Environment.DIRECTORY_PICTURES)?.absolutePath ?: "",
+        // 'Desktop/'
+        externalFilesDirectory,
+        // 'Videos/'
+        this.getExternalFilesDir(Environment.DIRECTORY_DCIM)?.absolutePath ?: "",
+        // "configuration directory"
+        externalFilesDirectory,
+        // "media directory"
+        externalStorageDirectory + "Android/media/__BUNDLE_IDENTIFIER__",
+        // 'Music/'
+        this.getExternalFilesDir(Environment.DIRECTORY_MUSIC)?.absolutePath ?: "",
+        // '~/'
+        externalStorageDirectory,
+        // "data directory"
+        externalFilesDirectory,
+        // "logs directory"
+        externalFilesDirectory,
+        // 'tmp/' (likely the cache directory will be used instead of this value)
+        externalStorageDirectory + "/tmp/__BUNDLE_IDENTIFIER__"
+      )
     }
 
     app.onCreateAppActivity(this)
@@ -377,16 +597,6 @@ open class AppActivity : WindowManagerActivity() {
     permissions: Array<String>,
     grantResults: IntArray
   ) {
-    for (request in this.permissionRequests) {
-      if (request.id == requestCode) {
-        this.permissionRequests.remove(request)
-        request.callback(grantResults.all { r ->
-          r == PackageManager.PERMISSION_GRANTED
-        })
-        break
-      }
-    }
-
     var i = 0
     val seen = mutableSetOf<String>()
     for (permission in permissions) {
@@ -427,6 +637,18 @@ open class AppActivity : WindowManagerActivity() {
       val state = if (granted) "granted" else "denied"
       App.getInstance().onPermissionChange(name, state)
     }
+
+    for (request in this.permissionRequests) {
+      if (request.id == requestCode) {
+        this.permissionRequests.remove(request)
+        request.callback(grantResults.all { r ->
+          r == PackageManager.PERMISSION_GRANTED
+        })
+        return
+      }
+    }
+
+    super.onRequestPermissionsResult(requestCode, permissions, grantResults)
   }
 }
 
@@ -514,6 +736,22 @@ open class App : Application() {
     model: String,
     manufacturer: String,
     product: String
+  ): Unit
+
+  @Throws(Exception::class)
+  external fun setWellKnownDirectories (
+    downloads: String = "",
+    documents: String = "",
+    pictures: String = "",
+    desktop: String = "",
+    videos: String = "",
+    config: String = "",
+    media: String = "",
+    music: String = "",
+    home: String = "",
+    data: String = "",
+    log: String = "",
+    tmp: String = ""
   ): Unit
 
   @Throws(Exception::class)
