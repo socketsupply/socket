@@ -2,18 +2,19 @@
 package socket.runtime.ipc
 
 import android.content.Intent
+import android.graphics.Bitmap
 import android.net.Uri
 import android.webkit.WebView
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
-
-import androidx.appcompat.app.AppCompatActivity
 
 import socket.runtime.app.App
 import socket.runtime.core.console
 import socket.runtime.core.WebViewClient
 import socket.runtime.ipc.Navigator
 import socket.runtime.ipc.SchemeHandlers
+import socket.runtime.window.Window
+import socket.runtime.window.WindowManagerActivity
 
 private fun isAndroidAssetsUri (uri: Uri): Boolean {
   if (uri.pathSegments.size == 0) {
@@ -38,7 +39,8 @@ private fun isAndroidAssetsUri (uri: Uri): Boolean {
 
 open class Bridge (
   val index: Int,
-  val activity: AppCompatActivity
+  val activity: WindowManagerActivity,
+  val window: Window
 ): WebViewClient() {
   open val schemeHandlers = SchemeHandlers(this)
   open val navigator = Navigator(this)
@@ -100,6 +102,17 @@ open class Bridge (
     request: WebResourceRequest
   ): WebResourceResponse? {
     return this.schemeHandlers.handleRequest(request)
+  }
+
+  override fun onPageStarted (
+    view: WebView,
+    url: String,
+    favicon: Bitmap
+  ) {
+    if (url.authority != "__BUNDLE_IDENTIFIER__") {
+      val preloadUserScript = this.window.getPreloadUserScript()
+      view.evaluateJavaScript(preloadUserScript, { _ -> })
+    }
   }
 
   fun emit (event: String, data: String): Boolean {
