@@ -1,7 +1,8 @@
 #ifndef SOCKET_RUNTIME_PLATFORM_ANDROID_ENVIRONMENT_H
 #define SOCKET_RUNTIME_PLATFORM_ANDROID_ENVIRONMENT_H
 
-#include "../platform.hh"
+#include "../types.hh"
+#include "native.hh"
 
 /**
  * Gets class for object for `self` from `env`.

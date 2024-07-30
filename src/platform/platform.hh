@@ -52,13 +52,7 @@
 
 // Android (Linux)
 #if defined(__ANDROID__)
-// Java Native Interface
-// @see https://docs.oracle.com/javase/7/docs/technotes/guides/jni/spec/jniTOC.html
-#include <jni.h>
-#include <android/asset_manager.h>
-#include <android/asset_manager_jni.h>
-#include <android/log.h>
-#include <android/looper.h>
+#include "android/native.hh"
 #endif // `__ANDROID__`
 
 // Windows
@@ -135,6 +129,10 @@
 #include <socket/platform.h>
 #include "string.hh"
 #include "types.hh"
+
+#if SOCKET_RUNTIME_PLATFORM_ANDROID
+#include "android.hh"
+#endif
 
 namespace SSC {
   struct RuntimePlatform {

@@ -1,8 +1,9 @@
 #ifndef SOCKET_RUNTIME_PLATFORM_ANDROID_LOOPER_H
 #define SOCKET_RUNTIME_PLATFORM_ANDROID_LOOPER_H
 
-#include "../platform.hh"
+#include "../types.hh"
 #include "environment.hh"
+#include "native.hh"
 
 namespace SSC::Android {
   struct Looper {
