@@ -211,6 +211,12 @@ if (( !only_top_level )); then
       cp -rap "$SOCKET_HOME/bin"/.vs* "$SOCKET_HOME/packages/$package/bin"
     fi
 
+    if (( do_global_link )); then
+      for file in $(find "$root/src" -name *.kt); do
+        ln -sf "$file" "$SOCKET_HOME/packages/$package${file/$root/}"
+      done
+    fi
+
     cd "$SOCKET_HOME/packages/$package" || exit $?
     echo "# in directory: '$SOCKET_HOME/packages/$package'"
 
