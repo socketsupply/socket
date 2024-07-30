@@ -1,4 +1,5 @@
 import { CallSite, createCallSites } from './callsite.js'
+import os from '../os.js'
 
 /**
  * The default `Error` class stack trace limit.
@@ -17,7 +18,15 @@ export const DefaultPlatformError = globalThis.Error
  */
 function applyPlatforErrorHook (PlatformError, Constructor, target, ...args) {
   const error = PlatformError.call(target, ...args)
-  const stack = error.stack.split('\n').slice(2) // slice off the `Error()` + `applyPlatforErrorHook()` call frames
+  const stack = error.stack.split('\n')
+
+  // slice off the `Error()` + `applyPlatforErrorHook()` call frames
+  if (os.platform() === 'android') {
+    stack.splice(1, 2)
+  } else {
+    stack.splice(0, 2)
+  }
+
   const [, callsite] = stack[0].split('@')
 
   let stackValue = stack.join('\n')
@@ -166,11 +175,16 @@ function installRuntimeError (PlatformError, isBaseError = false) {
         )
       }
 
+      const stack = new PlatformError().stack.split('\n')
+      if (os.platform() === 'android') {
+        stack.splice(1, 2)
+      } else {
+        stack.splice(0, 2)
+      }
       // prepareStackTrace is already called there
       if (target instanceof Error) {
-        target.stack = new PlatformError().stack.split('\n').slice(2).join('\n')
+        target.stack = stack
       } else {
-        const stack = new PlatformError().stack.split('\n').slice(2).join('\n')
         const prepareStackTrace = Error.prepareStackTrace || globalThis.Error.prepareStackTrace
         if (typeof prepareStackTrace === 'function') {
           const callsites = createCallSites(target, stack)
