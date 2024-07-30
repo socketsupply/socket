@@ -824,7 +824,7 @@ namespace SSC {
               double number = 0.0f;
 
               try {
-                number = std::stod(result);
+                number = std::stod(value);
               } catch (...) {
                 callback(value);
                 return;
