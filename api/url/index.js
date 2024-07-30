@@ -40,6 +40,10 @@ export const protocols = new Set([
   'npm:',
   'ipc:',
 
+  // android
+  'android.resource:',
+  'content:',
+
   // web standard & reserved
   'bitcoin:',
   'file:',
