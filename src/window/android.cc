@@ -1,5 +1,4 @@
 #include "../app/app.hh"
-#include "../platform/android.hh"
 
 #include "window.hh"
 
@@ -96,10 +95,10 @@ namespace SSC {
     // TODO(@jwerle): figure out we'll go about making this possible
   }
 
-  void Window::eval (const String& source) {
+  void Window::eval (const String& source, const EvalCallback& callback) {
     const auto app = App::sharedApplication();
     const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
-    const auto sourceString = attachment.env->NewStringUTF(source.c_str());
+    const auto token = std::to_string(rand64());
 
     // `activity.evaluateJavaScript(index, source): Boolean`
     CallClassMethodFromAndroidEnvironment(
@@ -107,12 +106,13 @@ namespace SSC {
       Boolean,
       app->activity,
       "evaluateJavaScript",
-      "(ILjava/lang/String;)Z",
+      "(ILjava/lang/String;Ljava/lang/String;)Z",
       this->index,
-      sourceString
+      attachment.env->NewStringUTF(source.c_str()),
+      attachment.env->NewStringUTF(token.c_str())
     );
 
-    attachment.env->DeleteLocalRef(sourceString);
+    this->evaluateJavaScriptCallbacks.insert_or_assign(token, callback);
   }
 
   void Window::show () {
@@ -183,7 +183,6 @@ namespace SSC {
   void Window::navigate (const String& url) {
     const auto app = App::sharedApplication();
     const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
-    const auto urlString = attachment.env->NewStringUTF(url.c_str());
 
     // `activity.navigateWindow(index, url): Boolean`
     const auto result = CallClassMethodFromAndroidEnvironment(
@@ -193,10 +192,8 @@ namespace SSC {
       "navigateWindow",
       "(ILjava/lang/String;)Z",
       this->index,
-      urlString
+      attachment.env->NewStringUTF(url.c_str())
     );
-
-    attachment.env->DeleteLocalRef(urlString);
 
     if (!result) {
       this->pendingNavigationLocation = url;
@@ -221,8 +218,6 @@ namespace SSC {
   void Window::setTitle (const String& title) {
     const auto app = App::sharedApplication();
     const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
-    const auto titleString = attachment.env->NewStringUTF(title.c_str());
-
     // `activity.setWindowTitle(index, url): Boolean`
     CallClassMethodFromAndroidEnvironment(
       attachment.env,
@@ -231,10 +226,8 @@ namespace SSC {
       "setWindowTitle",
       "(ILjava/lang/String;)Z",
       this->index,
-      titleString
+      attachment.env->NewStringUTF(title.c_str())
     );
-
-    attachment.env->DeleteLocalRef(titleString);
   }
 
   Window::Size Window::getSize () {
@@ -370,7 +363,7 @@ namespace SSC {
       attachment.env,
       app->activity,
       "setWindowBackgroundColor",
-      "(I)Z",
+      "(IJ)Z",
       this->index,
       color.pack()
     );
@@ -472,6 +465,58 @@ extern "C" {
     }
 
     window->androidWindowRef = env->NewGlobalRef(self);
+  }
+
+  void ANDROID_EXTERNAL(window, Window, onEvaluateJavascriptResult) (
+    JNIEnv* env,
+    jobject self,
+    jint index,
+    jstring tokenString,
+    jstring resultString
+  ) {
+    const auto app = App::sharedApplication();
+
+    if (!app) {
+      return ANDROID_THROW(env, "Missing 'App' in environment");
+    }
+
+    const auto window = app->windowManager.getWindow(index);
+
+    if (!window) {
+      return ANDROID_THROW(env, "Invalid window index (%d) requested", index);
+    }
+
+    const auto token = Android::StringWrap(env, tokenString).str();
+    const auto result = Android::StringWrap(env, resultString).str();
+
+    Lock lock(window->mutex);
+
+    if (!window->evaluateJavaScriptCallbacks.contains(token)) {
+      return;
+    }
+
+    const auto callback = window->evaluateJavaScriptCallbacks.at(token);
+
+    if (callback != nullptr) {
+      if (result == "null" || result == "undefined") {
+        callback(nullptr);
+      } else if (result == "true") {
+        callback(true);
+      } else if (result == "false") {
+        callback(false);
+      } else {
+        double number = 0.0f;
+
+        try {
+          number = std::stod(result);
+        } catch (...) {
+          callback(result);
+          return;
+        }
+
+        callback(number);
+      }
+    }
   }
 
   jstring ANDROID_EXTERNAL(window, Window, getPendingNavigationLocation) (
