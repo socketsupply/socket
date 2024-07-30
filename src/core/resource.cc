@@ -390,9 +390,9 @@ namespace SSC {
     this->pictures = Path(DIRECTORY_PATH_FROM_FILE_MANAGER(NSPicturesDirectory));
     this->desktop = Path(DIRECTORY_PATH_FROM_FILE_MANAGER(NSDesktopDirectory));
     this->videos = Path(DIRECTORY_PATH_FROM_FILE_MANAGER(NSMoviesDirectory));
-    this->music = Path(DIRECTORY_PATH_FROM_FILE_MANAGER(NSMusicDirectory));
     this->config = Path(HOME + "/Library/Application Support/" + bundleIdentifier);
-    this->music = Path(DIRECTORY_PATH_FROM_FILE_MANAGER(NSSharedPublicDirectory));
+    this->media = Path(DIRECTORY_PATH_FROM_FILE_MANAGER(NSSharedPublicDirectory));
+    this->music = Path(DIRECTORY_PATH_FROM_FILE_MANAGER(NSMusicDirectory));
     this->home = Path(String(NSHomeDirectory().UTF8String));
     this->data = Path(HOME + "/Library/Application Support/" + bundleIdentifier);
     this->log = Path(HOME + "/Library/Logs/" + bundleIdentifier);
