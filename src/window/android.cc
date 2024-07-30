@@ -544,6 +544,44 @@ extern "C" {
     return attachment.env->NewStringUTF(pendingNavigationLocation.c_str());
   }
 
+  jstring ANDROID_EXTERNAL(window, Window, getPreloadUserScript) (
+    JNIEnv* env,
+    jobject self,
+    jint index
+  ) {
+    const auto app = App::sharedApplication();
+
+    if (!app) {
+      return ANDROID_THROW(env, "Missing 'App' in environment");
+    }
+
+    const auto window = app->windowManager.getWindow(index);
+
+    if (!window) {
+      return ANDROID_THROW(env, "Invalid window index (%d) requested", index);
+    }
+
+    auto preloadUserScriptSource = IPC::Preload::compile({
+      .features = IPC::Preload::Options::Features {
+        .useGlobalCommonJS = false,
+        .useGlobalNodeJS = false,
+        .useTestScript = false,
+        .useHTMLMarkup = false,
+        .useESM = false,
+        .useGlobalArgs = true
+      },
+      .client = UniqueClient {
+        .id = window->bridge.client.id,
+        .index = window->bridge.client.index
+      },
+      .index = window->options.index,
+      .conduit = window->core->conduit.port,
+      .userScript = window->options.userScript
+    });
+
+    return env->NewStringUTF(preloadUserScriptSource.compile().str().c_str());
+  }
+
   void ANDROID_EXTERNAL(window, Window, handleApplicationURL) (
     JNIEnv* env,
     jobject self,

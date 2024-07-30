@@ -206,6 +206,37 @@ namespace SSC {
     this->userContentManager = webkit_user_content_manager_new();
     webkit_user_content_manager_register_script_message_handler(this->userContentManager, "external");
 
+    auto preloadUserScriptSource = IPC::Preload::compile({
+      .features = IPC::Preload::Options::Features {
+        .useGlobalCommonJS = false,
+        .useGlobalNodeJS = false,
+        .useTestScript = false,
+        .useHTMLMarkup = false,
+        .useESM = false,
+        .useGlobalArgs = true
+      },
+      .client = UniqueClient {
+        .id = this->bridge.client.id,
+        .index = this->bridge.client.index
+      },
+      .index = options.index,
+      .conduit = this->core->conduit.port,
+      .userScript = options.userScript
+    });
+
+    auto preloadUserScript = webkit_user_script_new(
+      preloadUserScriptSource.compile().str().c_str(),
+      WEBKIT_USER_CONTENT_INJECT_ALL_FRAMES,
+      WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START,
+      nullptr,
+      nullptr
+    );
+
+    webkit_user_content_manager_add_script(
+      this->userContentManager,
+      preloadUserScript
+    );
+
     this->policies = webkit_website_policies_new_with_policies(
       "autoplay", userConfig["permission_allow_autoplay"] != "false"
         ? WEBKIT_AUTOPLAY_ALLOW
