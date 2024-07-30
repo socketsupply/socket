@@ -51,6 +51,12 @@ export const RESOURCES = paths.resources || null
 export const CONFIG = paths.config || null
 
 /**
+ * Well known path to the application's public "media" folder.
+ * @type {?string}
+ */
+export const MEDIA = paths.media || null
+
+/**
  * Well known path to the application's "data" folder.
  * @type {?string}
  */
@@ -83,6 +89,7 @@ export default {
   DESKTOP,
   VIDEOS,
   CONFIG,
+  MEDIA,
   MUSIC,
   HOME,
   DATA,
