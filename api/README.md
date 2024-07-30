@@ -1720,7 +1720,7 @@ This is a `FunctionDeclaration` named `maybeMakeError` in `api/ipc.js`, it's exp
 This is a `ClassDeclaration` named ``IPCSearchParams` (extends `URLSearchParams`)` in `api/ipc.js`, it's exported but undocumented.
 
 
-## [`emit(name, value, target, options)`](https://github.com/socketsupply/socket/blob/v0.6.0-next/api/ipc.js#L1189)
+## [`emit(name, value, target, options)`](https://github.com/socketsupply/socket/blob/v0.6.0-next/api/ipc.js#L1192)
 
 Emit event to be dispatched on `window` object.
 
@@ -1731,7 +1731,7 @@ Emit event to be dispatched on `window` object.
 | target | EventTarget | window | true |  |
 | options | Object |  | true |  |
 
-## [`send(command, value, options)`](https://github.com/socketsupply/socket/blob/v0.6.0-next/api/ipc.js#L1248)
+## [`send(command, value, options)`](https://github.com/socketsupply/socket/blob/v0.6.0-next/api/ipc.js#L1251)
 
 Sends an async IPC command request with parameters.
 
@@ -1747,27 +1747,27 @@ Sends an async IPC command request with parameters.
 | :---         | :--- | :---        |
 | Not specified | Promise<Result> |  |
 
-## [`inflateIPCMessageTransfers()`](https://github.com/socketsupply/socket/blob/v0.6.0-next/api/ipc.js#L1699)
+## [`inflateIPCMessageTransfers()`](https://github.com/socketsupply/socket/blob/v0.6.0-next/api/ipc.js#L1702)
 
 This is a `FunctionDeclaration` named `inflateIPCMessageTransfers` in `api/ipc.js`, it's exported but undocumented.
 
 
-## [`findIPCMessageTransfers()`](https://github.com/socketsupply/socket/blob/v0.6.0-next/api/ipc.js#L1731)
+## [`findIPCMessageTransfers()`](https://github.com/socketsupply/socket/blob/v0.6.0-next/api/ipc.js#L1734)
 
 This is a `FunctionDeclaration` named `findIPCMessageTransfers` in `api/ipc.js`, it's exported but undocumented.
 
 
-## [ports](https://github.com/socketsupply/socket/blob/v0.6.0-next/api/ipc.js#L1780)
+## [ports](https://github.com/socketsupply/socket/blob/v0.6.0-next/api/ipc.js#L1783)
 
 This is a `VariableDeclaration` named `ports` in `api/ipc.js`, it's exported but undocumented.
 
 
-## [`IPCMessagePort` (extends `MessagePort`)](https://github.com/socketsupply/socket/blob/v0.6.0-next/api/ipc.js#L1782)
+## [`IPCMessagePort` (extends `MessagePort`)](https://github.com/socketsupply/socket/blob/v0.6.0-next/api/ipc.js#L1785)
 
 This is a `ClassDeclaration` named ``IPCMessagePort` (extends `MessagePort`)` in `api/ipc.js`, it's exported but undocumented.
 
 
-## [`IPCMessageChannel` (extends `MessageChannel`)](https://github.com/socketsupply/socket/blob/v0.6.0-next/api/ipc.js#L1987)
+## [`IPCMessageChannel` (extends `MessageChannel`)](https://github.com/socketsupply/socket/blob/v0.6.0-next/api/ipc.js#L1990)
 
 This is a `ClassDeclaration` named ``IPCMessageChannel` (extends `MessageChannel`)` in `api/ipc.js`, it's exported but undocumented.
 

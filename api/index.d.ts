@@ -127,7 +127,7 @@ declare module "socket:async/context" {
          * @param {Variable<T>} key
          * @return {boolean}
          */
-        get<T>(key: Variable<T>): boolean;
+        get<T_1>(key: Variable<T_1>): boolean;
         /**
          * Sets an `AsyncContext.Variable` value at `key`. If the `Mapping` is frozen,
          * then a "forked" (new) instance with the value set on it is returned,
@@ -137,7 +137,7 @@ declare module "socket:async/context" {
          * @param {T} value
          * @return {Mapping}
          */
-        set<T>(key: Variable<T>, value: T): Mapping;
+        set<T_2>(key: Variable<T_2>, value: T_2): Mapping;
         /**
          * Delete  an `AsyncContext.Variable` value at `key`.
          * If the `Mapping` is frozen, then a "forked" (new) instance is returned,
@@ -147,7 +147,7 @@ declare module "socket:async/context" {
          * @param {T} value
          * @return {Mapping}
          */
-        delete<T>(key: Variable<T>): Mapping;
+        delete<T_3>(key: Variable<T_3>): Mapping;
         #private;
     }
     /**
@@ -177,7 +177,7 @@ declare module "socket:async/context" {
          * @param {Variable<T>} key
          * @return {T|undefined}
          */
-        static get<T>(key: Variable<T>): T | undefined;
+        static get<T_1>(key: Variable<T_1>): T_1;
         /**
          * Set updates the `AsyncContext.Variable` with a new value and returns a
          * revert action that allows the modification to be reversed in the future.
@@ -186,7 +186,7 @@ declare module "socket:async/context" {
          * @param {T} value
          * @return {Revert<T>|FrozenRevert}
          */
-        static set<T>(key: Variable<T>, value: T): Revert<T> | FrozenRevert;
+        static set<T_2>(key: Variable<T_2>, value: T_2): FrozenRevert | Revert<T_2>;
         /**
          * "Freezes" the current storage `Mapping`, and returns a new `FrozenRevert`
          * or `Revert` which can restore the storage state to the state at
@@ -200,7 +200,7 @@ declare module "socket:async/context" {
          * @template T
          * @param {Revert<T>|FrozenRevert} revert
          */
-        static restore<T>(revert: Revert<T> | FrozenRevert): void;
+        static restore<T_3>(revert: FrozenRevert | Revert<T_3>): void;
         /**
          * Switches storage `Mapping` state to the state at the time of a
          * "snapshot".
@@ -254,7 +254,7 @@ declare module "socket:async/context" {
          * @template T
          * @return {T|undefined}
          */
-        get<T_1>(): T_1 | undefined;
+        get<T_2>(): T_2;
         #private;
     }
     /**
@@ -282,7 +282,7 @@ declare module "socket:async/context" {
          * @param {F} fn
          * @returns {F}
          */
-        static wrap<F>(fn: F): F;
+        static wrap<F_1>(fn: F_1): F_1;
         /**
          * Runs the given function `fn` with arguments `args`, using a `null`
          * context and the current snapshot.
@@ -340,7 +340,7 @@ declare module "socket:events" {
     };
     export const CustomEvent: {
         new <T>(type: string, eventInitDict?: CustomEventInit<T>): CustomEvent<T>;
-        prototype: CustomEvent;
+        prototype: CustomEvent<any>;
     } | {
         new (type: any, options: any): {
             "__#7@#detail": any;
@@ -349,7 +349,7 @@ declare module "socket:events" {
     };
     export const MessageEvent: {
         new <T>(type: string, eventInitDict?: MessageEventInit<T>): MessageEvent<T>;
-        prototype: MessageEvent;
+        prototype: MessageEvent<any>;
     } | {
         new (type: any, options: any): {
             "__#8@#detail": any;
@@ -1397,7 +1397,7 @@ declare module "socket:errors" {
          * `ErrnoError` class constructor.
          * @param {import('./errno').errno|string} code
          */
-        constructor(code: import("socket:errno").errno | string, message?: any, ...args: any[]);
+        constructor(code: import('./errno').errno | string, message?: any, ...args: any[]);
         get name(): string;
         get code(): number;
         #private;
@@ -2161,7 +2161,7 @@ declare module "socket:util" {
     export function isTypedArray(object: any): boolean;
     export function isArrayLike(input: any): boolean;
     export function isError(object: any): boolean;
-    export function isSymbol(value: any): value is symbol;
+    export function isSymbol(value: any): boolean;
     export function isNumber(value: any): boolean;
     export function isBoolean(value: any): boolean;
     export function isArrayBufferView(buf: any): boolean;
@@ -2837,7 +2837,7 @@ declare module "socket:internal/events" {
          * @param {object=} [data]
          * @param {import('../application/menu.js').Menu} menu
          */
-        constructor(type?: string | undefined, data?: object | undefined, menu?: import("socket:application/menu").Menu);
+        constructor(type?: string | undefined, data?: object | undefined, menu?: import('../application/menu.js').Menu);
         /**
          * The `Menu` this event has been dispatched for.
          * @type {import('../application/menu.js').Menu?}
@@ -3078,7 +3078,7 @@ declare module "socket:os" {
      * @ignore
      * @return {'android'|'android-emulator'|'iphoneos'|iphone-simulator'|'linux'|'macosx'|unix'|unknown'|win32'}
      */
-    export function host(): "android" | "android-emulator" | "iphoneos" | iphone;
+    export function host(): 'android' | 'android-emulator' | 'iphoneos' | iphone;
     /**
      * Returns the home directory of the current user.
      * @return {string}
@@ -3108,7 +3108,7 @@ declare module "socket:process/signal" {
      * @param {string|number} name
      * @return {signal}
      */
-    export function getCode(name: string | number): signal;
+    export function getCode(name: string | number): any;
     /**
      * Gets the name for a given 'signal' code
      * @return {string}
@@ -3252,7 +3252,7 @@ declare module "socket:internal/streams/web" {
         constructor(e?: {}, t?: {});
         get locked(): boolean;
         cancel(e?: any): any;
-        getReader(e?: any): ReadableStreamBYOBReader | ReadableStreamDefaultReader;
+        getReader(e?: any): ReadableStreamDefaultReader | ReadableStreamBYOBReader;
         pipeThrough(e: any, t?: {}): any;
         pipeTo(e: any, t?: {}): any;
         tee(): any;
@@ -3633,7 +3633,7 @@ declare module "socket:process" {
     export class ProcessEnvironment extends EventTarget {
         get [Symbol.toStringTag](): string;
     }
-    export const env: ProcessEnvironment;
+    export const env: any;
     export default process;
     const process: any;
 }
@@ -4543,9 +4543,9 @@ declare module "socket:diagnostics/window" {
         patched: {
             open: {
                 (method: string, url: string | URL): void;
-                (method: string, url: string | URL, async: boolean, username?: string | null, password?: string | null): void;
+                (method: string, url: string | URL, async: boolean, username?: string, password?: string): void;
             };
-            send: (body?: Document | XMLHttpRequestBodyInit | null) => void;
+            send: (body?: Document | XMLHttpRequestBodyInit) => void;
         };
     }
     export class WorkerMetric extends Metric {
@@ -5273,7 +5273,7 @@ declare module "socket:fs/stats" {
          * @param {fromBigInt=} [fromBigInt = false]
          * @return {Stats}
          */
-        static from(stat?: object | Stats, fromBigInt?: any | undefined): Stats;
+        static from(stat?: object | Stats, fromBigInt?: any): Stats;
         /**
          * `Stats` class constructor.
          * @param {object|Stats} stat
@@ -6146,7 +6146,7 @@ declare module "socket:fs/watcher" {
          * The encoding of the `filename`
          * @type {'utf8'|'buffer'}
          */
-        encoding: "utf8" | "buffer";
+        encoding: 'utf8' | 'buffer';
         /**
          * A `AbortController` `AbortSignal` for async aborts.
          * @type {AbortSignal?}
@@ -6990,7 +6990,7 @@ declare module "socket:application/client" {
          * The frame type of the client.
          * @type {'top-level'|'nested'|'none'}
          */
-        get frameType(): "none" | "top-level" | "nested";
+        get frameType(): "none" | "nested" | "top-level";
         /**
          * The type of the client.
          * @type {'window'|'worker'}
@@ -7022,10 +7022,10 @@ declare module "socket:application/client" {
     export default _default;
     export type ClientState = {
         id?: string | null;
-        type?: "window" | "worker";
+        type?: 'window' | 'worker';
         parent?: object | null;
         top?: object | null;
-        frameType?: "top-level" | "nested" | "none";
+        frameType?: 'top-level' | 'nested' | 'none';
     };
 }
 
@@ -7099,7 +7099,7 @@ declare module "socket:window/hotkey" {
          * @ignore
          * @param {import('../internal/events.js').HotKeyEvent} event
          */
-        onHotKey(event: import("socket:internal/events").HotKeyEvent): boolean;
+        onHotKey(event: import('../internal/events.js').HotKeyEvent): boolean;
         /**
          * The number of `Binding` instances in the mapping.
          * @type {number}
@@ -7312,7 +7312,6 @@ declare module "socket:window/hotkey" {
      */
     export const bindings: Bindings;
     export default bindings;
-    import { HotKeyEvent } from "socket:internal/events";
 }
 
 declare module "socket:window" {
@@ -8037,7 +8036,7 @@ declare module "socket:internal/promise" {
     export const NativePromise: PromiseConstructor;
     export namespace NativePromisePrototype {
         export let then: <TResult1 = any, TResult2 = never>(onfulfilled?: (value: any) => TResult1 | PromiseLike<TResult1>, onrejected?: (reason: any) => TResult2 | PromiseLike<TResult2>) => globalThis.Promise<TResult1 | TResult2>;
-        let _catch: <TResult = never>(onrejected?: (reason: any) => TResult | PromiseLike<TResult>) => globalThis.Promise<any | TResult>;
+        let _catch: <TResult = never>(onrejected?: (reason: any) => TResult | PromiseLike<TResult>) => globalThis.Promise<any>;
         export { _catch as catch };
         let _finally: (onfinally?: () => void) => globalThis.Promise<any>;
         export { _finally as finally };
@@ -8083,9 +8082,9 @@ declare module "socket:internal/promise" {
             readonly destroyed: boolean;
             asyncId(): number;
             triggerAsyncId(): number;
-            emitDestroy(): CoreAsyncResource;
-            bind(fn: Function, thisArg?: object | undefined): Function;
-            runInAsyncScope(fn: Function, thisArg?: object | undefined, ...args?: any[]): any;
+            emitDestroy(): asyncHooks.CoreAsyncResource;
+            bind(fn: Function, thisArg?: any): Function;
+            runInAsyncScope(fn: Function, thisArg?: any, ...args?: any[]): any;
         };
     }
     export namespace Promise {
@@ -8705,7 +8704,7 @@ declare module "socket:worker_threads" {
          * @ignore
          * @param {import('./process.js').ProcessEnvironmentEvent} event
          */
-        onProcessEnvironmentEvent(event: import("socket:process").ProcessEnvironmentEvent): void;
+        onProcessEnvironmentEvent(event: import('./process.js').ProcessEnvironmentEvent): void;
         /**
          * The unique ID for this `Worker` thread instace.
          * @type {number}
@@ -9914,7 +9913,7 @@ declare module "socket:extension" {
          * @param {string} name
          * @return {Promise<'shared'|'wasm32'|'unknown'|null>}
          */
-        static type(name: string): Promise<"shared" | "wasm32" | "unknown" | null>;
+        static type(name: string): Promise<'shared' | 'wasm32' | 'unknown' | null>;
         /**
          * Provides current stats about the loaded extensions or one by name.
          * @param {?string} name
@@ -9989,7 +9988,7 @@ declare module "socket:extension" {
     export type ExtensionLoadOptions = {
         allow: string[] | string;
         imports?: object;
-        type?: "shared" | "wasm32";
+        type?: 'shared' | 'wasm32';
         path?: string;
         stats?: object;
         instance?: WebAssembly.Instance;
@@ -10485,7 +10484,7 @@ declare module "socket:internal/database" {
     export type DatabasePutOptions = {
         store?: string | undefined;
         stores?: string[] | undefined;
-        durability?: "strict" | "relaxed" | undefined;
+        durability?: 'strict' | 'relaxed' | undefined;
     };
     /**
      * A typed container for various optional options made to a `delete()` function
@@ -10549,7 +10548,7 @@ declare module "socket:service-worker/env" {
          * @param {'set'|'delete'} type
          * @param {object=} [entry]
          */
-        constructor(type: "set" | "delete", entry?: object | undefined);
+        constructor(type: 'set' | 'delete', entry?: object | undefined);
         entry: any;
     }
     /**
@@ -10681,7 +10680,7 @@ declare module "socket:service-worker/context" {
          * `Context` class constructor.
          * @param {import('./events.js').ExtendableEvent} event
          */
-        constructor(event: import("socket:service-worker/events").ExtendableEvent);
+        constructor(event: import('./events.js').ExtendableEvent);
         /**
          * Context data. This may be a custom protocol handler scheme data
          * by default, if available.
@@ -10722,7 +10721,7 @@ declare module "socket:service-worker/context" {
          * Gets the client for this event context.
          * @return {Promise<import('./clients.js').Client>}
          */
-        client(): Promise<import("socket:service-worker/clients").Client>;
+        client(): Promise<import('./clients.js').Client>;
         #private;
     }
     namespace _default {
@@ -10909,7 +10908,7 @@ declare module "socket:http/adapters" {
          * @param {import('../http.js').Server} server
          * @param {HTTPModuleInterface} httpInterface
          */
-        constructor(server: import("socket:http").Server, httpInterface: HTTPModuleInterface);
+        constructor(server: import('../http.js').Server, httpInterface: HTTPModuleInterface);
         /**
          * A readonly reference to the underlying HTTP(S) server
          * for this adapter.
@@ -10944,13 +10943,13 @@ declare module "socket:http/adapters" {
          * @ignore
          * @param {import('../service-worker/events.js').ExtendableEvent} event
          */
-        onInstall(event: import("socket:service-worker/events").ExtendableEvent): Promise<void>;
+        onInstall(event: import('../service-worker/events.js').ExtendableEvent): Promise<void>;
         /**
          * Handles the 'activate' service worker event.
          * @ignore
          * @param {import('../service-worker/events.js').ExtendableEvent} event
          */
-        onActivate(event: import("socket:service-worker/events").ExtendableEvent): Promise<void>;
+        onActivate(event: import('../service-worker/events.js').ExtendableEvent): Promise<void>;
         /**
          * Handles the 'fetch' service worker event.
          * @ignore
@@ -13642,7 +13641,7 @@ declare module "socket:test/index" {
          * @param {string} [msg]
          * @returns {void}
          */
-        notDeepEqual<T>(actual: T, expected: T, msg?: string): void;
+        notDeepEqual<T_1>(actual: T_1, expected: T_1, msg?: string): void;
         /**
          * @template T
          * @param {T} actual
@@ -13650,7 +13649,7 @@ declare module "socket:test/index" {
          * @param {string} [msg]
          * @returns {void}
          */
-        equal<T>(actual: T, expected: T, msg?: string): void;
+        equal<T_2>(actual: T_2, expected: T_2, msg?: string): void;
         /**
          * @param {unknown} actual
          * @param {unknown} expected
@@ -13899,7 +13898,7 @@ declare module "socket:test/index" {
          * })
          * ```
          */
-        waitForText(selector: string | HTMLElement | Element, opts?: {
+        waitForText(selector: string | HTMLElement | Element, opts?: string | RegExp | {
             /**
              * - The text to wait for
              */
@@ -13910,7 +13909,7 @@ declare module "socket:test/index" {
              * The regex to wait for
              */
             regex?: RegExp;
-        } | string | RegExp, msg?: string): Promise<HTMLElement | Element | void>;
+        }, msg?: string): Promise<HTMLElement | Element | void>;
         /**
          * Run a querySelector as an assert and also get the results
          *
@@ -15191,7 +15190,7 @@ declare module "socket:commonjs/package" {
          * @param {PackageResolveOptions=} [options]
          * @return {string}
          */
-        resolve(pathname: string | URL, options?: PackageResolveOptions | undefined): string;
+        resolve(pathname: string | URL, options?: PackageResolveOptions): string;
         #private;
     }
     export default Package;
@@ -15202,13 +15201,13 @@ declare module "socket:commonjs/package" {
         version?: string;
         license?: string;
         exports?: object;
-        type?: "commonjs" | "module";
+        type?: 'commonjs' | 'module';
         info?: object;
         origin?: string;
         dependencies?: Dependencies | object | Map<any, any>;
     };
     export type PackageLoadOptions = import("socket:commonjs/loader").RequestOptions & {
-        type?: "commonjs" | "module";
+        type?: 'commonjs' | 'module';
         prefix?: string;
     };
     export type ParsedPackageName = {
@@ -15292,7 +15291,7 @@ declare module "socket:commonjs/require" {
          * `Meta` class constructor.
          * @param {import('./module.js').Module} module
          */
-        constructor(module: import("socket:commonjs/module").Module);
+        constructor(module: import('./module.js').Module);
         /**
          * The referrer (parent) of this module.
          * @type {string}
@@ -15336,7 +15335,7 @@ declare module "socket:commonjs/module" {
      * @param {typeof process} process
      * @param {object} global
      */
-    export function CommonJSModuleScope(exports: object, require: (arg0: string) => any, module: Module, __filename: string, __dirname: string, process: any, global: object): void;
+    export function CommonJSModuleScope(exports: object, require: (arg0: string) => any, module: Module, __filename: string, __dirname: string, process: typeof process, global: object): void;
     /**
      * Creates a `require` function from a given module URL.
      * @param {string|URL} url
@@ -15696,7 +15695,7 @@ declare module "socket:commonjs/module" {
          * @throws TypeError
          * @return {any}
          */
-        require(url: any, options?: RequireOptions | undefined): any;
+        require(url: any, options?: RequireOptions): any;
         /**
          * Loads the module
          * @param {ModuleLoadOptions=} [options]
@@ -15734,9 +15733,9 @@ declare module "socket:commonjs/module" {
     export type ModuleLoadOptions = {
         extensions?: object;
     };
+    import process from "socket:process";
     import { Package } from "socket:commonjs/package";
     import { Loader } from "socket:commonjs/loader";
-    import process from "socket:process";
 }
 
 declare module "socket:module" {
@@ -16076,7 +16075,7 @@ declare module "socket:notification" {
          * @param {boolean=} [options.force = false]
          * @return {Promise<'granted'|'default'|'denied'>}
          */
-        static requestPermission(options?: object | undefined): Promise<"granted" | "default" | "denied">;
+        static requestPermission(options?: object | undefined): Promise<'granted' | 'default' | 'denied'>;
         /**
          * `Notification` class constructor.
          * @param {string} title
@@ -16262,9 +16261,9 @@ declare module "socket:service-worker/instance" {
             readonly state: any;
             readonly scriptURL: any;
             postMessage(): void;
-            addEventListener(type: string, callback: EventListenerOrEventListenerObject | null, options?: AddEventListenerOptions | boolean): void;
+            addEventListener(type: string, callback: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
             dispatchEvent(event: Event): boolean;
-            removeEventListener(type: string, callback: EventListenerOrEventListenerObject | null, options?: EventListenerOptions | boolean): void;
+            removeEventListener(type: string, callback: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
         };
     };
     export default createServiceWorker;
@@ -16980,7 +16979,7 @@ declare module "socket:internal/pickers" {
      * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Window/showOpenFilePicker}
      * @return {Promise<FileSystemFileHandle[]>}
      */
-    export function showOpenFilePicker(options?: ShowOpenFilePickerOptions | undefined): Promise<FileSystemFileHandle[]>;
+    export function showOpenFilePicker(options?: ShowOpenFilePickerOptions): Promise<FileSystemFileHandle[]>;
     /**
      * @typedef {{
      *   id?: string,
@@ -17000,7 +16999,7 @@ declare module "socket:internal/pickers" {
      * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Window/showSaveFilePicker}
      * @return {Promise<FileSystemHandle>}
      */
-    export function showSaveFilePicker(options?: ShowSaveFilePickerOptions | undefined): Promise<FileSystemHandle>;
+    export function showSaveFilePicker(options?: ShowSaveFilePickerOptions): Promise<FileSystemHandle>;
     /**
      * Key-value store for general usage by the file pickers"
      * @ignore
@@ -17022,8 +17021,8 @@ declare module "socket:internal/pickers" {
     export default _default;
     export type ShowDirectoryPickerOptions = {
         id?: string;
-        mode?: "read" | "readwrite";
-        startIn?: FileSystemHandle | "desktop" | "documents" | "downloads" | "music" | "pictures" | "videos";
+        mode?: 'read' | 'readwrite';
+        startIn?: FileSystemHandle | 'desktop' | 'documents' | 'downloads' | 'music' | 'pictures' | 'videos';
     };
     /**
      * ]?: string[]
@@ -17033,10 +17032,10 @@ declare module "socket:internal/pickers" {
     export type object = {
         id?: string;
         excludeAcceptAllOption?: boolean;
-        startIn?: FileSystemHandle | "desktop" | "documents" | "downloads" | "music" | "pictures" | "videos";
+        startIn?: FileSystemHandle | 'desktop' | 'documents' | 'downloads' | 'music' | 'pictures' | 'videos';
         types?: Array<{
             description?: string;
-            [keyof]: any;
+            [keyof];
         }>;
     };
 }
@@ -17137,7 +17136,7 @@ declare module "socket:npm/module" {
      */
     export function resolve(specifier: string | URL, origin?: (string | URL) | undefined, options?: {
         prefix?: string;
-        type?: "commonjs" | "module";
+        type?: 'commonjs' | 'module';
     }): ModuleResolution | null;
     namespace _default {
         export { resolve };
@@ -17146,7 +17145,7 @@ declare module "socket:npm/module" {
     export type ModuleResolution = {
         package: Package;
         origin: string;
-        type: "commonjs" | "module";
+        type: 'commonjs' | 'module';
         url: string;
     };
     import { Package } from "socket:commonjs/package";
@@ -17227,8 +17226,8 @@ declare module "socket:service-worker/init" {
 }
 declare function isTypedArray(object: any): boolean;
 declare function isTypedArray(object: any): boolean;
-declare function isArrayBuffer(object: any): object is ArrayBuffer;
-declare function isArrayBuffer(object: any): object is ArrayBuffer;
+declare function isArrayBuffer(object: any): boolean;
+declare function isArrayBuffer(object: any): boolean;
 declare function findMessageTransfers(transfers: any, object: any, options?: any): any;
 declare function findMessageTransfers(transfers: any, object: any, options?: any): any;
 declare const Uint8ArrayPrototype: Uint8Array;
@@ -17242,7 +17241,7 @@ declare module "socket:service-worker/storage" {
      * @param {'memoryStorage'|'localStorage'|'sessionStorage'} type
      * @return {Promise<Storage>}
      */
-    export function createStorageInterface(type: "memoryStorage" | "localStorage" | "sessionStorage"): Promise<Storage>;
+    export function createStorageInterface(type: 'memoryStorage' | 'localStorage' | 'sessionStorage'): Promise<Storage>;
     /**
      * @typedef {{ done: boolean, value: string | undefined }} IndexIteratorResult
      */
@@ -17691,12 +17690,12 @@ declare module "socket:test/harness" {
      * @param {new (options: object) => T} harnessClass
      * @returns {TapeTestFn<T>}
      */
-    export function wrapHarness<T extends Harness>(tapzero: typeof import("socket:test/index"), harnessClass: new (options: object) => T): TapeTestFn<T>;
+    export function wrapHarness<T extends exports.Harness>(tapzero: typeof import("socket:test/index"), harnessClass: new (options: object) => T): exports.TapeTestFn<T>;
     export default exports;
     /**
      * @template {Harness} T
      */
-    export class TapeHarness<T extends Harness> {
+    export class TapeHarness<T extends exports.Harness> {
         /**
          * @param {import('./index.js')} tapzero
          * @param {new (options: object) => T} harnessClass
@@ -17749,7 +17748,7 @@ declare module "socket:test/harness" {
         bootstrap(): Promise<void>;
         close(): Promise<void>;
     };
-    export type TapeTestFn<T extends Harness> = {
+    export type TapeTestFn<T extends exports.Harness> = {
         (name: string, cb?: (harness: T, test: Test) => (void | Promise<void>)): void;
         (name: string, opts: object, cb: (harness: T, test: Test) => (void | Promise<void>)): void;
         only(name: string, cb?: (harness: T, test: Test) => (void | Promise<void>)): void;
@@ -17766,8 +17765,8 @@ declare module "socket:vm/init" {
 }
 declare function isTypedArray(object: any): boolean;
 declare function isTypedArray(object: any): boolean;
-declare function isArrayBuffer(object: any): object is ArrayBuffer;
-declare function isArrayBuffer(object: any): object is ArrayBuffer;
+declare function isArrayBuffer(object: any): boolean;
+declare function isArrayBuffer(object: any): boolean;
 declare function findMessageTransfers(transfers: any, object: any, options?: any): any;
 declare function findMessageTransfers(transfers: any, object: any, options?: any): any;
 declare const Uint8ArrayPrototype: Uint8Array;
