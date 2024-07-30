@@ -29,7 +29,7 @@ import socket.runtime.core.console
 import socket.runtime.core.WebChromeClient
 import socket.runtime.ipc.Bridge
 import socket.runtime.ipc.Message
-import socket.runtime.window.WindowFragment
+import socket.runtime.window.WindowManagerActivity
 import socket.runtime.window.Dialog
 
 import __BUNDLE_IDENTIFIER__.R
@@ -152,8 +152,8 @@ open class WindowWebChromeClient (val window: Window) : WebChromeClient() {
  */
 open class Window (val fragment: WindowFragment) {
   val userMessageHandler = WindowWebViewUserMessageHandler(this)
-  val activity = fragment.requireActivity()
-  val bridge = Bridge(fragment.index, activity as AppCompatActivity)
+  val activity = fragment.requireActivity() as WindowManagerActivity
+  val bridge = Bridge(fragment.index, activity as AppCompatActivity, this)
   val client = WindowWebChromeClient(this)
   val index = fragment.index
   var title = ""
@@ -259,6 +259,9 @@ open class Window (val fragment: WindowFragment) {
 
   @Throws(Exception::class)
   external fun getPendingNavigationLocation (index: Int): String
+
+  @Throws(Exception::class)
+  external fun getPreloadUserScript (index: Int): String
 
   @Throws(Exception::class)
   external fun handleApplicationURL (index: Int, url: String): Unit

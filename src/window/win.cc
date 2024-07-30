@@ -887,6 +887,36 @@ namespace SSC {
               );
             } while (0);
 
+            // configure the user script preload
+            do {
+              auto preloadUserScriptSource = IPC::Preload::compile({
+                .features = IPC::Preload::Options::Features {
+                  .useGlobalCommonJS = false,
+                  .useGlobalNodeJS = false,
+                  .useTestScript = false,
+                  .useHTMLMarkup = false,
+                  .useESM = false,
+                  .useGlobalArgs = true
+                },
+                .client = UniqueClient {
+                  .id = this->bridge.client.id,
+                  .index = this->bridge.client.index
+                },
+                .index = this->options.index,
+                .conduit = this->core->conduit.port,
+                .userScript = this->options.userScript
+              });
+
+              this->webview->AddScriptToExecuteOnDocumentCreated(
+                // Note that this may not do anything as preload goes out of scope before event fires
+                // Consider using w->preloadJavascript, but apps work without this
+                convertStringToWString(preloadUserScriptSource.compile().str()).c_str(),
+                Microsoft::WRL::Callback<ICoreWebView2AddScriptToExecuteOnDocumentCreatedCompletedHandler>(
+                  [&](HRESULT error, PCWSTR id) -> HRESULT { return S_OK; }
+                ).Get()
+              );
+            } while (0);
+
             // configure webview permission request handler
             do {
               EventRegistrationToken token;
