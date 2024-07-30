@@ -228,6 +228,7 @@ namespace SSC {
       bool isLoopAlive ();
       void initEventLoop ();
       void runEventLoop ();
+      void pauseEventLoop ();
       void stopEventLoop ();
       void dispatchEventLoop (EventLoopDispatchCallback dispatch);
       void signalDispatchEventLoop ();

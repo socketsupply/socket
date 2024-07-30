@@ -1,4 +1,5 @@
 #include "codec.hh"
+#include "debug.hh"
 #include "url.hh"
 
 namespace SSC {
@@ -42,36 +43,41 @@ namespace SSC {
             } else if (fragment != String::npos) {
               components.authority = input.substr(0, fragment);
               input = input.substr(fragment, input.size());
+            } else {
+              components.authority = input;
+              components.pathname = "/";
             }
           }
         }
       }
     }
 
-    const auto questionMark = input.find("?");
-    const auto fragment = input.find("#");
+    if (components.pathname.size() == 0) {
+      const auto questionMark = input.find("?");
+      const auto fragment = input.find("#");
 
-    if (questionMark != String::npos && fragment != String::npos) {
-      if (questionMark < fragment) {
+      if (questionMark != String::npos && fragment != String::npos) {
+        if (questionMark < fragment) {
+          components.pathname = input.substr(0, questionMark);
+          components.query = input.substr(questionMark + 1, fragment - questionMark - 1);
+          components.fragment = input.substr(fragment + 1, input.size());
+        } else {
+          components.pathname = input.substr(0, fragment);
+          components.fragment = input.substr(fragment + 1, input.size());
+        }
+      } else if (questionMark != String::npos) {
         components.pathname = input.substr(0, questionMark);
-        components.query = input.substr(questionMark + 1, fragment - questionMark - 1);
-        components.fragment = input.substr(fragment + 1, input.size());
-      } else {
+        components.query = input.substr(questionMark + 1, input.size());
+      } else if (fragment != String::npos) {
         components.pathname = input.substr(0, fragment);
         components.fragment = input.substr(fragment + 1, input.size());
+      } else {
+        components.pathname = input;
       }
-    } else if (questionMark != String::npos) {
-      components.pathname = input.substr(0, questionMark);
-      components.query = input.substr(questionMark + 1, input.size());
-    } else if (fragment != String::npos) {
-      components.pathname = input.substr(0, fragment);
-      components.fragment = input.substr(fragment + 1, input.size());
-    } else {
-      components.pathname = input;
-    }
 
-    if (!components.pathname.starts_with("/")) {
-      components.pathname = "/" + components.pathname;
+      if (!components.pathname.starts_with("/")) {
+        components.pathname = "/" + components.pathname;
+      }
     }
 
     return components;
