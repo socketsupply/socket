@@ -1,7 +1,7 @@
 #ifndef SOCKET_RUNTIME_PLATFORM_ANDROID_MIME_H
 #define SOCKET_RUNTIME_PLATFORM_ANDROID_MIME_H
 
-#include "../platform.hh"
+#include "../types.hh"
 #include "environment.hh"
 
 namespace SSC::Android {

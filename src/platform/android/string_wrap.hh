@@ -1,9 +1,9 @@
 #ifndef SOCKET_RUNTIME_ANDROID_STRING_WRAP_H
 #define SOCKET_RUNTIME_ANDROID_STRING_WRAP_H
 
-#include "../platform.hh"
+#include "../types.hh"
+#include "native.hh"
 
-#if SOCKET_RUNTIME_PLATFORM_ANDROID
 namespace SSC::Android {
   /**
    * A container for a JNI string (jstring).
@@ -39,5 +39,4 @@ namespace SSC::Android {
       StringWrap& operator= (StringWrap&& string);
   };
 }
-#endif
 #endif
