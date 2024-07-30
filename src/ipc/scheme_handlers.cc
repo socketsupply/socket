@@ -2,10 +2,6 @@
 #include "scheme_handlers.hh"
 #include "ipc.hh"
 
-#if SOCKET_RUNTIME_PLATFORM_ANDROID
-#include "../platform/android.hh"
-#endif
-
 using namespace SSC;
 using namespace SSC::IPC;
 
