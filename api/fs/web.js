@@ -2,6 +2,7 @@
 import { DEFAULT_STREAM_HIGH_WATER_MARK } from './stream.js'
 import { isBufferLike, toBuffer } from '../util.js'
 import { NotAllowedError } from '../errors.js'
+import { readFileSync } from './index.js'
 import mime from '../mime.js'
 import path from '../path.js'
 import fs from './promises.js'
@@ -111,6 +112,7 @@ export async function createFile (filename, options = null) {
     : Math.min(stats.size, DEFAULT_STREAM_HIGH_WATER_MARK)
 
   let fd = options?.fd ?? null
+  let blobBuffer = null
 
   return create(File, class File {
     get [kFileFullName] () { return filename }
@@ -123,10 +125,11 @@ export async function createFile (filename, options = null) {
     get type () { return type }
 
     slice () {
-      console.warn('socket:fs/web: File.slice() is not supported in implementation')
-      // This synchronous interface is not supported
-      // An empty and ephemeral `Blob` is returned instead
-      return new Blob([], { type })
+      if (!blobBuffer) {
+        blobBuffer = readFileSync(filename)
+      }
+
+      return new Blob([blobBuffer], { type })
     }
 
     async arrayBuffer () {
