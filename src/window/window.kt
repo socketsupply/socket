@@ -153,7 +153,7 @@ open class WindowWebChromeClient (val window: Window) : WebChromeClient() {
 open class Window (val fragment: WindowFragment) {
   val userMessageHandler = WindowWebViewUserMessageHandler(this)
   val activity = fragment.requireActivity() as WindowManagerActivity
-  val bridge = Bridge(fragment.index, activity as AppCompatActivity, this)
+  val bridge = Bridge(fragment.index, activity, this)
   val client = WindowWebChromeClient(this)
   val index = fragment.index
   var title = ""
@@ -217,6 +217,10 @@ open class Window (val fragment: WindowFragment) {
         webview.loadUrl(url)
       }
     }
+  }
+
+  fun getPreloadUserScript (): String {
+    return this.getPreloadUserScript(this.index)
   }
 
   fun getSize (): Size {
