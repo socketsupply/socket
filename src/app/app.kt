@@ -71,7 +71,7 @@ open class AppPlatform (val activity: AppActivity) {
     return uri.toString()
   }
 
-  fun getContentType (url: String): String {
+  fun getContentMimeType (url: String): String {
     return this.activity.applicationContext.contentResolver.getType(Uri.parse(url)) ?: ""
   }
 
