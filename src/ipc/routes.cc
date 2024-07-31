@@ -1,6 +1,7 @@
 #include "../app/app.hh"
 #include "../cli/cli.hh"
 #include "../core/json.hh"
+#include "../core/resource.hh"
 #include "../extension/extension.hh"
 #include "../window/window.hh"
 #include "ipc.hh"
@@ -1714,6 +1715,24 @@ static void mapIPCRoutes (Router *router) {
     #else
       printf("%s\n", value);
     #endif
+  });
+
+  router->map("mime.lookup", [=](auto message, auto router, auto reply) {
+    auto err = validateMessageParameters(message, { "value" });
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    auto resource = FileResource(message.value, FileResource::Options {
+      .cache = false,
+      .core = router->bridge->core.get()
+    });
+
+    reply(Result { message.seq, message, JSON::Object::Entries {
+      {"url", resource.url.str()},
+      {"type", resource.mimeType()}
+    }});
   });
 
   router->map("notification.show", [=](auto message, auto router, auto reply) {

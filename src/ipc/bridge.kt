@@ -107,12 +107,15 @@ open class Bridge (
   override fun onPageStarted (
     view: WebView,
     url: String,
-    favicon: Bitmap
+    favicon: Bitmap?
   ) {
-    if (url.authority != "__BUNDLE_IDENTIFIER__") {
+    val uri = Uri.parse(url)
+    if (uri.authority != "__BUNDLE_IDENTIFIER__") {
       val preloadUserScript = this.window.getPreloadUserScript()
-      view.evaluateJavaScript(preloadUserScript, { _ -> })
+      view.evaluateJavascript(preloadUserScript, { _ -> })
     }
+
+    super.onPageStarted(view, url, favicon)
   }
 
   fun emit (event: String, data: String): Boolean {
