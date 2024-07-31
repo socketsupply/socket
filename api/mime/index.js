@@ -1,4 +1,6 @@
 /* global XMLHttpRequest */
+import ipc from '../ipc.js'
+
 /**
  * A container for a database lookup query.
  */
@@ -14,9 +16,14 @@ export class DatabaseQueryResult {
   mime = ''
 
   /**
+   * @type {Database?}
+   */
+  database = null
+
+  /**
    * `DatabaseQueryResult` class constructor.
    * @ignore
-   * @param {Database} database
+   * @param {Database|null} database
    * @param {string} name
    * @param {string} mime
    */
@@ -85,6 +92,7 @@ export class Database {
 
       for (const [key, value] of Object.entries(json)) {
         this.map.set(key, value)
+        // @ts-ignore
         this.index.set(value.toLowerCase(), key.toLowerCase())
       }
     }
@@ -113,6 +121,7 @@ export class Database {
 
       for (const [key, value] of Object.entries(json)) {
         this.map.set(key, value)
+        // @ts-ignore
         this.index.set(value.toLowerCase(), key.toLowerCase())
       }
     }
@@ -270,6 +279,16 @@ export async function lookup (query) {
     results.push(...result)
   }
 
+  if (query && results.length === 0) {
+    const result = await ipc.request('mime.lookup', query)
+
+    if (result.err) {
+      throw result.err
+    }
+
+    results.push(new DatabaseQueryResult(null, '', result.data.type))
+  }
+
   return results
 }
 
@@ -284,6 +303,16 @@ export async function lookupSync (query) {
   for (const database of databases) {
     const result = database.lookupSync(query)
     results.push(...result)
+  }
+
+  if (query && results.length === 0) {
+    const result = await ipc.sendSync('mime.lookup', query)
+
+    if (result.err) {
+      throw result.err
+    }
+
+    results.push(new DatabaseQueryResult(null, '', result.data.type))
   }
 
   return results
@@ -317,6 +346,7 @@ export class MIMEType {
     const [type, subtype] = types
 
     this.#type = type.toLowerCase()
+    // @ts-ignore
     this.#params = new MIMEParams(args.map((a) => a.trim().split('=').map((v) => v.trim())))
     this.#subtype = subtype
   }
