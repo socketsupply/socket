@@ -104,7 +104,11 @@ export async function createFile (filename, options = null) {
 
   const decoder = new TextDecoder()
   const stats = options?.fd ? await options.fd.stat() : await fs.stat(filename)
-  const types = await mime.lookup(path.extname(filename).slice(1))
+  const types = await mime.lookup(
+    URL.canParse(filename)
+      ? filename
+      : path.extname(filename).slice(1)
+  )
   const type = types[0]?.mime ?? ''
 
   const highWaterMark = Number.isFinite(options?.highWaterMark)
@@ -114,13 +118,17 @@ export async function createFile (filename, options = null) {
   let fd = options?.fd ?? null
   let blobBuffer = null
 
+  const name = URL.canParse(filename)
+    ? filename
+    : path.basename(filename)
+
   return create(File, class File {
     get [kFileFullName] () { return filename }
     get [kFileDescriptor] () { return fd }
 
     get lastModifiedDate () { return new Date(stats.mtimeMs) }
     get lastModified () { return stats.mtimeMs }
-    get name () { return path.basename(filename) }
+    get name () { return name }
     get size () { return stats.size }
     get type () { return type }
 
@@ -383,7 +391,7 @@ export async function createFileSystemFileHandle (file, options = null) {
     }
 
     async move (nameOrDestinationHandle, name = null) {
-      if (writable === false) {
+      if (writable === false || URL.canParse(file?.name)) {
         throw new NotAllowedError('FileSystemFileHandle is in \'readonly\' mode')
       }
 
@@ -409,7 +417,7 @@ export async function createFileSystemFileHandle (file, options = null) {
     }
 
     async createWritable (options = null) {
-      if (writable === false) {
+      if (writable === false || URL.canParse(file?.name)) {
         throw new NotAllowedError('FileSystemFileHandle is in \'readonly\' mode')
       }
 

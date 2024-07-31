@@ -6,7 +6,7 @@ import { AbortError } from '../errors.js'
 
 import * as exports from './stream.js'
 
-export const DEFAULT_STREAM_HIGH_WATER_MARK = 512 * 1024
+export const DEFAULT_STREAM_HIGH_WATER_MARK = 2 * 1024 * 1024
 
 /**
  * @typedef {import('./handle.js').FileHandle} FileHandle
