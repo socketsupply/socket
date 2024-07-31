@@ -183,14 +183,14 @@ function installRuntimeError (PlatformError, isBaseError = false) {
       }
       // prepareStackTrace is already called there
       if (target instanceof Error) {
-        target.stack = stack
+        target.stack = stack.join('\n')
       } else {
         const prepareStackTrace = Error.prepareStackTrace || globalThis.Error.prepareStackTrace
         if (typeof prepareStackTrace === 'function') {
-          const callsites = createCallSites(target, stack)
+          const callsites = createCallSites(target, stack.join('\n'))
           target.stack = prepareStackTrace(target, callsites)
         } else {
-          target.stack = stack
+          target.stack = stack.join('\n')
         }
       }
     }
