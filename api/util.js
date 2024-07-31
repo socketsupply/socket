@@ -659,7 +659,7 @@ export function inspect (value, options) {
     if (value instanceof Error) {
       let out = ''
 
-      if (value?.message && !value?.stack?.startsWith(`${value?.name}: ${value?.message}`)) {
+      if (value?.message && !value?.stack?.startsWith?.(`${value?.name}: ${value?.message}`)) {
         out += `${value.name}: ${value.message}\n`
       }
 
@@ -709,7 +709,7 @@ export function inspect (value, options) {
         return output.filter(Boolean).join(' ')
       }
 
-      out += (value.stack || '')
+      out += (typeof value?.stack === 'string' ? value.stack : '')
         .split('\n')
         .map((line) => line.includes(`${value.name}: ${value.message}`) || /^\s*at\s/.test(line)
           ? line
