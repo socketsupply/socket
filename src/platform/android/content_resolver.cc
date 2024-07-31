@@ -48,7 +48,7 @@ namespace SSC::Android {
     return url.hostname == "com.android.providers.media.documents";
   }
 
-  String ContentResolver::getContentType (const String& uri) {
+  String ContentResolver::getContentMimeType (const String& uri) {
     const auto attachment = JNIEnvironmentAttachment(this->jvm);
     const auto platform = (jobject) CallObjectClassMethodFromAndroidEnvironment(
       attachment.env,
@@ -57,15 +57,15 @@ namespace SSC::Android {
       "()Lsocket/runtime/app/AppPlatform;"
     );
 
-    const auto contentTypeString = (jstring) CallObjectClassMethodFromAndroidEnvironment(
+    const auto contentMimeTypeString = (jstring) CallObjectClassMethodFromAndroidEnvironment(
       attachment.env,
       platform,
-      "getContentType",
+      "getContentMimeType",
       "(Ljava/lang/String;)Ljava/lang/String;",
       attachment.env->NewStringUTF(uri.c_str())
     );
 
-    return StringWrap(attachment.env, contentTypeString).str();
+    return StringWrap(attachment.env, contentMimeTypeString).str();
   }
 
   String ContentResolver::getPathnameFromURI (const String& uri) {

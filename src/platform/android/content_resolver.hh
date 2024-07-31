@@ -20,7 +20,7 @@ namespace SSC::Android {
       bool isMediaDocumentURI (const String& uri);
       bool isPhotosURI (const String& uri);
 
-      String getContentType (const String& url);
+      String getContentMimeType (const String& url);
       String getExternalContentURIForType (const String& type);
       String getPathnameFromURI (const String& uri);
       String getPathnameFromContentURIDataColumn (
