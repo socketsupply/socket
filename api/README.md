@@ -618,7 +618,7 @@ Broadcasts a datagram on the socket. For connectionless sockets, the
 | address | string |  | true | Destination host name or IP address. |
 | callback | Function |  | true | Called when the message has been sent. |
 
-### [`close(callback)`](https://github.com/socketsupply/socket/blob/v0.6.0-next/api/dgram.js#L1051)
+### [`close(callback)`](https://github.com/socketsupply/socket/blob/v0.6.0-next/api/dgram.js#L1056)
 
 External docs: https://nodejs.org/api/dgram.html#socketclosecallback
 Close the underlying socket and stop listening for data on it. If a
@@ -630,7 +630,7 @@ Close the underlying socket and stop listening for data on it. If a
 | :---     | :--- | :---:   | :---:    | :---        |
 | callback | function |  | true | Called when the connection is completed or on error. |
 
-### [`address()`](https://github.com/socketsupply/socket/blob/v0.6.0-next/api/dgram.js#L1123)
+### [`address()`](https://github.com/socketsupply/socket/blob/v0.6.0-next/api/dgram.js#L1128)
 
 External docs: https://nodejs.org/api/dgram.html#socketaddress
 Returns an object containing the address information for a socket. For
@@ -646,7 +646,7 @@ Returns an object containing the address information for a socket. For
 | socketInfo.port | string | The port of the socket |
 | socketInfo.family | string | The IP family of the socket |
 
-### [`remoteAddress()`](https://github.com/socketsupply/socket/blob/v0.6.0-next/api/dgram.js#L1158)
+### [`remoteAddress()`](https://github.com/socketsupply/socket/blob/v0.6.0-next/api/dgram.js#L1163)
 
 External docs: https://nodejs.org/api/dgram.html#socketremoteaddress
 Returns an object containing the address, family, and port of the remote
@@ -661,7 +661,7 @@ Returns an object containing the address, family, and port of the remote
 | socketInfo.port | string | The port of the socket |
 | socketInfo.family | string | The IP family of the socket |
 
-### [`setRecvBufferSize(size)`](https://github.com/socketsupply/socket/blob/v0.6.0-next/api/dgram.js#L1189)
+### [`setRecvBufferSize(size)`](https://github.com/socketsupply/socket/blob/v0.6.0-next/api/dgram.js#L1194)
 
 External docs: https://nodejs.org/api/dgram.html#socketsetrecvbuffersizesize
 Sets the SO_RCVBUF socket option. Sets the maximum socket receive buffer in
@@ -672,7 +672,7 @@ Sets the SO_RCVBUF socket option. Sets the maximum socket receive buffer in
 | :---     | :--- | :---:   | :---:    | :---        |
 | size | number |  | false | The size of the new receive buffer |
 
-### [`setSendBufferSize(size)`](https://github.com/socketsupply/socket/blob/v0.6.0-next/api/dgram.js#L1206)
+### [`setSendBufferSize(size)`](https://github.com/socketsupply/socket/blob/v0.6.0-next/api/dgram.js#L1211)
 
 External docs: https://nodejs.org/api/dgram.html#socketsetsendbuffersizesize
 Sets the SO_SNDBUF socket option. Sets the maximum socket send buffer in
@@ -683,12 +683,12 @@ Sets the SO_SNDBUF socket option. Sets the maximum socket send buffer in
 | :---     | :--- | :---:   | :---:    | :---        |
 | size | number |  | false | The size of the new send buffer |
 
-### [`getRecvBufferSize()`](https://github.com/socketsupply/socket/blob/v0.6.0-next/api/dgram.js#L1219)
+### [`getRecvBufferSize()`](https://github.com/socketsupply/socket/blob/v0.6.0-next/api/dgram.js#L1224)
 
 External docs: https://nodejs.org/api/dgram.html#socketgetrecvbuffersize
 
 
-### [`getSendBufferSize()`](https://github.com/socketsupply/socket/blob/v0.6.0-next/api/dgram.js#L1227)
+### [`getSendBufferSize()`](https://github.com/socketsupply/socket/blob/v0.6.0-next/api/dgram.js#L1232)
 
 External docs: https://nodejs.org/api/dgram.html#socketgetsendbuffersize
 
@@ -697,31 +697,31 @@ External docs: https://nodejs.org/api/dgram.html#socketgetsendbuffersize
 | :---         | :--- | :---        |
 | Not specified | number | the SO_SNDBUF socket send buffer size in bytes. |
 
-### [`code()`](https://github.com/socketsupply/socket/blob/v0.6.0-next/api/dgram.js#L1295)
+### [`code()`](https://github.com/socketsupply/socket/blob/v0.6.0-next/api/dgram.js#L1300)
 
 
 
-## [`ERR_SOCKET_ALREADY_BOUND` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/v0.6.0-next/api/dgram.js#L1301)
+## [`ERR_SOCKET_ALREADY_BOUND` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/v0.6.0-next/api/dgram.js#L1306)
 
 Thrown when a socket is already bound.
 
-## [`ERR_SOCKET_DGRAM_IS_CONNECTED` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/v0.6.0-next/api/dgram.js#L1318)
+## [`ERR_SOCKET_DGRAM_IS_CONNECTED` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/v0.6.0-next/api/dgram.js#L1323)
 
 Thrown when the socket is already connected.
 
-## [`ERR_SOCKET_DGRAM_NOT_CONNECTED` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/v0.6.0-next/api/dgram.js#L1325)
+## [`ERR_SOCKET_DGRAM_NOT_CONNECTED` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/v0.6.0-next/api/dgram.js#L1330)
 
 Thrown when the socket is not connected.
 
-## [`ERR_SOCKET_DGRAM_NOT_RUNNING` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/v0.6.0-next/api/dgram.js#L1333)
+## [`ERR_SOCKET_DGRAM_NOT_RUNNING` (extends `SocketError`)](https://github.com/socketsupply/socket/blob/v0.6.0-next/api/dgram.js#L1338)
 
 Thrown when the socket is not running (not bound or connected).
 
-## [`ERR_SOCKET_BAD_TYPE` (extends `TypeError`)](https://github.com/socketsupply/socket/blob/v0.6.0-next/api/dgram.js#L1340)
+## [`ERR_SOCKET_BAD_TYPE` (extends `TypeError`)](https://github.com/socketsupply/socket/blob/v0.6.0-next/api/dgram.js#L1345)
 
 Thrown when a bad socket type is used in an argument.
 
-## [`ERR_SOCKET_BAD_PORT` (extends `RangeError`)](https://github.com/socketsupply/socket/blob/v0.6.0-next/api/dgram.js#L1350)
+## [`ERR_SOCKET_BAD_PORT` (extends `RangeError`)](https://github.com/socketsupply/socket/blob/v0.6.0-next/api/dgram.js#L1355)
 
 Thrown when a bad port is given.
 
