@@ -1026,11 +1026,16 @@ export class Socket extends EventEmitter {
 
     if (buffer?.buffer?.detached) {
       // XXX(@jwerle,@heapwolf): this is likely during a paused application state
-      // how should handle this?
+      // how should handle this? maybe a warning
       return
     }
 
-    return send(this, { id, port, address, buffer }, (...args) => {
+    return send(this, { id, port, address, buffer }, () => {
+      if (buffer.buffer?.detached) {
+        // XXX(@jwerle,@heapwolf): see above
+        return
+      }
+
       if (typeof cb === 'function') {
         this.#resource.runInAsyncScope(() => {
           // eslint-disable-next-line
