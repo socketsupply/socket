@@ -581,6 +581,7 @@ namespace SSC {
   FileResource::FileResource (const FileResource& resource)
     : Resource("FileResource", resource.name)
   {
+    this->url = resource.url;
     this->path = resource.path;
     this->bytes = resource.bytes;
     this->cache = resource.cache;
@@ -591,12 +592,14 @@ namespace SSC {
   FileResource::FileResource (FileResource&& resource)
     : Resource("FileResource", resource.name)
   {
+    this->url = resource.url;
     this->path = resource.path;
     this->bytes = resource.bytes;
     this->cache = resource.cache;
     this->options = resource.options;
     this->accessing = resource.accessing.load();
 
+    resource.url = URL {};
     resource.bytes = nullptr;
     resource.cache.size = 0;
     resource.cache.bytes = nullptr;
@@ -606,6 +609,7 @@ namespace SSC {
   }
 
   FileResource& FileResource::operator= (const FileResource& resource) {
+    this->url = resource.url;
     this->path = resource.path;
     this->bytes = resource.bytes;
     this->cache = resource.cache;
@@ -618,12 +622,14 @@ namespace SSC {
   }
 
   FileResource& FileResource::operator= (FileResource&& resource) {
+    this->url = resource.url;
     this->path = resource.path;
     this->bytes = resource.bytes;
     this->cache = resource.cache;
     this->options = resource.options;
     this->accessing = resource.accessing.load();
 
+    resource.url = URL {};
     resource.bytes = nullptr;
     resource.cache.size = 0;
     resource.cache.bytes = nullptr;
@@ -733,10 +739,6 @@ namespace SSC {
   }
 
   const String FileResource::mimeType () const noexcept {
-    if (!this->accessing) {
-      return "";
-    }
-
     const auto extension = this->path.extension().string();
     if (extension.size() > 0) {
       // try in memory simle mime db
@@ -826,11 +828,11 @@ namespace SSC {
         if (value.size() > 0) {
           return value;
         }
+      }
 
-        if (this->options.core && this->url.scheme == "content") {
-          auto core = this->options.core;
-          return core->platform.contentResolver.getContentType(this->url.str());
-        }
+      if (this->options.core && this->url.scheme == "content") {
+        auto core = this->options.core;
+        return core->platform.contentResolver.getContentMimeType(this->url.str());
       }
     #endif
 
