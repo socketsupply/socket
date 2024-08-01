@@ -1060,7 +1060,9 @@ export * from '{{url}}'
         );
 
         registration->SetAllowedOrigins(allowedOriginsCount, allowedOrigins);
-        registration->put_HasAuthorityComponent(true);
+	if (entry.first != "npm") {
+          registration->put_HasAuthorityComponent(true);
+	}
         registration->put_TreatAsSecure(true);
         registrations[registrationsCount++] = registration.Get();
         registrationsSet.insert(registration);
