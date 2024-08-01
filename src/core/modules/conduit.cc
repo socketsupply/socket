@@ -193,15 +193,24 @@ namespace SSC {
     String response = oss.str();
     // debug(response.c_str());
 
-    uv_buf_t wrbuf = uv_buf_init(strdup(response.c_str()), response.size());
+    const auto size = response.size();
+    const auto data = new char[size]{0};
+    memcpy(data, response.c_str(), size);
+
+    uv_buf_t wrbuf = uv_buf_init(data, size);
     uv_write_t *writeRequest = new uv_write_t;
-    writeRequest->bufs = &wrbuf;
+    uv_handle_set_data(reinterpret_cast<uv_handle_t*>(writeRequest), data);
+    //writeRequest->bufs = &wrbuf;
 
     uv_write(writeRequest, (uv_stream_t*)&client->handle, &wrbuf, 1, [](uv_write_t *req, int status) {
       // if (status) debug(stderr, "write error %s\n", uv_strerror(status));
 
-      if (req->bufs != nullptr) {
-        free(req->bufs->base);
+      auto data = reinterpret_cast<char*>(
+        uv_handle_get_data(reinterpret_cast<uv_handle_t*>(req))
+      );
+
+      if (data != nullptr) {
+        delete [] data;
       }
 
       free(req);
@@ -342,10 +351,11 @@ namespace SSC {
       frame[0] = 0x82; // FIN and opcode 2 (binary)
       std::memcpy(frame.data() + frame.size() - encodedLength, encodedMessage.data(), encodedLength);
 
-      uv_buf_t wrbuf = uv_buf_init(reinterpret_cast<char*>(frame.data()), frame.size());
       auto writeReq = new uv_write_t;
-      writeReq->bufs = &wrbuf;
-      writeReq->data = new Vector<unsigned char>(std::move(frame));
+      auto data = reinterpret_cast<char*>(frame.data());
+      auto size = frame.size();
+
+      uv_buf_t wrbuf = uv_buf_init(data, size);
 
       uv_write(writeReq, (uv_stream_t*)&this->handle, &wrbuf, 1, [](uv_write_t* req, int status) {
         if (status) {
