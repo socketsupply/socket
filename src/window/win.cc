@@ -1312,12 +1312,12 @@ namespace SSC {
       this->webview->ExecuteScript(
         convertStringToWString(source).c_str(),
         Microsoft::WRL::Callback<ICoreWebView2ExecuteScriptCompletedHandler>(
-          [=, this](HRESULT error, LPCWSTR result) {
+          [=, this](HRESULT error, PCWSTR result) -> HRESULT {
             if (callback != nullptr) {
               if (error != S_OK) {
                 // TODO(@jwerle): figure out how to get the error message here
-                callback(JSON::Error("An unknown error occurred"))
-                return;
+                callback(JSON::Error("An unknown error occurred"));
+                return error;
               }
 
               const auto string = convertWStringToString(result);
@@ -1334,7 +1334,7 @@ namespace SSC {
                   number = std::stod(string);
                 } catch (...) {
                   callback(string);
-                  return;
+                  return S_OK;
                 }
 
                 callback(number);
@@ -1343,7 +1343,7 @@ namespace SSC {
 
             return S_OK;
           }
-        )
+        ).Get()
       );
     });
   }
