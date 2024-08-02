@@ -3,10 +3,5 @@
   "repo": "socketsupply/socket",
   "version": "0.6.0-next",
   "description": "Build and package lean, fast, native desktop and mobile applications using the web technologies you already know.",
-  "install": "install.sh",
-  "src": [
-    "bin/install.sh",
-    "LICENSE.txt",
-    "README.md"
-  ]
+  "install": "install.sh"
 }
