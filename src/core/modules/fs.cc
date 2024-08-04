@@ -313,11 +313,9 @@ namespace SSC {
     const CoreModule::Callback& callback
   ) {
     this->core->dispatchEventLoop([=, this]() mutable {
-      auto filename = path.c_str();
       auto loop = &this->core->eventLoop;
-      auto desc = std::make_shared<Descriptor>(this, 0, filename);
+      auto desc = std::make_shared<Descriptor>(this, 0, path);
 
-    #if SOCKET_RUNTIME_PLATFORM_ANDROID
       if (desc->resource.url.scheme == "socket") {
         if (desc->resource.access(mode) == mode) {
           const auto json = JSON::Object::Entries {
@@ -328,7 +326,9 @@ namespace SSC {
           };
 
           return callback(seq, json, Post{});
-        } else if (mode == R_OK || mode == F_OK) {
+        }
+      #if SOCKET_RUNTIME_PLATFORM_ANDROID
+        else if (mode == R_OK || mode == F_OK) {
           auto name = desc->resource.name;
 
           if (name.starts_with("/")) {
@@ -365,7 +365,10 @@ namespace SSC {
             return callback(seq, json, Post{});
           }
         }
-      } else if (
+        #endif
+      }
+    #if SOCKET_RUNTIME_PLATFORM_ANDROID
+      else if (
         desc->resource.url.scheme == "content" ||
         desc->resource.url.scheme == "android.resource"
       ) {
@@ -384,7 +387,7 @@ namespace SSC {
 
       auto ctx = new RequestContext(desc, seq, callback);
       auto req = &ctx->req;
-      auto err = uv_fs_access(loop, req, filename, mode, [](uv_fs_t* req) {
+      auto err = uv_fs_access(loop, req, desc->resource.path.c_str(), mode, [](uv_fs_t* req) {
         auto ctx = (RequestContext *) req->data;
         auto json = JSON::Object {};
 
@@ -701,8 +704,7 @@ namespace SSC {
     const CoreModule::Callback& callback
   ) {
     this->core->dispatchEventLoop([=, this]() {
-      auto filename = path.c_str();
-      auto desc = std::make_shared<Descriptor>(this, id, filename);
+      auto desc = std::make_shared<Descriptor>(this, id, path);
 
     #if SOCKET_RUNTIME_PLATFORM_ANDROID
       if (desc->resource.url.scheme == "socket") {
@@ -778,7 +780,7 @@ namespace SSC {
       auto loop = &this->core->eventLoop;
       auto ctx = new RequestContext(desc, seq, callback);
       auto req = &ctx->req;
-      auto err = uv_fs_open(loop, req, filename, flags, mode, [](uv_fs_t* req) {
+      auto err = uv_fs_open(loop, req, desc->resource.path.c_str(), flags, mode, [](uv_fs_t* req) {
         auto ctx = (RequestContext *) req->data;
         auto desc = ctx->descriptor;
         auto json = JSON::Object {};
@@ -863,8 +865,7 @@ namespace SSC {
     const CoreModule::Callback& callback
   ) {
     this->core->dispatchEventLoop([=, this]() {
-      auto filename = path.c_str();
-      auto desc =  std::make_shared<Descriptor>(this, id, filename);
+      auto desc =  std::make_shared<Descriptor>(this, id, path);
 
     #if SOCKET_RUNTIME_PLATFORM_ANDROID
       if (desc->resource.url.scheme == "socket") {
@@ -949,7 +950,7 @@ namespace SSC {
       auto loop = &this->core->eventLoop;
       auto ctx = new RequestContext(desc, seq, callback);
       auto req = &ctx->req;
-      auto err = uv_fs_opendir(loop, req, filename, [](uv_fs_t *req) {
+      auto err = uv_fs_opendir(loop, req, desc->resource.path.c_str(), [](uv_fs_t *req) {
         auto ctx = (RequestContext *) req->data;
         auto desc = ctx->descriptor;
         auto json = JSON::Object {};
@@ -1711,8 +1712,7 @@ namespace SSC {
     const CoreModule::Callback& callback
   ) {
     this->core->dispatchEventLoop([=, this]() {
-      auto filename = path.c_str();
-      auto desc = std::make_shared<Descriptor>(this, 0, filename);
+      auto desc = std::make_shared<Descriptor>(this, 0, path);
 
     #if SOCKET_RUNTIME_PLATFORM_ANDROID
       if (desc->resource.isAndroidLocalAsset()) {
@@ -1744,7 +1744,7 @@ namespace SSC {
       auto loop = &this->core->eventLoop;
       auto ctx = new RequestContext(desc, seq, callback);
       auto req = &ctx->req;
-      auto err = uv_fs_stat(loop, req, filename, [](uv_fs_t *req) {
+      auto err = uv_fs_stat(loop, req, desc->resource.path.c_str(), [](uv_fs_t *req) {
         auto ctx = (RequestContext *) req->data;
         auto json = JSON::Object {};
 
@@ -2066,13 +2066,13 @@ namespace SSC {
     const String& seq,
     const String& path,
     const CoreModule::Callback& callback
-  ) const {
+  ) {
     this->core->dispatchEventLoop([=, this]() {
-      auto filename = path.c_str();
+      auto desc = std::make_shared<Descriptor>(this, 0, path);
       auto loop = &this->core->eventLoop;
-      auto ctx = new RequestContext(seq, callback);
+      auto ctx = new RequestContext(desc, seq, callback);
       auto req = &ctx->req;
-      auto err = uv_fs_lstat(loop, req, filename, [](uv_fs_t* req) {
+      auto err = uv_fs_lstat(loop, req, desc->resource.path.c_str(), [](uv_fs_t* req) {
         auto ctx = (RequestContext *) req->data;
         auto json = JSON::Object {};
 
@@ -2424,13 +2424,14 @@ namespace SSC {
     const CoreModule::Callback& callback
   ) {
     this->core->dispatchEventLoop([=, this]() {
-      auto desc = std::make_shared<Descriptor>(this, 0, pathA);
+      auto src = std::make_shared<Descriptor>(this, 0, pathA);
+      auto dst = std::make_shared<Descriptor>(this, 0, pathB);
 
     #if SOCKET_RUNTIME_PLATFORM_ANDROID
-      if (desc->resource.isAndroidLocalAsset() || desc->resource.isAndroidLocalAsset()) {
-        auto bytes = desc->resource.read();
-        fs::remove(pathB);
-        std::ofstream stream(pathB);
+      if (src->resource.isAndroidLocalAsset() || src->resource.isAndroidLocalAsset()) {
+        auto bytes = src->resource.read();
+        fs::remove(dst->resource.path.string());
+        std::ofstream stream(dst->resource.path.string());
         stream << bytes;
         stream.close();
 
@@ -2448,9 +2449,7 @@ namespace SSC {
       auto loop = &this->core->eventLoop;
       auto ctx = new RequestContext(seq, callback);
       auto req = &ctx->req;
-      auto src = pathA.c_str();
-      auto dst = pathB.c_str();
-      auto err = uv_fs_copyfile(loop, req, src, dst, flags, [](uv_fs_t* req) {
+      auto err = uv_fs_copyfile(loop, req, src->resource.path.c_str(), dst->resource.path.c_str(), flags, [](uv_fs_t* req) {
         auto ctx = (RequestContext *) req->data;
         auto json = JSON::Object {};
 

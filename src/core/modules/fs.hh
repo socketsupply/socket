@@ -204,7 +204,7 @@ namespace SSC {
         const String& seq,
         const String& path,
         const CoreModule::Callback& callback
-      ) const;
+      );
 
       void link (
         const String& seq,

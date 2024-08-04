@@ -280,8 +280,12 @@ namespace SSC {
     static const auto resourcePath = NSBundle.mainBundle.resourcePath;
     value = [resourcePath stringByAppendingPathComponent: @"ui"].UTF8String;
   #elif SOCKET_RUNTIME_PLATFORM_LINUX
-    static const auto self = fs::canonical("/proc/self/exe");
-    value = self.parent_path().string();
+    #if SOCKET_RUNTIME_DESKTOP_EXTENSION
+      value = getcwd();
+    #else
+      static const auto self = fs::canonical("/proc/self/exe");
+      value = self.parent_path().string();
+    #endif
   #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
     static wchar_t filename[MAX_PATH];
     GetModuleFileNameW(NULL, filename, MAX_PATH);
@@ -546,7 +550,7 @@ namespace SSC {
 
     if (url.scheme == "socket") {
       const auto resourcesPath = FileResource::getResourcesPath();
-      this->path = resourcesPath / url.pathname;
+      this->path = fs::absolute(resourcesPath / url.pathname);
     #if SOCKET_RUNTIME_PLATFORM_ANDROID
       this->path = Path(url.pathname);
       this->name = getRelativeAndroidAssetManagerPath(this->path).string();
