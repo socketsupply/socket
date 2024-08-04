@@ -4119,6 +4119,83 @@ declare module "socket:path" {
     export { Path, posix, win32, mounts, DOWNLOADS, DOCUMENTS, RESOURCES, PICTURES, DESKTOP, VIDEOS, CONFIG, MEDIA, MUSIC, HOME, DATA, LOG, TMP };
 }
 
+declare module "socket:fs/constants" {
+    /**
+     * This flag can be used with uv_fs_copyfile() to return an error if the
+     * destination already exists.
+     */
+    export const COPYFILE_EXCL: 1;
+    /**
+     * This flag can be used with uv_fs_copyfile() to attempt to create a reflink.
+     * If copy-on-write is not supported, a fallback copy mechanism is used.
+     */
+    export const COPYFILE_FICLONE: 2;
+    /**
+     * This flag can be used with uv_fs_copyfile() to attempt to create a reflink.
+     * If copy-on-write is not supported, an error is returned.
+     */
+    export const COPYFILE_FICLONE_FORCE: 4;
+    export const UV_DIRENT_UNKNOWN: any;
+    export const UV_DIRENT_FILE: any;
+    export const UV_DIRENT_DIR: any;
+    export const UV_DIRENT_LINK: any;
+    export const UV_DIRENT_FIFO: any;
+    export const UV_DIRENT_SOCKET: any;
+    export const UV_DIRENT_CHAR: any;
+    export const UV_DIRENT_BLOCK: any;
+    export const UV_FS_SYMLINK_DIR: any;
+    export const UV_FS_SYMLINK_JUNCTION: any;
+    export const UV_FS_O_FILEMAP: any;
+    export const O_RDONLY: any;
+    export const O_WRONLY: any;
+    export const O_RDWR: any;
+    export const O_APPEND: any;
+    export const O_ASYNC: any;
+    export const O_CLOEXEC: any;
+    export const O_CREAT: any;
+    export const O_DIRECT: any;
+    export const O_DIRECTORY: any;
+    export const O_DSYNC: any;
+    export const O_EXCL: any;
+    export const O_LARGEFILE: any;
+    export const O_NOATIME: any;
+    export const O_NOCTTY: any;
+    export const O_NOFOLLOW: any;
+    export const O_NONBLOCK: any;
+    export const O_NDELAY: any;
+    export const O_PATH: any;
+    export const O_SYNC: any;
+    export const O_TMPFILE: any;
+    export const O_TRUNC: any;
+    export const S_IFMT: any;
+    export const S_IFREG: any;
+    export const S_IFDIR: any;
+    export const S_IFCHR: any;
+    export const S_IFBLK: any;
+    export const S_IFIFO: any;
+    export const S_IFLNK: any;
+    export const S_IFSOCK: any;
+    export const S_IRWXU: any;
+    export const S_IRUSR: any;
+    export const S_IWUSR: any;
+    export const S_IXUSR: any;
+    export const S_IRWXG: any;
+    export const S_IRGRP: any;
+    export const S_IWGRP: any;
+    export const S_IXGRP: any;
+    export const S_IRWXO: any;
+    export const S_IROTH: any;
+    export const S_IWOTH: any;
+    export const S_IXOTH: any;
+    export const F_OK: any;
+    export const R_OK: any;
+    export const W_OK: any;
+    export const X_OK: any;
+    export default exports;
+    import * as exports from "socket:fs/constants";
+    
+}
+
 declare module "socket:fs/stream" {
     export const DEFAULT_STREAM_HIGH_WATER_MARK: number;
     /**
@@ -4199,83 +4276,6 @@ declare module "socket:fs/stream" {
     import { Readable } from "socket:stream";
     import { Writable } from "socket:stream";
     import * as exports from "socket:fs/stream";
-    
-}
-
-declare module "socket:fs/constants" {
-    /**
-     * This flag can be used with uv_fs_copyfile() to return an error if the
-     * destination already exists.
-     */
-    export const COPYFILE_EXCL: 1;
-    /**
-     * This flag can be used with uv_fs_copyfile() to attempt to create a reflink.
-     * If copy-on-write is not supported, a fallback copy mechanism is used.
-     */
-    export const COPYFILE_FICLONE: 2;
-    /**
-     * This flag can be used with uv_fs_copyfile() to attempt to create a reflink.
-     * If copy-on-write is not supported, an error is returned.
-     */
-    export const COPYFILE_FICLONE_FORCE: 4;
-    export const UV_DIRENT_UNKNOWN: any;
-    export const UV_DIRENT_FILE: any;
-    export const UV_DIRENT_DIR: any;
-    export const UV_DIRENT_LINK: any;
-    export const UV_DIRENT_FIFO: any;
-    export const UV_DIRENT_SOCKET: any;
-    export const UV_DIRENT_CHAR: any;
-    export const UV_DIRENT_BLOCK: any;
-    export const UV_FS_SYMLINK_DIR: any;
-    export const UV_FS_SYMLINK_JUNCTION: any;
-    export const UV_FS_O_FILEMAP: any;
-    export const O_RDONLY: any;
-    export const O_WRONLY: any;
-    export const O_RDWR: any;
-    export const O_APPEND: any;
-    export const O_ASYNC: any;
-    export const O_CLOEXEC: any;
-    export const O_CREAT: any;
-    export const O_DIRECT: any;
-    export const O_DIRECTORY: any;
-    export const O_DSYNC: any;
-    export const O_EXCL: any;
-    export const O_LARGEFILE: any;
-    export const O_NOATIME: any;
-    export const O_NOCTTY: any;
-    export const O_NOFOLLOW: any;
-    export const O_NONBLOCK: any;
-    export const O_NDELAY: any;
-    export const O_PATH: any;
-    export const O_SYNC: any;
-    export const O_TMPFILE: any;
-    export const O_TRUNC: any;
-    export const S_IFMT: any;
-    export const S_IFREG: any;
-    export const S_IFDIR: any;
-    export const S_IFCHR: any;
-    export const S_IFBLK: any;
-    export const S_IFIFO: any;
-    export const S_IFLNK: any;
-    export const S_IFSOCK: any;
-    export const S_IRWXU: any;
-    export const S_IRUSR: any;
-    export const S_IWUSR: any;
-    export const S_IXUSR: any;
-    export const S_IRWXG: any;
-    export const S_IRGRP: any;
-    export const S_IWGRP: any;
-    export const S_IXGRP: any;
-    export const S_IRWXO: any;
-    export const S_IROTH: any;
-    export const S_IWOTH: any;
-    export const S_IXOTH: any;
-    export const F_OK: any;
-    export const R_OK: any;
-    export const W_OK: any;
-    export const X_OK: any;
-    export default exports;
-    import * as exports from "socket:fs/constants";
     
 }
 
@@ -5378,10 +5378,10 @@ declare module "socket:fs/handle" {
         static get DEFAULT_OPEN_MODE(): number;
         /**
          * Creates a `FileHandle` from a given `id` or `fd`
-         * @param {string|number|FileHandle|object} id
+         * @param {string|number|FileHandle|object|FileSystemFileHandle} id
          * @return {FileHandle}
          */
-        static from(id: string | number | FileHandle | object): FileHandle;
+        static from(id: string | number | FileHandle | object | FileSystemFileHandle): FileHandle;
         /**
          * Determines if access to `path` for `mode` is possible.
          * @param {string} path
@@ -5438,7 +5438,7 @@ declare module "socket:fs/handle" {
          * @param {string=} [options.encoding = 'utf8']
          * @param {object=} [options.signal]
          */
-        appendFile(data: string | Buffer | TypedArray | any[], options?: object | undefined): Promise<void | {
+        appendFile(data: string | Buffer | TypedArray | any[], options?: object | undefined): Promise<TypeError | {
             buffer: any;
             bytesWritten: number;
         }>;
@@ -5447,14 +5447,14 @@ declare module "socket:fs/handle" {
          * @param {number} mode
          * @param {object=} [options]
          */
-        chmod(mode: number, options?: object | undefined): Promise<void>;
+        chmod(mode: number, options?: object | undefined): Promise<TypeError>;
         /**
          * Change ownership of file handle.
          * @param {number} uid
          * @param {number} gid
          * @param {object=} [options]
          */
-        chown(uid: number, gid: number, options?: object | undefined): Promise<void>;
+        chown(uid: number, gid: number, options?: object | undefined): Promise<TypeError>;
         /**
          * Close underlying file handle
          * @param {object=} [options]
@@ -5473,7 +5473,7 @@ declare module "socket:fs/handle" {
         /**
          * @param {object=} [options]
          */
-        datasync(): Promise<void>;
+        datasync(): Promise<TypeError>;
         /**
          * Opens the underlying descriptor for the file handle.
          * @param {object=} [options]
@@ -5531,7 +5531,7 @@ declare module "socket:fs/handle" {
          * @param {number} position
          * @param {object=} [options]
          */
-        write(buffer: Buffer | object, offset: number, length: number, position: number, options?: object | undefined): Promise<{
+        write(buffer: Buffer | object, offset: number, length: number, position: number, options?: object | undefined): Promise<TypeError | {
             buffer: any;
             bytesWritten: number;
         }>;
@@ -5542,7 +5542,7 @@ declare module "socket:fs/handle" {
          * @param {string=} [options.encoding = 'utf8']
          * @param {object=} [options.signal]
          */
-        writeFile(data: string | Buffer | TypedArray | any[], options?: object | undefined): Promise<void>;
+        writeFile(data: string | Buffer | TypedArray | any[], options?: object | undefined): Promise<TypeError>;
         [exports.kOpening]: any;
         [exports.kClosing]: any;
         [exports.kClosed]: boolean;
@@ -5565,12 +5565,12 @@ declare module "socket:fs/handle" {
          */
         static get DEFAULT_BUFFER_SIZE(): number;
         /**
-         * Creates a `FileHandle` from a given `id` or `fd`
-         * @param {string|number|DirectoryHandle|object} id
+         * Creates a `DirectoryHandle` from a given `id` or `fd`
+         * @param {string|number|DirectoryHandle|object|FileSystemDirectoryHandle} id
          * @param {object} options
          * @return {DirectoryHandle}
          */
-        static from(id: string | number | DirectoryHandle | object, options: object): DirectoryHandle;
+        static from(id: string | number | DirectoryHandle | object | FileSystemDirectoryHandle, options: object): DirectoryHandle;
         /**
          * Asynchronously open a directory.
          * @param {string | Buffer | URL} path
@@ -6420,7 +6420,7 @@ declare module "socket:fs/index" {
      * @param {number} mode
      * @param {function(Error?)} callback
      */
-    export function chmod(path: string | Buffer | URL, mode: number, callback: (arg0: Error | null) => any): void;
+    export function chmod(path: string | Buffer | URL, mode: number, callback: (arg0: Error | null) => any): TypeError;
     /**
      * Synchronously changes the permissions of a file.
      *
@@ -6436,7 +6436,7 @@ declare module "socket:fs/index" {
      * @param {number} gid
      * @param {function} callback
      */
-    export function chown(path: string, uid: number, gid: number, callback: Function): void;
+    export function chown(path: string, uid: number, gid: number, callback: Function): TypeError;
     /**
      * Changes ownership of file or directory at `path` with `uid` and `gid`.
      * @param {string} path
@@ -6519,7 +6519,7 @@ declare module "socket:fs/index" {
      * @param {number} gid
      * @param {function} callback
      */
-    export function lchown(path: string, uid: number, gid: number, callback: Function): void;
+    export function lchown(path: string, uid: number, gid: number, callback: Function): TypeError;
     /**
      * Creates a link to `dest` from `src`.
      * @param {string} src
@@ -9753,6 +9753,7 @@ declare module "socket:fs/web" {
             readonly type: string;
             slice(): void;
             arrayBuffer(): Promise<void>;
+            bytes(): Promise<void>;
             text(): Promise<void>;
             stream(): void;
         };
