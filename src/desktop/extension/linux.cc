@@ -256,7 +256,7 @@ extern "C" {
     if (!context.config.bytes) {
       context.config.size = g_variant_get_size(const_cast<GVariant*>(userData));
       if (context.config.size) {
-        context.config.bytes = new char[context.config.size]{0};
+        context.config.bytes = reinterpret_cast<char*>(new unsigned char[context.config.size]{0});
 
         memcpy(
           context.config.bytes,
@@ -271,12 +271,12 @@ extern "C" {
     auto userConfig = getUserConfig();
     auto cwd = userConfig["web-process-extension_cwd"];
 
-    static App app(App::DEFAULT_INSTANCE_ID, std::move(std::make_shared<Core>(options)));
-
     if (cwd.size() > 0) {
       setcwd(cwd);
       uv_chdir(cwd.c_str());
     }
+
+    static App app(App::DEFAULT_INSTANCE_ID, std::move(std::make_shared<Core>(options)));
   }
 
   const unsigned char* socket_runtime_init_get_user_config_bytes () {
