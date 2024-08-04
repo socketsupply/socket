@@ -945,21 +945,25 @@ export class Package {
     }
 
     if (info.exports && typeof info.exports === 'object') {
-      for (const key in info.exports) {
-        const exports = info.exports[key]
-        if (!exports) {
-          continue
-        }
-
-        if (typeof exports === 'string') {
-          this.#exports[key] = {}
-          if (this.#type === 'commonjs') {
-            this.#exports[key].require = exports
-          } else if (this.#type === 'module') {
-            this.#exports[key].import = exports
+      if (info.exports.import || info.exports.require || info.exports.default) {
+        this.#exports['.'] = info.exports
+      } else {
+        for (const key in info.exports) {
+          const exports = info.exports[key]
+          if (!exports) {
+            continue
           }
-        } else if (typeof exports === 'object') {
-          this.#exports[key] = exports
+
+          if (typeof exports === 'string') {
+            this.#exports[key] = {}
+            if (this.#type === 'commonjs') {
+              this.#exports[key].require = exports
+            } else if (this.#type === 'module') {
+              this.#exports[key].import = exports
+            }
+          } else if (typeof exports === 'object') {
+            this.#exports[key] = exports
+          }
         }
       }
     }
