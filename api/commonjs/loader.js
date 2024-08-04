@@ -5,11 +5,13 @@
 import { CacheCollection, Cache } from './cache.js'
 import { defineBuiltin } from './builtins.js'
 import InternalSymbols from '../internal/symbols.js'
+import application from '../application.js'
 import { Headers } from '../ipc.js'
 import location from '../location.js'
 import path from '../path.js'
 import URL from '../url.js'
 import os from '../os.js'
+import fs from '../fs.js'
 
 const RUNTIME_SERVICE_WORKER_FETCH_MODE = 'Runtime-ServiceWorker-Fetch-Mode'
 const RUNTIME_REQUEST_SOURCE_HEADER = 'Runtime-Request-Source'
@@ -197,8 +199,21 @@ export class RequestStatus {
       return this
     }
 
-    const request = new XMLHttpRequest()
+    if (
+      this.#request.id.includes(`://${application.config.meta_bundle_identifier}`)
+    ) {
+      try {
+        const id = this.#request.id.replace('https:', 'socket:')
+        fs.accessSync(id)
+      } catch {
+        this.#request.loader.cache.status.set(this.id, this)
+        this.#headers = new Headers()
+        this.#status = 404
+        return this
+      }
+    }
 
+    const request = new XMLHttpRequest()
     request.open('HEAD', this.#request.id, false)
     request.setRequestHeader(RUNTIME_REQUEST_SOURCE_HEADER, 'module')
 
@@ -213,6 +228,7 @@ export class RequestStatus {
     if (this.#request?.loader) {
       const entries = this.#request.loader.headers.entries()
       for (const entry of entries) {
+        // @ts-ignore
         request.setRequestHeader(...entry)
       }
     }
@@ -223,6 +239,7 @@ export class RequestStatus {
         : Object.entries(options.headers)
 
       for (const entry of entries) {
+        // @ts-ignore
         request.setRequestHeader(...entry)
       }
     }
@@ -314,6 +331,7 @@ export class Request {
   static from (json, options) {
     return new this(json.url, {
       status: json.status && typeof json.status === 'object'
+        // @ts-ignore
         ? RequestStatus.from(json.status)
         : options?.status,
       ...options
@@ -413,6 +431,20 @@ export class Request {
       })
     }
 
+    if (
+      /^(socket:|https:)/.test(this.id) &&
+      this.id.includes(`//${application.config.meta_bundle_identifier}/`)
+    ) {
+      try {
+        const id = this.id.replace('https:', 'socket:')
+        fs.accessSync(id)
+      } catch {
+        return new Response(this, {
+          status: 404
+        })
+      }
+    }
+
     const request = new XMLHttpRequest()
     request.open('GET', this.id, false)
     request.setRequestHeader(RUNTIME_REQUEST_SOURCE_HEADER, 'module')
@@ -432,6 +464,7 @@ export class Request {
     if (this.#loader) {
       const entries = this.#loader.headers.entries()
       for (const entry of entries) {
+        // @ts-ignore
         request.setRequestHeader(...entry)
       }
     }
@@ -442,6 +475,7 @@ export class Request {
         : Object.entries(options.headers)
 
       for (const entry of entries) {
+        // @ts-ignore
         request.setRequestHeader(...entry)
       }
     }
@@ -741,10 +775,12 @@ export class Loader {
     if (options?.headers && typeof options.headers === 'object') {
       if (Array.isArray(options.headers)) {
         for (const entry of options.headers) {
+          // @ts-ignore
           this.#headers.set(...entry)
         }
       } else if (typeof options.headers.entries === 'function') {
         for (const entry of options.headers.entries()) {
+          // @ts-ignore
           this.#headers.set(...entry)
         }
       } else {
@@ -861,7 +897,9 @@ export class Loader {
 
     url = this.resolve(url, origin)
 
+    // @ts-ignore
     if (this.#cache.status.has(url)) {
+      // @ts-ignore
       return this.#cache.status.get(url)
     }
 
@@ -871,6 +909,7 @@ export class Loader {
       ...options
     })
 
+    // @ts-ignore
     this.#cache.status.set(url, request.status)
     return request.status
   }
