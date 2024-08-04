@@ -50,6 +50,8 @@ export {
   WriteStream
 }
 
+const kFileDescriptor = Symbol.for('socket.runtune.fs.web.FileDescriptor')
+
 function normalizePath (path) {
   if (path instanceof URL) {
     if (path.origin === globalThis.location.origin) {
@@ -89,6 +91,8 @@ async function visit (path, options, callback) {
     return await callback(path)
   } else if (path?.fd) {
     return await callback(FileHandle.from(path.fd))
+  } else if (path && typeof path === 'object' && kFileDescriptor in path) {
+    return await callback(FileHandle.from(path))
   }
 
   const handle = await FileHandle.open(path, flags || flag, mode, options)
