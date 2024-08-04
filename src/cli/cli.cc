@@ -815,18 +815,23 @@ void signalHandler (int signum) {
     log("App result: " + std::to_string(signum));
   }
 
-  #if SOCKET_RUNTIME_PLATFORM_LINUX
-    if (gtk_main_level() > 0) {
-      // FIXME(@jwerle): calling `msleep()` from a signal handler is definitely bad practice
-      msleep(4);
-      gtk_main_quit();
-    }
-  #endif
-
   if (signum == SIGTERM || signum == SIGINT) {
     signal(signum, SIG_DFL);
     raise(signum);
   }
+
+  #if SOCKET_RUNTIME_PLATFORM_LINUX
+    if (gtk_main_level() > 0) {
+      g_main_context_invoke(
+        nullptr,
+        +[](gpointer userData) -> gboolean {
+          msleep(16);
+          gtk_main_quit();
+        },
+        nullptr
+      );
+    }
+  #endif
 }
 
 void checkIosSimulatorDeviceAvailability (const String& device) {
