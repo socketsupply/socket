@@ -202,7 +202,7 @@ export function createRequire (options) {
     }
 
     const resolved = resolve(input, {
-      type: module.package.type,
+      type: 'commonjs',
       ...options
     })
 
@@ -294,7 +294,7 @@ export function createRequire (options) {
     // A URL was given, try to resolve it as a package
     if (URL.canParse(input)) {
       return module.package.resolve(input, {
-        type: module.package.type,
+        type: 'commonjs',
         ...options
       })
     }
@@ -318,7 +318,7 @@ export function createRequire (options) {
 
         try {
           return pkg.resolve(pathname, {
-            type: module.package.type,
+            type: 'commonjs',
             ...options
           })
         } catch (err) {

@@ -323,9 +323,9 @@ export class CacheCollection {
   /**
    * `CacheCollection` class constructor.
    * @ignore
-   * @param {Cache[]|Record<string, Cache>} collection
+   * @param {Cache[]|Record<string, Cache>=} [collection]
    */
-  constructor (collection) {
+  constructor (collection = null) {
     if (collection && typeof collection === 'object') {
       if (Array.isArray(collection)) {
         for (const value of collection) {

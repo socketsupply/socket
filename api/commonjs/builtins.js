@@ -165,6 +165,7 @@ defineBuiltin('window', window)
 export const runtimeModules = new Set([
   'async',
   'application',
+  'commonjs',
   'commonjs/builtins',
   'commonjs/cache',
   'commonjs/loader',

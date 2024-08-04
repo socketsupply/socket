@@ -773,6 +773,26 @@ export class Package {
   get entry () {
     let entry = null
 
+    if (Array.isArray(this.#exports['.'])) {
+      for (const exports of this.#exports['.']) {
+        if (typeof exports === 'string') {
+          entry = exports
+        } else if (exports && typeof exports === 'object') {
+          if (isWorkerScope && exports.worker) {
+            entry = exports.worker
+          } else if (this.type === 'commonjs') {
+            entry = exports.require || exports.default
+          } else if (this.type === 'module') {
+            entry = exports.import || exports.default
+          }
+        }
+
+        if (entry) {
+          break
+        }
+      }
+    }
+
     if (this.type === 'commonjs') {
       entry = this.#exports['.'].require
     } else if (this.type === 'module') {
@@ -784,8 +804,8 @@ export class Package {
     }
 
     if (isWorkerScope) {
-      if (!entry && this.#exports['.'].entry) {
-        entry = this.#exports['.'].entry
+      if (!entry && this.#exports['.'].worker) {
+        entry = this.#exports['.'].worker
       }
     }
 
@@ -1131,10 +1151,12 @@ export class Package {
 
     for (const extension of extensions) {
       for (const key in this.#exports) {
-        const exports = this.#exports[key]
         const query = pathname !== '.' && pathname !== './'
           ? pathname + extension
           : pathname
+
+        let exports = this.#exports[key]
+        let filename = null
 
         if (
           key === query ||
@@ -1144,16 +1166,20 @@ export class Package {
           (pathname === './index.js' && key === '.')
         ) {
           if (Array.isArray(exports)) {
-            for (const filename of exports) {
-              if (typeof filename === 'string') {
-                const response = this.loader.load(filename, origin, options)
+            for (const entry of exports) {
+              if (typeof entry === 'string') {
+                const response = this.loader.load(entry, origin, options)
                 if (response.ok) {
                   return interpolateBrowserResolution(response.id)
                 }
+              } else if (entry && typeof entry === 'object') {
+                exports = entry
+                break
               }
             }
-          } else {
-            let filename = null
+          }
+
+          if (exports && !Array.isArray(exports) && typeof exports === 'object') {
             if (isWorkerScope && exports.worker) {
               filename = exports.worker
             } if (type === 'commonjs' && exports.require) {
@@ -1172,12 +1198,12 @@ export class Package {
                 exports.default
               )
             }
+          }
 
-            if (filename) {
-              const response = this.loader.load(filename, origin, options)
-              if (response.ok) {
-                return interpolateBrowserResolution(response.id)
-              }
+          if (filename) {
+            const response = this.loader.load(filename, origin, options)
+            if (response.ok) {
+              return interpolateBrowserResolution(response.id)
             }
           }
         }
