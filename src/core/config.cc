@@ -11,21 +11,19 @@ namespace SSC {
   }
 
   const Map getUserConfig () {
-    static const auto bytes = socket_runtime_init_get_user_config_bytes();
-    static const auto size = socket_runtime_init_get_user_config_bytes_size();
-    static const auto string = String(reinterpret_cast<const char*>(bytes), size);
-    static const auto userConfig = INI::parse(string);
+    const auto bytes = socket_runtime_init_get_user_config_bytes();
+    const auto size = socket_runtime_init_get_user_config_bytes_size();
+    const auto string = String(reinterpret_cast<const char*>(bytes), size);
+    const auto userConfig = INI::parse(string);
     return userConfig;
   }
 
   const String getDevHost () {
-    static const auto devHost = socket_runtime_init_get_dev_host();
-    return devHost;
+    return socket_runtime_init_get_dev_host();
   }
 
   int getDevPort () {
-    static const auto devPort = socket_runtime_init_get_dev_port();
-    return devPort;
+    return socket_runtime_init_get_dev_port();
   }
 
   Config::Config (const String& source) {
