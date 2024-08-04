@@ -9705,62 +9705,6 @@ declare module "socket:dgram" {
     
 }
 
-declare module "socket:enumeration" {
-    /**
-     * @module enumeration
-     * This module provides a data structure for enumerated unique values.
-     */
-    /**
-     * A container for enumerated values.
-     */
-    export class Enumeration extends Set<any> {
-        /**
-         * Creates an `Enumeration` instance from arguments.
-         * @param {...any} values
-         * @return {Enumeration}
-         */
-        static from(...values: any[]): Enumeration;
-        /**
-         * `Enumeration` class constructor.
-         * @param {any[]} values
-         * @param {object=} [options = {}]
-         * @param {number=} [options.start = 0]
-         */
-        constructor(values: any[], options?: object | undefined);
-        /**
-         * @type {number}
-         */
-        get length(): number;
-        /**
-         * Returns `true` if enumeration contains `value`. An alias
-         * for `Set.prototype.has`.
-         * @return {boolean}
-         */
-        contains(value: any): boolean;
-        /**
-         * @ignore
-         */
-        add(): void;
-        /**
-         * @ignore
-         */
-        delete(): void;
-        /**
-         * JSON represenation of a `Enumeration` instance.
-         * @ignore
-         * @return {string[]}
-         */
-        toJSON(): string[];
-        /**
-         * Internal inspect function.
-         * @ignore
-         * @return {LanguageQueryResult}
-         */
-        inspect(): LanguageQueryResult;
-    }
-    export default Enumeration;
-}
-
 declare module "socket:fs/web" {
     /**
      * Creates a new `File` instance from `filename`.
@@ -10070,76 +10014,6 @@ declare module "socket:extension" {
      * @typedef {number} Pointer
      */
     const $loaded: unique symbol;
-}
-
-declare module "socket:fetch/fetch" {
-    export function Headers(headers: any): void;
-    export class Headers {
-        constructor(headers: any);
-        map: {};
-        append(name: any, value: any): void;
-        delete(name: any): void;
-        get(name: any): any;
-        has(name: any): boolean;
-        set(name: any, value: any): void;
-        forEach(callback: any, thisArg: any): void;
-        keys(): {
-            next: () => {
-                done: boolean;
-                value: any;
-            };
-        };
-        values(): {
-            next: () => {
-                done: boolean;
-                value: any;
-            };
-        };
-        entries(): {
-            next: () => {
-                done: boolean;
-                value: any;
-            };
-        };
-    }
-    export function Request(input: any, options: any): void;
-    export class Request {
-        constructor(input: any, options: any);
-        url: string;
-        credentials: any;
-        headers: Headers;
-        method: any;
-        mode: any;
-        signal: any;
-        referrer: any;
-        clone(): Request;
-    }
-    export function Response(bodyInit: any, options: any): void;
-    export class Response {
-        constructor(bodyInit: any, options: any);
-        type: string;
-        status: any;
-        ok: boolean;
-        statusText: string;
-        headers: Headers;
-        url: any;
-        clone(): Response;
-    }
-    export namespace Response {
-        function error(): Response;
-        function redirect(url: any, status: any): Response;
-    }
-    export function fetch(input: any, init: any): Promise<any>;
-    export class DOMException {
-        private constructor();
-    }
-    namespace _default {
-        export { fetch };
-        export { Headers };
-        export { Request };
-        export { Response };
-    }
-    export default _default;
 }
 
 declare module "socket:internal/database" {
@@ -11733,21 +11607,6 @@ declare module "socket:http" {
     
 }
 
-declare module "socket:fetch/index" {
-    export default fetch;
-    import { fetch } from "socket:fetch/fetch";
-    import { Headers } from "socket:fetch/fetch";
-    import { Request } from "socket:fetch/fetch";
-    import { Response } from "socket:fetch/fetch";
-    export { fetch, Headers, Request, Response };
-}
-
-declare module "socket:fetch" {
-    export * from "socket:fetch/index";
-    export default fetch;
-    import fetch from "socket:fetch/index";
-}
-
 declare module "socket:https" {
     /**
      * Makes a HTTPS request, optionally a `socket://` for relative paths when
@@ -11914,6 +11773,62 @@ declare module "socket:https" {
     import * as exports from "socket:http";
 }
 
+declare module "socket:enumeration" {
+    /**
+     * @module enumeration
+     * This module provides a data structure for enumerated unique values.
+     */
+    /**
+     * A container for enumerated values.
+     */
+    export class Enumeration extends Set<any> {
+        /**
+         * Creates an `Enumeration` instance from arguments.
+         * @param {...any} values
+         * @return {Enumeration}
+         */
+        static from(...values: any[]): Enumeration;
+        /**
+         * `Enumeration` class constructor.
+         * @param {any[]} values
+         * @param {object=} [options = {}]
+         * @param {number=} [options.start = 0]
+         */
+        constructor(values: any[], options?: object | undefined);
+        /**
+         * @type {number}
+         */
+        get length(): number;
+        /**
+         * Returns `true` if enumeration contains `value`. An alias
+         * for `Set.prototype.has`.
+         * @return {boolean}
+         */
+        contains(value: any): boolean;
+        /**
+         * @ignore
+         */
+        add(): void;
+        /**
+         * @ignore
+         */
+        delete(): void;
+        /**
+         * JSON represenation of a `Enumeration` instance.
+         * @ignore
+         * @return {string[]}
+         */
+        toJSON(): string[];
+        /**
+         * Internal inspect function.
+         * @ignore
+         * @return {LanguageQueryResult}
+         */
+        inspect(): LanguageQueryResult;
+    }
+    export default Enumeration;
+}
+
 declare module "socket:language" {
     /**
      * Look up a language name or code by query.
@@ -12054,72 +11969,6 @@ declare module "socket:language" {
         export { lookup };
         export { names };
         export { tags };
-    }
-    export default _default;
-    import Enumeration from "socket:enumeration";
-}
-
-declare module "socket:i18n" {
-    /**
-     * Get messages for `locale` pattern. This function could return many results
-     * for various locales given a `locale` pattern. such as `fr`, which could
-     * return results for `fr`, `fr-FR`, `fr-BE`, etc.
-     * @ignore
-     * @param {string} locale
-     * @return {object[]}
-     */
-    export function getMessagesForLocale(locale: string): object[];
-    /**
-     * Returns user preferred ISO 639 language codes or RFC 5646 language tags.
-     * @return {string[]}
-     */
-    export function getAcceptLanguages(): string[];
-    /**
-     * Returns the current user ISO 639 language code or RFC 5646 language tag.
-     * @return {?string}
-     */
-    export function getUILanguage(): string | null;
-    /**
-     * Gets a localized message string for the specified message name.
-     * @param {string} messageName
-     * @param {object|string[]=} [substitutions = []]
-     * @param {object=} [options]
-     * @param {string=} [options.locale = null]
-     * @see {@link https://developer.chrome.com/docs/extensions/reference/i18n/#type-LanguageCode}
-     * @see {@link https://www.ibm.com/docs/en/rbd/9.5.1?topic=syslib-getmessage}
-     * @return {?string}
-     */
-    export function getMessage(messageName: string, substitutions?: (object | string[]) | undefined, options?: object | undefined): string | null;
-    /**
-     * Gets a localized message description string for the specified message name.
-     * @param {string} messageName
-     * @param {object=} [options]
-     * @param {string=} [options.locale = null]
-     * @return {?string}
-     */
-    export function getMessageDescription(messageName: string, options?: object | undefined): string | null;
-    /**
-     * A cache of loaded locale messages.
-     * @type {Map}
-     */
-    export const cache: Map<any, any>;
-    /**
-     * Default location of i18n locale messages
-     * @type {string}
-     */
-    export const DEFAULT_LOCALES_LOCATION: string;
-    /**
-     * An enumeration of supported ISO 639 language codes or RFC 5646 language tags.
-     * @type {Enumeration}
-     * @see {@link https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/i18n/LanguageCode}
-     * @see {@link https://developer.chrome.com/docs/extensions/reference/i18n/#type-LanguageCode}
-     */
-    export const LanguageCode: Enumeration;
-    namespace _default {
-        export { LanguageCode };
-        export { getAcceptLanguages };
-        export { getMessage };
-        export { getUILanguage };
     }
     export default _default;
     import Enumeration from "socket:enumeration";
@@ -13315,33 +13164,6 @@ declare module "socket:latica/api" {
     export function api(options: object, events: object, dgram: object): Promise<events.EventEmitter>;
 }
 
-declare module "socket:node/index" {
-    export default network;
-    export function network(options: any): Promise<events.EventEmitter>;
-    import { Cache } from "socket:latica/index";
-    import { sha256 } from "socket:latica/index";
-    import { Encryption } from "socket:latica/index";
-    import { Packet } from "socket:latica/index";
-    import { NAT } from "socket:latica/index";
-    export { Cache, sha256, Encryption, Packet, NAT };
-}
-
-declare module "socket:index" {
-    import { network } from "socket:node/index";
-    import { Cache } from "socket:node/index";
-    import { sha256 } from "socket:node/index";
-    import { Encryption } from "socket:node/index";
-    import { Packet } from "socket:node/index";
-    import { NAT } from "socket:node/index";
-    export { network, Cache, sha256, Encryption, Packet, NAT };
-}
-
-declare module "socket:latica" {
-    export * from "socket:latica/index";
-    export default def;
-    import def from "socket:latica/index";
-}
-
 declare module "socket:network" {
     export default network;
     export function network(options: any): Promise<events.EventEmitter>;
@@ -14262,9 +14084,9 @@ declare module "socket:commonjs/cache" {
         /**
          * `CacheCollection` class constructor.
          * @ignore
-         * @param {Cache[]|Record<string, Cache>} collection
+         * @param {Cache[]|Record<string, Cache>=} [collection]
          */
-        constructor(collection: Cache[] | Record<string, Cache>);
+        constructor(collection?: (Cache[] | Record<string, Cache>) | undefined);
         /**
          * Adds a `Cache` instance to the collection.
          * @param {string|Cache} name
@@ -15239,94 +15061,6 @@ declare module "socket:commonjs/package" {
     import { Loader } from "socket:commonjs/loader";
 }
 
-declare module "socket:commonjs/require" {
-    /**
-     * Factory for creating a `require()` function based on a module context.
-     * @param {CreateRequireOptions} options
-     * @return {RequireFunction}
-     */
-    export function createRequire(options: CreateRequireOptions): RequireFunction;
-    /**
-     * @typedef {function(string, import('./module.js').Module, function(string): any): any} RequireResolver
-     */
-    /**
-     * @typedef {{
-     *   module: import('./module.js').Module,
-     *   prefix?: string,
-     *   request?: import('./loader.js').RequestOptions,
-     *   builtins?: object,
-     *   resolvers?: RequireFunction[]
-     * }} CreateRequireOptions
-     */
-    /**
-     * @typedef {function(string): any} RequireFunction
-     */
-    /**
-     * @typedef {import('./package.js').PackageOptions} PackageOptions
-     */
-    /**
-     * @typedef {import('./package.js').PackageResolveOptions} PackageResolveOptions
-     */
-    /**
-     * @typedef {
-     *   PackageResolveOptions &
-     *   PackageOptions &
-     *   { origins?: string[] | URL[] }
-     * } ResolveOptions
-     */
-    /**
-     * @typedef {ResolveOptions & {
-     *   resolvers?: RequireResolver[],
-     *   importmap?: import('./module.js').ImportMap,
-     *   cache?: boolean
-     * }} RequireOptions
-     */
-    /**
-     * An array of global require paths, relative to the origin.
-     * @type {string[]}
-     */
-    export const globalPaths: string[];
-    /**
-     * An object attached to a `require()` function that contains metadata
-     * about the current module context.
-     */
-    export class Meta {
-        /**
-         * `Meta` class constructor.
-         * @param {import('./module.js').Module} module
-         */
-        constructor(module: import("socket:commonjs/module").Module);
-        /**
-         * The referrer (parent) of this module.
-         * @type {string}
-         */
-        get referrer(): string;
-        /**
-         * The referrer (parent) of this module.
-         * @type {string}
-         */
-        get url(): string;
-        #private;
-    }
-    export default createRequire;
-    export type RequireResolver = (arg0: string, arg1: import("socket:commonjs/module").Module, arg2: (arg0: string) => any) => any;
-    export type CreateRequireOptions = {
-        module: import("socket:commonjs/module").Module;
-        prefix?: string;
-        request?: import("socket:commonjs/loader").RequestOptions;
-        builtins?: object;
-        resolvers?: RequireFunction[];
-    };
-    export type RequireFunction = (arg0: string) => any;
-    export type PackageOptions = import("socket:commonjs/package").PackageOptions;
-    export type PackageResolveOptions = import("socket:commonjs/package").PackageResolveOptions;
-    export type RequireOptions = ResolveOptions & {
-        resolvers?: RequireResolver[];
-        importmap?: import("socket:commonjs/module").ImportMap;
-        cache?: boolean;
-    };
-}
-
 declare module "socket:commonjs/module" {
     /**
      * CommonJS module scope with module scoped globals.
@@ -15740,6 +15474,285 @@ declare module "socket:commonjs/module" {
     import { Package } from "socket:commonjs/package";
     import { Loader } from "socket:commonjs/loader";
     import process from "socket:process";
+}
+
+declare module "socket:commonjs/require" {
+    /**
+     * Factory for creating a `require()` function based on a module context.
+     * @param {CreateRequireOptions} options
+     * @return {RequireFunction}
+     */
+    export function createRequire(options: CreateRequireOptions): RequireFunction;
+    /**
+     * @typedef {function(string, import('./module.js').Module, function(string): any): any} RequireResolver
+     */
+    /**
+     * @typedef {{
+     *   module: import('./module.js').Module,
+     *   prefix?: string,
+     *   request?: import('./loader.js').RequestOptions,
+     *   builtins?: object,
+     *   resolvers?: RequireFunction[]
+     * }} CreateRequireOptions
+     */
+    /**
+     * @typedef {function(string): any} RequireFunction
+     */
+    /**
+     * @typedef {import('./package.js').PackageOptions} PackageOptions
+     */
+    /**
+     * @typedef {import('./package.js').PackageResolveOptions} PackageResolveOptions
+     */
+    /**
+     * @typedef {
+     *   PackageResolveOptions &
+     *   PackageOptions &
+     *   { origins?: string[] | URL[] }
+     * } ResolveOptions
+     */
+    /**
+     * @typedef {ResolveOptions & {
+     *   resolvers?: RequireResolver[],
+     *   importmap?: import('./module.js').ImportMap,
+     *   cache?: boolean
+     * }} RequireOptions
+     */
+    /**
+     * An array of global require paths, relative to the origin.
+     * @type {string[]}
+     */
+    export const globalPaths: string[];
+    /**
+     * An object attached to a `require()` function that contains metadata
+     * about the current module context.
+     */
+    export class Meta {
+        /**
+         * `Meta` class constructor.
+         * @param {import('./module.js').Module} module
+         */
+        constructor(module: import("socket:commonjs/module").Module);
+        /**
+         * The referrer (parent) of this module.
+         * @type {string}
+         */
+        get referrer(): string;
+        /**
+         * The referrer (parent) of this module.
+         * @type {string}
+         */
+        get url(): string;
+        #private;
+    }
+    export default createRequire;
+    export type RequireResolver = (arg0: string, arg1: import("socket:commonjs/module").Module, arg2: (arg0: string) => any) => any;
+    export type CreateRequireOptions = {
+        module: import("socket:commonjs/module").Module;
+        prefix?: string;
+        request?: import("socket:commonjs/loader").RequestOptions;
+        builtins?: object;
+        resolvers?: RequireFunction[];
+    };
+    export type RequireFunction = (arg0: string) => any;
+    export type PackageOptions = import("socket:commonjs/package").PackageOptions;
+    export type PackageResolveOptions = import("socket:commonjs/package").PackageResolveOptions;
+    export type RequireOptions = ResolveOptions & {
+        resolvers?: RequireResolver[];
+        importmap?: import("socket:commonjs/module").ImportMap;
+        cache?: boolean;
+    };
+}
+
+declare module "socket:commonjs" {
+    export default exports;
+    import * as exports from "socket:commonjs";
+    import builtins from "socket:commonjs/builtins";
+    import Cache from "socket:commonjs/cache";
+    import createRequire from "socket:commonjs/require";
+    import Loader from "socket:commonjs/loader";
+    import Module from "socket:commonjs/module";
+    import Package from "socket:commonjs/package";
+    
+    export { builtins, Cache, createRequire, Loader, Module, Package };
+}
+
+declare module "socket:fetch/fetch" {
+    export function Headers(headers: any): void;
+    export class Headers {
+        constructor(headers: any);
+        map: {};
+        append(name: any, value: any): void;
+        delete(name: any): void;
+        get(name: any): any;
+        has(name: any): boolean;
+        set(name: any, value: any): void;
+        forEach(callback: any, thisArg: any): void;
+        keys(): {
+            next: () => {
+                done: boolean;
+                value: any;
+            };
+        };
+        values(): {
+            next: () => {
+                done: boolean;
+                value: any;
+            };
+        };
+        entries(): {
+            next: () => {
+                done: boolean;
+                value: any;
+            };
+        };
+    }
+    export function Request(input: any, options: any): void;
+    export class Request {
+        constructor(input: any, options: any);
+        url: string;
+        credentials: any;
+        headers: Headers;
+        method: any;
+        mode: any;
+        signal: any;
+        referrer: any;
+        clone(): Request;
+    }
+    export function Response(bodyInit: any, options: any): void;
+    export class Response {
+        constructor(bodyInit: any, options: any);
+        type: string;
+        status: any;
+        ok: boolean;
+        statusText: string;
+        headers: Headers;
+        url: any;
+        clone(): Response;
+    }
+    export namespace Response {
+        function error(): Response;
+        function redirect(url: any, status: any): Response;
+    }
+    export function fetch(input: any, init: any): Promise<any>;
+    export class DOMException {
+        private constructor();
+    }
+    namespace _default {
+        export { fetch };
+        export { Headers };
+        export { Request };
+        export { Response };
+    }
+    export default _default;
+}
+
+declare module "socket:fetch/index" {
+    export default fetch;
+    import { fetch } from "socket:fetch/fetch";
+    import { Headers } from "socket:fetch/fetch";
+    import { Request } from "socket:fetch/fetch";
+    import { Response } from "socket:fetch/fetch";
+    export { fetch, Headers, Request, Response };
+}
+
+declare module "socket:fetch" {
+    export * from "socket:fetch/index";
+    export default fetch;
+    import fetch from "socket:fetch/index";
+}
+
+declare module "socket:i18n" {
+    /**
+     * Get messages for `locale` pattern. This function could return many results
+     * for various locales given a `locale` pattern. such as `fr`, which could
+     * return results for `fr`, `fr-FR`, `fr-BE`, etc.
+     * @ignore
+     * @param {string} locale
+     * @return {object[]}
+     */
+    export function getMessagesForLocale(locale: string): object[];
+    /**
+     * Returns user preferred ISO 639 language codes or RFC 5646 language tags.
+     * @return {string[]}
+     */
+    export function getAcceptLanguages(): string[];
+    /**
+     * Returns the current user ISO 639 language code or RFC 5646 language tag.
+     * @return {?string}
+     */
+    export function getUILanguage(): string | null;
+    /**
+     * Gets a localized message string for the specified message name.
+     * @param {string} messageName
+     * @param {object|string[]=} [substitutions = []]
+     * @param {object=} [options]
+     * @param {string=} [options.locale = null]
+     * @see {@link https://developer.chrome.com/docs/extensions/reference/i18n/#type-LanguageCode}
+     * @see {@link https://www.ibm.com/docs/en/rbd/9.5.1?topic=syslib-getmessage}
+     * @return {?string}
+     */
+    export function getMessage(messageName: string, substitutions?: (object | string[]) | undefined, options?: object | undefined): string | null;
+    /**
+     * Gets a localized message description string for the specified message name.
+     * @param {string} messageName
+     * @param {object=} [options]
+     * @param {string=} [options.locale = null]
+     * @return {?string}
+     */
+    export function getMessageDescription(messageName: string, options?: object | undefined): string | null;
+    /**
+     * A cache of loaded locale messages.
+     * @type {Map}
+     */
+    export const cache: Map<any, any>;
+    /**
+     * Default location of i18n locale messages
+     * @type {string}
+     */
+    export const DEFAULT_LOCALES_LOCATION: string;
+    /**
+     * An enumeration of supported ISO 639 language codes or RFC 5646 language tags.
+     * @type {Enumeration}
+     * @see {@link https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/i18n/LanguageCode}
+     * @see {@link https://developer.chrome.com/docs/extensions/reference/i18n/#type-LanguageCode}
+     */
+    export const LanguageCode: Enumeration;
+    namespace _default {
+        export { LanguageCode };
+        export { getAcceptLanguages };
+        export { getMessage };
+        export { getUILanguage };
+    }
+    export default _default;
+    import Enumeration from "socket:enumeration";
+}
+
+declare module "socket:node/index" {
+    export default network;
+    export function network(options: any): Promise<events.EventEmitter>;
+    import { Cache } from "socket:latica/index";
+    import { sha256 } from "socket:latica/index";
+    import { Encryption } from "socket:latica/index";
+    import { Packet } from "socket:latica/index";
+    import { NAT } from "socket:latica/index";
+    export { Cache, sha256, Encryption, Packet, NAT };
+}
+
+declare module "socket:index" {
+    import { network } from "socket:node/index";
+    import { Cache } from "socket:node/index";
+    import { sha256 } from "socket:node/index";
+    import { Encryption } from "socket:node/index";
+    import { Packet } from "socket:node/index";
+    import { NAT } from "socket:node/index";
+    export { network, Cache, sha256, Encryption, Packet, NAT };
+}
+
+declare module "socket:latica" {
+    export * from "socket:latica/index";
+    export default def;
+    import def from "socket:latica/index";
 }
 
 declare module "socket:module" {
