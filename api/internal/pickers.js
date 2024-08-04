@@ -172,7 +172,10 @@ export async function showDirectoryPicker (options = null) {
 
   bookmarks.temporary.set(dirname, null) // placehold `null`
 
-  const result = await createFileSystemDirectoryHandle(dirname)
+  const result = await createFileSystemDirectoryHandle(dirname, {
+    open: true
+  })
+
   return result
 }
 
