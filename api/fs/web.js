@@ -7,9 +7,9 @@ import mime from '../mime.js'
 import path from '../path.js'
 import fs from './promises.js'
 
-export const kFileSystemHandleFullName = Symbol('kFileSystemHandleFullName')
-export const kFileDescriptor = Symbol('kFileDescriptor')
-export const kFileFullName = Symbol('kFileFullName')
+export const kFileSystemHandleFullName = Symbol.for('socket.runtune.fs.web.FileSystemHandleFullName')
+export const kFileDescriptor = Symbol.for('socket.runtune.fs.web.FileDescriptor')
+export const kFileFullName = Symbol.for('socket.runtune.fs.web.FileFullName')
 
 // @ts-ignore
 export const File = globalThis.File ??
@@ -23,6 +23,7 @@ export const File = globalThis.File ??
     slice () {}
 
     async arrayBuffer () {}
+    async bytes () {}
     async text () {}
     stream () {}
   }
@@ -117,10 +118,15 @@ export async function createFile (filename, options = null) {
 
   let fd = options?.fd ?? null
   let blobBuffer = null
+  let bytesBuffer = null
 
   const name = URL.canParse(filename)
     ? filename
     : path.basename(filename)
+
+  if (!fd) {
+    fd = await fs.open(filename)
+  }
 
   return create(File, class File {
     get [kFileFullName] () { return filename }
@@ -132,12 +138,33 @@ export async function createFile (filename, options = null) {
     get size () { return stats.size }
     get type () { return type }
 
-    slice () {
+    slice (start = 0, end = stats.size, contentType = type) {
       if (!blobBuffer) {
         blobBuffer = readFileSync(filename)
       }
 
-      return new Blob([blobBuffer], { type })
+      const blob = new Blob([blobBuffer], {
+        type: contentType
+      })
+
+      if (start < 0) {
+        start = stats.size - start
+      }
+
+      if (end < 0) {
+        end = stats.size - end
+      }
+
+      return blob.slice(start, end)
+    }
+
+    async bytes () {
+      if (!bytesBuffer) {
+        bytesBuffer = await this.arrayBuffer()
+        blobBuffer = bytesBuffer
+      }
+
+      return new Uint8Array(bytesBuffer)
     }
 
     async arrayBuffer () {
@@ -169,12 +196,11 @@ export async function createFile (filename, options = null) {
 
       const stream = new ReadableStream({
         async start (controller) {
-          fd = options?.fd || await fs.open(filename)
+          const fd = await fs.open(filename)
           fd.once('close', () => controller.close())
           if (highWaterMark === 0) {
             await fd.close()
             await controller.close()
-            fd = null
             return
           }
 
@@ -460,6 +486,10 @@ export async function createFileSystemDirectoryHandle (dirname, options = null) 
 
   // `fd` is opened with `lazyOpen` at on demand
   let fd = null
+
+  if (options?.open === true) {
+    await lazyOpen()
+  }
 
   return create(FileSystemDirectoryHandle, class FileSystemDirectoryHandle {
     get [kFileSystemHandleFullName] () { return dirname }

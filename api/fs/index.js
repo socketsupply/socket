@@ -42,6 +42,8 @@ import fds from './fds.js'
 
 import * as exports from './index.js'
 
+const kFileDescriptor = Symbol.for('socket.runtune.fs.web.FileDescriptor')
+
 /**
  * @typedef {import('../buffer.js').Buffer} Buffer
  * @typedef {Uint8Array|Int8Array} TypedArray
@@ -114,6 +116,13 @@ export function access (path, mode, callback) {
 
   if (typeof callback !== 'function') {
     throw new TypeError('callback must be a function.')
+  }
+
+  if (
+    path instanceof globalThis.FileSystemFileHandle ||
+    path instanceof globalThis.FileSystemDirectoryHandle
+  ) {
+    return queueMicrotask(() => callback(null, mode))
   }
 
   path = normalizePath(path)
@@ -198,6 +207,15 @@ export function chmod (path, mode, callback) {
     throw new TypeError('callback must be a function.')
   }
 
+  if (
+    path instanceof globalThis.FileSystemFileHandle ||
+    path instanceof globalThis.FileSystemDirectoryHandle
+  ) {
+    return new TypeError(
+      'FileSystemHandle is not writable'
+    )
+  }
+
   path = normalizePath(path)
   ipc.request('fs.chmod', { mode, path }).then((result) => {
     result?.err ? callback(result.err) : callback(null)
@@ -251,6 +269,15 @@ export function chown (path, uid, gid, callback) {
 
   if (typeof callback !== 'function') {
     throw new TypeError('callback must be a function.')
+  }
+
+  if (
+    path instanceof globalThis.FileSystemFileHandle ||
+    path instanceof globalThis.FileSystemDirectoryHandle
+  ) {
+    return new TypeError(
+      'FileSystemHandle is not writable'
+    )
   }
 
   ipc.request('fs.chown', { path, uid, gid }).then((result) => {
@@ -348,6 +375,17 @@ export function copyFile (src, dest, flags = 0, callback) {
     throw new TypeError('callback must be a function.')
   }
 
+  if (src instanceof globalThis.FileSystemFileHandle) {
+    if (src.getFile()[kFileDescriptor]) {
+      src = src.getFile()[kFileDescriptor].path
+    } else {
+      src.getFile().arrayBuffer.then((arrayBuffer) => {
+        writeFile(dest, arrayBuffer, { flags }, callback)
+      })
+      return
+    }
+  }
+
   ipc.request('fs.copyFile', { src, dest, flags }).then((result) => {
     result?.err ? callback(result.err) : callback(null)
   }).catch(callback)
@@ -438,6 +476,12 @@ export function createWriteStream (path, options) {
   if (path?.fd) {
     options = path
     path = options?.path || null
+  }
+
+  if (path instanceof globalThis.FileSystemHandle) {
+    return new TypeError(
+      'FileSystemHandle is not writable'
+    )
   }
 
   path = normalizePath(path)
@@ -560,6 +604,15 @@ export function ftruncate (fd, offset, callback) {
  * @param {function} callback
  */
 export function lchown (path, uid, gid, callback) {
+  if (
+    path instanceof globalThis.FileSystemFileHandle ||
+    path instanceof globalThis.FileSystemDirectoryHandle
+  ) {
+    return new TypeError(
+      'FileSystemHandle is not writable'
+    )
+  }
+
   path = normalizePath(path)
 
   if (typeof path !== 'string') {
@@ -1073,7 +1126,7 @@ export function readFileSync (path, options = null) {
     throw result.err
   }
 
-  const buffer = Buffer.from(data)
+  const buffer = data ? Buffer.from(data) : Buffer.alloc(0)
 
   if (typeof options?.encoding === 'string') {
     return buffer.toString(options.encoding)
@@ -1264,6 +1317,40 @@ export function stat (path, options, callback) {
     throw new TypeError('callback must be a function.')
   }
 
+  if (
+    path instanceof globalThis.FileSystemFileHandle ||
+    path instanceof globalThis.FileSystemDirectoryHandle
+  ) {
+    if (path.getFile()[kFileDescriptor]) {
+      try {
+        path.getFile()[kFileDescriptor].stat(options).then(
+          (stats) => callback(null, stats),
+          (err) => callback(err)
+        )
+      } catch (err) {
+        callback(err)
+      }
+
+      return
+    } else {
+      queueMicrotask(() => {
+        const info = {
+          st_mode: path instanceof globalThis.FileSystemDirectoryHandle
+            ? constants.S_IFDIR
+            : constants.S_IFREG,
+          st_size: path instanceof globalThis.FileSystemFileHandle
+            ? path.size
+            : 0
+        }
+
+        const stats = Stats.from(info, Boolean(options?.bigint))
+        callback(null, stats)
+      })
+
+      return
+    }
+  }
+
   visit(path, {}, async (err, handle) => {
     let stats = null
 
@@ -1300,6 +1387,13 @@ export function lstat (path, options, callback) {
 
   if (typeof callback !== 'function') {
     throw new TypeError('callback must be a function.')
+  }
+
+  if (
+    path instanceof globalThis.FileSystemFileHandle ||
+    path instanceof globalThis.FileSystemDirectoryHandle
+  ) {
+    return stat(path, options, callback)
   }
 
   visit(path, {}, async (err, handle) => {

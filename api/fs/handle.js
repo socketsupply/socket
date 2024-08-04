@@ -6,9 +6,9 @@ import {
   clamp
 } from '../util.js'
 
+import { F_OK, O_APPEND, S_IFREG } from './constants.js'
 import { ReadStream, WriteStream } from './stream.js'
 import { normalizeFlags } from './flags.js'
-import { F_OK, O_APPEND } from './constants.js'
 import { AsyncResource } from '../async/resource.js'
 import { EventEmitter } from '../events.js'
 import { AbortError } from '../errors.js'
@@ -22,6 +22,8 @@ import ipc from '../ipc.js'
 import gc from '../gc.js'
 
 import * as exports from './handle.js'
+
+const kFileDescriptor = Symbol.for('socket.runtune.fs.web.FileDescriptor')
 
 /**
  * @typedef {Uint8Array|Int8Array} TypedArray
@@ -70,10 +72,21 @@ export class FileHandle extends EventEmitter {
 
   /**
    * Creates a `FileHandle` from a given `id` or `fd`
-   * @param {string|number|FileHandle|object} id
+   * @param {string|number|FileHandle|object|FileSystemFileHandle} id
    * @return {FileHandle}
    */
   static from (id) {
+    if (
+      globalThis.FileSystemFileHandle &&
+      id instanceof globalThis.FileSystemFileHandle
+    ) {
+      if (id[kFileDescriptor]) {
+        return id[kFileDescriptor]
+      }
+
+      return new this({ handle: id })
+    }
+
     if (id?.id) {
       return this.from(id.id)
     } else if (id?.fd) {
@@ -144,6 +157,12 @@ export class FileHandle extends EventEmitter {
       mode = FileHandle.DEFAULT_OPEN_MODE
     }
 
+    if (path instanceof globalThis.FileSystemFileHandle) {
+      const handle = this.from(path, options || mode || flags)
+      await handle.open(options)
+      return handle
+    }
+
     path = normalizePath(path)
     const handle = new this({ path, flags, mode })
 
@@ -157,6 +176,7 @@ export class FileHandle extends EventEmitter {
   }
 
   #resource = null
+  #fileSystemHandle = null
 
   /**
    * `FileHandle` class constructor
@@ -177,6 +197,10 @@ export class FileHandle extends EventEmitter {
 
     this.#resource = new AsyncResource('FileHandle')
     this.#resource.handle = this
+
+    if (options?.handle) {
+      this.#fileSystemHandle = options.handle
+    }
 
     this.flags = normalizeFlags(options?.flags)
     this.path = options?.path || null
@@ -200,7 +224,9 @@ export class FileHandle extends EventEmitter {
    * @type {boolean}
    */
   get opened () {
-    return this.fd !== null && this.fd === fds.get(this.id)
+    return this.#fileSystemHandle || (
+      this.fd !== null && this.fd === fds.get(this.id)
+    )
   }
 
   /**
@@ -257,6 +283,12 @@ export class FileHandle extends EventEmitter {
    * @param {object=} [options.signal]
    */
   async appendFile (data, options) {
+    if (this.#fileSystemHandle) {
+      return new TypeError(
+        'FileHandle underlying FileSystemFileHandle is not writable'
+      )
+    }
+
     if (this.closing || this.closed) {
       throw new Error('FileHandle is not opened')
     }
@@ -274,9 +306,17 @@ export class FileHandle extends EventEmitter {
    * @param {object=} [options]
    */
   async chmod (mode, options) {
+    if (this.#fileSystemHandle) {
+      return new TypeError(
+        'FileHandle underlying FileSystemFileHandle is not writable'
+      )
+    }
+
     if (this.closing || this.closed) {
       throw new Error('FileHandle is not opened')
     }
+
+    // TODO(@jwerle)
   }
 
   /**
@@ -286,9 +326,17 @@ export class FileHandle extends EventEmitter {
    * @param {object=} [options]
    */
   async chown (uid, gid, options) {
+    if (this.#fileSystemHandle) {
+      return new TypeError(
+        'FileHandle underlying FileSystemFileHandle is not writable'
+      )
+    }
+
     if (this.closing || this.closed) {
       throw new Error('FileHandle is not opened')
     }
+
+    // TODO(@jwerle)
   }
 
   /**
@@ -311,12 +359,14 @@ export class FileHandle extends EventEmitter {
 
     this[kClosing] = new Deferred()
 
-    const result = await ipc.request('fs.close', { id: this.id }, {
-      ...options
-    })
+    if (!this.#fileSystemHandle) {
+      const result = await ipc.request('fs.close', { id: this.id }, {
+        ...options
+      })
 
-    if (result.err) {
-      return this[kClosing].reject(result.err)
+      if (result.err) {
+        return this[kClosing].reject(result.err)
+      }
     }
 
     fds.release(this.id, false)
@@ -403,6 +453,12 @@ export class FileHandle extends EventEmitter {
    * @param {object=} [options]
    */
   async datasync () {
+    if (this.#fileSystemHandle) {
+      return new TypeError(
+        'FileHandle underlying FileSystemFileHandle is not writable'
+      )
+    }
+
     if (this.closing || this.closed) {
       throw new Error('FileHandle is not opened')
     }
@@ -437,25 +493,29 @@ export class FileHandle extends EventEmitter {
 
     this[kOpening] = new Deferred()
 
-    const result = await ipc.request('fs.open', {
-      id,
-      mode,
-      path,
-      flags
-    }, {
-      ...options
-    })
-
-    if (result.err) {
-      return this[kOpening].reject(result.err)
-    }
-
-    if (result.data?.fd) {
-      this.fd = result.data.fd
-      fds.set(this.id, this.fd, 'file')
-    } else {
-      this.fd = id
+    if (this.#fileSystemHandle) {
       fds.set(this.id, this.id, 'file')
+    } else {
+      const result = await ipc.request('fs.open', {
+        id,
+        mode,
+        path,
+        flags
+      }, {
+        ...options
+      })
+
+      if (result.err) {
+        return this[kOpening].reject(result.err)
+      }
+
+      if (result.data?.fd) {
+        this.fd = result.data.fd
+        fds.set(this.id, this.fd, 'file')
+      } else {
+        this.fd = id
+        fds.set(this.id, this.id, 'file')
+      }
     }
 
     this[kOpening].resolve(true)
@@ -557,39 +617,47 @@ export class FileHandle extends EventEmitter {
       )
     }
 
-    const result = await ipc.request('fs.read', {
-      id,
-      size: length,
-      offset: position
-    }, {
-      responseType: 'arraybuffer',
-      timeout,
-      signal
-    })
-
-    if (result.err) {
-      throw result.err
-    }
-
-    const contentType = result.headers?.get('content-type')
-
-    if (contentType && contentType !== 'application/octet-stream') {
-      throw new TypeError(
-        `Invalid response content type from 'fs.read'. Received: ${contentType}`
-      )
-    }
-
-    if (isTypedArray(result.data) || result.data instanceof ArrayBuffer) {
-      bytesRead = result.data.byteLength
-      Buffer.from(result.data).copy(Buffer.from(buffer), 0, offset)
-      dc.channel('handle.read').publish({ handle: this, bytesRead })
-    } else if (isEmptyObject(result.data)) {
-      // an empty response from mac returns an empty object sometimes
-      bytesRead = 0
+    if (this.#fileSystemHandle) {
+      const file = this.#fileSystemHandle.getFile()
+      const blob = file.slice(position, position + length)
+      const arrayBuffer = await blob.arrayBuffer()
+      bytesRead = arrayBuffer.byteLength
+      Buffer.from(arrayBuffer).copy(Buffer.from(buffer), 0, offset)
     } else {
-      throw new TypeError(
-        `Invalid response buffer from 'fs.read' Received: ${typeof result.data}`
-      )
+      const result = await ipc.request('fs.read', {
+        id,
+        size: length,
+        offset: position
+      }, {
+        responseType: 'arraybuffer',
+        timeout,
+        signal
+      })
+
+      if (result.err) {
+        throw result.err
+      }
+
+      const contentType = result.headers?.get('content-type')
+
+      if (contentType && contentType !== 'application/octet-stream') {
+        throw new TypeError(
+          `Invalid response content type from 'fs.read'. Received: ${contentType}`
+        )
+      }
+
+      if (isTypedArray(result.data) || result.data instanceof ArrayBuffer) {
+        bytesRead = result.data.byteLength
+        Buffer.from(result.data).copy(Buffer.from(buffer), 0, offset)
+        dc.channel('handle.read').publish({ handle: this, bytesRead })
+      } else if (isEmptyObject(result.data)) {
+        // an empty response from mac returns an empty object sometimes
+        bytesRead = 0
+      } else {
+        throw new TypeError(
+          `Invalid response buffer from 'fs.read' Received: ${typeof result.data}`
+        )
+      }
     }
 
     return { bytesRead, buffer }
@@ -649,6 +717,17 @@ export class FileHandle extends EventEmitter {
       throw new Error('FileHandle is not opened')
     }
 
+    if (this.#fileSystemHandle) {
+      const info = {
+        st_mode: S_IFREG,
+        st_size: this.#fileSystemHandle.size
+      }
+
+      const stats = Stats.from(info, Boolean(options?.bigint))
+      stats.handle = this
+      return stats
+    }
+
     const result = await ipc.request('fs.fstat', { id: this.id }, {
       ...options
     })
@@ -668,6 +747,10 @@ export class FileHandle extends EventEmitter {
    * @return {Promise<Stats>}
    */
   async lstat (options) {
+    if (this.#fileSystemHandle) {
+      return this.stat(options)
+    }
+
     if (this.closing || this.closed) {
       throw new Error('FileHandle is not opened')
     }
@@ -690,6 +773,12 @@ export class FileHandle extends EventEmitter {
    * @return {Promise}
    */
   async sync () {
+    if (this.#fileSystemHandle) {
+      return new TypeError(
+        'FileHandle underlying FileSystemFileHandle is not writable'
+      )
+    }
+
     if (this.closing || this.closed) {
       throw new Error('FileHandle is not opened')
     }
@@ -706,6 +795,12 @@ export class FileHandle extends EventEmitter {
    * @return {Promise}
    */
   async truncate (offset = 0) {
+    if (this.#fileSystemHandle) {
+      return new TypeError(
+        'FileHandle underlying FileSystemFileHandle is not writable'
+      )
+    }
+
     if (this.closing || this.closed) {
       throw new Error('FileHandle is not opened')
     }
@@ -727,6 +822,12 @@ export class FileHandle extends EventEmitter {
    * @param {object=} [options]
    */
   async write (buffer, offset, length, position, options) {
+    if (this.#fileSystemHandle) {
+      return new TypeError(
+        'FileHandle underlying FileSystemFileHandle is not writable'
+      )
+    }
+
     if (this.closing || this.closed) {
       throw new Error('FileHandle is not opened')
     }
@@ -809,6 +910,12 @@ export class FileHandle extends EventEmitter {
    * @param {object=} [options.signal]
    */
   async writeFile (data, options) {
+    if (this.#fileSystemHandle) {
+      return new TypeError(
+        'FileHandle underlying FileSystemFileHandle is not writable'
+      )
+    }
+
     if (this.closing || this.closed) {
       throw new Error('FileHandle is not opened')
     }
@@ -869,12 +976,24 @@ export class DirectoryHandle extends EventEmitter {
   static get DEFAULT_BUFFER_SIZE () { return 32 }
 
   /**
-   * Creates a `FileHandle` from a given `id` or `fd`
-   * @param {string|number|DirectoryHandle|object} id
+   * Creates a `DirectoryHandle` from a given `id` or `fd`
+   * @param {string|number|DirectoryHandle|object|FileSystemDirectoryHandle} id
    * @param {object} options
    * @return {DirectoryHandle}
    */
   static from (id, options) {
+    if (
+      globalThis.FileSystemDirectoryHandle &&
+      id instanceof globalThis.FileSystemDirectoryHandle
+    ) {
+      if (id[kFileDescriptor]) {
+        const dir = id[kFileDescriptor]
+        return dir.handle ?? dir
+      }
+
+      return new this({ handle: id })
+    }
+
     if (id?.id) {
       return this.from(id.id)
     } else if (id?.fd) {
@@ -895,6 +1014,17 @@ export class DirectoryHandle extends EventEmitter {
    * @return {Promise<DirectoryHandle>}
    */
   static async open (path, options) {
+    if (path instanceof globalThis.FileSystemDirectoryHandle) {
+      if (path[kFileDescriptor]) {
+        const dir = path[kFileDescriptor]
+        return dir.handle ?? dir
+      }
+
+      const handle = this.from(path, options)
+      await handle.open(options)
+      return handle
+    }
+
     path = normalizePath(path)
     const handle = new this({ path })
 
@@ -908,6 +1038,8 @@ export class DirectoryHandle extends EventEmitter {
   }
 
   #resource = null
+  #fileSystemHandle = null
+  #fileSystemHandleIterator = null
 
   /**
    * `DirectoryHandle` class constructor
@@ -936,6 +1068,10 @@ export class DirectoryHandle extends EventEmitter {
 
     if (this.path) {
       this.path = normalizePath(this.path)
+    }
+
+    if (options?.handle) {
+      this.#fileSystemHandle = options.handle
     }
 
     // @TODO(jwerle): implement usage of this internally
@@ -1029,10 +1165,12 @@ export class DirectoryHandle extends EventEmitter {
 
     this[kOpening] = new Deferred()
 
-    const result = await ipc.request('fs.opendir', { id, path }, options)
+    if (!this.#fileSystemHandle) {
+      const result = await ipc.request('fs.opendir', { id, path }, options)
 
-    if (result.err) {
-      return this[kOpening].reject(result.err)
+      if (result.err) {
+        return this[kOpening].reject(result.err)
+      }
     }
 
     // directory file descriptors are not accessible because
@@ -1076,10 +1214,12 @@ export class DirectoryHandle extends EventEmitter {
 
     this[kClosing] = new Deferred()
 
-    const result = await ipc.request('fs.closedir', { id }, options)
+    if (!this.#fileSystemHandle) {
+      const result = await ipc.request('fs.closedir', { id }, options)
 
-    if (result.err) {
-      return this[kClosing].reject(result.err)
+      if (result.err) {
+        return this[kClosing].reject(result.err)
+      }
     }
 
     fds.release(this.id, false)
@@ -1123,6 +1263,26 @@ export class DirectoryHandle extends EventEmitter {
       1, // MIN_ENTRIES
       DirectoryHandle.MAX_ENTRIES
     )
+
+    if (this.#fileSystemHandle) {
+      const results = []
+
+      if (!this.#fileSystemHandleIterator) {
+        this.#fileSystemHandleIterator = this.#fileSystemHandle.entries()
+      }
+
+      for (let i = 0; i < entries; ++i) {
+        const [name, handle] = await this.#fileSystemHandleIterator.next()
+        results.push({
+          name,
+          type: handle instanceof globalThis.FileSystemDirectoryHandle
+            ? 'directory'
+            : 'file'
+        })
+      }
+
+      return results
+    }
 
     const { id } = this
 
