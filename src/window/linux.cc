@@ -89,7 +89,7 @@ namespace SSC {
     auto bytes = socket_runtime_init_get_user_config_bytes();
     auto size = socket_runtime_init_get_user_config_bytes_size();
     static auto data = String(reinterpret_cast<const char*>(bytes), size);
-    data += "[web-process-extension]\n";
+    data += "\n[web-process-extension]\n";
     data += "cwd = " + cwd + "\n";
     data += "host = " + getDevHost() + "\n";
     data += "port = " + std::to_string(getDevPort()) + "\n";
