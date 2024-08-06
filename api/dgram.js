@@ -1030,7 +1030,7 @@ export class Socket extends EventEmitter {
       return
     }
 
-    return send(this, { id, port, address, buffer }, () => {
+    return send(this, { id, port, address, buffer }, (...args) => {
       if (buffer.buffer?.detached) {
         // XXX(@jwerle,@heapwolf): see above
         return
