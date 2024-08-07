@@ -126,7 +126,7 @@ export async function onRequest (request, env, ctx) {
   if (resolved.type === 'module') {
     const response = await fetch(resolved.url)
     const text = await response.text()
-    const proxy = /^(export default)/.test(text)
+    const proxy = /^\s*(export\s*default)/gm.test(text)
       ? `
         import module from '${resolved.url}'
         export * from '${resolved.url}'
