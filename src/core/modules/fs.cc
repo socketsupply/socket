@@ -387,7 +387,7 @@ namespace SSC {
 
       auto ctx = new RequestContext(desc, seq, callback);
       auto req = &ctx->req;
-      auto err = uv_fs_access(loop, req, desc->resource.path.c_str(), mode, [](uv_fs_t* req) {
+      auto err = uv_fs_access(loop, req, desc->resource.path.string().c_str(), mode, [](uv_fs_t* req) {
         auto ctx = (RequestContext *) req->data;
         auto json = JSON::Object {};
 
@@ -490,7 +490,7 @@ namespace SSC {
     });
   }
 
-	void CoreFS::chown (
+  void CoreFS::chown (
     const String& seq,
     const String& path,
     uv_uid_t uid,
@@ -539,7 +539,7 @@ namespace SSC {
   }
 
   void CoreFS::lchown (
-		const String& seq,
+    const String& seq,
     const String& path,
     uv_uid_t uid,
     uv_gid_t gid,
@@ -780,7 +780,7 @@ namespace SSC {
       auto loop = &this->core->eventLoop;
       auto ctx = new RequestContext(desc, seq, callback);
       auto req = &ctx->req;
-      auto err = uv_fs_open(loop, req, desc->resource.path.c_str(), flags, mode, [](uv_fs_t* req) {
+      auto err = uv_fs_open(loop, req, desc->resource.path.string().c_str(), flags, mode, [](uv_fs_t* req) {
         auto ctx = (RequestContext *) req->data;
         auto desc = ctx->descriptor;
         auto json = JSON::Object {};
@@ -950,7 +950,7 @@ namespace SSC {
       auto loop = &this->core->eventLoop;
       auto ctx = new RequestContext(desc, seq, callback);
       auto req = &ctx->req;
-      auto err = uv_fs_opendir(loop, req, desc->resource.path.c_str(), [](uv_fs_t *req) {
+      auto err = uv_fs_opendir(loop, req, desc->resource.path.string().c_str(), [](uv_fs_t *req) {
         auto ctx = (RequestContext *) req->data;
         auto desc = ctx->descriptor;
         auto json = JSON::Object {};
@@ -1744,7 +1744,7 @@ namespace SSC {
       auto loop = &this->core->eventLoop;
       auto ctx = new RequestContext(desc, seq, callback);
       auto req = &ctx->req;
-      auto err = uv_fs_stat(loop, req, desc->resource.path.c_str(), [](uv_fs_t *req) {
+      auto err = uv_fs_stat(loop, req, desc->resource.path.string().c_str(), [](uv_fs_t *req) {
         auto ctx = (RequestContext *) req->data;
         auto json = JSON::Object {};
 
@@ -2072,7 +2072,7 @@ namespace SSC {
       auto loop = &this->core->eventLoop;
       auto ctx = new RequestContext(desc, seq, callback);
       auto req = &ctx->req;
-      auto err = uv_fs_lstat(loop, req, desc->resource.path.c_str(), [](uv_fs_t* req) {
+      auto err = uv_fs_lstat(loop, req, desc->resource.path.string().c_str(), [](uv_fs_t* req) {
         auto ctx = (RequestContext *) req->data;
         auto json = JSON::Object {};
 
@@ -2449,7 +2449,7 @@ namespace SSC {
       auto loop = &this->core->eventLoop;
       auto ctx = new RequestContext(seq, callback);
       auto req = &ctx->req;
-      auto err = uv_fs_copyfile(loop, req, src->resource.path.c_str(), dst->resource.path.c_str(), flags, [](uv_fs_t* req) {
+      auto err = uv_fs_copyfile(loop, req, src->resource.path.string().c_str(), dst->resource.path.string().c_str(), flags, [](uv_fs_t* req) {
         auto ctx = (RequestContext *) req->data;
         auto json = JSON::Object {};
 
