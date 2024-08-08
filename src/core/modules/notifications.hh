@@ -72,6 +72,8 @@ namespace SSC {
 
       CoreNotifications (Core* core);
       ~CoreNotifications ();
+      void start ();
+      void stop ();
 
       bool removePermissionChangeObserver (const PermissionChangeObserver& observer);
       bool addPermissionChangeObserver (

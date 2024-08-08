@@ -93,47 +93,7 @@ namespace SSC {
       permissionChangeObservers(),
       notificationResponseObservers(),
       notificationPresentedObservers()
-  {
-    #if SOCKET_RUNTIME_PLATFORM_APPLE
-      if (!core->options.features.useNotifications) return;
-      auto notificationCenter = [UNUserNotificationCenter currentNotificationCenter];
-
-      this->userNotificationCenterDelegate = [SSCUserNotificationCenterDelegate new];
-      this->userNotificationCenterDelegate.notifications = this;
-
-      if (!notificationCenter.delegate) {
-        notificationCenter.delegate = this->userNotificationCenterDelegate;
-      }
-
-      [notificationCenter getNotificationSettingsWithCompletionHandler: ^(UNNotificationSettings *settings) {
-        this->currentUserNotificationAuthorizationStatus = settings.authorizationStatus;
-        this->userNotificationCenterPollTimer = [NSTimer timerWithTimeInterval: 2 repeats: YES block: ^(NSTimer* timer) {
-          // look for authorization status changes
-          [notificationCenter getNotificationSettingsWithCompletionHandler: ^(UNNotificationSettings *settings) {
-            JSON::Object json;
-            if (this->currentUserNotificationAuthorizationStatus != settings.authorizationStatus) {
-              this->currentUserNotificationAuthorizationStatus = settings.authorizationStatus;
-
-              if (settings.authorizationStatus == UNAuthorizationStatusDenied) {
-                json = JSON::Object::Entries {{"state", "denied"}};
-              } else if (settings.authorizationStatus == UNAuthorizationStatusNotDetermined) {
-                json = JSON::Object::Entries {{"state", "prompt"}};
-              } else {
-                json = JSON::Object::Entries {{"state", "granted"}};
-              }
-
-              this->permissionChangeObservers.dispatch(json);
-            }
-          }];
-        }];
-
-        [NSRunLoop.mainRunLoop
-          addTimer: this->userNotificationCenterPollTimer
-           forMode: NSDefaultRunLoopMode
-        ];
-      }];
-    #endif
-  }
+  {}
 
   CoreNotifications::~CoreNotifications () {
     #if SOCKET_RUNTIME_PLATFORM_APPLE
@@ -154,6 +114,59 @@ namespace SSC {
       this->userNotificationCenterDelegate = nullptr;
       this->userNotificationCenterPollTimer = nullptr;
     #endif
+  }
+
+  void CoreNotifications::start () {
+    if (!this->core->options.features.useNotifications) return;
+    this->stop();
+   #if SOCKET_RUNTIME_PLATFORM_APPLE
+    auto notificationCenter = [UNUserNotificationCenter currentNotificationCenter];
+
+    this->userNotificationCenterDelegate = [SSCUserNotificationCenterDelegate new];
+    this->userNotificationCenterDelegate.notifications = this;
+
+    if (!notificationCenter.delegate) {
+      notificationCenter.delegate = this->userNotificationCenterDelegate;
+    }
+
+    [notificationCenter getNotificationSettingsWithCompletionHandler: ^(UNNotificationSettings *settings) {
+      this->currentUserNotificationAuthorizationStatus = settings.authorizationStatus;
+      this->userNotificationCenterPollTimer = [NSTimer timerWithTimeInterval: 2 repeats: YES block: ^(NSTimer* timer) {
+        // look for authorization status changes
+        [notificationCenter getNotificationSettingsWithCompletionHandler: ^(UNNotificationSettings *settings) {
+          JSON::Object json;
+          if (this->currentUserNotificationAuthorizationStatus != settings.authorizationStatus) {
+            this->currentUserNotificationAuthorizationStatus = settings.authorizationStatus;
+
+            if (settings.authorizationStatus == UNAuthorizationStatusDenied) {
+              json = JSON::Object::Entries {{"state", "denied"}};
+            } else if (settings.authorizationStatus == UNAuthorizationStatusNotDetermined) {
+              json = JSON::Object::Entries {{"state", "prompt"}};
+            } else {
+              json = JSON::Object::Entries {{"state", "granted"}};
+            }
+
+            this->permissionChangeObservers.dispatch(json);
+          }
+        }];
+      }];
+
+      [NSRunLoop.mainRunLoop
+        addTimer: this->userNotificationCenterPollTimer
+          forMode: NSDefaultRunLoopMode
+      ];
+    }];
+  #endif
+  }
+
+  void CoreNotifications::stop () {
+    if (!this->core->options.features.useNotifications) return;
+   #if SOCKET_RUNTIME_PLATFORM_APPLE
+    if (this->userNotificationCenterPollTimer) {
+      [this->userNotificationCenterPollTimer invalidate];
+      this->userNotificationCenterPollTimer = nullptr;
+    }
+   #endif
   }
 
   bool CoreNotifications::addPermissionChangeObserver (
@@ -208,7 +221,7 @@ namespace SSC {
 
     NSError* error = nullptr;
 
-    auto __block id = options.id;
+    auto id = options.id;
 
     if (options.tag.size() > 0) {
       userInfo[@"tag"]  = @(options.tag.c_str());
@@ -364,6 +377,7 @@ namespace SSC {
       trigger: nil
     ];
 
+    auto cb = callback;
     [notificationCenter addNotificationRequest: request withCompletionHandler: ^(NSError* error) {
       if (error != nullptr) {
         const auto message = String(
@@ -373,7 +387,7 @@ namespace SSC {
         );
 
         this->core->dispatchEventLoop([=] () {
-          callback(ShowResult { message });
+          cb(ShowResult { message });
         });
       #if !__has_feature(objc_arc)
         [content release];
@@ -382,7 +396,7 @@ namespace SSC {
       }
 
       this->core->dispatchEventLoop([=] () {
-        callback(ShowResult { "", options.id });
+        cb(ShowResult { "", id });
       });
     }];
 
