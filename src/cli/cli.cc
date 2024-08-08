@@ -71,8 +71,6 @@ Process* buildAfterScriptProcess = nullptr;
 FileSystemWatcher* sourcesWatcher = nullptr;
 Thread* sourcesWatcherSupportThread = nullptr;
 
-Mutex signalHandlerMutex;
-
 Path targetPath;
 String settingsSource = "";
 Map settings;
@@ -85,16 +83,8 @@ bool flagVerboseMode = true;
 bool flagQuietMode = false;
 Map defaultTemplateAttrs;
 
-#if defined(__APPLE__)
-std::atomic<bool> checkLogStore = true;
-static dispatch_queue_t queue = dispatch_queue_create(
-  "socket.runtime.cli.queue",
-  dispatch_queue_attr_make_with_qos_class(
-    DISPATCH_QUEUE_CONCURRENT,
-    QOS_CLASS_USER_INITIATED,
-    -1
-  )
-);
+#if SOCKET_RUNTIME_PLATFORM_APPLE
+Atomic<bool> checkLogStore = true;
 #endif
 
 void log (const String s) {
@@ -774,8 +764,6 @@ void signalHandler (int signum) {
     }
   #endif
 
-  Lock lock(signalHandlerMutex);
-
   #if !SOCKET_RUNTIME_PLATFORM_WINDOWS
     if (appPid > 0) {
       kill(appPid, signum);
@@ -788,12 +776,6 @@ void signalHandler (int signum) {
   }
 
   appPid = 0;
-
-  if (sourcesWatcher != nullptr) {
-    sourcesWatcher->stop();
-    delete sourcesWatcher;
-    sourcesWatcher = nullptr;
-  }
 
   if (sourcesWatcherSupportThread != nullptr) {
     if (sourcesWatcherSupportThread->joinable()) {
