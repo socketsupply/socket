@@ -567,7 +567,7 @@ export class Peer {
 
       await this.mcast(packet)
       this._onDebug(`-> RESEND (packetId=${packetId})`)
-      if (this.onState) this.onState(this.getState())
+      if (this.onState) this.onState()
     }
   }
 
@@ -946,7 +946,7 @@ export class Peer {
     })
 
     this._onDebug(`-> JOIN (clusterId=${cid.slice(0, 6)}, subclusterId=${scid.slice(0, 6)}, clock=${packet.clock}/${this.clock})`)
-    if (this.onState) this.onState(this.getState())
+    if (this.onState) this.onState()
 
     this.mcast(packet)
     this.gate.set(packet.packetId.toString('hex'), 1)
