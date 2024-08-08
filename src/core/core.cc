@@ -31,6 +31,8 @@ namespace SSC {
       return;
     }
 
+    this->runEventLoop();
+
     if (this->options.features.useUDP) {
       this->udp.resumeAllSockets();
     }
@@ -43,7 +45,10 @@ namespace SSC {
       this->conduit.start();
     }
 
-    this->runEventLoop();
+    if (options.features.useNotifications) {
+      this->notifications.start();
+    }
+
     this->isPaused = false;
   }
 
@@ -51,6 +56,8 @@ namespace SSC {
     if (this->isPaused) {
       return;
     }
+
+    this->pauseEventLoop();
 
     if (this->options.features.useUDP) {
       this->udp.pauseAllSockets();
@@ -64,7 +71,10 @@ namespace SSC {
       this->conduit.stop();
     }
 
-    this->pauseEventLoop();
+    if (options.features.useNotifications) {
+      this->notifications.stop();
+    }
+
     this->isPaused = true;
   }
 
