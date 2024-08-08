@@ -14,6 +14,10 @@ elif (( TARGET_IPHONE_SIMULATOR )); then
   platform="iPhoneSimulator"
 fi
 
+if (( $# == 0 )); then
+  do_clean_env_only=1
+fi
+
 while (( $# > 0 )); do
   declare arg="$1"; shift
   if [[ "$arg" = "--arch" ]]; then
@@ -23,6 +27,7 @@ while (( $# > 0 )); do
 
   if [[ "$arg" = "--full" ]]; then
     do_full_clean=1
+    do_clean_env_only=1
     continue
   elif [[ "$arg" = "--platform" ]]; then
     if [[ "$1" = "ios" ]] || [[ "$1" = "iPhoneOS" ]] || [[ "$1" = "iphoneos" ]]; then
