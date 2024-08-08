@@ -146,9 +146,6 @@ if [[ "$host" != "Win32" ]]; then
   fi
 fi
 
-quiet command -v cmake
-die $? "not ok - missing cmake, \"$(advice 'cmake')\""
-
 if [[ "$(uname -s)" != *"_NT"* ]]; then
   quiet command -v make
   die $? "not ok - missing build tools, try \"$(advice "make")\""
@@ -863,6 +860,9 @@ function _compile_llama {
 
   if [ "$platform" == "desktop" ]; then
     if [[ "$host" != "Win32" ]]; then
+      quiet command -v cmake
+      die $? "not ok - missing cmake, \"$(advice 'cmake')\""
+
       quiet cmake -S . -B build -DCMAKE_INSTALL_PREFIX="$BUILD_DIR/$target-$platform" ${cmake_args[@]}
       die $? "not ok - libllama.a (desktop)"
 
@@ -877,6 +877,8 @@ function _compile_llama {
           config="Debug"
         fi
         cd "$STAGING_DIR/build/" || exit 1
+        quiet command -v cmake
+        die $? "not ok - missing cmake, \"$(advice 'cmake')\""
         quiet cmake -S .. -B . ${cmake_args[@]}
         quiet cmake --build . --config $config
         mkdir -p "$BUILD_DIR/$target-$platform/lib$d"
@@ -985,6 +987,8 @@ function _compile_libuv {
           config="Debug"
         fi
         cd "$STAGING_DIR/build/" || exit 1
+        quiet command -v cmake
+        die $? "not ok - missing cmake, \"$(advice 'cmake')\""
         quiet cmake .. -DBUILD_TESTING=OFF -DLIBUV_BUILD_SHARED=OFF
         cd "$STAGING_DIR" || exit 1
         quiet cmake --build "$STAGING_DIR/build/" --config $config
