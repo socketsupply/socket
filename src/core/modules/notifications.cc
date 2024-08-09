@@ -285,36 +285,39 @@ namespace SSC {
     } else {
       // using an asset from the resources directory will require a code signed application
       const auto path = FileResource::getResourcePath(String("icon.png"));
-      const auto iconURL = [NSURL fileURLWithPath: @(path.string().c_str())];
-      const auto types = [UTType
-        typesWithTag: iconURL.pathExtension
-        tagClass: UTTagClassFilenameExtension
-        conformingToType: nullptr
-      ];
 
-      auto options = [NSMutableDictionary dictionary];
-      auto attachment = [UNNotificationAttachment
-        attachmentWithIdentifier: @("")
-        URL: iconURL
-        options: options
-        error: &error
-      ];
+      if (FileResource(path).exists()) {
+        const auto iconURL = [NSURL fileURLWithPath: @(path.string().c_str())];
+        const auto types = [UTType
+          typesWithTag: iconURL.pathExtension
+          tagClass: UTTagClassFilenameExtension
+          conformingToType: nullptr
+        ];
 
-      if (error != nullptr) {
-        auto message = String(
-          error.localizedDescription.UTF8String != nullptr
-            ? error.localizedDescription.UTF8String
-            : "An unknown error occurred"
-        );
+        auto options = [NSMutableDictionary dictionary];
+        auto attachment = [UNNotificationAttachment
+          attachmentWithIdentifier: @("")
+          URL: iconURL
+          options: options
+          error: &error
+        ];
 
-        callback(ShowResult { message });
-      #if !__has_feature(objc_arc)
-        [content release];
-      #endif
-        return false;
+        if (error != nullptr) {
+          auto message = String(
+            error.localizedDescription.UTF8String != nullptr
+              ? error.localizedDescription.UTF8String
+              : "An unknown error occurred"
+          );
+
+          callback(ShowResult { message });
+        #if !__has_feature(objc_arc)
+          [content release];
+        #endif
+          return false;
+        }
+
+        [attachments addObject: attachment];
       }
-
-      [attachments addObject: attachment];
     }
 
     if (options.image.size() > 0) {
