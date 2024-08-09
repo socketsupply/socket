@@ -273,6 +273,7 @@ namespace SSC {
     ];
 
     preferences.javaScriptCanOpenWindowsAutomatically = YES;
+    preferences.elementFullscreenEnabled = userConfig["permissions_allow_fullscreen"] != "false";
 
     @try {
       if (userConfig["permissions_allow_fullscreen"] == "false") {
@@ -406,6 +407,7 @@ namespace SSC {
     ];
 
     this->webview.scrollView.delegate = this->windowDelegate;
+    this->webview.scrollView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
 
     this->webview.autoresizingMask = (
       UIViewAutoresizingFlexibleWidth |
