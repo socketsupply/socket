@@ -26,18 +26,20 @@ int lastY = 0;
 
 - (void) viewDidChangeEffectiveAppearance {
   [super viewDidChangeEffectiveAppearance];
+  const auto window = (Window*) objc_getAssociatedObject(self, "window");
 
-  if ([self.window.effectiveAppearance.name containsString: @"Dark"]) {
-    [self.window setBackgroundColor: [NSColor colorWithCalibratedWhite: 0.1 alpha: 1.0]]; // Dark mode color
+  if ([window->window.effectiveAppearance.name containsString: @"Dark"]) {
+    [window->window setBackgroundColor: [NSColor colorWithCalibratedWhite: 0.1 alpha: 1.0]]; // Dark mode color
   } else {
-    [self.window setBackgroundColor: [NSColor colorWithCalibratedWhite: 1.0 alpha: 1.0]]; // Light mode color
+    [window->window setBackgroundColor: [NSColor colorWithCalibratedWhite: 1.0 alpha: 1.0]]; // Light mode color
   }
 }
 
 - (void) resizeSubviewsWithOldSize: (NSSize) oldSize {
   [super resizeSubviewsWithOldSize: oldSize];
 
-  const auto w = reinterpret_cast<SSCWindow*>(self.window);
+  const auto window = (Window*) objc_getAssociatedObject(self, "window");
+  const auto w = reinterpret_cast<SSCWindow*>(window->window);
   const auto viewWidth = w.titleBarView.frame.size.width;
   const auto viewHeight = w.titleBarView.frame.size.height;
   const auto newX = w.windowControlOffsets.x;
@@ -308,16 +310,17 @@ int lastY = 0;
 
 - (void) mouseDragged: (NSEvent*) event {
   NSPoint currentLocation = [self convertPoint:event.locationInWindow fromView:nil];
+  const auto window = (Window*) objc_getAssociatedObject(self, "window");
 
   if (self.shouldDrag) {
     CGFloat deltaX = currentLocation.x - self.initialWindowPos.x;
     CGFloat deltaY = currentLocation.y - self.initialWindowPos.y;
 
-    NSRect frame = self.window.frame;
+    NSRect frame = window->window.frame;
     frame.origin.x += deltaX;
     frame.origin.y -= deltaY;
 
-    [self.window setFrame:frame display:YES];
+    [window->window setFrame:frame display:YES];
   }
 
   [super mouseDragged:event];
