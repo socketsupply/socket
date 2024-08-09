@@ -622,6 +622,7 @@ export * from '{{url}}'
 
             if (request->method == "GET") {
               if (resource.mimeType() != "text/html") {
+                response.setHeader("cache-control", "public");
                 response.send(resource);
               } else {
                 const auto html = this->client.preload.insertIntoHTML(resource.str(), {
