@@ -703,7 +703,7 @@ export class Notification extends EventTarget {
         })
 
         this.#proxy = proxy
-        this[Symbol.for('Notification.request')] = request
+        this[Symbol.for('socket.runtime.Notification.request')] = request
       } else {
         const request = ipc.request('notification.show', {
           body: this.body,
@@ -716,7 +716,7 @@ export class Notification extends EventTarget {
           silent: this.silent
         })
 
-        this[Symbol.for('Notification.request')] = request
+        this[Symbol.for('socket.runtime.Notification.request')] = request
       }
 
       state.pending.set(this.id, this)
@@ -747,7 +747,7 @@ export class Notification extends EventTarget {
       })
 
       // propagate error to caller
-      this[Symbol.for('Notification.request')].then((result) => {
+      this[Symbol.for('socket.runtime.Notification.request')].then((result) => {
         if (result?.err) {
           // @ts-ignore
           state.pending.delete(this.id, this)
