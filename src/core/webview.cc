@@ -38,7 +38,7 @@ int lastY = 0;
 - (void) resizeSubviewsWithOldSize: (NSSize) oldSize {
   [super resizeSubviewsWithOldSize: oldSize];
 
-  const auto window = (Window*) objc_getAssociatedObject(self, "window");
+  auto window = (Window*) objc_getAssociatedObject(self, "window");
   const auto w = reinterpret_cast<SSCWindow*>(window->window);
   const auto viewWidth = w.titleBarView.frame.size.width;
   const auto viewHeight = w.titleBarView.frame.size.height;
@@ -77,6 +77,18 @@ int lastY = 0;
 
 - (void) layout {
   [super layout];
+  auto window = (Window*) objc_getAssociatedObject(self, "window");
+
+  #if SOCKET_RUNTIME_PLATFORM_MACOS
+  self.autoresizesSubviews = YES;
+  self.autoresizingMask = (
+    NSViewHeightSizable |
+    NSViewWidthSizable |
+    NSViewMaxXMargin |
+    NSViewMinYMargin
+  );
+  self.translatesAutoresizingMaskIntoConstraints = YES;
+  #endif
 
   NSRect bounds = self.superview.bounds;
 
@@ -90,7 +102,15 @@ int lastY = 0;
 
   if (self.margin > 0.0) {
     CGFloat borderWidth = self.margin;
-    self.frame = NSInsetRect(bounds, borderWidth, borderWidth);
+  #if SOCKET_RUNTIME_PLATFORM_MACOS
+    [window->window
+      setFrame: NSInsetRect(bounds, borderWidth, borderWidth)
+       display: YES
+       animate: NO
+    ];
+  #elif SOCKET_RUNTIME_PLATFORM_IOS
+    window->window.frame = NSInsetRect(bounds, borderWidth, borderWidth);
+  #endif
   }
 }
 
