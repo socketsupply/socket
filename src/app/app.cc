@@ -290,7 +290,10 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
 }
 
 - (void) applicationWillTerminate: (UIApplication*) application {
-  // TODO(@jwerle): what should we do here?
+  dispatch_async(queue, ^{
+    // TODO(@jwerle): what should we do here?
+    self.app->stop();
+  });
 }
 
 - (void) applicationDidBecomeActive: (UIApplication*) application {
@@ -863,7 +866,9 @@ namespace SSC {
     if (this->core != nullptr && !this->paused) {
       this->paused = true;
       this->windowManager.emit("applicationpause");
-      this->core->pause();
+      this->dispatch([this]() {
+        this->core->pause();
+      });
     }
   }
 
@@ -874,9 +879,7 @@ namespace SSC {
 
     this->stopped = true;
     this->windowManager.emit("applicationstop");
-    this->dispatch([this]() {
-      this->pause();
-    });
+    this->pause();
 
     SSC::applicationInstance = nullptr;
 
