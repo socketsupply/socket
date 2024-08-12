@@ -457,7 +457,7 @@ namespace SSC {
     this->bridge.configureWebView(this->webview);
   #if SOCKET_RUNTIME_PLATFORM_MACOS
     // Window style: titled, closable, minimizable
-    uint style = NSWindowStyleMaskTitled;
+    uint style = NSWindowStyleMaskTitled | NSWindowStyleMaskFullSizeContentView;
 
     // Set window to be resizable
     if (options.resizable) {
@@ -827,48 +827,50 @@ namespace SSC {
   }
 
   void Window::eval (const String& source, const EvalCallback& callback) {
-    if (this->webview != nullptr) {
-      [this->webview
-        evaluateJavaScript: @(source.c_str())
-         completionHandler: ^(id result, NSError *error)
-      {
-        if (error) {
-          debug("JavaScriptError: %@", error);
+    App::sharedApplication()->dispatch([=, this]() {
+      if (this->webview != nullptr) {
+        [this->webview
+          evaluateJavaScript: @(source.c_str())
+           completionHandler: ^(id result, NSError *error)
+        {
+          if (error) {
+            debug("JavaScriptError: %@", error);
+
+            if (callback != nullptr) {
+              callback(JSON::Error(error.localizedDescription.UTF8String));
+            }
+
+            return;
+          }
 
           if (callback != nullptr) {
-            callback(JSON::Error(error.localizedDescription.UTF8String));
-          }
-
-          return;
-        }
-
-        if (callback != nullptr) {
-          if ([result isKindOfClass: NSString.class]) {
-            const auto value = String([result UTF8String]);
-            if (value == "null" || value == "undefined") {
-              callback(nullptr);
-            } else if (value == "true") {
-              callback(true);
-            } else if (value == "false") {
-              callback(value);
-            } else {
-              double number = 0.0f;
-
-              try {
-                number = std::stod(value);
-              } catch (...) {
+            if ([result isKindOfClass: NSString.class]) {
+              const auto value = String([result UTF8String]);
+              if (value == "null" || value == "undefined") {
+                callback(nullptr);
+              } else if (value == "true") {
+                callback(true);
+              } else if (value == "false") {
                 callback(value);
-                return;
-              }
+              } else {
+                double number = 0.0f;
 
-              callback(number);
+                try {
+                  number = std::stod(value);
+                } catch (...) {
+                  callback(value);
+                  return;
+                }
+
+                callback(number);
+              }
+            } else if ([result isKindOfClass: NSNumber.class]) {
+              callback([result doubleValue]);
             }
-          } else if ([result isKindOfClass: NSNumber.class]) {
-            callback([result doubleValue]);
           }
-        }
-      }];
-    }
+        }];
+      }
+    });
   }
 
   void Window::setSystemMenuItemEnabled (bool enabled, int barPos, int menuPos) {
