@@ -852,16 +852,18 @@ namespace SSC {
   void App::resume () {
     if (this->core != nullptr && this->paused) {
       this->paused = false;
-      this->core->resume();
       this->windowManager.emit("applicationresume");
+      this->dispatch([this]() {
+        this->core->resume();
+      });
     }
   }
 
   void App::pause () {
     if (this->core != nullptr && !this->paused) {
       this->paused = true;
-      this->core->pause();
       this->windowManager.emit("applicationpause");
+      this->core->pause();
     }
   }
 
@@ -872,7 +874,9 @@ namespace SSC {
 
     this->stopped = true;
     this->windowManager.emit("applicationstop");
-    this->pause();
+    this->dispatch([this]() {
+      this->pause();
+    });
 
     SSC::applicationInstance = nullptr;
 
