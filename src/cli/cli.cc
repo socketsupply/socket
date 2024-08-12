@@ -592,7 +592,7 @@ Vector<Path> handleBuildPhaseForCopyMappedFiles (
 
     if (flagVerboseMode) {
       debug(
-        "[build.copy-map] %s = %s",
+        "copy %s ~> %s",
         fs::relative(src, targetPath).c_str(),
         fs::relative(dst, targetPath).c_str()
       );
@@ -4047,7 +4047,7 @@ int main (const int argc, const char* argv[]) {
       auto schemeName = (settings["build_name"] + ".xcscheme");
       auto pathToProject = paths.platformSpecificOutputPath / projectName;
       auto pathToScheme = pathToProject / "xcshareddata" / "xcschemes";
-      auto pathToProfile = targetPath / settings["ios_provisioning_profile"];
+      auto pathToProfile = fs::absolute(targetPath / settings["ios_provisioning_profile"]);
 
       fs::create_directories(pathToProject);
       fs::create_directories(pathToScheme);
