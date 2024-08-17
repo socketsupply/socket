@@ -166,7 +166,9 @@ async function startReading (socket, callback) {
       const opts = {
         route: 'udp.readStart'
       }
-      socket.conduit.send(opts, Buffer.from(''))
+      if (!socket.conduit.send(opts, Buffer.from(''))) {
+        console.warn('socket:dgram: Failed to send conduit payload')
+      }
       result = { data: true }
     } else {
       result = await ipc.send('udp.readStart', {
@@ -720,13 +722,16 @@ export class Socket extends EventEmitter {
    */
   [gc.finalizer] (options) {
     return {
-      args: [this.id, options],
-      async handle (id) {
+      args: [this.id, this.conduit, options],
+      async handle (id, conduit) {
         if (process.env.DEBUG) {
           console.warn('Closing Socket on garbage collection')
         }
 
         await ipc.request('udp.close', { id }, options)
+        if (conduit) {
+          conduit.close()
+        }
       }
     }
   }
@@ -811,7 +816,7 @@ export class Socket extends EventEmitter {
           dc.channel('message').publish({ socket: this, buffer: message, info })
         })
 
-        this.conduit.onopen = () => {
+        const onopen = () => {
           startReading(this, (err) => {
             this.#resource.runInAsyncScope(() => {
               if (err) {
@@ -822,6 +827,12 @@ export class Socket extends EventEmitter {
               }
             })
           })
+        }
+
+        if (!this.conduit.isActive) {
+          this.conduit.addEventListener('open', onopen, { once: true })
+        } else {
+          onopen()
         }
 
         return
@@ -1098,6 +1109,10 @@ export class Socket extends EventEmitter {
         })
 
         return
+      }
+
+      if (this.conduit) {
+        this.conduit.close()
       }
 
       this.#resource.runInAsyncScope(() => {
