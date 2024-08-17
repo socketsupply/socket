@@ -291,7 +291,7 @@ export * from '{{url}}'
   }
 
   bool Bridge::evaluateJavaScript (const String& source) {
-    if (this->core->shuttingDown) {
+    if (this->core->isShuttingDown) {
       return false;
     }
 
@@ -304,7 +304,7 @@ export * from '{{url}}'
   }
 
   bool Bridge::dispatch (const DispatchCallback& callback) {
-    if (!this->core || this->core->shuttingDown) {
+    if (!this->core || this->core->isShuttingDown) {
       return false;
     }
 
@@ -317,7 +317,7 @@ export * from '{{url}}'
   }
 
   bool Bridge::navigate (const String& url) {
-    if (!this->core || this->core->shuttingDown) {
+    if (!this->core || this->core->isShuttingDown) {
       return false;
     }
 
@@ -351,7 +351,7 @@ export * from '{{url}}'
     const String& data,
     const Post& post
   ) {
-    if (this->core->shuttingDown) {
+    if (this->core->isShuttingDown) {
       return false;
     }
 
@@ -375,7 +375,7 @@ export * from '{{url}}'
   }
 
   bool Bridge::emit (const String& name, const String& data) {
-    if (this->core->shuttingDown) {
+    if (this->core->isShuttingDown) {
       return false;
     }
 
