@@ -129,9 +129,6 @@ namespace SSC {
       Posts posts;
 
       Mutex mutex;
-      Mutex loopMutex;
-      Mutex postsMutex;
-      Mutex timersMutex;
 
       Atomic<bool> didLoopInit = false;
       Atomic<bool> didTimersInit = false;
