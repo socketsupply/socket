@@ -401,6 +401,13 @@ open class AppActivity : WindowManagerActivity() {
     if (imageURL.length > 0) {
       val icon = Icon.createWithContentUri(imageURL)
       builder.setLargeIcon(icon)
+    } else {
+      val icon = IconCompat.createWithResource(
+        this,
+        R.mipmap.ic_launcher
+      )
+
+      builder.setSmallIcon(icon)
     }
 
     if (category.length > 0) {
