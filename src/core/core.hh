@@ -133,8 +133,10 @@ namespace SSC {
       Atomic<bool> didLoopInit = false;
       Atomic<bool> didTimersInit = false;
       Atomic<bool> didTimersStart = false;
+
+      Atomic<bool> isPollingEventLoop = false;
+      Atomic<bool> isShuttingDown = false;
       Atomic<bool> isLoopRunning = false;
-      Atomic<bool> shuttingDown = false;
       Atomic<bool> isPaused = true;
 
       uv_loop_t eventLoop;
@@ -154,6 +156,11 @@ namespace SSC {
         );
       #else
         Thread *eventLoopThread = nullptr;
+      #endif
+
+      #if SOCKET_RUNTIME_PLATFORM_LINUX
+        Atomic<bool> didInitGSource = false;
+        GSource* gsource = nullptr;
       #endif
 
       Core (const Options& options) :
@@ -192,6 +199,7 @@ namespace SSC {
       void shutdown ();
       void resume ();
       void pause ();
+      void stop ();
 
       int logSeq{0};
 
