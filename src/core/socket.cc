@@ -441,15 +441,12 @@ namespace SSC {
   }
 
   int Socket::recvstop () {
-    int err = 0;
-
     if (this->hasState(SOCKET_STATE_UDP_RECV_STARTED)) {
       this->removeState(SOCKET_STATE_UDP_RECV_STARTED);
-      Lock lock(this->core->loopMutex);
-      err = uv_udp_recv_stop((uv_udp_t *) &this->handle);
+      return uv_udp_recv_stop((uv_udp_t *) &this->handle);
     }
 
-    return err;
+    return 0;
   }
 
   int Socket::resume () {
@@ -485,7 +482,11 @@ namespace SSC {
       this->addState(SOCKET_STATE_UDP_PAUSED);
       if (this->isBound()) {
         Lock lock(this->mutex);
-        uv_close((uv_handle_t *) &this->handle, nullptr);
+        if (
+          !uv_is_closing(reinterpret_cast<uv_handle_t*>(&this->handle))
+        ) {
+          uv_close((uv_handle_t *) &this->handle, nullptr);
+        }
       } else if (this->isConnected()) {
         // TODO
       }
@@ -499,6 +500,8 @@ namespace SSC {
   }
 
   void Socket::close (Function<void()> onclose) {
+    Lock lock(this->mutex);
+
     if (this->isClosed()) {
       this->core->udp.removeSocket(this->id);
       if (onclose != nullptr) {
@@ -515,12 +518,10 @@ namespace SSC {
     }
 
     if (onclose != nullptr) {
-      Lock lock(this->mutex);
       this->onclose.push_back(onclose);
     }
 
     if (this->type == SOCKET_TYPE_UDP) {
-      Lock lock(this->mutex);
       // reset state and set to CLOSED
       uv_close((uv_handle_t*) &this->handle, [](uv_handle_t *handle) {
         auto socket = (Socket *) handle->data;
