@@ -201,7 +201,7 @@ namespace SSC {
 
       this->clients.emplace(socketId, client);
 
-      std::cout << "added client " << this->clients.size() << std::endl;
+      // std::cout << "added client " << this->clients.size() << std::endl;
     } while (0);
 
     // debug("Received key: %s", keyHeader.c_str());

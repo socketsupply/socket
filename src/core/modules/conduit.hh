@@ -71,8 +71,8 @@ namespace SSC {
           uv_stream_t* stream = nullptr;
 
           // websocket frame buffer state
-          unsigned char *frameBuffer;
-          size_t frameBufferSize;
+          unsigned char *frameBuffer = nullptr;
+          size_t frameBufferSize = 0;
 
           CoreConduit* conduit = nullptr;
 
