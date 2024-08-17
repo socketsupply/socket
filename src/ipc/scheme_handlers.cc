@@ -97,7 +97,6 @@ using Task = id<WKURLSchemeTask>;
     auto response = IPC::SchemeHandlers::Response(request, 404);
     response.finish();
     [self finalizeTask: task];
-    return;
   }
 }
 @end
@@ -366,7 +365,6 @@ namespace SSC::IPC {
   }
 
   SchemeHandlers::~SchemeHandlers () {
-    Lock lock(this->mutex);
     for (auto& entry : this->activeRequests) {
       entry.second->handlers = nullptr;
     }
@@ -509,7 +507,6 @@ namespace SSC::IPC {
     auto span = request->tracer.span("handler");
 
     this->bridge->dispatch([=, this] () mutable {
-      Lock lock(this->mutex);
       if (request != nullptr && request->isActive() && !request->isCancelled()) {
         handler(request, this->bridge, &request->callbacks, [=, this](auto& response) mutable {
           // make sure the response was finished before
@@ -1220,8 +1217,6 @@ namespace SSC::IPC {
     size_t size,
     SharedPointer<char[]> bytes
   ) {
-    Lock lock(this->mutex);
-
     if (
       !this->handlers->isRequestActive(this->id) ||
       this->handlers->isRequestCancelled(this->id)
