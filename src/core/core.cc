@@ -2,6 +2,14 @@
 #include "modules/fs.hh"
 
 namespace SSC {
+#if SOCKET_RUNTIME_PLATFORM_LINUX
+  struct UVSource {
+    GSource base; // should ALWAYS be first member
+    gpointer tag;
+    Core *core;
+  };
+#endif
+
   Post Core::getPost (uint64_t id) {
     if (this->posts.find(id) == this->posts.end()) {
       return Post{};
@@ -11,19 +19,19 @@ namespace SSC {
   }
 
   void Core::shutdown () {
-    if (this->shuttingDown) {
+    if (this->isShuttingDown || this->isPaused) {
       return;
     }
 
+    this->isShuttingDown = true;
     this->pause();
-    this->shuttingDown = true;
 
   #if !SOCKET_RUNTIME_PLATFORM_IOS
     this->childProcess.shutdown();
   #endif
 
     this->stopEventLoop();
-    this->shuttingDown = false;
+    this->isShuttingDown = false;
   }
 
   void Core::resume () {
@@ -31,6 +39,7 @@ namespace SSC {
       return;
     }
 
+    this->isPaused = false;
     this->runEventLoop();
 
     if (this->options.features.useUDP) {
@@ -48,14 +57,14 @@ namespace SSC {
     if (options.features.useNotifications) {
       this->notifications.start();
     }
-
-    this->isPaused = false;
   }
 
   void Core::pause () {
     if (this->isPaused) {
       return;
     }
+
+    this->isPaused = true;
 
     if (this->options.features.useUDP) {
       this->udp.pauseAllSockets();
@@ -73,8 +82,26 @@ namespace SSC {
       this->notifications.stop();
     }
 
-    this->isPaused = true;
+  #if !SOCKET_RUNTIME_PLATFORM_ANDROID
     this->pauseEventLoop();
+  #endif
+  }
+
+  void Core::stop () {
+    Lock lock(this->mutex);
+    this->stopEventLoop();
+  #if SOCKET_RUNTIME_PLATFORM_LINUX
+    if (this->gsource) {
+      const auto id = g_source_get_id(this->gsource);
+      if (id > 0) {
+        g_source_remove(id);
+      }
+
+      g_object_unref(this->gsource);
+      this->gsource = nullptr;
+      this->didInitGSource = false;
+    }
+  #endif
   }
 
   bool Core::hasPost (uint64_t id) {
@@ -185,13 +212,7 @@ namespace SSC {
   }
 
 #if SOCKET_RUNTIME_PLATFORM_LINUX
-  struct UVSource {
-    GSource base; // should ALWAYS be first member
-    gpointer tag;
-    Core *core;
-  };
-
-    // @see https://api.gtkd.org/glib.c.types.GSourceFuncs.html
+  // @see https://api.gtkd.org/glib.c.types.GSourceFuncs.html
   static GSourceFuncs loopSourceFunctions = {
     .prepare = [](GSource *source, gint *timeout) -> gboolean {
       auto core = reinterpret_cast<UVSource *>(source)->core;
@@ -270,64 +291,96 @@ namespace SSC {
     });
 
   #if SOCKET_RUNTIME_PLATFORM_LINUX
-    if (!this->options.dedicatedLoopThread) {
-      GSource *source = g_source_new(&loopSourceFunctions, sizeof(UVSource));
-      UVSource *uvSource = (UVSource *) source;
-      uvSource->core = this;
-      uvSource->tag = g_source_add_unix_fd(
-        source,
-        uv_backend_fd(&eventLoop),
+    if (!this->options.dedicatedLoopThread && !this->didInitGSource) {
+      if (this->gsource) {
+        const auto id = g_source_get_id(this->gsource);
+        if (id > 0) {
+          g_source_remove(id);
+        }
+
+        g_object_unref(this->gsource);
+        this->gsource = nullptr;
+      }
+
+      this->gsource = g_source_new(&loopSourceFunctions, sizeof(UVSource));
+
+      UVSource *uvsource = reinterpret_cast<UVSource*>(gsource);
+      uvsource->core = this;
+      uvsource->tag = g_source_add_unix_fd(
+        this->gsource,
+        uv_backend_fd(&this->eventLoop),
         (GIOCondition) (G_IO_IN | G_IO_OUT | G_IO_ERR)
       );
 
-      g_source_set_priority(source, G_PRIORITY_HIGH);
-      g_source_attach(source, nullptr);
+      g_source_set_priority(this->gsource, G_PRIORITY_HIGH);
+      g_source_attach(this->gsource, nullptr);
+      this->didInitGSource = true;
     }
   #endif
   }
 
   uv_loop_t* Core::getEventLoop () {
-    initEventLoop();
-    return &eventLoop;
+    this->initEventLoop();
+    return &this->eventLoop;
   }
 
   int Core::getEventLoopTimeout () {
-    auto loop = getEventLoop();
+    auto loop = this->getEventLoop();
     uv_update_time(loop);
     return uv_backend_timeout(loop);
   }
 
   bool Core::isLoopAlive () {
-    return uv_loop_alive(getEventLoop());
+    return uv_loop_alive(this->getEventLoop());
   }
 
   void Core::pauseEventLoop() {
     // wait for drain of event loop dispatch queue
     while (true) {
       Lock lock(this->mutex);
-      if (eventLoopDispatchQueue.size() == 0) {
+      if (this->eventLoopDispatchQueue.size() == 0) {
         break;
       }
     }
 
-    isLoopRunning = false;
+    this->isLoopRunning = false;
+    do {
+      Lock lock(this->mutex);
+      uv_stop(&this->eventLoop);
+    } while (0);
 
-    uv_stop(&eventLoop);
+  #if !SOCKET_RUNTIME_PLATFORM_APPLE
+    #if SOCKET_RUNTIME_PLATFORM_LINUX
+      if (this->options.dedicatedLoopThread) {
+    #endif
+      if (this->eventLoopThread != nullptr) {
+        if (this->isPollingEventLoop && eventLoopThread->joinable()) {
+          this->eventLoopThread->join();
+        }
+
+        delete this->eventLoopThread;
+        this->eventLoopThread = nullptr;
+      }
+    #if SOCKET_RUNTIME_PLATFORM_LINUX
+      }
+    #endif
+  #endif
   }
 
   void Core::stopEventLoop() {
-    if (isLoopRunning) {
+    if (this->isLoopRunning) {
       return;
     }
 
-    isLoopRunning = false;
+    this->isLoopRunning = false;
+    Lock lock(this->mutex);
     uv_stop(&eventLoop);
   #if !SOCKET_RUNTIME_PLATFORM_APPLE
     #if SOCKET_RUNTIME_PLATFORM_LINUX
       if (this->options.dedicatedLoopThread) {
     #endif
       if (eventLoopThread != nullptr) {
-        if (eventLoopThread->joinable()) {
+        if (this->isPollingEventLoop && eventLoopThread->joinable()) {
           eventLoopThread->join();
         }
 
@@ -344,76 +397,89 @@ namespace SSC {
 
   void Core::sleepEventLoop (int64_t ms) {
     if (ms > 0) {
-      auto timeout = getEventLoopTimeout();
+      auto timeout = this->getEventLoopTimeout();
       ms = timeout > ms ? timeout : ms;
       msleep(ms);
     }
   }
 
   void Core::sleepEventLoop () {
-    sleepEventLoop(getEventLoopTimeout());
+    this->sleepEventLoop(this->getEventLoopTimeout());
   }
 
   void Core::signalDispatchEventLoop () {
-    initEventLoop();
-    runEventLoop();
     Lock lock(this->mutex);
-    uv_async_send(&eventLoopAsync);
+    this->initEventLoop();
+    this->runEventLoop();
+    uv_async_send(&this->eventLoopAsync);
   }
 
   void Core::dispatchEventLoop (EventLoopDispatchCallback callback) {
     {
       Lock lock(this->mutex);
-      eventLoopDispatchQueue.push(callback);
+      this->eventLoopDispatchQueue.push(callback);
     }
 
-    signalDispatchEventLoop();
+    this->signalDispatchEventLoop();
   }
 
-  void pollEventLoop (Core *core) {
+  static void pollEventLoop (Core *core) {
+    core->isPollingEventLoop = true;
     auto loop = core->getEventLoop();
 
     while (core->isLoopRunning) {
+      core->sleepEventLoop(EVENT_LOOP_POLL_TIMEOUT);
+
       do {
-        while (uv_run(loop, UV_RUN_DEFAULT) != 0);
+        uv_run(loop, UV_RUN_DEFAULT);
       } while (core->isLoopRunning && core->isLoopAlive());
     }
 
+    core->isPollingEventLoop = false;
     core->isLoopRunning = false;
   }
 
   void Core::runEventLoop () {
-    if (isLoopRunning) {
+    if (
+      this->isShuttingDown ||
+      this->isLoopRunning ||
+      this->isPaused
+    ) {
       return;
     }
 
-    isLoopRunning = true;
+    this->isLoopRunning = true;
 
-    initEventLoop();
-    dispatchEventLoop([=, this]() {
-      initTimers();
-      startTimers();
+    this->initEventLoop();
+    this->dispatchEventLoop([=, this]() {
+      this->initTimers();
+      this->startTimers();
     });
 
   #if SOCKET_RUNTIME_PLATFORM_APPLE
     Lock lock(this->mutex);
-    dispatch_async(eventLoopQueue, ^{ pollEventLoop(this); });
+    dispatch_async(this->eventLoopQueue, ^{
+      pollEventLoop(this);
+    });
   #else
   #if SOCKET_RUNTIME_PLATFORM_LINUX
     if (this->options.dedicatedLoopThread) {
   #endif
     Lock lock(this->mutex);
     // clean up old thread if still running
-    if (eventLoopThread != nullptr) {
-      if (eventLoopThread->joinable()) {
-        eventLoopThread->join();
+    if (this->eventLoopThread != nullptr) {
+      if (!this->isPollingEventLoop && this->eventLoopThread->joinable()) {
+        this->eventLoopThread->join();
       }
 
-      delete eventLoopThread;
-      eventLoopThread = nullptr;
+      delete this->eventLoopThread;
+      this->eventLoopThread = nullptr;
     }
 
-    eventLoopThread = new std::thread(&pollEventLoop, this);
+    this->eventLoopThread = new std::thread(
+      &pollEventLoop,
+      this
+    );
   #if SOCKET_RUNTIME_PLATFORM_LINUX
     }
   #endif
@@ -515,15 +581,15 @@ namespace SSC {
   };
 
   void Core::initTimers () {
-    if (didTimersInit) {
+    if (this->didTimersInit) {
       return;
     }
 
     Lock lock(this->mutex);
 
-    auto loop = getEventLoop();
+    auto loop = this->getEventLoop();
 
-    Vector<Timer *> timersToInit = {
+    Vector<Timer*> timersToInit = {
       &releaseStrongReferenceDescriptors,
       &releaseStrongReferenceSharedPointerBuffers
     };
@@ -533,13 +599,13 @@ namespace SSC {
       timer->handle.data = (void *) this;
     }
 
-    didTimersInit = true;
+    this->didTimersInit = true;
   }
 
   void Core::startTimers () {
     Lock lock(this->mutex);
 
-    Vector<Timer *> timersToStart = {
+    Vector<Timer*> timersToStart = {
       &releaseStrongReferenceDescriptors,
       &releaseStrongReferenceSharedPointerBuffers
     };
@@ -561,17 +627,17 @@ namespace SSC {
       }
     }
 
-    didTimersStart = true;
+    this->didTimersStart = true;
   }
 
   void Core::stopTimers () {
-    if (didTimersStart == false) {
+    if (this->didTimersStart == false) {
       return;
     }
 
     Lock lock(this->mutex);
 
-    Vector<Timer *> timersToStop = {
+    Vector<Timer*> timersToStop = {
       &releaseStrongReferenceDescriptors,
       &releaseStrongReferenceSharedPointerBuffers
     };
@@ -582,7 +648,7 @@ namespace SSC {
       }
     }
 
-    didTimersStart = false;
+    this->didTimersStart = false;
   }
 
   const CoreTimers::ID Core::setTimeout (
