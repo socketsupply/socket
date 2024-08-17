@@ -57,8 +57,6 @@ namespace SSC {
       return;
     }
 
-    this->pauseEventLoop();
-
     if (this->options.features.useUDP) {
       this->udp.pauseAllSockets();
     }
@@ -76,6 +74,7 @@ namespace SSC {
     }
 
     this->isPaused = true;
+    this->pauseEventLoop();
   }
 
   bool Core::hasPost (uint64_t id) {
@@ -92,7 +91,7 @@ namespace SSC {
   }
 
   void Core::expirePosts () {
-    Lock lock(this->postsMutex);
+    Lock lock(this->mutex);
     const auto now = std::chrono::system_clock::now()
       .time_since_epoch()
       .count();
@@ -113,7 +112,7 @@ namespace SSC {
   }
 
   void Core::putPost (uint64_t id, Post p) {
-    Lock lock(this->postsMutex);
+    Lock lock(this->mutex);
     p.ttl = std::chrono::time_point_cast<std::chrono::milliseconds>(
       std::chrono::system_clock::now() +
       std::chrono::milliseconds(32 * 1024)
@@ -125,7 +124,7 @@ namespace SSC {
   }
 
   void Core::removePost (uint64_t id) {
-    Lock lock(this->postsMutex);
+    Lock lock(this->mutex);
 
     if (this->posts.find(id) != this->posts.end()) {
       // debug("remove post %ld", this->posts.at(id).body.use_count());
@@ -172,8 +171,8 @@ namespace SSC {
   }
 
   void Core::removeAllPosts () {
-    Lock lock(this->postsMutex);
-    std::vector<uint64_t> ids;
+    Lock lock(this->mutex);
+    Vector<uint64_t> ids;
 
     for (auto const &tuple : posts) {
       auto id = tuple.first;
@@ -243,7 +242,7 @@ namespace SSC {
     }
 
     didLoopInit = true;
-    Lock lock(this->loopMutex);
+    Lock lock(this->mutex);
     uv_loop_init(&this->eventLoop);
     uv_loop_set_data(&this->eventLoop, reinterpret_cast<void*>(this));
     this->eventLoopAsync.data = reinterpret_cast<void*>(this);
@@ -255,7 +254,7 @@ namespace SSC {
         Function<void()> dispatch = nullptr;
 
         do {
-          Lock lock(core->loopMutex);
+          Lock lock(core->mutex);
           if (core->eventLoopDispatchQueue.size() > 0) {
             dispatch = core->eventLoopDispatchQueue.front();
             core->eventLoopDispatchQueue.pop();
@@ -303,7 +302,16 @@ namespace SSC {
   }
 
   void Core::pauseEventLoop() {
+    // wait for drain of event loop dispatch queue
+    while (true) {
+      Lock lock(this->mutex);
+      if (eventLoopDispatchQueue.size() == 0) {
+        break;
+      }
+    }
+
     isLoopRunning = false;
+
     uv_stop(&eventLoop);
   }
 
@@ -330,6 +338,8 @@ namespace SSC {
       }
     #endif
   #endif
+
+    uv_loop_close(&eventLoop);
   }
 
   void Core::sleepEventLoop (int64_t ms) {
@@ -347,13 +357,13 @@ namespace SSC {
   void Core::signalDispatchEventLoop () {
     initEventLoop();
     runEventLoop();
-    Lock lock(this->loopMutex);
+    Lock lock(this->mutex);
     uv_async_send(&eventLoopAsync);
   }
 
   void Core::dispatchEventLoop (EventLoopDispatchCallback callback) {
     {
-      Lock lock(this->loopMutex);
+      Lock lock(this->mutex);
       eventLoopDispatchQueue.push(callback);
     }
 
@@ -364,10 +374,8 @@ namespace SSC {
     auto loop = core->getEventLoop();
 
     while (core->isLoopRunning) {
-      core->sleepEventLoop(EVENT_LOOP_POLL_TIMEOUT);
-
       do {
-        uv_run(loop, UV_RUN_DEFAULT);
+        while (uv_run(loop, UV_RUN_DEFAULT) != 0);
       } while (core->isLoopRunning && core->isLoopAlive());
     }
 
@@ -388,13 +396,13 @@ namespace SSC {
     });
 
   #if SOCKET_RUNTIME_PLATFORM_APPLE
-    Lock lock(this->loopMutex);
+    Lock lock(this->mutex);
     dispatch_async(eventLoopQueue, ^{ pollEventLoop(this); });
   #else
   #if SOCKET_RUNTIME_PLATFORM_LINUX
     if (this->options.dedicatedLoopThread) {
   #endif
-    Lock lock(this->loopMutex);
+    Lock lock(this->mutex);
     // clean up old thread if still running
     if (eventLoopThread != nullptr) {
       if (eventLoopThread->joinable()) {
@@ -511,7 +519,7 @@ namespace SSC {
       return;
     }
 
-    Lock lock(this->timersMutex);
+    Lock lock(this->mutex);
 
     auto loop = getEventLoop();
 
@@ -529,7 +537,7 @@ namespace SSC {
   }
 
   void Core::startTimers () {
-    Lock lock(this->timersMutex);
+    Lock lock(this->mutex);
 
     Vector<Timer *> timersToStart = {
       &releaseStrongReferenceDescriptors,
@@ -561,7 +569,7 @@ namespace SSC {
       return;
     }
 
-    Lock lock(this->timersMutex);
+    Lock lock(this->mutex);
 
     Vector<Timer *> timersToStop = {
       &releaseStrongReferenceDescriptors,
