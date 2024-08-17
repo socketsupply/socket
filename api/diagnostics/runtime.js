@@ -192,7 +192,7 @@ export class QueryDiagnostic {
  * Queries runtime diagnostics.
  * @return {Promise<QueryDiagnostic>}
  */
-export async function query () {
+export async function query (type) {
   const result = await ipc.request('diagnostics.query')
 
   if (result.err) {
@@ -225,6 +225,15 @@ export async function query () {
         }
       }
     }
+  }
+
+  if (typeof type === 'string') {
+    return type
+      .trim()
+      .split(/\.|\[|\]/g)
+      .map((key) => key.trim())
+      .filter((key) => key.length > 0)
+      .reduce((q, k) => q ? q[k] : null, query)
   }
 
   return query
