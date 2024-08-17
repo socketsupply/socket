@@ -185,7 +185,6 @@ namespace SSC::IPC {
         Headers headers;
         Client client;
 
-        Mutex mutex;
         Atomic<bool> finished = false;
 
         Vector<SharedPointer<char[]>> buffers;

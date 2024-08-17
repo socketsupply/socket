@@ -3519,7 +3519,6 @@ static void mapIPCRoutes (Router *router) {
     }
 
     app->dispatch([=]() {
-      debug("eval: %s", getEmitToRenderProcessJavaScript(event, value).c_str());
       targetWindow->eval(getEmitToRenderProcessJavaScript(event, value));
       reply(Result { message.seq, message });
     });
