@@ -846,7 +846,7 @@ namespace SSC {
   #endif
 
     if (shouldExit) {
-      this->core->shuttingDown = true;
+      this->core->isShuttingDown = true;
     }
 
     return shouldExit ? 1 : 0;
