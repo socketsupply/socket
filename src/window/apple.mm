@@ -190,7 +190,6 @@ namespace SSC {
     auto userConfig = options.userConfig;
 
     this->index = options.index;
-    //this->processPool = [WKProcessPool new];
     this->windowDelegate = [SSCWindowDelegate new];
 
     this->bridge.navigateFunction = [this] (const auto url) {
@@ -198,9 +197,7 @@ namespace SSC {
     };
 
     this->bridge.evaluateJavaScriptFunction = [this](auto source) {
-      dispatch_async(dispatch_get_main_queue(), ^{
-        this->eval(source);
-      });
+      this->eval(source);
     };
 
     this->bridge.client.preload = IPC::Preload::compile({
@@ -224,7 +221,6 @@ namespace SSC {
     // https://developer.apple.com/documentation/webkit/wkwebviewconfiguration/3585117-limitsnavigationstoappbounddomai
     configuration.limitsNavigationsToAppBoundDomains = YES;
     configuration.websiteDataStore = WKWebsiteDataStore.defaultDataStore;
-    //configuration.processPool = this->processPool;
 
     if (@available(macOS 14.0, iOS 17.0, *)) {
       [configuration.websiteDataStore.httpCookieStore
