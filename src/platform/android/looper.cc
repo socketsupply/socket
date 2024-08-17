@@ -47,7 +47,6 @@ namespace SSC::Android {
           if (dispatch->callback != nullptr) {
             dispatch->callback();
           }
-
         }
 
         delete dispatch;
