@@ -116,7 +116,6 @@ void signalHandler (int signum) {
     defaultWindowSignalHandler(signum);
   }
 
-  msleep(32);
   if (signum == SIGTERM || signum == SIGINT) {
     signal(signum, SIG_DFL);
     if (shutdownHandler != nullptr) {
