@@ -1,6 +1,7 @@
 {
   "type": "module",
   "scripts": {
+    "clean": "./bin/clean.sh",
     "gen": "npm run gen:docs && npm run gen:tsc",
     "gen:docs": "node ./bin/generate-docs.js",
     "gen:tsc": "./bin/generate-typescript-typings.sh",
