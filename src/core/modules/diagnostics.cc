@@ -19,7 +19,7 @@ namespace SSC {
 
       // posts diagnostics
       do {
-        Lock lock(this->core->postsMutex);
+        Lock lock(this->core->mutex);
         query.posts.handles.count = this->core->posts.size();
         for (const auto& entry : this->core->posts) {
           query.posts.handles.ids.push_back(entry.first);
@@ -101,7 +101,7 @@ namespace SSC {
 
       // uv
       do {
-        Lock lock(this->core->loopMutex);
+        Lock lock(this->core->mutex);
         uv_metrics_info(&this->core->eventLoop, &query.uv.metrics);
         query.uv.idleTime = uv_metrics_idle_time(&this->core->eventLoop);
         query.uv.handles.count = this->core->eventLoop.active_handles;
@@ -135,7 +135,8 @@ namespace SSC {
         {"eventsWaiting", this->metrics.events_waiting},
       }},
       {"idleTime", this->idleTime},
-      {"activeRequests", this->activeRequests}
+      {"activeRequests", this->activeRequests},
+      {"handles", this->handles.json()}
     };
   }
 
