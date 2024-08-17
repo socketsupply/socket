@@ -2810,7 +2810,7 @@ int main (const int argc, const char* argv[]) {
     auto binaryPath = paths.pathBin / executable;
     auto configPath = targetPath / "socket.ini";
 
-    if (!fs::exists(binaryPath) && !flagBuildForAndroid && !flagBuildForAndroidEmulator) {
+    if (!fs::exists(binaryPath) && !flagBuildForAndroid && !flagBuildForAndroidEmulator && !flagBuildForIOS && !flagBuildForSimulator) {
       flagRunUserBuildOnly = false;
     } else {
       struct stat stats;
@@ -2966,7 +2966,7 @@ int main (const int argc, const char* argv[]) {
         << "xcrun "
         << "actool \"" << assetsPath.string() << "\" "
         << "--compile \"" << dest.string() << "\" "
-        << "--platform " << (platform.mac ? "macosx" : "iphone") << " "
+        << "--platform " << (targetPlatform == "ios" || targetPlatform == "ios-simulator" ? "iphoneos" : "macosx") << " "
         << "--minimum-deployment-target 10.15 "
         << "--app-icon AppIcon "
         << "--output-partial-info-plist "
@@ -5025,7 +5025,11 @@ int main (const int argc, const char* argv[]) {
       //
       // Copy and or create the source files we need for the build.
       //
-      fs::copy(trim(prefixFile("src/init.cc")), pathToDist);
+      fs::copy(
+        trim(prefixFile("src/init.cc")),
+        pathToDist,
+        fs::copy_options::overwrite_existing
+      );
 
       auto pathBase = pathToDist / "Base.lproj";
       fs::create_directories(pathBase);
