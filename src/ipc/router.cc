@@ -94,7 +94,7 @@ namespace SSC::IPC {
     size_t size,
     const ResultCallback& callback
   ) {
-    if (this->bridge->core->shuttingDown) {
+    if (this->bridge->core->isShuttingDown) {
       return false;
     }
 
@@ -108,7 +108,7 @@ namespace SSC::IPC {
     size_t size,
     const ResultCallback& callback
   ) {
-    if (this->bridge->core->shuttingDown) {
+    if (this->bridge->core->isShuttingDown) {
       return false;
     }
 
