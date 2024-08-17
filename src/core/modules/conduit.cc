@@ -1,7 +1,8 @@
-#include "conduit.hh"
-#include "../core.hh"
 #include "../../app/app.hh"
+#include "../core.hh"
 #include "../codec.hh"
+
+#include "conduit.hh"
 
 #define SHA_DIGEST_LENGTH 20
 
@@ -116,6 +117,24 @@ namespace SSC {
     return this->clients.find(id) != this->clients.end();
   }
 
+  CoreConduit::Client::~Client () {
+    auto handle = reinterpret_cast<uv_handle_t*>(&this->handle);
+
+    if (frameBuffer) {
+      delete [] frameBuffer;
+    }
+
+    if (
+      this->isClosing == false &&
+      this->isClosed == false &&
+      handle->loop != nullptr &&
+      !uv_is_closing(handle) &&
+      uv_is_active(handle)
+    ) {
+      // XXX(@jwerle): figure out a gracefull close
+    }
+  }
+
   CoreConduit::Client* CoreConduit::get (uint64_t id) {
     Lock lock(this->mutex);
     const auto it = clients.find(id);
@@ -128,12 +147,12 @@ namespace SSC {
   }
 
   void CoreConduit::handshake (CoreConduit::Client *client, const char *request) {
-    String req(request);
+    String requestString(request);
 
-    size_t reqeol = req.find("\r\n");
+    auto reqeol = requestString.find("\r\n");
     if (reqeol == String::npos) return; // nope
 
-    std::istringstream iss(req.substr(0, reqeol));
+    std::istringstream iss(requestString.substr(0, reqeol));
     String method;
     String url;
     String version;
@@ -168,9 +187,22 @@ namespace SSC {
     client->id = socketId;
     client->clientId = clientId;
 
-    this->clients.emplace(socketId, client);
+    do {
+      Lock lock(this->mutex);
+      if (this->clients.contains(socketId)) {
+        auto existingClient = this->clients.at(socketId);
+        this->clients.erase(socketId);
+        existingClient->close([existingClient]() {
+          if (existingClient->isClosed) {
+            delete existingClient;
+          }
+        });
+      }
 
-    std::cout << "added client " << this->clients.size() << std::endl;
+      this->clients.emplace(socketId, client);
+
+      std::cout << "added client " << this->clients.size() << std::endl;
+    } while (0);
 
     // debug("Received key: %s", keyHeader.c_str());
 
@@ -183,38 +215,43 @@ namespace SSC {
 
     // debug("Generated Accept Key: %s\n", base64_accept_key);  // Debugging statement
 
-    std::ostringstream oss;
+    StringStream oss;
+    oss
+      << "HTTP/1.1 101 Switching Protocols\r\n"
+      << "Upgrade: websocket\r\n"
+      << "Connection: Upgrade\r\n"
+      << "Sec-WebSocket-Accept: " << base64_accept_key << "\r\n\r\n";
 
-    oss << "HTTP/1.1 101 Switching Protocols\r\n"
-       << "Upgrade: websocket\r\n"
-       << "Connection: Upgrade\r\n"
-       << "Sec-WebSocket-Accept: " << base64_accept_key << "\r\n\r\n";
-
-    String response = oss.str();
-    // debug(response.c_str());
-
+    const auto response = oss.str();
     const auto size = response.size();
     const auto data = new char[size]{0};
     memcpy(data, response.c_str(), size);
 
-    uv_buf_t wrbuf = uv_buf_init(data, size);
-    uv_write_t *writeRequest = new uv_write_t;
-    uv_handle_set_data(reinterpret_cast<uv_handle_t*>(writeRequest), data);
-    //writeRequest->bufs = &wrbuf;
+    const auto buf = uv_buf_init(data, size);
+    auto req = new uv_write_t;
 
-    uv_write(writeRequest, (uv_stream_t*)&client->handle, &wrbuf, 1, [](uv_write_t *req, int status) {
-      // if (status) debug(stderr, "write error %s\n", uv_strerror(status));
+    uv_handle_set_data(
+      reinterpret_cast<uv_handle_t*>(req),
+      data
+    );
 
-      auto data = reinterpret_cast<char*>(
-        uv_handle_get_data(reinterpret_cast<uv_handle_t*>(req))
-      );
+    uv_write(
+      req,
+      reinterpret_cast<uv_stream_t*>(&client->handle),
+      &buf,
+      1,
+      [](uv_write_t *req, int status) {
+        const auto data = reinterpret_cast<char*>(
+          uv_handle_get_data(reinterpret_cast<uv_handle_t*>(req))
+        );
 
-      if (data != nullptr) {
-        delete [] data;
+        if (data != nullptr) {
+          delete [] data;
+        }
+
+        delete req;
       }
-
-      free(req);
-    });
+    );
 
     free(base64_accept_key);
 
@@ -234,6 +271,11 @@ namespace SSC {
     int mask = data[1] & 0x80;
     uint64_t payload_len = data[1] & 0x7F;
     size_t pos = 2;
+
+    if (opcode == 0x08) {
+      client->close();
+      return;
+    }
 
     if (payload_len == 126) {
       if (len < 4) return; // too short to be valid
@@ -256,7 +298,8 @@ namespace SSC {
     pos += 4;
 
     if (payload_len > client->frameBufferSize) {
-      client->frameBuffer = (unsigned char *)realloc(client->frameBuffer, payload_len);
+      // TODO(@jwerle): refactor to drop usage of `realloc()`
+      client->frameBuffer = static_cast<unsigned char *>(realloc(client->frameBuffer, payload_len));
       client->frameBufferSize = payload_len;
     }
 
@@ -295,26 +338,44 @@ namespace SSC {
       ss << "&" << key << "=" << value;
     }
 
+    const auto uri = ss.str();
     const auto app = App::sharedApplication();
     const auto window = app->windowManager.getWindowForClient({ .id = client->clientId });
     if (window != nullptr) {
-      const auto invoked = window->bridge.router.invoke(ss.str(), vectorToSharedPointer(decoded.payload), decoded.payload.size());
-      if (!invoked) {
-        // TODO(@jwerle,@heapwolf): handle this
-        // debug("there was a problem invoking the router %s", ss.str().c_str());
-      }
+      const auto bytes = vectorToSharedPointer(decoded.payload);
+      const auto size = decoded.payload.size();
+      app->dispatch([app, window, uri, client, bytes, size]() {
+        const auto invoked = window->bridge.router.invoke(
+          uri,
+          bytes,
+          size
+        );
+
+        if (!invoked) {
+          // TODO(@jwerle,@heapwolf): handle this
+          // debug("there was a problem invoking the router %s", ss.str().c_str());
+        }
+      });
     } else {
       // TODO(@jwerle,@heapwolf): handle this
     }
   }
 
-  bool SSC::CoreConduit::Client::emit (
+  struct ClientWriteContext {
+    CoreConduit::Client* client = nullptr;
+    const Function<void()> callback = nullptr;
+  };
+
+  bool CoreConduit::Client::emit (
     const CoreConduit::Options& options,
     SharedPointer<char[]> bytes,
-    size_t length
+    size_t length,
+    int opcode,
+    const Function<void()> callback
   ) {
+    auto handle = reinterpret_cast<uv_handle_t*>(&this->handle);
+
     if (!this->conduit) {
-      // std::cout << "Error: 'conduit' is a null pointer." << std::endl;
       return false;
     }
 
@@ -324,11 +385,11 @@ namespace SSC {
     try {
       encodedMessage = this->conduit->encodeMessage(options, payload);
     } catch (const std::exception& e) {
-      // std::cerr << "Error in encodeMessage: " << e.what() << std::endl;
+      debug("CoreConduit::Client: Error - Failed to encode message payload: %s", e.what());
       return false;
     }
 
-    this->conduit->core->dispatchEventLoop([this, encodedMessage = std::move(encodedMessage)]() mutable {
+    this->conduit->core->dispatchEventLoop([this, opcode, callback, handle, encodedMessage = std::move(encodedMessage)]() mutable {
       size_t encodedLength = encodedMessage.size();
       Vector<unsigned char> frame;
 
@@ -348,114 +409,268 @@ namespace SSC {
         }
       }
 
-      frame[0] = 0x82; // FIN and opcode 2 (binary)
+      frame[0] = 0x80 | opcode; // FIN and opcode 2 (binary)
       std::memcpy(frame.data() + frame.size() - encodedLength, encodedMessage.data(), encodedLength);
 
-      auto writeReq = new uv_write_t;
+      auto req = new uv_write_t;
       auto data = reinterpret_cast<char*>(frame.data());
       auto size = frame.size();
 
-      uv_buf_t wrbuf = uv_buf_init(data, size);
+      uv_buf_t buf = uv_buf_init(data, size);
 
-      uv_write(writeReq, (uv_stream_t*)&this->handle, &wrbuf, 1, [](uv_write_t* req, int status) {
-        if (status) {
-          // debug("Write error: %s", uv_strerror(status));
+      if (callback != nullptr) {
+        uv_handle_set_data(
+          reinterpret_cast<uv_handle_t*>(req),
+          new ClientWriteContext { this, callback }
+        );
+      } else {
+        uv_handle_set_data(
+          reinterpret_cast<uv_handle_t*>(req),
+          nullptr
+        );
+      }
+
+      uv_write(
+        req,
+        reinterpret_cast<uv_stream_t*>(&this->handle),
+        &buf,
+        1,
+        [](uv_write_t* req, int status) {
+          const auto data = uv_handle_get_data(reinterpret_cast<uv_handle_t*>(req));
+          const auto context = static_cast<ClientWriteContext*>(data);
+
+          delete req;
+
+          if (context != nullptr) {
+            context->client->conduit->core->dispatchEventLoop([=]() mutable {
+              context->callback();
+              delete context;
+            });
+          }
         }
-        delete req;
-      });
+      );
     });
 
     return true;
   }
 
-  void CoreConduit::start (const StartCallback& callback) {
-    if (this->isActive()) {
+  struct ClientCloseContext {
+    CoreConduit::Client* client = nullptr;
+    CoreConduit::Client::CloseCallback callback = nullptr;
+  };
+
+  void CoreConduit::Client::close (const CloseCallback& callback) {
+    auto handle = reinterpret_cast<uv_handle_t*>(&this->handle);
+
+    if (this->isClosing || this->isClosed || !uv_is_active(handle)) {
       if (callback != nullptr) {
-        msleep(256);
-        callback();
+        this->conduit->core->dispatchEventLoop(callback);
+      }
+      return;
+    }
+
+    this->isClosing = true;
+
+    if (handle->loop == nullptr || uv_is_closing(handle)) {
+      this->isClosed = true;
+      this->isClosing = false;
+
+      if (uv_is_active(handle)) {
+        uv_read_stop(reinterpret_cast<uv_stream_t*>(handle));
+      }
+
+      if (callback != nullptr) {
+        this->conduit->core->dispatchEventLoop(callback);
+      }
+      return;
+    }
+
+    const auto closeHandle = [=, this]() {
+      if (uv_is_closing(handle)) {
+        this->isClosed = true;
+        this->isClosing = false;
+
+        if (callback != nullptr) {
+          this->conduit->core->dispatchEventLoop(callback);
+        }
+        return;
+      }
+
+      do {
+        Lock lock(this->conduit->mutex);
+        if (this->conduit->clients.contains(this->id)) {
+          conduit->clients.erase(this->id);
+        }
+      } while (0);
+
+      auto shutdown = new uv_shutdown_t;
+      uv_handle_set_data(
+        reinterpret_cast<uv_handle_t*>(shutdown),
+        new ClientCloseContext { this, callback }
+      );
+
+      if (uv_is_active(handle)) {
+        uv_read_stop(reinterpret_cast<uv_stream_t*>(handle));
+      }
+
+      uv_shutdown(shutdown, reinterpret_cast<uv_stream_t*>(handle), [](uv_shutdown_t* shutdown, int status) {
+        auto data = uv_handle_get_data(reinterpret_cast<uv_handle_t*>(shutdown));
+        auto context = static_cast<ClientCloseContext*>(data);
+        auto client = context->client;
+        auto handle = reinterpret_cast<uv_handle_t*>(&client->handle);
+        auto callback = context->callback;
+
+        delete shutdown;
+
+        uv_handle_set_data(
+          reinterpret_cast<uv_handle_t*>(handle),
+          context
+        );
+
+        uv_close(handle, [](uv_handle_t* handle) {
+          auto data = uv_handle_get_data(reinterpret_cast<uv_handle_t*>(handle));
+          auto context = static_cast<ClientCloseContext*>(data);
+          auto client = context->client;
+          auto conduit = client->conduit;
+          auto callback = context->callback;
+
+          client->isClosed = true;
+          client->isClosing = false;
+
+          delete context;
+
+          if (callback != nullptr) {
+            client->conduit->core->dispatchEventLoop(callback);
+          }
+        });
+      });
+    };
+
+    this->emit({}, vectorToSharedPointer({ 0x00}), 1, 0x08, closeHandle);
+  }
+
+  void CoreConduit::start (const StartCallback& callback) {
+    if (this->isActive() || this->isStarting) {
+      if (callback != nullptr) {
+        this->core->dispatchEventLoop(callback);
       }
       return;
     }
 
     auto loop = this->core->getEventLoop();
 
-    uv_tcp_init(loop, &this->socket);
-    uv_ip4_addr("0.0.0.0", this->port.load(), &addr);
-    uv_tcp_bind(&this->socket, (const struct sockaddr *)&this->addr, 0);
+    this->isStarting = true;
 
-    this->socket.data = (void*)this;
+    auto ip = Env::get("SOCKET_RUNTIME_CONDUIT_HOSTNAME", "0.0.0.0");
+    auto port = this->port.load();
+
+    if (Env::has("SOCKET_RUNTIME_CONDUIT_PORT")) {
+      try {
+        port = std::stoi(Env::get("SOCKET_RUNTIME_CONDUIT_PORT"));
+      } catch (...) {}
+    }
+
+    uv_ip4_addr(ip.c_str(), port, &this->addr);
+    uv_tcp_init(loop, &this->socket);
+    uv_tcp_bind(
+      &this->socket,
+      reinterpret_cast<const struct sockaddr*>(&this->addr),
+      0
+    );
+
     struct sockaddr_in sockname;
     int namelen = sizeof(sockname);
-    uv_tcp_getsockname(&this->socket, (struct sockaddr *)&sockname, &namelen);
+    uv_tcp_getsockname(
+      &this->socket,
+      reinterpret_cast<struct sockaddr *>(&sockname),
+      reinterpret_cast<int*>(&namelen)
+    );
+
+    uv_handle_set_data(
+      reinterpret_cast<uv_handle_t*>(&this->socket),
+      this
+    );
 
     this->port = ntohs(sockname.sin_port);
-    this->core->dispatchEventLoop([=, this]() mutable {
-      int r = uv_listen((uv_stream_t*)&this->socket, 128, [](uv_stream_t *stream, int status) {
-        if (status < 0) {
-          // debug("New connection error %s\n", uv_strerror(status));
-          return;
-        }
+    const auto result = uv_listen(reinterpret_cast<uv_stream_t*>(&this->socket), 128, [](uv_stream_t* stream, int status) {
+      if (status < 0) {
+        // debug("New connection error %s\n", uv_strerror(status));
+        return;
+      }
 
-        auto conduit = static_cast<CoreConduit*>(stream->data);
-        auto client = new CoreConduit::Client(conduit);
+      auto data = uv_handle_get_data(reinterpret_cast<uv_handle_t*>(stream));
+      auto conduit = static_cast<CoreConduit*>(data);
+      auto client = new CoreConduit::Client(conduit);
+      auto loop = uv_handle_get_loop(reinterpret_cast<uv_handle_t*>(stream));
 
-        client->isHandshakeDone = false;
-        client->frameBuffer = nullptr;
-        client->frameBufferSize = 0;
-        client->handle.data = client;
+      uv_tcp_init(
+        loop,
+        &client->handle
+      );
 
-        uv_loop_t *loop = uv_handle_get_loop((uv_handle_t*)stream);
-        uv_tcp_init(loop, &client->handle);
+      const auto accepted = uv_accept(
+        stream,
+        reinterpret_cast<uv_stream_t*>(&client->handle)
+      );
 
-        auto accepted = uv_accept(stream, (uv_stream_t*)&client->handle);
+      if (accepted != 0) {
+        return uv_close(
+          reinterpret_cast<uv_handle_t *>(&client->handle),
+          nullptr
+        );
+      }
 
-        if (accepted == 0) {
-          uv_read_start(
-            (uv_stream_t *)&client->handle,
-            [](uv_handle_t *handle, size_t size, uv_buf_t *buf) {
-              buf->base = new char[size]{0};
-              buf->len = size;
-            },
-            [](uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) {
-              if (nread > 0) {
-                auto handle = uv_handle_get_data((uv_handle_t*)stream);
-                auto client = (CoreConduit::Client*)(handle);
+      uv_handle_set_data(
+        reinterpret_cast<uv_handle_t*>(&client->handle),
+        client
+      );
 
-                if (!client->isHandshakeDone) {
-                  client->conduit->handshake(client, buf->base);
-                } else {
-                  client->conduit->processFrame(client, buf->base, nread);
-                }
-              } else if (nread < 0) {
-                if (nread != UV_EOF) {
-                  // debug("Read error %s\n", uv_err_name(nread));
-                }
-                uv_close((uv_handle_t *)stream, nullptr);
-              }
+      uv_read_start(
+        reinterpret_cast<uv_stream_t*>(&client->handle),
+        [](uv_handle_t* handle, size_t size, uv_buf_t* buf) {
+          buf->base = new char[size]{0};
+          buf->len = size;
+        },
+        [](uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
+          auto data = uv_handle_get_data(reinterpret_cast<uv_handle_t*>(stream));
+          auto client = static_cast<CoreConduit::Client*>(data);
 
-              if (buf->base) {
-                delete buf->base;
-              }
+          if (client && !client->isClosing && nread > 0) {
+            if (client->isHandshakeDone) {
+              client->conduit->processFrame(client, buf->base, nread);
+            } else {
+              client->conduit->handshake(client, buf->base);
             }
-          );
-          return;
-        } else {
-          // debug("uv_accept error: %s\n", uv_strerror(accepted));
-          // delete static_cast<SharedPointer<CoreConduit::Client>*>(client->handle.data);
+          } else if (nread < 0) {
+            if (nread != UV_EOF) {
+              // debug("Read error %s\n", uv_err_name(nread));
+            }
+
+            if (!client->isClosing && !client->isClosed) {
+              client->close([client]() {
+                if (client->isClosed) {
+                  delete client;
+                }
+              });
+            }
+          }
+
+          if (buf->base) {
+            delete [] buf->base;
+          }
         }
-
-        uv_close((uv_handle_t *)&client->handle, nullptr);
-      });
-
-      if (r) {
-        // debug("Listen error %s\n", uv_strerror(r));
-      }
-
-      if (callback != nullptr) {
-        msleep(256);
-        callback();
-      }
+      );
     });
+
+    if (result) {
+      debug("CoreConduit: Listen error %s\n", uv_strerror(result));
+    }
+
+    this->isStarting = false;
+
+    if (callback != nullptr) {
+      this->core->dispatchEventLoop(callback);
+    }
   }
 
   void CoreConduit::stop () {
@@ -463,37 +678,72 @@ namespace SSC {
       return;
     }
 
-    this->core->dispatchEventLoop([this]() mutable {
-      if (!uv_is_closing((uv_handle_t*)&this->socket)) {
-        uv_close((uv_handle_t*)&this->socket, [](uv_handle_t* handle) {
-          auto conduit = static_cast<CoreConduit*>(handle->data);
-        });
-      }
+    this->core->dispatchEventLoop([this]() {
+      Lock lock(this->mutex);
+      auto handle = reinterpret_cast<uv_handle_t*>(&this->socket);
+      const auto closeHandle = [=, this] () {
+        if (!uv_is_closing(handle)) {
+          auto shutdown = new uv_shutdown_t;
+          uv_handle_set_data(
+            reinterpret_cast<uv_handle_t*>(shutdown),
+            this
+          );
 
-      for (auto& clientPair : this->clients) {
-        auto client = clientPair.second;
+          uv_shutdown(
+            shutdown,
+            reinterpret_cast<uv_stream_t*>(&this->socket),
+            [](uv_shutdown_t* shutdown, int status) {
+              auto data = uv_handle_get_data(reinterpret_cast<uv_handle_t*>(shutdown));
+              auto conduit = reinterpret_cast<CoreConduit*>(data);
 
-        if (client && !uv_is_closing((uv_handle_t*)&client->handle)) {
-          uv_close((uv_handle_t*)&client->handle, [](uv_handle_t* handle) {
-            auto client = static_cast<CoreConduit::Client*>(handle->data);
+              delete shutdown;
 
-            if (client->frameBuffer) {
-              free(client->frameBuffer);
-              client->frameBuffer = nullptr;
-              client->frameBufferSize = 0;
+              conduit->core->dispatchEventLoop([=]() {
+                uv_close(
+                  reinterpret_cast<uv_handle_t*>(&conduit->socket),
+                  nullptr
+                );
+              });
             }
-            client->handle.loop = nullptr;
-            delete client;
+          );
+        }
+      };
+
+      if (this->clients.size() == 0) {
+        if (!uv_is_closing(handle)) {
+          closeHandle();
+        }
+      } else {
+        for (const auto& entry : this->clients) {
+          auto client = entry.second;
+
+          client->close([=, this] () {
+            Lock lock(this->mutex);
+
+            for (auto& entry : this->clients) {
+              if (entry.second && !entry.second->isClosed) {
+                return;
+              }
+            }
+
+            for (auto& entry : this->clients) {
+              delete entry.second;
+            }
+
+            this->clients.clear();
+            closeHandle();
           });
         }
       }
-
-      this->clients.clear();
     });
   }
 
   bool CoreConduit::isActive () {
     Lock lock(this->mutex);
-    return this->port > 0 && uv_is_active(reinterpret_cast<uv_handle_t*>(&this->socket));
+    return (
+      this->port > 0 &&
+      uv_is_active(reinterpret_cast<uv_handle_t*>(&this->socket)) &&
+      !uv_is_closing(reinterpret_cast<uv_handle_t*>(&this->socket))
+    );
   }
 }

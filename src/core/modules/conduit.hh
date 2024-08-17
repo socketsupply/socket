@@ -2,6 +2,7 @@
 #define SOCKET_RUNTIME_CORE_CONDUIT_H
 
 #include "../module.hh"
+#include "timers.hh"
 #include <iostream>
 
 namespace SSC {
@@ -54,20 +55,26 @@ namespace SSC {
 
       class Client {
         public:
-          // client state
-          uint64_t id;
-          uint64_t clientId;
-          Atomic<bool> isHandshakeDone;
+          using CloseCallback = Function<void()>;
+          using ID = uint64_t;
 
-          // uv statae
+          // client state
+          ID id = 0;
+          ID clientId = 0;
+          Atomic<bool> isHandshakeDone = false;
+          Atomic<bool> isClosing = false;
+          Atomic<bool> isClosed = false;
+
+          // uv state
           uv_tcp_t handle;
           uv_buf_t buffer;
+          uv_stream_t* stream = nullptr;
 
           // websocket frame buffer state
           unsigned char *frameBuffer;
           size_t frameBufferSize;
 
-          CoreConduit* conduit;
+          CoreConduit* conduit = nullptr;
 
           Client (CoreConduit* conduit)
             : conduit(conduit),
@@ -76,29 +83,24 @@ namespace SSC {
               isHandshakeDone(0)
           {}
 
-          ~Client () {
-            auto handle = reinterpret_cast<uv_handle_t*>(&this->handle);
-
-            if (frameBuffer) {
-              delete [] frameBuffer;
-            }
-
-            if (handle->loop != nullptr && !uv_is_closing(handle)) {
-              uv_close(handle, nullptr);
-            }
-          }
+          ~Client ();
 
           bool emit (
             const CoreConduit::Options& options,
             SharedPointer<char[]> payload,
-            size_t length
+            size_t length,
+            int opcode = 2,
+            const Function<void()> callback = nullptr
           );
+
+          void close (const CloseCallback& callback = nullptr);
       };
 
       // state
       std::map<uint64_t, Client*> clients;
-      Mutex mutex;
+      Atomic<bool> isStarting = false;
       Atomic<int> port = 0;
+      Mutex mutex;
 
       CoreConduit (Core* core) : CoreModule(core) {};
       ~CoreConduit ();
