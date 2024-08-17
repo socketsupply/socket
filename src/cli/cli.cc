@@ -755,65 +755,69 @@ Vector<Path> handleBuildPhaseForCopyMappedFiles (
 }
 
 void signalHandler (int signum) {
-  #if !SOCKET_RUNTIME_PLATFORM_WINDOWS
-    if (signum == SIGUSR1) {
-    #if SOCKET_RUNTIME_PLATFORM_APPLE
-      checkLogStore = true;
-    #endif
-      return;
-    }
+#if !SOCKET_RUNTIME_PLATFORM_WINDOWS
+  if (signum == SIGUSR1) {
+  #if SOCKET_RUNTIME_PLATFORM_APPLE
+    checkLogStore = true;
   #endif
+    return;
+  }
+#endif
 
-  #if !SOCKET_RUNTIME_PLATFORM_WINDOWS
-    if (appPid > 0) {
-      kill(appPid, signum);
+#if !SOCKET_RUNTIME_PLATFORM_WINDOWS
+  if (appPid > 0) {
+    kill(appPid, signum);
+  }
+#endif
+
+  if (signum == SIGINT || signum == SIGTERM) {
+    if (appProcess != nullptr) {
+      appProcess->kill(signum);
+      appProcess = nullptr;
     }
-  #endif
 
-  if (appProcess != nullptr) {
-    appProcess->kill();
-    appProcess = nullptr;
-  }
+    appPid = 0;
 
-  appPid = 0;
-
-  if (sourcesWatcherSupportThread != nullptr) {
-    if (sourcesWatcherSupportThread->joinable()) {
-      sourcesWatcherSupportThread->join();
+    if (sourcesWatcherSupportThread != nullptr) {
+      if (sourcesWatcherSupportThread->joinable()) {
+        sourcesWatcherSupportThread->join();
+      }
+      delete sourcesWatcherSupportThread;
+      sourcesWatcherSupportThread = nullptr;
     }
-    delete sourcesWatcherSupportThread;
-    sourcesWatcherSupportThread = nullptr;
-  }
 
-  if (buildAfterScriptProcess != nullptr) {
-    buildAfterScriptProcess->kill();
-    buildAfterScriptProcess->wait();
-    delete buildAfterScriptProcess;
-    buildAfterScriptProcess = nullptr;
-  }
+    if (buildAfterScriptProcess != nullptr) {
+      buildAfterScriptProcess->kill();
+      buildAfterScriptProcess->wait();
+      delete buildAfterScriptProcess;
+      buildAfterScriptProcess = nullptr;
+    }
 
-  if (appStatus == -1) {
-    appStatus = signum;
-    log("App result: " + std::to_string(signum));
-  }
+    if (appStatus == -1) {
+      appStatus = signum;
+      log("App result: " + std::to_string(signum));
+    }
 
-  if (signum == SIGTERM || signum == SIGINT) {
-    signal(signum, SIG_DFL);
-    raise(signum);
-  }
+    if (signum == SIGTERM || signum == SIGINT) {
+      signal(signum, SIG_DFL);
+      raise(signum);
+    }
 
   #if SOCKET_RUNTIME_PLATFORM_LINUX
+    msleep(500);
     if (gtk_main_level() > 0) {
       g_main_context_invoke(
         nullptr,
         +[](gpointer userData) -> gboolean {
           msleep(16);
           gtk_main_quit();
+          return true;
         },
         nullptr
       );
     }
   #endif
+  }
 }
 
 void checkIosSimulatorDeviceAvailability (const String& device) {
@@ -3464,7 +3468,7 @@ int main (const int argc, const char* argv[]) {
       if (androidIcon.size() > 0) {
         settings["android_application_icon_config"] = (
           String("  android:roundIcon=\"@mipmap/ic_launcher_round\"\n") +
-          String("    android:icon=\"@mipmap/ic_launcher\"\n")
+          String("  android:icon=\"@mipmap/ic_launcher\"\n")
         );
 
         fs::copy(targetPath / androidIcon, res / "mipmap" / "icon.png", fs::copy_options::overwrite_existing);
