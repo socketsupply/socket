@@ -856,6 +856,7 @@ namespace SSC {
     if (this->core != nullptr && this->paused) {
       this->paused = false;
       this->windowManager.emit("applicationresume");
+
       this->dispatch([this]() {
         this->core->resume();
       });
@@ -866,6 +867,7 @@ namespace SSC {
     if (this->core != nullptr && !this->paused) {
       this->paused = true;
       this->windowManager.emit("applicationpause");
+
       this->dispatch([this]() {
         this->core->pause();
       });
