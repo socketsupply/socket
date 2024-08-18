@@ -21,7 +21,8 @@ open class SchemeHandlers (val bridge: Bridge) {
     val response = Response(this)
     val body: ByteArray? by lazy {
       try {
-        val seq = this.request.url.getQueryParameter("seq")
+        val seq = this.getHeader("runtime-xhr-seq")
+          ?: this.request.url.getQueryParameter("seq")
 
         if (seq != null && this.bridge.buffers.contains(seq)) {
           val buffer = this.bridge.buffers[seq]
@@ -71,6 +72,10 @@ open class SchemeHandlers (val bridge: Bridge) {
         headers += "${entry.key}: ${entry.value}\n"
       }
       return headers
+    }
+
+    fun getHeader (name: String): String? {
+      return request.requestHeaders.get(name)
     }
 
     fun getUrl (): String {
