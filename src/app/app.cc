@@ -1266,7 +1266,7 @@ extern "C" {
             auto serviceWorkerWindow = app->windowManager.createWindow(serviceWorkerWindowOptions);
             app->serviceWorkerContainer.init(&serviceWorkerWindow->bridge);
             serviceWorkerWindow->navigate(
-              "socket://" + app->userConfig["meta_bundle_identifier"] + "/socket/service-worker/index.html"
+              "https://" + app->userConfig["meta_bundle_identifier"] + "/socket/service-worker/index.html"
             );
 
             app->core->setTimeout(256, [=](){
@@ -1291,11 +1291,11 @@ extern "C" {
           defaultWindow->navigate(host + ":" + std::to_string(port));
         } else if (app->userConfig["webview_root"].size() != 0) {
           defaultWindow->navigate(
-            "socket://" + app->userConfig["meta_bundle_identifier"] + app->userConfig["webview_root"]
+            "https://" + app->userConfig["meta_bundle_identifier"] + app->userConfig["webview_root"]
           );
         } else {
           defaultWindow->navigate(
-            "socket://" + app->userConfig["meta_bundle_identifier"] + "/index.html"
+            "https://" + app->userConfig["meta_bundle_identifier"] + "/index.html"
           );
         }
       });
