@@ -46,7 +46,7 @@ const kContextTag = Symbol('socket.vm.Context')
 
 const VM_WINDOW_INDEX = 47
 const VM_WINDOW_TITLE = 'socket:vm'
-const VM_WINDOW_PATH = `${globalThis.origin}/socket/vm/index.html`
+const VM_WINDOW_PATH = '/socket/vm/index.html'
 
 let contextWorker = null
 let contextWindow = null
