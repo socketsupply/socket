@@ -57,6 +57,8 @@ globals.register('ServiceWorker.stages', stages)
 globals.register('ServiceWorker.events', events)
 globals.register('ServiceWorker.module', module)
 
+let protocolData = null
+
 export function onReady () {
   globalThis.postMessage(SERVICE_WORKER_READY_TOKEN)
 }
@@ -427,7 +429,9 @@ export async function onMessage (event) {
     })
 
     events.add(fetchEvent)
-    if (url.protocol !== 'socket:') {
+    if (protocolData) {
+      fetchEvent.context.data = protocolData
+    } else if (url.protocol !== 'socket:' && url.protocol !== 'npm') {
       const result = await ipc.request('protocol.getData', {
         scheme: url.protocol.replace(':', '')
       })
@@ -438,6 +442,8 @@ export async function onMessage (event) {
         } catch {
           fetchEvent.context.data = result.data
         }
+
+        protocolData = fetchEvent.context.data
       }
     }
 
