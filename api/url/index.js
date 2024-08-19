@@ -34,6 +34,9 @@ URL.prototype[Symbol.for('socket.runtime.util.inspect.custom')] = function () {
   ].join('\n')
 }
 
+/**
+ * @type {Set & { handlers: Set<string> }}
+ */
 export const protocols = new Set([
   'socket:',
   'node:',
