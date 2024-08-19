@@ -9,7 +9,7 @@ let contextWindow = null
 
 export const SHARED_WORKER_WINDOW_INDEX = 46
 export const SHARED_WORKER_WINDOW_TITLE = 'socket:shared-worker'
-export const SHARED_WORKER_WINDOW_PATH = `${location.origin}/socket/shared-worker/index.html`
+export const SHARED_WORKER_WINDOW_PATH = '/socket/shared-worker/index.html'
 
 export const channel = new BroadcastChannel('socket.runtime.sharedWorker')
 export const workers = new Map()
