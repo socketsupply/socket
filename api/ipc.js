@@ -50,12 +50,13 @@ import {
   parseJSON
 } from './util.js'
 
+import { URL, protocols } from './url.js'
 import * as errors from './errors.js'
 import { Buffer } from './buffer.js'
 import { rand64 } from './crypto.js'
 import bookmarks from './fs/bookmarks.js'
 import serialize from './internal/serialize.js'
-import { URL } from './url.js'
+import location from './location.js'
 import gc from './gc.js'
 
 let nextSeq = 1
@@ -79,26 +80,35 @@ function initializeXHRIntercept () {
         this.readyState = globalThis.XMLHttpRequest.OPENED
       } catch (_) {}
       this.method = method
-      this.url = new URL(url, globalThis.location.origin)
+      this.url = new URL(url, location.origin)
       this.seq = this.url.searchParams.get('seq')
 
       return open.call(this, method, url, ...args)
     },
 
     async send (body) {
-      const { method, seq, url } = this
+      let { method, seq, url } = this
 
-      if (url?.protocol === 'ipc:') {
+      if (
+        url?.protocol && (
+          url.protocol === 'ipc:' ||
+          protocols.handlers.has(url.protocol.slice(0, -1))
+        )
+      ) {
         if (
           /put|post|patch/i.test(method) &&
-          typeof body !== 'undefined' &&
-          typeof seq !== 'undefined'
+          typeof body !== 'undefined'
         ) {
           if (typeof body === 'string') {
             body = encoder.encode(body)
           }
 
           if (/android/i.test(primordials.platform)) {
+            if (!seq) {
+              seq = 'R' + Math.random().toString().slice(2, 8) + 'X'
+            }
+
+            this.setRequestHeader('runtime-xhr-seq', seq)
             await postMessage(`ipc://buffer.map?seq=${seq}`, body)
             if (!globalThis.window && globalThis.self) {
               await new Promise((resolve) => setTimeout(resolve, 200))
@@ -426,13 +436,13 @@ export class Headers extends globalThis.Headers {
     if (Array.isArray(input) && !Array.isArray(input[0])) {
       input = input.join('\n')
     } else if (typeof input?.entries === 'function') {
-      return new this(input.entries())
+      return new this(Array.from(input.entries()))
     } else if (isPlainObject(input) || isArrayLike(input)) {
       return new this(input)
     } else if (typeof input?.getAllResponseHeaders === 'function') {
       input = input.getAllResponseHeaders()
     } else if (typeof input?.headers?.entries === 'function') {
-      return new this(input.headers.entries())
+      return new this(Array.from(input.headers.entries()))
     }
 
     return new this(parseHeaders(String(input)))
