@@ -1,8 +1,23 @@
 export class Location {
   get url () {
-    return globalThis.location.href.startsWith('blob:')
-      ? new URL(globalThis.RUNTIME_WORKER_LOCATION || globalThis.location.pathname)
-      : new URL(globalThis.location.href)
+    if (globalThis.location === this) {
+      return null
+    }
+
+    if (globalThis.location.href.startsWith('blob:')) {
+      return new URL(globalThis.RUNTIME_WORKER_LOCATION || globalThis.location.pathname)
+    }
+
+    if (globalThis.location.origin === 'null') {
+      return new URL(
+        globalThis.location.pathname +
+        globalThis.location.search +
+        globalThis.location.hash,
+        globalThis.__args?.config?.meta_bundle_identifier ?? 'null'
+      )
+    }
+
+    return new URL(globalThis.location.href)
   }
 
   get protocol () {
