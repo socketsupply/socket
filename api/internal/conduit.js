@@ -50,14 +50,14 @@ hooks.onApplicationResume(() => {
 
 hooks.onApplicationPause(() => {
   isApplicationPaused = true
-  for (const  conduit of pool) {
+  for (const conduit of pool) {
     if (conduit) {
       // @ts-ignore
       conduit.isConnecting = false
       // @ts-ignore
       conduit.isActive = false
       // @ts-ignore
-      if (conduit.socket && conduit.socket.readyState == WebSocket.OPEN) {
+      if (conduit.socket && conduit.socket.readyState === WebSocket.OPEN) {
         // @ts-ignore
         conduit.socket?.close()
       }
