@@ -84,18 +84,23 @@ export class RequestStatus {
    * @param {RequestStatusOptions} [options]
    */
   constructor (request, options = null) {
+    if (!options && request && !(request instanceof Request)) {
+      options = request
+      request = options.requesst
+    }
+
     if (request && !(request instanceof Request)) {
       throw new TypeError(
         `Expecting 'request' to be a Request object. Received: ${request}`
       )
     }
 
+    this.#headers = options?.headers ? Headers.from(options.headers) : this.#headers
+    this.#status = options?.status ? options.status : undefined
+
     if (request) {
       this.request = request
     }
-
-    this.#headers = options?.headers ? Headers.from(options.headers) : this.#headers
-    this.#status = options?.status ? options.status : undefined
   }
 
   /**
@@ -110,7 +115,11 @@ export class RequestStatus {
       !this.#status &&
       request?.loader?.cache?.status?.has?.(request?.id)
     ) {
-      this.#status = request.loader.cache.status.get(request.id)?.value ?? null
+      this.#status = (
+        request.status?.value ??
+        request.loader.cache.status.get(request.id)?.value ??
+        null
+      )
     }
   }
 
@@ -330,10 +339,14 @@ export class Request {
    */
   static from (json, options) {
     return new this(json.url, {
-      status: json.status && typeof json.status === 'object'
-        // @ts-ignore
-        ? RequestStatus.from(json.status)
-        : options?.status,
+      status: (
+        json.status &&
+        typeof json.status === 'object' &&
+        !(json.status instanceof RequestStatus)
+          // @ts-ignore
+          ? RequestStatus.from(json.status)
+          : options?.status
+      ),
       ...options
     })
   }
@@ -366,7 +379,7 @@ export class Request {
     this.#loader = options?.loader ?? null
     this.#status = options?.status instanceof RequestStatus
       ? options.status
-      : new RequestStatus(this)
+      : new RequestStatus(options.status)
 
     this.#status.request = this
   }
