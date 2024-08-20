@@ -123,7 +123,7 @@ function initializeXHRIntercept () {
   })
 }
 
-function getErrorClass (type, fallback) {
+function getErrorClass (type, fallback = null) {
   if (typeof globalThis !== 'undefined' && typeof globalThis[type] === 'function') {
     // eslint-disable-next-line
     return new Function(`return function ${type} () {
@@ -226,6 +226,7 @@ function getRequestResponse (request, options) {
     }
 
     const { status, responseURL, statusText } = request
+    // @ts-ignore
     const message = Message.from(responseURL)
     const source = message.command
 
@@ -338,9 +339,11 @@ export function maybeMakeError (error, caller) {
   }
 
   if (
+    // @ts-ignore
     typeof Error.captureStackTrace === 'function' &&
     typeof caller === 'function'
   ) {
+    // @ts-ignore
     Error.captureStackTrace(err, caller)
   }
 
@@ -399,6 +402,10 @@ export function debug (enable) {
   return debug.enabled
 }
 
+/**
+ * @type {boolean}
+ */
+debug.enabled = false
 Object.defineProperty(debug, 'enabled', {
   enumerable: false,
   set (value) {
@@ -436,15 +443,18 @@ export class Headers extends globalThis.Headers {
     if (Array.isArray(input) && !Array.isArray(input[0])) {
       input = input.join('\n')
     } else if (typeof input?.entries === 'function') {
+      // @ts-ignore
       return new this(Array.from(input.entries()))
     } else if (isPlainObject(input) || isArrayLike(input)) {
       return new this(input)
     } else if (typeof input?.getAllResponseHeaders === 'function') {
       input = input.getAllResponseHeaders()
     } else if (typeof input?.headers?.entries === 'function') {
+      // @ts-ignore
       return new this(Array.from(input.headers.entries()))
     }
 
+    // @ts-ignore
     return new this(parseHeaders(String(input)))
   }
 
@@ -497,10 +507,14 @@ export function findMessageTransfers (transfers, object) {
  */
 export function postMessage (message, ...args) {
   if (globalThis?.webkit?.messageHandlers?.external?.postMessage) {
+    // @ts-ignore
     return webkit.messageHandlers.external.postMessage(message, ...args)
   } else if (globalThis?.chrome?.webview?.postMessage) {
+    // @ts-ignore
     return chrome.webview.postMessage(message, ...args)
+    // @ts-ignore
   } else if (globalThis?.external?.postMessage) {
+    // @ts-ignore
     return external.postMessage(message, ...args)
   } else if (globalThis.postMessage) {
     const transfer = []
@@ -767,11 +781,11 @@ export class Message extends URL {
   /**
    * Get a parameter value by `key`.
    * @param {string} key
-   * @param {any} defaultValue
+   * @param {any=} [defaultValue]
    * @return {any}
    * @ignore
    */
-  get (key, defaultValue) {
+  get (key, defaultValue = undefined) {
     if (!this.has(key)) {
       return defaultValue
     }
@@ -1034,7 +1048,7 @@ export async function ready () {
 const { toString } = Object.prototype
 
 export class IPCSearchParams extends URLSearchParams {
-  constructor (params, nonce) {
+  constructor (params, nonce = null) {
     let value
     if (params !== undefined && toString.call(params) !== '[object Object]') {
       value = params
@@ -1064,9 +1078,11 @@ export class IPCSearchParams extends URLSearchParams {
     }
 
     const runtimeFrameSource = globalThis.document
+      // @ts-ignore
       ? globalThis.document.querySelector('meta[name=runtime-frame-source]')?.content
       : ''
 
+    // @ts-ignore
     if (globalThis.top && globalThis.top !== globalThis) {
       this.set('runtime-frame-type', 'nested')
     } else if (!globalThis.window && globalThis.self === globalThis) {
@@ -1103,7 +1119,7 @@ export class IPCSearchParams extends URLSearchParams {
  * @return {Result}
  * @ignore
  */
-export function sendSync (command, value = '', options = {}, buffer = null) {
+export function sendSync (command, value = '', options = null, buffer = null) {
   if (!globalThis.XMLHttpRequest) {
     const err = new Error('XMLHttpRequest is not supported in environment')
     return Result.from(err)
@@ -1118,7 +1134,7 @@ export function sendSync (command, value = '', options = {}, buffer = null) {
   const uri = `ipc://${command}?${params}`
 
   if (
-    typeof __global_ipc_extension_handler === 'function' &&
+    typeof globalThis.__global_ipc_extension_handler === 'function' &&
     (options?.useExtensionIPCIfAvailable || command.startsWith('fs.'))
   ) {
     // eslint-disable-next-line
@@ -1131,7 +1147,7 @@ export function sendSync (command, value = '', options = {}, buffer = null) {
 
       let response = null
       try {
-        response = __global_ipc_extension_handler(uri)
+        response = globalThis.__global_ipc_extension_handler(uri)
       } catch (err) {
         return Result.from(null, err)
       }
@@ -1273,7 +1289,7 @@ export async function send (command, value, options = null) {
   const uri = `ipc://${command}?${params}`
 
   if (
-    typeof __global_ipc_extension_handler === 'function' &&
+    typeof globalThis.__global_ipc_extension_handler === 'function' &&
     (options?.useExtensionIPCIfAvailable || command.startsWith('fs.'))
   ) {
     // eslint-disable-next-line
@@ -1286,7 +1302,7 @@ export async function send (command, value, options = null) {
 
       let response = null
       try {
-        response = await __global_ipc_extension_handler(uri)
+        response = await globalThis.__global_ipc_extension_handler(uri)
       } catch (err) {
         return Result.from(null, err)
       }
@@ -1355,7 +1371,7 @@ export async function write (command, value, buffer, options) {
   const uri = `ipc://${command}?${params}`
 
   if (
-    typeof __global_ipc_extension_handler === 'function' &&
+    typeof globalThis.__global_ipc_extension_handler === 'function' &&
     (options?.useExtensionIPCIfAvailable || command.startsWith('fs.'))
   ) {
     // eslint-disable-next-line
@@ -1368,7 +1384,7 @@ export async function write (command, value, buffer, options) {
 
       let response = null
       try {
-        response = await __global_ipc_extension_handler(uri, buffer)
+        response = await globalThis.__global_ipc_extension_handler(uri, buffer)
       } catch (err) {
         return Result.from(null, err)
       }
@@ -1482,7 +1498,7 @@ export async function request (command, value, options) {
   const uri = `ipc://${command}?${params}`
 
   if (
-    typeof __global_ipc_extension_handler === 'function' &&
+    typeof globalThis.__global_ipc_extension_handler === 'function' &&
     (options?.useExtensionIPCIfAvailable || command.startsWith('fs.'))
   ) {
     // eslint-disable-next-line
@@ -1495,7 +1511,7 @@ export async function request (command, value, options) {
 
       let response = null
       try {
-        response = await __global_ipc_extension_handler(uri)
+        response = await globalThis.__global_ipc_extension_handler(uri)
       } catch (err) {
         return Result.from(null, err)
       }
@@ -1748,7 +1764,7 @@ export function findIPCMessageTransfers (transfers, object) {
     add(object)
   } else if (Array.isArray(object)) {
     for (let i = 0; i < object.length; ++i) {
-      object[i] = findMessageTransfers(transfers, object[i])
+      object[i] = findIPCMessageTransfers(transfers, object[i])
     }
   } else if (object && typeof object === 'object') {
     if (
@@ -1758,10 +1774,26 @@ export function findIPCMessageTransfers (transfers, object) {
       )
     ) {
       const port = IPCMessagePort.create(object)
-      object.addEventListener('message', (event) => {
+      object.addEventListener('message', function onMessage (event) {
+        if (port.closed === true) {
+          port.onmessage = null
+          event.preventDefault()
+          event.stopImmediatePropagation()
+          object.removeEventListener('message', onMessage)
+          return false
+        }
+
         port.dispatchEvent(new MessageEvent('message', event))
       })
+
       port.onmessage = (event) => {
+        if (port.closed === true) {
+          port.onmessage = null
+          event.preventDefault()
+          event.stopImmediatePropagation()
+          return false
+        }
+
         const transfers = new Set()
         findIPCMessageTransfers(transfers, event.data)
         object.postMessage(event.data, {
@@ -1772,7 +1804,7 @@ export function findIPCMessageTransfers (transfers, object) {
       return port
     } else {
       for (const key in object) {
-        object[key] = findMessageTransfers(transfers, object[key])
+        object[key] = findIPCMessageTransfers(transfers, object[key])
       }
     }
   }
@@ -1800,6 +1832,7 @@ export class IPCMessagePort extends MessagePort {
   static create (options = null) {
     const id = String(options?.id ?? rand64())
     const port = Object.create(this.prototype)
+    const token = String(rand64())
     const channel = typeof options?.channel === 'string'
       ? new BroadcastChannel(options.channel)
       : options.channel ?? new BroadcastChannel(id)
@@ -1807,6 +1840,7 @@ export class IPCMessagePort extends MessagePort {
     port[Symbol.for('socket.runtime.IPCMessagePort.id')] = id
     ports.set(id, Object.create(null, {
       id: { writable: true, value: id },
+      token: { writable: false, value: token },
       closed: { writable: true, value: false },
       started: { writable: true, value: false },
       channel: { writable: true, value: channel },
@@ -1815,9 +1849,21 @@ export class IPCMessagePort extends MessagePort {
       eventTarget: { writable: true, value: new EventTarget() }
     }))
 
-    channel.addEventListener('message', (event) => {
-      if (ports.get(id)?.started) {
-        port.dispatchEvent(new MessageEvent('message', event))
+    channel.addEventListener('message', function onMessage (event) {
+      const state = ports.get(id)
+
+      if (!state || state?.closed === true) {
+        event.preventDefault()
+        event.stopImmediatePropagation()
+        channel.removeEventListener('message', onMessage)
+        return false
+      }
+
+      if (state?.started && event.data?.token !== state.token) {
+        port.dispatchEvent(new MessageEvent('message', {
+          ...event,
+          data: event.data?.data
+        }))
       }
     })
 
@@ -1899,10 +1945,14 @@ export class IPCMessagePort extends MessagePort {
     }
   }
 
-  close () {
+  close (purge = true) {
     const port = ports.get(this.id)
     if (port) {
       port.closed = true
+    }
+
+    if (purge) {
+      ports.delete(this.id)
     }
   }
 
@@ -1932,7 +1982,10 @@ export class IPCMessagePort extends MessagePort {
       }
     }
 
-    port.channel.postMessage(serializedMessage, options)
+    port.channel.postMessage({
+      token: port.token,
+      data: serializedMessage
+    }, options)
   }
 
   addEventListener (...args) {
@@ -1999,29 +2052,43 @@ export class IPCMessagePort extends MessagePort {
 
 export class IPCMessageChannel extends MessageChannel {
   #id = null
+  #port1 = null
+  #port2 = null
   #channel = null
-
-  port1 = null
-  port2 = null
 
   constructor (options = null) {
     super()
     this.#id = String(options?.id ?? rand64())
     this.#channel = options?.channel ?? new BroadcastChannel(this.#id)
 
-    this.port1 = IPCMessagePort.create({
-      channel: this.#channel,
-      ...options?.port1
-    })
+    this.#port1 = IPCMessagePort.create(options?.port1)
+    this.#port2 = IPCMessagePort.create(options?.port2)
 
-    this.port2 = IPCMessagePort.create({
-      channel: this.#channel,
-      ...options?.port2
-    })
+    this.port1[Symbol.for('socket.runtime.ipc.MessagePort.handlePostMessage')] = (message, options) => {
+      this.port2.channel.postMessage(message, options)
+      return false
+    }
+
+    this.port2[Symbol.for('socket.runtime.ipc.MessagePort.handlePostMessage')] = (message, options) => {
+      this.port2.channel.postMessage(message, options)
+      return false
+    }
   }
 
   get id () {
     return this.#id
+  }
+
+  get port1 () {
+    return this.#port1
+  }
+
+  get port2 () {
+    return this.#port2
+  }
+
+  get channel () {
+    return this.#channel
   }
 }
 
