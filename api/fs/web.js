@@ -143,7 +143,7 @@ export async function createFile (filename, options = null) {
         blobBuffer = readFileSync(filename)
       }
 
-      const blob = new Blob([blobBuffer], {
+      const blob = new Blob([blobBuffer.buffer], {
         type: contentType
       })
 
