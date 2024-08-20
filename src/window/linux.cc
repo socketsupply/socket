@@ -958,7 +958,6 @@ namespace SSC {
             aspectWidth = std::stof(trim(parts[0]));
             aspectHeight = std::stof(trim(parts[1]));
           } catch (...) {
-            debug("invalid aspect ratio");
             return FALSE;
           }
 
@@ -979,6 +978,12 @@ namespace SSC {
   }
 
   Window::~Window () {
+    auto app = App::sharedApplication();
+
+    if (!app || app->shouldExit) {
+      return;
+    }
+
     if (this->policies) {
       g_object_unref(this->policies);
       this->policies = nullptr;
