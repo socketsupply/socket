@@ -9776,7 +9776,7 @@ declare module "socket:fs/web" {
         prototype: FileSystemFileHandle;
     } | {
         new (): {
-            getFile(): void;
+            getFile(): Promise<void>;
             createWritable(options?: any): Promise<void>;
             createSyncAccessHandle(): Promise<void>;
             readonly name: any;
