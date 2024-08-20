@@ -43,6 +43,7 @@ const TypedArrayPrototype = Object.getPrototypeOf(Uint8ArrayPrototype)
 const TypedArray = TypedArrayPrototype.constructor
 
 const kContextTag = Symbol('socket.vm.Context')
+const kWorkerContextReady = Symbol('socket.vm.ContextWorker.ready')
 
 const VM_WINDOW_INDEX = 47
 const VM_WINDOW_TITLE = 'socket:vm'
@@ -1253,14 +1254,16 @@ export async function getContextWindow () {
  */
 export async function getContextWorker () {
   if (contextWorker) {
-    return await contextWorker.ready
+    await contextWorker.ready
+    await contextWorker[kWorkerContextReady]
+    return contextWorker
   }
 
   if (os.platform() === 'win32' && !process.env.COREWEBVIEW2_22_AVAILABLE) {
     if (globalThis.window && globalThis.top === globalThis.window) {
       // inside global top window
       contextWorker = new ContextWorkerInterface()
-      contextWorker.ready = Promise.resolve(contextWorker)
+      contextWorker[kWorkerContextReady] = Promise.resolve(contextWorker)
       globals.register('vm.contextWorker', contextWorker)
     } else if (
       globalThis.window &&
@@ -1270,7 +1273,7 @@ export async function getContextWorker () {
       // inside realm frame
       // @ts-ignore
       contextWorker = new ContextWorkerInterfaceProxy(globalThis.top.__globals)
-      contextWorker.ready = Promise.resolve(contextWorker)
+      contextWorker[kWorkerContextReady] = Promise.resolve(contextWorker)
     } else {
       throw new TypeError('Unable to determine VM context worker')
     }
@@ -1279,7 +1282,7 @@ export async function getContextWorker () {
       type: 'module'
     })
 
-    contextWorker.ready = new Promise((resolve, reject) => {
+    contextWorker[kWorkerContextReady] = new Promise((resolve, reject) => {
       contextWorker.addEventListener('error', (event) => {
         reject(new Error('Failed to initialize VM Context SharedWorker', {
           cause: event.error ?? event
@@ -1315,7 +1318,9 @@ export async function getContextWorker () {
     }
   })
 
-  return await contextWorker.ready
+  await contextWorker.ready
+  await contextWorker[kWorkerContextReady]
+  return contextWorker
 }
 
 /**
@@ -1758,13 +1763,18 @@ export function compileFunction (source, options = null) {
  * garbage collected or there are no longer any references to it and its
  * associated `Script` instance.
  * @param {string|object|function} source
- * @param {ScriptOptions=} [options]
  * @param {object=} [context]
+ * @param {ScriptOptions=} [options]
  * @return {Promise<any>}
  */
-export async function runInContext (source, options, context) {
+export async function runInContext (source, context, options) {
   source = convertSourceToString(source)
-  context = options?.context ?? context ?? sharedContext
+  context = (
+    context?.context ??
+    options?.context ??
+    context ??
+    sharedContext
+  )
 
   const script = scripts.get(context) ?? new Script(source, options)
 
@@ -1782,13 +1792,13 @@ export async function runInContext (source, options, context) {
  * Run `source` JavaScript in new context. The script context is destroyed after
  * execution. This is typically a "one off" isolated run.
  * @param {string} source
- * @param {ScriptOptions=} [options]
  * @param {object=} [context]
+ * @param {ScriptOptions=} [options]
  * @return {Promise<any>}
  */
-export async function runInNewContext (source, options, context) {
+export async function runInNewContext (source, context, options) {
   source = convertSourceToString(source)
-  context = options?.context ?? context ?? {}
+  context = options?.context ?? context?.context ?? context ?? {}
   const script = new Script(source, options)
   scripts.set(script.context, script)
   const result = await script.runInNewContext(context, options)

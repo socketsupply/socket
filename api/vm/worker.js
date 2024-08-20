@@ -145,8 +145,7 @@ class State {
   }
 
   onPortMessage (port, event) {
-    // debug echo
-    // port.postMessage(event.data)
+    // port.postMessage(event.data) // debug echo
 
     if (event.data?.type === 'terminate-worker') {
       for (const port of this.ports) {
