@@ -1085,7 +1085,7 @@ export function readFileSync (path, options = null) {
   path = normalizePath(path)
   options = {
     flags: 'r',
-    encoding: options?.encoding ?? 'utf8',
+    encoding: options?.encoding,
     ...options
   }
 
