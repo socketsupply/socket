@@ -28,6 +28,7 @@ export const SHARED_WORKER_READY_TOKEN = { __shared_worker_ready: true }
 
 // state
 export const module = { exports: {} }
+export const connections = new Set()
 
 // event listeners
 hooks.onReady(onReady)
@@ -200,6 +201,15 @@ export async function onMessage (event) {
       SharedWorkerMessagePort
     })))
 
+    for (const entry of connections) {
+      if (entry.id === connection.port.id) {
+        entry.close(false)
+        connections.delete(entry)
+        break
+      }
+    }
+
+    connections.add(connection.port)
     const connectEvent = new MessageEvent('connect')
     Object.defineProperty(connectEvent, 'ports', {
       configurable: false,
