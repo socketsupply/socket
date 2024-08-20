@@ -800,7 +800,7 @@ declare module "socket:ipc" {
      */
     export function debug(enable?: (boolean)): boolean;
     export namespace debug {
-        let enabled: any;
+        let enabled: boolean;
         function log(...args: any[]): any;
     }
     /**
@@ -1038,11 +1038,11 @@ declare module "socket:ipc" {
         /**
          * Get a parameter value by `key`.
          * @param {string} key
-         * @param {any} defaultValue
+         * @param {any=} [defaultValue]
          * @return {any}
          * @ignore
          */
-        get(key: string, defaultValue: any): any;
+        get(key: string, defaultValue?: any | undefined): any;
         /**
          * Delete a parameter by `key`.
          * @param {string} key
@@ -1160,7 +1160,7 @@ declare module "socket:ipc" {
         [Symbol.iterator](): Generator<any, void, unknown>;
     }
     export class IPCSearchParams extends URLSearchParams {
-        constructor(params: any, nonce: any);
+        constructor(params: any, nonce?: any);
     }
     /**
      * @ignore
@@ -1177,6 +1177,7 @@ declare module "socket:ipc" {
         get onmessage(): any;
         set onmessageerror(onmessageerror: any);
         get onmessageerror(): any;
+        close(purge?: boolean): void;
         postMessage(message: any, optionsOrTransferList: any): void;
         addEventListener(...args: any[]): any;
         removeEventListener(...args: any[]): any;
@@ -1184,9 +1185,10 @@ declare module "socket:ipc" {
     }
     export class IPCMessageChannel extends MessageChannel {
         constructor(options?: any);
-        port1: any;
-        port2: any;
         get id(): any;
+        get port1(): any;
+        get port2(): any;
+        get channel(): any;
         #private;
     }
     export default exports;
@@ -8298,20 +8300,20 @@ declare module "socket:vm" {
      * garbage collected or there are no longer any references to it and its
      * associated `Script` instance.
      * @param {string|object|function} source
-     * @param {ScriptOptions=} [options]
      * @param {object=} [context]
+     * @param {ScriptOptions=} [options]
      * @return {Promise<any>}
      */
-    export function runInContext(source: string | object | Function, options?: ScriptOptions | undefined, context?: object | undefined): Promise<any>;
+    export function runInContext(source: string | object | Function, context?: object | undefined, options?: ScriptOptions | undefined): Promise<any>;
     /**
      * Run `source` JavaScript in new context. The script context is destroyed after
      * execution. This is typically a "one off" isolated run.
      * @param {string} source
-     * @param {ScriptOptions=} [options]
      * @param {object=} [context]
+     * @param {ScriptOptions=} [options]
      * @return {Promise<any>}
      */
-    export function runInNewContext(source: string, options?: ScriptOptions | undefined, context?: object | undefined): Promise<any>;
+    export function runInNewContext(source: string, context?: object | undefined, options?: ScriptOptions | undefined): Promise<any>;
     /**
      * Run `source` JavaScript in this current context (`globalThis`).
      * @param {string} source
@@ -17664,6 +17666,7 @@ declare module "socket:shared-worker/worker" {
     export namespace module {
         let exports: {};
     }
+    export const connections: Set<any>;
 }
 
 declare module "socket:test/harness" {
