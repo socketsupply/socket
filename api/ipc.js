@@ -33,7 +33,7 @@
  * ```
  */
 
-/* global webkit, chrome, external, reportError, __global_ipc_extension_handler */
+/* global webkit, chrome, external, reportError */
 import {
   AbortError,
   InternalError,
