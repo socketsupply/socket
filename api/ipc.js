@@ -1168,10 +1168,10 @@ export function sendSync (command, value = '', options = null, buffer = null) {
     debug.log('ipc.sendSync: %s', uri)
   }
 
-  if (typeof globalThis.primordials !== 'undefined') {
-    if (!(/android/i.test(globalThis.primordials.platform) && globalThis.document)) {
+  if (options?.responseType && typeof primordials !== 'undefined') {
+    if (!(/android/i.test(primordials.platform) && globalThis.document)) {
       // @ts-ignore
-      request.responseType = options?.responseType ?? ''
+      request.responseType = options.responseType
     }
   }
 
