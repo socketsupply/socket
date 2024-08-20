@@ -38,7 +38,7 @@ export const FileSystemHandle = globalThis.FileSystemHandle ??
 // @ts-ignore
 export const FileSystemFileHandle = globalThis.FileSystemFileHandle ??
   class FileSystemFileHandle extends FileSystemHandle {
-    getFile () {}
+    async getFile () {}
     async createWritable (options = null) {}
     async createSyncAccessHandle () {}
   }
@@ -280,7 +280,7 @@ export async function createFileSystemWritableFileStream (handle, options) {
     console.warn('socket:fs/web: Missing platform \'FileSystemWritableFileStream\' implementation')
   }
 
-  const file = handle.getFile()
+  const file = await handle.getFile()
   let offset = 0
   let fd = null
 
@@ -375,10 +375,6 @@ export async function createFileSystemFileHandle (file, options = null) {
     console.warn('socket:fs/web: Missing platform \'FileSystemFileHandle\' implementation')
   }
 
-  if (typeof file === 'string') {
-    file = await createFile(file)
-  }
-
   return create(FileSystemFileHandle, class FileSystemFileHandle {
     get [kFileSystemHandleFullName] () { return file[kFileFullName] }
     get [kFileDescriptor] () { return file[kFileDescriptor] }
@@ -391,7 +387,11 @@ export async function createFileSystemFileHandle (file, options = null) {
       return 'file'
     }
 
-    getFile () {
+    async getFile () {
+      if (typeof file === 'string') {
+        file = await createFile(file)
+      }
+
       return file
     }
 
@@ -417,8 +417,12 @@ export async function createFileSystemFileHandle (file, options = null) {
     }
 
     async move (nameOrDestinationHandle, name = null) {
-      if (writable === false || URL.canParse(file?.name)) {
+      if (writable === false || URL.canParse(file?.name ?? file)) {
         throw new NotAllowedError('FileSystemFileHandle is in \'readonly\' mode')
+      }
+
+      if (typeof file === 'string') {
+        file = await createFile(file)
       }
 
       let destination = null
@@ -443,8 +447,12 @@ export async function createFileSystemFileHandle (file, options = null) {
     }
 
     async createWritable (options = null) {
-      if (writable === false || URL.canParse(file?.name)) {
+      if (writable === false || URL.canParse(file?.name ?? file)) {
         throw new NotAllowedError('FileSystemFileHandle is in \'readonly\' mode')
+      }
+
+      if (typeof file === 'string') {
+        file = await createFile(file)
       }
 
       return await createFileSystemWritableFileStream(this, options)
