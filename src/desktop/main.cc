@@ -113,7 +113,7 @@ void signalHandler (int signum) {
   #endif
 
   if (!signalsDisabled || std::find(signals.begin(), signals.end(), name) != signals.end()) {
-    defaultWindowSignalHandler(signum);
+    app->dispatch([signum]() { defaultWindowSignalHandler(signum); });
   }
 
   if (signum == SIGTERM || signum == SIGINT) {
@@ -651,7 +651,7 @@ MAIN {
       unlink(appInstanceLock.c_str());
     #endif
       if (process != nullptr) {
-        process->kill();
+        process->kill(signum);
       }
       exit(signum);
     };
@@ -903,7 +903,7 @@ MAIN {
     unlink(appInstanceLock.c_str());
   #endif
     if (process != nullptr) {
-      process->kill();
+      process->kill(code);
       process = nullptr;
     }
 
