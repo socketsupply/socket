@@ -335,6 +335,7 @@ namespace SSC {
   }
 
   void Core::pauseEventLoop() {
+  #if !SOCKET_RUNTIME_PLATFORM_LINUX
     // wait for drain of event loop dispatch queue
     while (true) {
       Lock lock(this->mutex);
@@ -342,6 +343,7 @@ namespace SSC {
         break;
       }
     }
+  #endif
 
     this->isLoopRunning = false;
     do {
