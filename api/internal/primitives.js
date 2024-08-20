@@ -326,6 +326,52 @@ export function init () {
   // WebAssembly
   install(WebAssembly, globalThis.WebAssembly, 'WebAssembly')
 
+  // quirks
+  if (typeof globalThis.FormData === 'function') {
+    const { append, set } = FormData.prototype
+    Object.defineProperties(FormData.prototype, {
+      append: {
+        configurable: true,
+        enumerable: true,
+        value (name, value, filename) {
+          if ( // check for 'File'
+            typeof value === 'object' &&
+            value instanceof Blob &&
+            typeof value.name === 'string'
+          ) {
+            if (!filename) {
+              filename = value.name
+            }
+
+            value = value.slice()
+          }
+
+          return append.call(this, name, value, filename)
+        }
+      },
+
+      set: {
+        configurable: true,
+        enumerable: true,
+        value (name, value, filename) {
+          if ( // check for 'File'
+            typeof value === 'object' &&
+            value instanceof Blob &&
+            typeof value.name === 'string'
+          ) {
+            if (!filename) {
+              filename = value.name
+            }
+
+            value = value.slice()
+          }
+
+          return set.call(this, name, value, filename)
+        }
+      },
+    })
+  }
+
   applied = true
 
   if (!Error.captureStackTrace) {
