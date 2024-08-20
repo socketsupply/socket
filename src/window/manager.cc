@@ -291,22 +291,7 @@ namespace SSC {
       windowOptions.userConfig = options.userConfig;
     }
 
-    const auto window = this->createWindow(windowOptions);
-
-    if (isDebugEnabled() && window->index == 0) {
-    #if SOCKET_RUNTIME_PLATFORM_LINUX
-      if (devHost.starts_with("http:")) {
-        auto webContext = webkit_web_context_get_default();
-        auto security = webkit_web_context_get_security_manager(webContext);
-        webkit_security_manager_register_uri_scheme_as_display_isolated(security, "http");
-        webkit_security_manager_register_uri_scheme_as_cors_enabled(security, "http");
-        webkit_security_manager_register_uri_scheme_as_secure(security, "http");
-        webkit_security_manager_register_uri_scheme_as_local(security, "http");
-      }
-    #endif
-    }
-
-    return window;
+    return this->createWindow(windowOptions);
   }
 
   JSON::Array WindowManager::json (const Vector<int>& indices) {
