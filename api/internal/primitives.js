@@ -368,7 +368,7 @@ export function init () {
 
           return set.call(this, name, value, filename)
         }
-      },
+      }
     })
   }
 
