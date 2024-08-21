@@ -81,7 +81,7 @@ class PeerWorkerProxy {
   constructor (options, port, fn) {
     if (!options.isWorkerThread) {
       this.#channel = new MessageChannel()
-      this.#worker = new window.Worker(new URL('./worker.js', import.meta.url))
+      this.#worker = new globalThis.Worker(new URL('./worker.js', import.meta.url))
 
       this.#worker.addEventListener('error', err => {
         throw err
