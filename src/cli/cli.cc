@@ -79,7 +79,7 @@ Map rc;
 auto start = system_clock::now();
 
 bool flagDebugMode = true;
-bool flagVerboseMode = true;
+bool flagVerboseMode = false;
 bool flagQuietMode = false;
 Map defaultTemplateAttrs;
 
