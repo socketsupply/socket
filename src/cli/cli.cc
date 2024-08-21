@@ -1869,7 +1869,7 @@ optionsAndEnv parseCommandLineOptions (
   return result;
 }
 
-int main (const int argc, const char* argv[]) {
+int main (int argc, char* argv[]) {
   defaultTemplateAttrs = {
     { "ssc_version", SSC::VERSION_FULL_STRING },
     { "project_name", "beepboop" }
@@ -1906,7 +1906,11 @@ int main (const int argc, const char* argv[]) {
     exit(0);
   }
 
-  if (subcommand[0] == '-') {
+  if (equal(subcommand, "--verbose")) {
+    flagVerboseMode = true;
+    argc--;
+    argv++;
+  } else if (subcommand[0] == '-') {
     log("unknown option: " + String(subcommand));
     printHelp("ssc");
     exit(0);
@@ -2015,7 +2019,7 @@ int main (const int argc, const char* argv[]) {
     std::function<void(Map, std::unordered_set<String>)> subcommandHandler
   ) -> void {
     if (argv[1] == subcommand) {
-      auto commandlineOptions = std::span(argv, argc).subspan(2, numberOfOptions);
+      auto commandlineOptions = std::span(const_cast<const char**>(argv), argc).subspan(2, numberOfOptions);
       auto optionsAndEnv = parseCommandLineOptions(commandlineOptions, availableOptions, subcommand);
 
       auto envs = optionsAndEnv.envs;
@@ -2213,7 +2217,8 @@ int main (const int argc, const char* argv[]) {
   // second flag indicating whether option should be followed by a value
   CommandLineOptions initOptions = {
     { { "--config", "-C" }, true, false },
-    { { "--name", "-n" }, true, true }
+    { { "--name", "-n" }, true, true },
+    { { "--vebose", "-V" }, true, false }
   };
   createSubcommand("init", initOptions, false, [&](Map optionsWithValue, std::unordered_set<String> optionsWithoutValue) -> void {
     auto isTargetPathEmpty = fs::exists(targetPath) ? fs::is_empty(targetPath) : true;
@@ -2274,7 +2279,8 @@ int main (const int argc, const char* argv[]) {
     { { "--platform" }, false, true },
     { { "--ecid" }, true, false },
     { { "--udid" }, true, false },
-    { { "--only" }, true, false }
+    { { "--only" }, true, false },
+    { { "--vebose", "-V" }, true, false }
   };
   createSubcommand("list-devices", listDevicesOptions, false, [&](Map optionsWithValue, std::unordered_set<String> optionsWithoutValue) -> void {
     bool isUdid =
@@ -2596,7 +2602,8 @@ int main (const int argc, const char* argv[]) {
   // first flag indicating whether option is optional
   // second flag indicating whether option should be followed by a value
   CommandLineOptions printBuildDirOptions = {
-    { { "--platform" }, true, true }, { { "--root" }, true, false}
+    { { "--platform" }, true, true }, { { "--root" }, true, false},
+    { { "--vebose", "-V" }, true, false }
   };
 
   createSubcommand("print-build-dir", printBuildDirOptions, true, [&](Map optionsWithValue, std::unordered_set<String> optionsWithoutValue) -> void {
@@ -2636,7 +2643,8 @@ int main (const int argc, const char* argv[]) {
     { { "--package", "-p" }, true, false },
     { { "--package-format", "-f" }, true, true },
     { { "--codesign", "-c" }, true, false },
-    { { "--notarize", "-n" }, true, false }
+    { { "--notarize", "-n" }, true, false },
+    { { "--vebose", "-V" }, true, false }
   };
 
   // Insert the elements of runOptions into buildOptions
