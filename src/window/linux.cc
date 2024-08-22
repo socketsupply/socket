@@ -149,7 +149,12 @@ namespace SSC {
     webkit_settings_set_enable_dns_prefetching(this->settings, true);
     webkit_settings_set_enable_smooth_scrolling(this->settings, true);
     webkit_settings_set_enable_developer_extras(this->settings, options.debug);
-    webkit_settings_set_enable_back_forward_navigation_gestures(this->settings, true);
+
+    webkit_settings_set_enable_back_forward_navigation_gestures(
+      this->settings,
+      userConfig["webview_navigator_enable_navigation_gestures"] == "true"
+    );
+
     webkit_settings_set_media_content_types_requiring_hardware_support(
       this->settings,
       nullptr
