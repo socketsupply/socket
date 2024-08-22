@@ -419,6 +419,10 @@ namespace SSC {
     ];
   #endif
 
+    this->webview.allowsBackForwardNavigationGestures = (
+      userConfig["webview_navigator_enable_navigation_gestures"] == "true"
+    );
+
     this->webview.UIDelegate = webview;
     this->webview.layer.opaque = NO;
 
