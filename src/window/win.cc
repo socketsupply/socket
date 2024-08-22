@@ -832,7 +832,9 @@ namespace SSC {
               settings3->put_AreBrowserAcceleratorKeysEnabled(wantsDebugMode);
 
               settings6->put_IsPinchZoomEnabled(false);
-              settings6->put_IsSwipeNavigationEnabled(false);
+              settings6->put_IsSwipeNavigationEnabled(
+                this->bridge.userConfig["webview_navigator_enable_navigation_destures"] == "true"
+              );
 
               settings9->put_IsNonClientRegionSupportEnabled(true);
             } while (0);
