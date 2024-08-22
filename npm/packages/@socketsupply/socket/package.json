@@ -1,6 +1,6 @@
 {
   "name": "@socketsupply/socket",
-  "version": "0.6.0-rc.4",
+  "version": "0.6.0-rc.5",
   "description": "A Cross-Platform, Native Runtime for Desktop and Mobile Apps — Create apps using HTML, CSS, and JavaScript. Written from the ground up to be small and maintainable.",
   "type": "module",
   "main": "./index.js",
@@ -39,10 +39,10 @@
   },
   "homepage": "https://github.com/socketsupply/socket#readme",
   "optionalDependencies": {
-    "@socketsupply/socket-darwin-arm64": "0.6.0-rc.4",
-    "@socketsupply/socket-darwin-x64": "0.6.0-rc.4",
-    "@socketsupply/socket-linux-arm64": "0.6.0-rc.4",
-    "@socketsupply/socket-linux-x64": "0.6.0-rc.4",
-    "@socketsupply/socket-win32-x64": "0.6.0-rc.4"
+    "@socketsupply/socket-darwin-arm64": "0.6.0-rc.5",
+    "@socketsupply/socket-darwin-x64": "0.6.0-rc.5",
+    "@socketsupply/socket-linux-arm64": "0.6.0-rc.5",
+    "@socketsupply/socket-linux-x64": "0.6.0-rc.5",
+    "@socketsupply/socket-win32-x64": "0.6.0-rc.5"
   }
 }
