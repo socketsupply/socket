@@ -270,7 +270,8 @@ class PeerWorkerProxy {
           lastUpdate: arg.lastUpdate,
           natType: arg.natType,
           peerId: arg.peerId,
-          port: arg.port
+          port: arg.port,
+          proxy: !!arg.proxy,
         }
 
         delete args[i].localPeer // don't copy this over
