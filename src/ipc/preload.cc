@@ -228,6 +228,9 @@ namespace SSC::IPC {
       )));
 
       // 6. compile `globalThis.__args.client` values
+      static std::regex platformPattern("^mac$", std::regex_constants::icase);
+      static const auto platformHost = getDevHost();
+      static const auto platformPort = getDevPort();
       buffers.push_back(trim(tmpl(
         R"JAVASCRIPT(
         if (!globalThis.__args.client?.id) {
@@ -247,6 +250,24 @@ namespace SSC::IPC {
               enumerable: true,
               writable: true,
               value: globalThis.window ? 'window' : 'worker'
+            },
+            platform: {
+              configurable: false,
+              enumerable: true,
+              writable: true,
+              value: '{{platform}}'
+            },
+            host: {
+              configurable: false,
+              enumerable: true,
+              writable: true,
+              value: '{{host}}' || null
+            },
+            port: {
+              configurable: false,
+              enumerable: true,
+              writable: true,
+              value: {{port}} || null
             },
             parent: {
               configurable: false,
@@ -278,7 +299,10 @@ namespace SSC::IPC {
         )JAVASCRIPT",
         Map {
           {"id", std::to_string(rand64())},
-          {"clientId", std::to_string(this->options.client.id)}
+          {"clientId", std::to_string(this->options.client.id)},
+          {"platform", std::regex_replace(platform.os, platformPattern, "darwin")},
+          {"host", platformPort > 0 ? platformHost : ""},
+          {"port", std::to_string(platformPort)}
         }
       )));
 
