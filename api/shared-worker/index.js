@@ -1,6 +1,7 @@
 /* global XMLHttpRequest, ErrorEvent */
 import application from '../application.js'
 import location from '../location.js'
+import process from '../process.js'
 import crypto from '../crypto.js'
 import client from '../application/client.js'
 import ipc from '../ipc.js'
