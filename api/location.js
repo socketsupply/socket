@@ -1,23 +1,47 @@
 export class Location {
   get url () {
+    let url = null
+
+    // XXX(@jwerle): should never be true...
+    // @ts-ignore
     if (globalThis.location === this) {
-      return null
+      return url
     }
 
     if (globalThis.location.href.startsWith('blob:')) {
-      return new URL(globalThis.RUNTIME_WORKER_LOCATION || globalThis.location.pathname)
-    }
-
-    if (globalThis.location.origin === 'null') {
-      return new URL(
-        globalThis.location.pathname +
-        globalThis.location.search +
-        globalThis.location.hash,
-        globalThis.__args?.config?.meta_bundle_identifier ?? 'null'
+      url = new URL(
+        globalThis.RUNTIME_WORKER_LOCATION || (
+          globalThis.location.pathname +
+          globalThis.location.search +
+          globalThis.location.hash
+        )
       )
+    } else if (globalThis.location.origin === 'null') {
+      try {
+        url = new URL(
+          globalThis.location.pathname +
+          globalThis.location.search +
+          globalThis.location.hash,
+          globalThis.__args?.config?.meta_bundle_identifier ?? 'null'
+        )
+      } catch {}
+    } else if (globalThis.location.hostname === globalThis.__args?.config?.meta_bundle_identifier) {
+      url = new URL(globalThis.location.href)
+    } else if (globalThis.__args.client.host === globalThis.location.hostname) {
+      url = new URL(globalThis.location.href)
     }
 
-    return new URL(globalThis.location.href)
+    if (!url || url.hostname !== globalThis.__args?.config?.meta_bundle_identifier) {
+      if (globalThis.__args?.config?.meta_bundle_identifier) {
+        if (globalThis.__args.config.platform === 'android') {
+          url = new URL(`https://${globalThis.__args.config.meta_bundle_identifier}`)
+        } else {
+          url = new URL(`socket://${globalThis.__args.config.meta_bundle_identifier}`)
+        }
+      }
+    }
+
+    return url
   }
 
   get protocol () {
