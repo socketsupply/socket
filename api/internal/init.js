@@ -437,7 +437,7 @@ class RuntimeWorker extends GlobalWorker {
     `.trim()
 
     const objectURL = URL.createObjectURL(
-      new Blob([preload.trim()], { type: 'application/javascript' })
+      new Blob([preload.trim()], { type: 'text/javascript' })
     )
 
     // level 1 worker `EventTarget` 'message' listener
