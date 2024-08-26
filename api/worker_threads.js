@@ -4,6 +4,7 @@ import init, { SHARE_ENV } from './worker_threads/init.js'
 import { maybeMakeError } from './ipc.js'
 import { AsyncResource } from './async/resource.js'
 import { EventEmitter } from './events.js'
+import location from './location.js'
 import { env } from './process.js'
 /**
 
@@ -182,7 +183,7 @@ export class Worker extends EventEmitter {
 
     options = { ...options }
 
-    const url = '/socket/worker_threads/init.js'
+    const url = new URL('/socket/worker_threads/init.js', location.origin).toString()
     this.#resource = new AsyncResource('WorkerThread')
 
     this.onWorkerMessage = this.onWorkerMessage.bind(this)
