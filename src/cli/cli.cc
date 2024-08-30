@@ -2560,8 +2560,8 @@ int main (int argc, char* argv[]) {
         if (flagVerboseMode) {
           log(r.output);
         }
-      } else {
         log("ERROR: Unable to determine macOS application or package to install.");
+      } else {
         exit(1);
       }
     } else if (platform.linux) {
@@ -6194,14 +6194,16 @@ int main (int argc, char* argv[]) {
 
         zipCommand
           << "zip -r"
-          << " " << (paths.platformSpecificOutputPath / (settings["build_name"] + ".zip")).string()
-          << " " << pathResourcesRelativeToUserBuild.string()
+          << " " << (paths.platformSpecificOutputPath / (paths.pathPackage.filename().string() + ".zip")).string()
+          << " " << paths.pathPackage.filename()
           ;
 
         if (debugEnv || verboseEnv) {
           log(zipCommand.str());
         }
 
+        auto cwd = fs::current_path();
+        fs::current_path(paths.platformSpecificOutputPath);
         auto r = exec(zipCommand.str());
 
         if (r.exitCode != 0) {
@@ -6211,6 +6213,7 @@ int main (int argc, char* argv[]) {
           }
           exit(r.exitCode);
         }
+        fs::current_path(cwd);
       } else {
         log("ERROR: Unknown package format given in '[build.linux.package] format = \"" + packageFormat + "\"");
         exit(1);
