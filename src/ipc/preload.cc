@@ -273,7 +273,7 @@ namespace SSC::IPC {
               configurable: false,
               enumerable: true,
               writable: false,
-              value: globalThis.parent !== globalThis
+              value: globalThis.parent !== globalThis && globalThis.origin.includes(globalThis.__args.config.meta_bundle_identifier)
 	              ? globalThis.parent?.__args?.client ?? null
 	              : null
             },
@@ -429,7 +429,11 @@ namespace SSC::IPC {
 
       // 10. compile listeners for `globalThis`
       buffers.push_back(R"JAVASCRIPT(
-        if (globalThis.document && !globalThis.RUNTIME_APPLICATION_URL_EVENT_BACKLOG) {
+        if (
+          globalThis.document &&
+          !globalThis.RUNTIME_APPLICATION_URL_EVENT_BACKLOG &&
+          globalThis.origin.includes(globalThis.__args.config.meta_bundle_identifier)
+         ) {
           Object.defineProperties(globalThis, {
             RUNTIME_APPLICATION_URL_EVENT_BACKLOG: {
               configurable: false,
@@ -503,8 +507,10 @@ namespace SSC::IPC {
       if (this->options.features.useHTMLMarkup && this->options.features.useESM) {
         buffers.push_back(tmpl(
           R"JAVASCRIPT(
-            import 'socket:internal/init'
-            {{userScript}}
+            if (globalThis.origin.includes(globalThis.__args.config.meta_bundle_identifier) {
+              await import('socket:internal/init')
+              {{userScript}}
+            }
           )JAVASCRIPT",
           Map {{"userScript", this->options.userScript}}
         ));
@@ -516,7 +522,11 @@ namespace SSC::IPC {
               {{userScript}}
             }
 
-            if (globalThis.document && globalThis.document.readyState !== 'complete') {
+            if (
+              globalThis.document &&
+              globalThis.document.readyState !== 'complete' &&
+              globalThis.origin.includes(globalThis.__args.config.meta_bundle_identifier)
+            ) {
               globalThis.document.addEventListener('readystatechange', () => {
                 if(/interactive|complete/.test(globalThis.document.readyState)) {
                   import('socket:internal/init')
@@ -524,7 +534,7 @@ namespace SSC::IPC {
                     .catch(console.error)
                 }
               })
-            } else {
+            } else if (globalThis.origin.includes(globalThis.__args.config.meta_bundle_identifier)) {
               import('socket:internal/init')
                 .then(userScriptCallback)
                 .catch(console.error)
