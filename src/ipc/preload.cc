@@ -515,7 +515,7 @@ namespace SSC::IPC {
         buffers.push_back(tmpl(
           R"JAVASCRIPT(
             if (
-              globalThis.origin.includes(globalThis.__args.config.meta_bundle_identifier ||
+              globalThis.origin.includes(globalThis.__args.config.meta_bundle_identifier) ||
               globalThis.origin.includes(globalThis.__args.client.host)
             ) {
               await import('socket:internal/init')
