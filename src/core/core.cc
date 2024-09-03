@@ -451,6 +451,7 @@ namespace SSC {
     }
 
     this->isLoopRunning = true;
+    this->isPaused = false;
 
     this->initEventLoop();
     this->dispatchEventLoop([=, this]() {
