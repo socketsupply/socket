@@ -10,7 +10,6 @@ import { Headers } from '../ipc.js'
 import location from '../location.js'
 import path from '../path.js'
 import URL from '../url.js'
-import os from '../os.js'
 import fs from '../fs.js'
 
 const RUNTIME_SERVICE_WORKER_FETCH_MODE = 'Runtime-ServiceWorker-Fetch-Mode'
