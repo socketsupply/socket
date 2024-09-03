@@ -3169,6 +3169,7 @@ static void mapIPCRoutes (Router *router) {
 
       if (options.index >= SOCKET_RUNTIME_MAX_WINDOWS) {
         options.features.useGlobalCommonJS = false;
+        options.features.useGlobalNodeJS = false;
       }
 
       auto createdWindow = app->windowManager.createWindow(options);
