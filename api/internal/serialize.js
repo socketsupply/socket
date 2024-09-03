@@ -25,7 +25,6 @@ function map (object, callback, seen = new Set()) {
     return object
   }
 
-  seen.add(object)
   if (Array.isArray(object)) {
     for (let i = 0; i < object.length; ++i) {
       object[i] = map(object[i], callback, seen)
@@ -40,6 +39,7 @@ function map (object, callback, seen = new Set()) {
     }
   }
 
+  seen.add(object)
   if (object && typeof object === 'object') {
     return callback(object)
   } else {
