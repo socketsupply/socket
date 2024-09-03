@@ -276,7 +276,10 @@ extern "C" {
       uv_chdir(cwd.c_str());
     }
 
-    static App app(App::DEFAULT_INSTANCE_ID, std::move(std::make_shared<Core>(options)));
+    static App app(
+      App::DEFAULT_INSTANCE_ID,
+      std::move(std::make_shared<Core>(options))
+    );
   }
 
   const unsigned char* socket_runtime_init_get_user_config_bytes () {
