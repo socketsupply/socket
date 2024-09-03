@@ -226,10 +226,6 @@ export class RequestStatus {
     request.open('HEAD', this.#request.id, false)
     request.setRequestHeader(RUNTIME_REQUEST_SOURCE_HEADER, 'module')
 
-    if (os.platform() !== 'android') {
-      request.withCredentials = true
-    }
-
     if (globalThis.isServiceWorkerScope) {
       request.setRequestHeader(RUNTIME_SERVICE_WORKER_FETCH_MODE, 'ignore')
     }
@@ -461,10 +457,6 @@ export class Request {
     const request = new XMLHttpRequest()
     request.open('GET', this.id, false)
     request.setRequestHeader(RUNTIME_REQUEST_SOURCE_HEADER, 'module')
-
-    if (os.platform() !== 'android') {
-      request.withCredentials = true
-    }
 
     if (globalThis.isServiceWorkerScope) {
       request.setRequestHeader(RUNTIME_SERVICE_WORKER_FETCH_MODE, 'ignore')
