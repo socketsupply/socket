@@ -238,12 +238,20 @@ namespace SSC::IPC {
             id: {
               configurable: false,
               enumerable: true,
-              writable: false,
-              value: globalThis.window && globalThis.top !== globalThis.window
-                ? '{{id}}'
-                : globalThis.window && globalThis.top
-                  ? '{{clientId}}'
-                  : null
+              get: () => {
+                if (
+                  globalThis.origin.includes(globalThis.__args.config.meta_bundle_identifier) ||
+                  globalThis.origin.includes(globalThis.__args.client.host + ':' + globalThis.__args.client.port)
+                ) {
+                  return globalThis.window && globalThis.top !== globalThis.window
+                    ? '{{id}}'
+                    : globalThis.window && globalThis.top
+                      ? '{{clientId}}'
+                      : null
+                }
+
+                return null
+              }
             },
             type: {
               configurable: false,
@@ -288,19 +296,36 @@ namespace SSC::IPC {
             top: {
               configurable: false,
               enumerable: true,
-              get: () => globalThis.top
-	              ? globalThis.top.__args?.client ?? null
-	              : globalThis.__args.client
+              get: () => {
+                if (
+                  globalThis.origin.includes(globalThis.__args.config.meta_bundle_identifier) ||
+                  globalThis.origin.includes(globalThis.__args.client.host + ':' + globalThis.__args.client.port)
+                ) {
+                  return globalThis.top
+	                  ? globalThis.top.__args?.client ?? null
+	                  : globalThis.__args.client
+                }
+
+                return null
+              }
             },
             frameType: {
               configurable: false,
               enumerable: true,
-              writable: true,
-              value: globalThis.window && globalThis.top !== globalThis.window
-                ? 'nested'
-                : globalThis.window && globalThis.top
-                  ? 'top-level'
-                  : 'none'
+              get: () => {
+                if (
+                  globalThis.origin.includes(globalThis.__args.config.meta_bundle_identifier) ||
+                  globalThis.origin.includes(globalThis.__args.client.host + ':' + globalThis.__args.client.port)
+                ) {
+                  return globalThis.window && globalThis.top !== globalThis.window
+                    ? 'nested'
+                    : globalThis.window && globalThis.top
+                      ? 'top-level'
+                      : 'none'
+                }
+
+                return 'none'
+              }
             },
           })
         }
@@ -437,7 +462,14 @@ namespace SSC::IPC {
 
       // 10. compile listeners for `globalThis`
       buffers.push_back(R"JAVASCRIPT(
-        if (globalThis.document && !globalThis.RUNTIME_APPLICATION_URL_EVENT_BACKLOG) {
+        if (
+          globalThis.document &&
+          !globalThis.RUNTIME_APPLICATION_URL_EVENT_BACKLOG &&
+          (
+            globalThis.origin.includes(globalThis.__args.config.meta_bundle_identifier) ||
+            globalThis.origin.includes(globalThis.__args.client.host + ':' + globalThis.__args.client.port)
+          )
+        ) {
           Object.defineProperties(globalThis, {
             RUNTIME_APPLICATION_URL_EVENT_BACKLOG: {
               configurable: false,
@@ -524,18 +556,23 @@ namespace SSC::IPC {
               {{userScript}}
             }
 
-            if (globalThis.document && globalThis.document.readyState !== 'complete') {
-              globalThis.document.addEventListener('readystatechange', () => {
-                if(/interactive|complete/.test(globalThis.document.readyState)) {
-                  import('socket:internal/init')
-                    .then(userScriptCallback)
-                    .catch(console.error)
-                }
-              })
-            } else {
-              import('socket:internal/init')
-                .then(userScriptCallback)
-                .catch(console.error)
+            if (
+              globalThis.origin.includes(globalThis.__args.config.meta_bundle_identifier) ||
+              globalThis.origin.includes(globalThis.__args.client.host + ':' + globalThis.__args.client.port)
+            ) {
+              if (globalThis.document && globalThis.document.readyState !== 'complete') {
+                globalThis.document.addEventListener('readystatechange', () => {
+                  if(/interactive|complete/.test(globalThis.document.readyState)) {
+                    import('socket:internal/init')
+                      .then(userScriptCallback)
+                      .catch(console.error)
+                  }
+                })
+              } else {
+                import('socket:internal/init')
+                  .then(userScriptCallback)
+                  .catch(console.error)
+              }
             }
           )JAVASCRIPT",
           Map {{"userScript", this->options.userScript}}
@@ -559,7 +596,12 @@ namespace SSC::IPC {
         }
 
         buffers.push_back(R"JAVASCRIPT(
-          if (false && globalThis.document && !globalThis.module) {
+          if (
+            globalThis.document && !globalThis.module && (
+              globalThis.origin.includes(globalThis.__args.config.meta_bundle_identifier) ||
+              globalThis.origin.includes(globalThis.__args.client.host + ':' + globalThis.__args.client.port)
+            )
+          ) {
             ;(async function GlobalCommonJSScope () {
               const globals = await import('socket:internal/globals')
               await globals.get('RuntimeReadyPromise')
@@ -616,7 +658,12 @@ namespace SSC::IPC {
           buffers.push_back(RUNTIME_PRELOAD_JAVASCRIPT_BEGIN_TAG);
         }
         buffers.push_back(R"JAVASCRIPT(
-          if (globalThis.document && !globalThis.process) {
+          if (
+            globalThis.document && !globalThis.process && (
+              globalThis.origin.includes(globalThis.__args.config.meta_bundle_identifier) ||
+              globalThis.origin.includes(globalThis.__args.client.host + ':' + globalThis.__args.client.port)
+            )
+          ) {
             ;(async function GlobalNodeJSScope () {
               const process = await import('socket:process')
               Object.defineProperties(globalThis, {
