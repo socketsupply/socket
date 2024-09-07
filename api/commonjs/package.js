@@ -1162,6 +1162,16 @@ export class Package {
         let exports = this.#exports[key]
         let filename = null
 
+        exports = exports?.browser ?? exports?.node ?? exports?.default ?? exports
+
+        if (!exports || typeof exports !== 'object') {
+          exports = this.#exports[key]
+        }
+
+        if (!exports) {
+          continue
+        }
+
         if (
           key === query ||
           key === pathname.replace(extname, '') ||
