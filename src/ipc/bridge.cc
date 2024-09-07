@@ -669,12 +669,13 @@ export * from '{{url}}'
           });
 
           if (fetched) {
-            this->core->setTimeout(32000, [request] () mutable {
-              if (request->isActive()) {
-                auto response = SchemeHandlers::Response(request, 408);
-                response.fail("ServiceWorker request timed out.");
-              }
-            });
+            // FIXME(@jwerle): revisit timeout
+            //this->core->setTimeout(32000, [request] () mutable {
+              //if (request->isActive()) {
+                //auto response = SchemeHandlers::Response(request, 408);
+                //response.fail("ServiceWorker request timed out.");
+              //}
+            //});
             return;
           }
         }
@@ -1013,12 +1014,13 @@ export * from '{{url}}'
           });
 
           if (fetched) {
-            this->core->setTimeout(32000, [request] () mutable {
-              if (request->isActive()) {
-                auto response = SchemeHandlers::Response(request, 408);
-                response.fail("Protocol handler ServiceWorker request timed out.");
-              }
-            });
+            // FIXME(@jwerle): revisit timeout
+            //this->core->setTimeout(32000, [request] () mutable {
+              //if (request->isActive()) {
+                //auto response = SchemeHandlers::Response(request, 408);
+                //response.fail("Protocol handler ServiceWorker request timed out.");
+              //}
+            //});
             return;
           }
         }
