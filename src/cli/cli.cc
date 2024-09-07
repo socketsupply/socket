@@ -538,7 +538,7 @@ Vector<Path> handleBuildPhaseForCopyMappedFiles (
       fs::copy(
         src,
         dst,
-        fs::copy_options::update_existing | fs::copy_options::recursive
+        fs::copy_options::update_existing | fs::copy_options::recursive | fs::copy_options::copy_symlinks
       );
     }
   }
@@ -601,7 +601,7 @@ Vector<Path> handleBuildPhaseForCopyMappedFiles (
     fs::copy(
       src,
       dst,
-      fs::copy_options::update_existing | fs::copy_options::recursive
+      fs::copy_options::update_existing | fs::copy_options::recursive | fs::copy_options::copy_symlinks
     );
   }
 
@@ -745,7 +745,7 @@ Vector<Path> handleBuildPhaseForCopyMappedFiles (
         fs::copy(
           src,
           dst,
-          fs::copy_options::update_existing | fs::copy_options::recursive
+          fs::copy_options::update_existing | fs::copy_options::recursive | fs::copy_options::copy_symlinks
         );
       }
     }
