@@ -78,14 +78,14 @@ Promise.all = function (iterable) {
     return promise.catch((err) => {
       return Promise.reject(Object.defineProperties(err, {
         [Symbol.for('socket.runtime.CallSite.PromiseElementIndex')]: {
-          configurable: false,
+          configurable: true,
           enumerable: false,
           writable: false,
           value: index
         },
 
         [Symbol.for('socket.runtime.CallSite.PromiseAll')]: {
-          configurable: false,
+          configurable: true,
           enumerable: false,
           writable: false,
           value: true
@@ -104,14 +104,14 @@ Promise.any = function (iterable) {
     return promise.catch((err) => {
       return Promise.reject(Object.defineProperties(err, {
         [Symbol.for('socket.runtime.CallSite.PromiseElementIndex')]: {
-          configurable: false,
+          configurable: true,
           enumerable: false,
           writable: false,
           value: index
         },
 
         [Symbol.for('socket.runtime.CallSite.PromiseAny')]: {
-          configurable: false,
+          configurable: true,
           enumerable: false,
           writable: false,
           value: true
