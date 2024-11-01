@@ -9,6 +9,20 @@
 #include <fstream>
 #endif
 
+#if SOCKET_RUNTIME_PLATFORM_WINDOWS
+static const String escapeWindowsPath (const Path& path) {
+  const auto dirname = path.remove_filename();
+  auto value = dirname.string();
+  size_t offset = 0;
+  // escape
+  while ((offset = value.find('\\', offset)) != String::npos) {
+    value.replace(offset, 1, "\\\\");
+    offset += 2;
+  }
+  return value
+}
+#endif
+
 namespace SSC {
   static std::map<String, FileResource::Cache> caches;
   static Mutex mutex;
@@ -289,14 +303,7 @@ namespace SSC {
   #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
     static wchar_t filename[MAX_PATH];
     GetModuleFileNameW(NULL, filename, MAX_PATH);
-    const auto self = Path(filename).remove_filename();
-    value = self.string();
-    size_t offset = 0;
-    // escape
-    while ((offset = value.find('\\', offset)) != String::npos) {
-      value.replace(offset, 1, "\\\\");
-      offset += 2;
-    }
+    value = escapeWindowsPath(Path(filename));
   #else
     value = getcwd_state_value();
   #endif
@@ -473,15 +480,15 @@ namespace SSC {
   #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
     static const auto HOME = Env::get("HOMEPATH", Env::get("HOME"));
     static const auto USERPROFILE = Env::get("USERPROFILE", HOME);
-    this->downloads = Path(USERPROFILE) / "Downloads";
-    this->documents = Path(USERPROFILE) / "Documents";
-    this->pictures = Path(USERPROFILE) / "Pictures";
-    this->desktop = Path(USERPROFILE) / "Desktop";
-    this->videos = Path(USERPROFILE) / "Videos";
-    this->music = Path(USERPROFILE) / "Music";
-    this->config = Path(Env::get("APPDATA")) / bundleIdentifier;
-    this->home = Path(USERPROFILE);
-    this->data = Path(Env::get("APPDATA")) / bundleIdentifier;
+    this->downloads = escapeWindowsPath(Path(USERPROFILE) / "Downloads");
+    this->documents = escapeWindowsPath(Path(USERPROFILE) / "Documents");
+    this->pictures = escapeWindowsPath(Path(USERPROFILE) / "Pictures");
+    this->desktop = escapeWindowsPath(Path(USERPROFILE) / "Desktop");
+    this->videos = escapeWindowsPath(Path(USERPROFILE) / "Videos");
+    this->music = escapeWindowsPath(Path(USERPROFILE) / "Music");
+    this->config = escapeWindowsPath(Path(Env::get("APPDATA")) / bundleIdentifier);
+    this->home = escapeWindowsPath(Path(USERPROFILE));
+    this->data = escapeWindowsPath(Path(Env::get("APPDATA")) / bundleIdentifier);
     this->log = this->config;
   #elif SOCKET_RUNTIME_PLATFORM_ANDROID
     const auto storage = FileResource::getExternalAndroidStorageDirectory();
