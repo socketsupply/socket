@@ -682,6 +682,32 @@ namespace SSC {
         break;
       }
 
+      case WM_GETMINMAXINFO: {
+        const auto screen = Window::getSizeInPixels();
+        auto info = reinterpret_cast<LPMINMAXINFO>(lParam);
+
+        info->ptMinTrackSize.x = Window::getSizeInPixels(
+          app->windowManager.options.defaultMinWidth,
+          screen.width
+        );
+
+        info->ptMinTrackSize.y = Window::getSizeInPixels(
+          app->windowManager.options.defaultMinHeight,
+          screen.height
+        );
+
+        info->ptMaxTrackSize.x = Window::getSizeInPixels(
+          app->windowManager.options.defaultMaxWidth,
+          screen.width
+        );
+
+        info->ptMaxTrackSize.y = Window::getSizeInPixels(
+          app->windowManager.options.defaultMaxHeight,
+          screen.height
+        );
+        break;
+      }
+
       default:
         return DefWindowProc(hWnd, message, wParam, lParam);
     }
