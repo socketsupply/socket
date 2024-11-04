@@ -9,24 +9,24 @@
 #include <fstream>
 #endif
 
-#if SOCKET_RUNTIME_PLATFORM_WINDOWS
-static const String escapeWindowsPath (const Path& path) {
-  const auto dirname = path.remove_filename();
-  auto value = dirname.string();
-  size_t offset = 0;
-  // escape
-  while ((offset = value.find('\\', offset)) != String::npos) {
-    value.replace(offset, 1, "\\\\");
-    offset += 2;
-  }
-  return value
-}
-#endif
-
 namespace SSC {
   static std::map<String, FileResource::Cache> caches;
   static Mutex mutex;
   static FileResource::WellKnownPaths defaultWellKnownPaths;
+
+  #if SOCKET_RUNTIME_PLATFORM_WINDOWS
+  static const String escapeWindowsPath (const Path& path) {
+    const auto dirname = Path(path).remove_filename();
+    auto value = dirname.string();
+    size_t offset = 0;
+    // escape
+    while ((offset = value.find('\\', offset)) != String::npos) {
+      value.replace(offset, 1, "\\\\");
+      offset += 2;
+    }
+    return value;
+  }
+  #endif
 
 #if SOCKET_RUNTIME_PLATFORM_ANDROID
   static Android::AssetManager* sharedAndroidAssetManager = nullptr;
