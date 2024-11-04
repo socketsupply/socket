@@ -683,7 +683,7 @@ namespace SSC {
       }
 
       case WM_GETMINMAXINFO: {
-        const auto screen = Window::getSizeInPixels();
+        const auto screen = Window::getScreenSize();
         auto info = reinterpret_cast<LPMINMAXINFO>(lParam);
 
         info->ptMinTrackSize.x = Window::getSizeInPixels(
