@@ -668,6 +668,8 @@ namespace SSC {
       if (!options.resizable) {
         style &= ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU);
         style &= ~(WS_EX_DLGMODALFRAME | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE);
+      } else if (options.closable && !options.frameless) {
+        style |= WS_CAPTION | WS_SYSMENU;
       }
 
       this->window = CreateWindowEx(
