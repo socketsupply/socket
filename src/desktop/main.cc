@@ -250,7 +250,7 @@ MAIN {
 #if SOCKET_RUNTIME_PLATFORM_LINUX
   // use 'SIGPWR' instead of the default 'SIGUSR1' handler
   // see https://github.com/WebKit/WebKit/blob/2fd8f81aac4e867ffe107c0e1b3e34b1628c0953/Source/WTF/wtf/posix/ThreadingPOSIX.cpp#L185
-  Env::set("JSC_SIGNAL_FOR_GC", "30");
+  // Env::set("JSC_SIGNAL_FOR_GC", "30");
   gtk_init(&argc, &argv);
 #endif
 
