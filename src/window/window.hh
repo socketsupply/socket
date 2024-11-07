@@ -492,11 +492,11 @@ namespace SSC {
         if (sizeInPercent.size() > 0) {
           if (sizeInPercent.back() == '%') {
             sizeInPercent.pop_back();
-            return screenSize * std::stof(sizeInPercent) / 100;
+            return ((float) screenSize) * std::stof(sizeInPercent) / 100.0f;
           }
           return std::stof(sizeInPercent);
         }
-        return 0;
+        return 0.0f;
       }
   };
 

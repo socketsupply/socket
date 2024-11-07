@@ -708,6 +708,8 @@ namespace SSC {
         break;
       }
 
+      //case WM_WINDOWPOSCHANGING: { break; }
+
       default:
         return DefWindowProc(hWnd, message, wParam, lParam);
     }
