@@ -4798,11 +4798,13 @@ int main (int argc, char* argv[]) {
         command
           << CXX
           << " -shared"
+          << " -rdynamic"
+          << " -fPIC"
           << " " << flags
+          << " -o " << (desktopExtensionsPath / "libsocket-runtime-desktop-extension.so").string()
+          << " " << prefixFile("objects/" + platform.arch + "-desktop/extensions/linux.o")
           << " " << prefixFile("lib/" + platform.arch + "-desktop/libsocket-runtime.a")
           << " " << prefixFile("lib/" + platform.arch + "-desktop/libuv.a")
-          << " " << prefixFile("objects/" + platform.arch + "-desktop/extensions/linux.o")
-          << " -o " << (desktopExtensionsPath / "libsocket-runtime-desktop-extension.so").string()
         ;
 
         log(command.str());
