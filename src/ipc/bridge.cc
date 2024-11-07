@@ -548,7 +548,7 @@ export * from '{{url}}'
       String contentLocation;
 
       // application resource or service worker request at `socket://<bundle_identifier>/*`
-      if (request->hostname == bundleIdentifier) {
+      if (toLowerCase(request->hostname) == toLowerCase(bundleIdentifier)) {
         const auto resolved = this->navigator.location.resolve(request->pathname, applicationResources);
 
         if (resolved.redirect) {
@@ -715,7 +715,7 @@ export * from '{{url}}'
             #else
             "socket://" +
             #endif
-            bundleIdentifier +
+            toLowerCase(bundleIdentifier) +
             contentLocation +
             (request->query.size() > 0 ? "?" + request->query : "")
           );
@@ -730,7 +730,7 @@ export * from '{{url}}'
               {"protocol", "socket"},
               {"pathname", pathname},
               {"specifier", specifier},
-              {"bundle_identifier", bundleIdentifier}
+              {"bundle_identifier", toLowerCase(bundleIdentifier)}
             }
           );
 
@@ -838,7 +838,7 @@ export * from '{{url}}'
             #else
             "socket://" +
             #endif
-            bundleIdentifier +
+            toLowerCase(bundleIdentifier) +
             "/socket" +
             pathname
           );
@@ -1063,9 +1063,9 @@ export * from '{{url}}'
         );
 
         registration->SetAllowedOrigins(allowedOriginsCount, allowedOrigins);
-	if (entry.first != "npm") {
+        if (entry.first != "npm") {
           registration->put_HasAuthorityComponent(true);
-	}
+        }
         registration->put_TreatAsSecure(true);
         registrations[registrationsCount++] = registration.Get();
         registrationsSet.insert(registration);

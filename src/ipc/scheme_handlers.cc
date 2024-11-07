@@ -575,7 +575,8 @@ namespace SSC::IPC {
     this->absoluteURL = convertWStringToString(requestURI);
     if (
       this->absoluteURL.starts_with("socket://") &&
-      !this->absoluteURL.starts_with("socket://" + bundleIdentifier)
+      !this->absoluteURL.starts_with("socket://" + bundleIdentifier) &&
+      !this->absoluteURL.starts_with("socket://" + toLowerCase(bundleIdentifier))
     ) {
       this->absoluteURL = String("socket://") + this->absoluteURL.substr(8);
       if (this->absoluteURL.ends_with("/")) {
