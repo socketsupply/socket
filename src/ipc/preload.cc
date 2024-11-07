@@ -240,7 +240,7 @@ namespace SSC::IPC {
               enumerable: true,
               get: () => {
                 if (
-                  globalThis.origin.includes(globalThis.__args.config.meta_bundle_identifier) ||
+                  globalThis.origin.includes(globalThis.__args.config.meta_bundle_identifier.toLowerCase()) ||
                   globalThis.origin.includes(globalThis.__args.client.host + ':' + globalThis.__args.client.port)
                 ) {
                   return globalThis.window && globalThis.top !== globalThis.window
@@ -282,7 +282,7 @@ namespace SSC::IPC {
               enumerable: true,
               get: () => {
                 if (
-                  globalThis.origin.includes(globalThis.__args.config.meta_bundle_identifier) ||
+                  globalThis.origin.includes(globalThis.__args.config.meta_bundle_identifier.toLowerCase()) ||
                   globalThis.origin.includes(globalThis.__args.client.host + ':' + globalThis.__args.client.port)
                 ) {
                   return globalThis.parent !== globalThis
@@ -314,7 +314,7 @@ namespace SSC::IPC {
               enumerable: true,
               get: () => {
                 if (
-                  globalThis.origin.includes(globalThis.__args.config.meta_bundle_identifier) ||
+                  globalThis.origin.includes(globalThis.__args.config.meta_bundle_identifier.toLowerCase()) ||
                   globalThis.origin.includes(globalThis.__args.client.host + ':' + globalThis.__args.client.port)
                 ) {
                   return globalThis.window && globalThis.top !== globalThis.window
