@@ -3492,6 +3492,23 @@ int main (int argc, char* argv[]) {
         trim(tmpl(tmpl(gAndroidManifest, settings), manifestContext))
       );
 
+      settings["android_signingconfig_release"] = "";
+      settings["android_buildtypes_release_config"] = "";
+
+      if (
+        settings["android_codesign_keystore_file"].size() > 0 &&
+        settings["android_codesign_keystore_password"].size() > 0 &&
+        settings["android_codesign_key_alias"].size() > 0 &&
+        settings["android_codesign_key_password"].size()
+      ) {
+        settings["android_signingconfig_release"] += "     storeFile file('{{android_codesign_keystore_file}}')\n";
+        settings["android_signingconfig_release"] += "     storePassword '{{android_codesign_keystore_password}}'\n";
+        settings["android_signingconfig_release"] += "     keyAlias '{{android_codesign_key_alias}}'\n";
+        settings["android_signingconfig_release"] += "     keyPassword '{{android_codesign_key_password}}'\n";
+        settings["android_buildtypes_release_config"] += "     signingConfig signingConfigs.release\n";
+      }
+
+
       writeFile(app / "proguard-rules.pro", trim(tmpl(gProGuardRules, settings)));
       writeFile(app / "build.gradle", trim(tmpl(gGradleBuildForSource, settings)));
 
@@ -4076,6 +4093,10 @@ int main (int argc, char* argv[]) {
         String command = (
           "security cms -D -i " + pathToProfile.string()
         );
+
+        if (Env::has("APPLE_KEYCHAIN")) {
+          command += " -k" + Env::get("APPLE_KEYCHAIN");
+        }
 
         auto r = exec(command);
         std::regex reUuid(R"(<key>UUID<\/key>\n\s*<string>(.*)<\/string>)");

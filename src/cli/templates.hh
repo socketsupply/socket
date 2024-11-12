@@ -1399,6 +1399,14 @@ android {
 {{android_default_config_external_native_build}}
   }
 
+  signingConfigs {
+    release {
+{{android_signingconfig_release}}
+      v1SigningEnabled = true
+      v2SigningEnabled = true
+    }
+  }
+
   aaptOptions {
     {{android_aapt}}
     noCompress {{android_aapt_no_compress}}
@@ -1422,6 +1430,7 @@ android {
       proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
       //productFlavors.dev
       productFlavors.live
+      {{android_buildtypes_release_config}}
     }
 
     debug {
