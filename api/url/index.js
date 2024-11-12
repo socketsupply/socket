@@ -20,6 +20,18 @@ URL.resolve = resolve
 URL.parse = parse
 URL.format = format
 
+if (typeof URL.canParse !== 'function') {
+  URL.canParse = function canParse (...args) {
+    try {
+      // eslint-disable-next-line
+      void new URL(...args)
+      return true
+    } catch {
+      return false
+    }
+  }
+}
+
 URL.prototype[Symbol.for('socket.runtime.util.inspect.custom')] = function () {
   return [
     'URL {',
