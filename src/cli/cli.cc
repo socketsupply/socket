@@ -2981,7 +2981,7 @@ int main (int argc, char* argv[]) {
         StringStream sipsCommand;
         sipsCommand
           << "sips"
-          << " -z " << size << " " << size
+          << " -z " << scaled << " " << scaled
           << " " << src
           << " --out " << destFilePath;
 
