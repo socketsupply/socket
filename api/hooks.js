@@ -745,7 +745,7 @@ export function onNotificationPresented (callback) {
 
 /**
  * Calls callback when a `ApplicationURL` is opened.
- * @param {function} callback
+ * @param {function(ApplicationURLEvent)} callback
  * @return {function}
  */
 export function onApplicationURL (callback) {

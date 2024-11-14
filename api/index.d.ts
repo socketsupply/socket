@@ -5878,10 +5878,10 @@ declare module "socket:hooks" {
     export function onNotificationPresented(callback: Function): Function;
     /**
      * Calls callback when a `ApplicationURL` is opened.
-     * @param {function} callback
+     * @param {function(ApplicationURLEvent)} callback
      * @return {function}
      */
-    export function onApplicationURL(callback: Function): Function;
+    export function onApplicationURL(callback: (arg0: ApplicationURLEvent) => any): Function;
     /**
      * Calls callback when a `ApplicationPause` is dispatched.
      * @param {function} callback
@@ -16252,6 +16252,27 @@ declare module "socket:notification" {
     export default Notification;
     import { Enumeration } from "socket:enumeration";
     import URL from "socket:url";
+}
+
+declare module "socket:protocol-handlers" {
+    /**
+     * @typedef {{ scheme: string }} GetServiceWorkerOptions
+    
+    /**
+     * @param {GetServiceWorkerOptions} options
+     * @return {Promise<ServiceWorker|null>
+     */
+    export function getServiceWorker(options: GetServiceWorkerOptions): Promise<ServiceWorker | null>;
+    namespace _default {
+        export { getServiceWorker };
+    }
+    export default _default;
+    /**
+     * /**
+     */
+    export type GetServiceWorkerOptions = {
+        scheme: string;
+    };
 }
 
 declare module "socket:shared-worker" {

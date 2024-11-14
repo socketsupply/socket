@@ -1835,7 +1835,17 @@ export class IPCMessagePort extends MessagePort {
     const token = String(rand64())
     const channel = typeof options?.channel === 'string'
       ? new BroadcastChannel(options.channel)
-      : options.channel ?? new BroadcastChannel(id)
+      : (
+          (options?.channel && new BroadcastChannel(options.channel.name)) ??
+          new BroadcastChannel(id)
+        )
+
+    if (ports.has(id)) {
+      ports.get(id).closed = true
+      ports.get(id).channel.onmessage = null
+      ports.get(id).onmessage = null
+      ports.get(id).onmessageerror = null
+    }
 
     port[Symbol.for('socket.runtime.IPCMessagePort.id')] = id
     ports.set(id, Object.create(null, {
@@ -1846,16 +1856,15 @@ export class IPCMessagePort extends MessagePort {
       channel: { writable: true, value: channel },
       onmessage: { writable: true, value: null },
       onmessageerror: { writable: true, value: null },
-      eventTarget: { writable: true, value: new EventTarget() }
+      eventTarget: { writable: true, value: ports.get(id)?.eventTarget || new EventTarget() }
     }))
 
-    channel.addEventListener('message', function onMessage (event) {
-      const state = ports.get(id)
-
+    const state = ports.get(id)
+    channel.onmessage = function onMessage (event) {
       if (!state || state?.closed === true) {
         event.preventDefault()
         event.stopImmediatePropagation()
-        channel.removeEventListener('message', onMessage)
+        channel.onmessage = null
         return false
       }
 
@@ -1865,7 +1874,7 @@ export class IPCMessagePort extends MessagePort {
           data: event.data?.data
         }))
       }
-    })
+    }
 
     gc.ref(port)
     return port
@@ -1902,8 +1911,8 @@ export class IPCMessagePort extends MessagePort {
       return
     }
 
-    if (typeof this.onmessage === 'function') {
-      this.removeEventListener('message', this.onmessage)
+    if (typeof port.onmessage === 'function') {
+      this.removeEventListener('message', port.onmessage)
       port.onmessage = null
     }
 
@@ -1928,7 +1937,7 @@ export class IPCMessagePort extends MessagePort {
     }
 
     if (typeof this.onmessageerror === 'function') {
-      this.removeEventListener('messageerror', this.onmessageerror)
+      this.removeEventListener('messageerror', port.onmessageerror)
       port.onmessageerror = null
     }
 
@@ -2044,7 +2053,9 @@ export class IPCMessagePort extends MessagePort {
     return {
       args: [this.id],
       handle (id) {
-        ports.delete(id)
+        if (!ports.get(id)?.channel?.onmessage) {
+          ports.delete(id)
+        }
       }
     }
   }

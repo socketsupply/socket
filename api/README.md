@@ -1783,7 +1783,7 @@ This is a `VariableDeclaration` named `ports` in `api/ipc.js`, it's exported but
 This is a `ClassDeclaration` named ``IPCMessagePort` (extends `MessagePort`)` in `api/ipc.js`, it's exported but undocumented.
 
 
-## [`IPCMessageChannel` (extends `MessageChannel`)](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/ipc.js#L2053)
+## [`IPCMessageChannel` (extends `MessageChannel`)](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/ipc.js#L2064)
 
 This is a `ClassDeclaration` named ``IPCMessageChannel` (extends `MessageChannel`)` in `api/ipc.js`, it's exported but undocumented.
 

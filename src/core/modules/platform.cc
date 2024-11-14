@@ -149,7 +149,7 @@ namespace SSC {
       for (auto entry = list; entry != nullptr; entry = entry->next) {
         auto window = GTK_WINDOW(entry->data);
 
-        if (window != nullptr && gtk_window_is_active(window)) {
+        if (window != nullptr) {
           auto err = (GError*) nullptr;
           auto uri = value.c_str();
           auto ts = GDK_CURRENT_TIME;

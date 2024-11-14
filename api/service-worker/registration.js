@@ -23,16 +23,20 @@ export class ServiceWorkerRegistration {
     serviceWorker.addEventListener('statechange', (event) => {
       const { state } = event.target
 
-      if (state === 'installing') {
-        this.#active = null
-        this.#waiting = null
-        this.#installing = serviceWorker
+      if (!this.#active && !this.#waiting) {
+        if (state === 'installing') {
+          this.#active = null
+          this.#waiting = null
+          this.#installing = serviceWorker
+        }
       }
 
-      if (state === 'installed') {
-        this.#active = null
-        this.#waiting = serviceWorker
-        this.#installing = null
+      if (!this.#active) {
+        if (state === 'installed') {
+          this.#active = null
+          this.#waiting = serviceWorker
+          this.#installing = null
+        }
       }
 
       if (state === 'activating' || state === 'activated') {

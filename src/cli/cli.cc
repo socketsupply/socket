@@ -913,6 +913,14 @@ int runApp (const Path& path, const String& args, bool headless) {
         env[key] = value;
       }
 
+      for (auto const &tuple : settings) {
+        if (tuple.first.starts_with("env_")) {
+          const auto key = @(tuple.first.substr(4).c_str());
+          const auto value = @(tuple.second.c_str());
+          env[key] = value;
+        }
+      }
+
       auto splitArgs = split(args, ' ');
       auto arguments = [[NSMutableArray alloc] init];
 
@@ -1629,8 +1637,14 @@ void initializeRC (Path targetPath) {
         value = valueAsPath.string();
       }
 
+      if (key.starts_with("settings_")) {
+        const auto k = key.substr(9, key.size() - 9);
+        settings[k] = value;
+      }
+
       // auto set environment variables
       if (key.starts_with("env_")) {
+        settings[key] = value;
         key = key.substr(4, key.size() - 4);
         Env::set(key, value);
       }
@@ -2070,6 +2084,19 @@ int main (int argc, char* argv[]) {
           ini += "[ssc]\n";
           ini += "argv = " + arguments;
         }
+
+        ini += "\n";
+        ini += "[]\n";
+
+        // embed environment variables and user space variables
+        for (const auto& tuple : rc) {
+          if (tuple.first.starts_with("settings_")) {
+            continue;
+          } else {
+            ini += tuple.first + " = " + tuple.second + "\n";
+          }
+        }
+
         ini += "\n";
 
         if (configExists) {
@@ -2107,7 +2134,7 @@ int main (int argc, char* argv[]) {
           {"platform.os.short", replace(platform.os, "win32", "win")}
         });
 
-        settings = INI::parse(settingsSource);
+        extendMap(settings, INI::parse(settingsSource));
 
         if (settings["meta_type"] == "extension" || settings["build_type"] == "extension") {
           auto extension = settings["build_name"];
@@ -2138,6 +2165,8 @@ int main (int argc, char* argv[]) {
           if (tuple.first.starts_with("settings_")) {
             auto key = replace(tuple.first, "settings_", "");
             tmp[key] = tuple.second;
+          } else if (tuple.first.starts_with("env_")) {
+            tmp[tuple.first] = tuple.second;
           }
         }
 
@@ -2566,7 +2595,7 @@ int main (int argc, char* argv[]) {
       }
     } else if (platform.linux) {
       auto paths = getPaths(targetPlatform);
-      Path pathPackage = paths.platformSpecificOutputPath / (
+      Path pathPackage = paths.platformSpecificOutputPath / toLowerCase(
         settings["build_name"] + "_" +
         settings["meta_version"] + "_" +
         replace(SSC::platform.arch, "x86_64", "amd64")
@@ -4861,8 +4890,13 @@ int main (int argc, char* argv[]) {
         (settings["build_name"] + ".png")
       ).string();
 
-      writeFile(pathManifestFile / (settings["build_name"] + ".desktop"), tmpl(gDesktopManifest, settings));
+      if (settings["application_agent"] == "true") {
+        settings["linux_desktop_startup_notify"] = "false";
+      } else {
+        settings["linux_desktop_startup_notify"] = "true";
+      }
 
+      writeFile(pathManifestFile / (settings["build_name"] + ".desktop"), tmpl(gDesktopManifest, settings));
       writeFile(pathControlFile / "control", tmpl(gDebianManifest, settings));
 
       auto pathToIconSrc = (targetPath / settings["linux_icon"]).string();

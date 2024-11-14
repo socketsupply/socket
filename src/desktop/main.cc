@@ -562,21 +562,6 @@ MAIN {
     argvForward << " --debug=1";
   }
 
-  StringStream env;
-  for (auto const &envKey : parseStringList(app.userConfig["build_env"])) {
-    auto cleanKey = trim(envKey);
-
-    if (!Env::has(cleanKey)) {
-      continue;
-    }
-
-    auto envValue = Env::get(cleanKey.c_str());
-
-    env << String(
-      cleanKey + "=" + encodeURIComponent(envValue) + "&"
-    );
-  }
-
   String cmd;
   if (platform.os == "win32") {
     cmd = app.userConfig["win_cmd"];
@@ -1137,7 +1122,11 @@ MAIN {
     }
 
     msleep(256);
-    defaultWindow->show();
+    if (userConfig["build_headless"] != "true") {
+      defaultWindow->show();
+    } else {
+      defaultWindow->hide();
+    }
 
     if (devPort > 0) {
       defaultWindow->navigate(devHost + ":" + std::to_string(devPort));

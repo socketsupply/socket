@@ -240,6 +240,15 @@ namespace SSC {
       }
     }
 
+    for (auto const &tuple : options.userConfig) {
+      //debug("%s = %s", tuple.first.c_str(), tuple.second.c_str());
+      if (tuple.first.starts_with("env_")) {
+        const auto key = tuple.first.substr(4);
+        const auto& value = tuple.second;
+        windowOptions.env[key] = value;
+      }
+    }
+
     for (const auto& tuple : options.userConfig) {
       windowOptions.userConfig[tuple.first] = tuple.second;
     }

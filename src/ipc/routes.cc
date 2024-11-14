@@ -2250,6 +2250,39 @@ static void mapIPCRoutes (Router *router) {
   });
 
   /**
+   * Gets service worker registration info by scheme
+   * @param scheme
+   */
+  router->map("protocol.getServiceWorkerRegistration", [=](auto message, auto router, auto reply) {
+    const auto err = validateMessageParameters(message, {"scheme"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    const auto scheme = message.get("scheme");
+
+    for (const auto& entry : router->bridge->navigator.serviceWorker.registrations) {
+      const auto& scope = entry.first;
+      const auto& registration = entry.second;
+      if (registration.options.scheme == scheme) {
+        auto json = JSON::Object::Entries {
+          {"source", message.name},
+          {"data", JSON::Object::Entries {
+            {"id", registration.id},
+            {"scope", scope},
+            {"scheme", scheme},
+            {"scriptURL", registration.scriptURL}
+          }}
+        };
+        return reply(Result { message.seq, message, json });
+      }
+    }
+
+    reply(Result { message.seq, message, JSON::Null() });
+  });
+
+  /**
    * Prints incoming message value to stdout.
    * @param value
    */
@@ -3339,13 +3372,17 @@ static void mapIPCRoutes (Router *router) {
     }
 
     app->dispatch([=]() {
-    #if SOCKET_RUNTIME_PLATFORM_DESKTOP
-      window->maximize();
-    #else
-      const auto screen = window->getScreenSize();
-      window->setSize(screen.width, screen.height);
-      window->show();
-    #endif
+      auto options = window->options;
+      if (options.userConfig["build_headless"] != "true") {
+      #if SOCKET_RUNTIME_PLATFORM_DESKTOP
+        window->maximize();
+      #else
+        const auto screen = window->getScreenSize();
+        window->setSize(screen.width, screen.height);
+        window->show();
+      #endif
+      }
+
       reply(Result::Data { message, window->json() });
     });
   });
@@ -3477,11 +3514,14 @@ static void mapIPCRoutes (Router *router) {
     }
 
     app->dispatch([=]() {
-    #if SOCKET_RUNTIME_PLATFORM_DESKTOP
-      window->restore();
-    #else
-      window->show();
-    #endif
+      auto options = window->options;
+      if (options.userConfig["build_headless"] != "true") {
+      #if SOCKET_RUNTIME_PLATFORM_DESKTOP
+        window->restore();
+      #else
+        window->show();
+      #endif
+      }
       reply(Result::Data { message, window->json() });
     });
   });
@@ -3808,7 +3848,10 @@ static void mapIPCRoutes (Router *router) {
     }
 
     app->dispatch([=]() {
-      window->show();
+      auto options = window->options;
+      if (options.userConfig["build_headless"] != "true") {
+        window->show();
+      }
       reply(Result::Data { message, window->json() });
     });
   });

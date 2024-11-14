@@ -1,6 +1,7 @@
 import { SharedWorker } from '../shared-worker/index.js'
 import location from '../location.js'
 import state from './state.js'
+import ipc from '../ipc.js'
 
 const serviceWorkers = new Map()
 let sharedWorker = null
@@ -168,6 +169,17 @@ export function createServiceWorker (
   if (!globalThis.isServiceWorkerScope && id) {
     serviceWorkers.set(id, serviceWorker)
   }
+
+  ipc
+    .request('serviceWorker.getRegistrations')
+    .then((result) => result.data || [])
+    .then((registrations) => {
+      for (const registration of registrations) {
+        if (registration.scriptURL === scriptURL) {
+          currentState = registration.state
+        }
+      }
+    })
 
   return serviceWorker
 }

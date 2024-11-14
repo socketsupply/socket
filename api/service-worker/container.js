@@ -520,6 +520,27 @@ export class ServiceWorkerContainer extends EventTarget {
               break
             }
           }
+        } else if (
+          event.data?.from === 'instance' &&
+          event.data?.registration?.id &&
+          event.data?.client?.id &&
+          event.data?.client?.id !== globalThis.__args.client.id
+        ) {
+          if (globalThis.isWorkerScope && globalThis.serviceWorker) {
+            const messageEvent = new MessageEvent('message', {
+              origin: event.data.client.origin.origin,
+              data: event.data.message
+            })
+
+            Object.defineProperty(messageEvent, 'source', {
+              configurable: false,
+              enumerable: false,
+              writable: false,
+              value: await globalThis.clients.get(event.data.client.id)
+            })
+
+            this.dispatchEvent(messageEvent)
+          }
         }
       }
     }
