@@ -383,6 +383,7 @@ namespace SSC::IPC {
   void SchemeHandlers::configure (const Configuration& configuration) {
     static const auto devHost = SSC::getDevHost();
     this->configuration = configuration;
+    /* XXX(@jwerle): this now causes app store rejection
   #if SOCKET_RUNTIME_PLATFORM_APPLE
     if (SSC::isDebugEnabled() && devHost.starts_with("http:")) {
       [configuration.webview.processPool
@@ -391,6 +392,7 @@ namespace SSC::IPC {
       ];
     }
   #endif
+  */
   }
 
   bool SchemeHandlers::hasHandlerForScheme (const String& scheme) {
