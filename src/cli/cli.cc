@@ -4784,6 +4784,37 @@ int main (int argc, char* argv[]) {
         "  </array>\n"
       );
 
+      const auto versionParts = split(settings["meta_version"], '.');
+      Vector<String> versionComponents = {};
+      for (const auto& part : versionParts) {
+        const auto value = trim(part);
+        if (value.size() == 0) {
+          continue;
+        }
+
+        if (value[0] >= 0x30 && value[0] <= 0x39) {
+          versionComponents.push_back(value);
+        }
+      }
+
+      if (versionComponents.size() > 0) {
+        settings["ios_project_version"] = versionComponents[0];
+      } else {
+        settings["ios_project_version"] = "0";
+      }
+
+      if (settings["ios_deployment_target"].size() == 0) {
+        settings["ios_deployment_target"] = "15.0";
+      } else {
+        const auto parts = split(settings["ios_deployment_target"], '.');
+
+        if (parts.size() == 1) {
+          settings["ios_deployment_target"] = parts[0]+ ".";
+        } else if (parts.size() > 2) {
+          settings["ios_deployment_target"] = parts[0] + "." + parts[1];
+        }
+      }
+
       writeFile(paths.platformSpecificOutputPath / "exportOptions.plist", tmpl(gXCodeExportOptions, settings));
       writeFile(paths.platformSpecificOutputPath / "Info.plist", tmpl(gIOSInfoPList, settings));
       writeFile(pathToProject / "project.pbxproj", tmpl(gXCodeProject, xCodeProjectVariables));

@@ -973,7 +973,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
         GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
         GCC_WARN_UNUSED_FUNCTION = YES;
         GCC_WARN_UNUSED_VARIABLE = YES;
-        IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+        IPHONEOS_DEPLOYMENT_TARGET = {{ios_deployment_target}};
         MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
         MTL_FAST_MATH = YES;
         ONLY_ACTIVE_ARCH = YES;
@@ -1033,7 +1033,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
           "SOCKET_RUNTIME_VERSION_HASH={{SOCKET_RUNTIME_VERSION_HASH}}",
           "$(inherited)",
         );
-        IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+        IPHONEOS_DEPLOYMENT_TARGET = {{ios_deployment_target}};
         MTL_ENABLE_DEBUG_INFO = NO;
         MTL_FAST_MATH = YES;
         SDKROOT = {{ios_sdkroot}};
@@ -1051,7 +1051,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
         CODE_SIGN_ENTITLEMENTS = "$(PROJECT_DIR)/socket.entitlements";
         CODE_SIGN_IDENTITY = "{{ios_codesign_identity}}";
         CODE_SIGN_STYLE = Manual;
-        CURRENT_PROJECT_VERSION = 1;
+        CURRENT_PROJECT_VERSION = {{ios_project_version}};
         DEVELOPMENT_TEAM = "{{apple_team_identifier}}";
         ENABLE_BITCODE = NO;
         GENERATE_INFOPLIST_FILE = YES;
@@ -1069,7 +1069,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
           "@executable_path/../Frameworks",
         );
         LIBRARY_SEARCH_PATHS = "$(PROJECT_DIR)/lib";
-        MARKETING_VERSION = 1.0;
+        MARKETING_VERSION = {{meta_version}};
         ONLY_ACTIVE_ARCH = YES;
         OTHER_CFLAGS = (
           "-DHOST=\\\"{{host}}\\\"",
@@ -1096,7 +1096,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
         CODE_SIGN_ENTITLEMENTS = "$(PROJECT_DIR)/socket.entitlements";
         CODE_SIGN_IDENTITY = "iPhone Distribution";
         CODE_SIGN_STYLE = Manual;
-        CURRENT_PROJECT_VERSION = 1;
+        CURRENT_PROJECT_VERSION = {{ios_project_version}};
         DEVELOPMENT_TEAM = "{{apple_team_identifier}}";
         ENABLE_BITCODE = NO;
         GENERATE_INFOPLIST_FILE = YES;
@@ -1114,7 +1114,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
           "@executable_path/../Frameworks",
         );
         LIBRARY_SEARCH_PATHS = "$(PROJECT_DIR)/lib";
-        MARKETING_VERSION = 1.0;
+        MARKETING_VERSION = {{meta_version}};
         ONLY_ACTIVE_ARCH = YES;
         PRODUCT_BUNDLE_IDENTIFIER = "{{meta_bundle_identifier}}";
         PRODUCT_NAME = "$(TARGET_NAME)";
