@@ -847,8 +847,8 @@ Asynchronously check access a file for a given mode calling `callback`
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string \| Buffer \| URL |  | false |  |
-| mode | string? \| function(Error?)? | F_OK(0) | true |  |
-| callback | function(Error?)? |  | true |  |
+| mode | number? \| function(Error \| null):any? | F_OK(0) | true |  |
+| callback | function(Error \| null):any? |  | true |  |
 
 ## [`accessSync(path, mode)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L143)
 
@@ -1057,10 +1057,10 @@ Asynchronously open a file calling `callback` upon success or error.
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string \| Buffer \| URL |  | false |  |
-| flags | string? | r | true |  |
-| mode | string? | 0o666 | true |  |
-| options | object? \| function? |  | true |  |
-| callback | function(Error?, number?)? |  | true |  |
+| flags | string | r | true |  |
+| mode | number | 0o666 | true |  |
+| options | object \| function(Error \| null, number \| undefined):any |  | true |  |
+| callback | (function(Error \| null, number \| undefined):any) \| null |  | true |  |
 
 ## [`openSync(path, flags, mode, options)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L786)
 
@@ -1069,9 +1069,9 @@ Synchronously open a file.
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string \| Buffer \| URL |  | false |  |
-| flags | string? | r | true |  |
-| mode | string? | 0o666 | true |  |
-| options | object? \| function? |  | true |  |
+| flags | string | r | true |  |
+| mode | string | 0o666 | true |  |
+| options | object |  | true |  |
 
 ## [`opendir(path, options, callback)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L833)
 
@@ -1081,10 +1081,10 @@ Asynchronously open a directory calling `callback` upon success or error.
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string \| Buffer \| URL |  | false |  |
-| options | object? \| function(Error?, Dir?) |  | true |  |
-| options.encoding | string? | utf8 | true |  |
-| options.withFileTypes | boolean? | false | true |  |
-| callback | function(Error?, Dir?)? |  | false |  |
+| options | object \| function(Error \| Null, Dir \| undefined):any |  | true |  |
+| options.encoding | string | utf8 | true |  |
+| options.withFileTypes | boolean | false | true |  |
+| callback | function(Error \| null, Dir \| undefined):any) |  | false |  |
 
 ## [`opendirSync(path, options)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L860)
 
@@ -1094,9 +1094,9 @@ Synchronously open a directory.
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string \| Buffer \| URL |  | false |  |
-| options | object? \| function(Error?, Dir?) |  | true |  |
-| options.encoding | string? | utf8 | true |  |
-| options.withFileTypes | boolean? | false | true |  |
+| options | objec |  | true |  |
+| options.encoding | string | utf8 | true |  |
+| options.withFileTypes | boolean | false | true |  |
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
@@ -1110,11 +1110,11 @@ Asynchronously read from an open file descriptor.
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | fd | number |  | false |  |
-| buffer | object \| Buffer \| TypedArray |  | false | The buffer that the data will be written to. |
+| buffer | object \| Buffer \| Uint8Array |  | false | The buffer that the data will be written to. |
 | offset | number |  | false | The position in buffer to write the data to. |
 | length | number |  | false | The number of bytes to read. |
 | position | number \| BigInt \| null |  | false | Specifies where to begin reading from in the file. If position is null or -1 , data will be read from the current file position, and the file position will be updated. If position is an integer, the file position will be unchanged. |
-| callback | function(Error?, number?, Buffer?) |  | false |  |
+| callback | function(Error \| null, number \| undefined, Buffer \| undefined):any |  | false |  |
 
 ## [`write(fd, buffer, offset, length, position, callback)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L922)
 
@@ -1124,11 +1124,11 @@ Asynchronously write to an open file descriptor.
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | fd | number |  | false |  |
-| buffer | object \| Buffer \| TypedArray |  | false | The buffer that the data will be written to. |
+| buffer | object \| Buffer \| Uint8Array |  | false | The buffer that the data will be written to. |
 | offset | number |  | false | The position in buffer to write the data to. |
 | length | number |  | false | The number of bytes to read. |
 | position | number \| BigInt \| null |  | false | Specifies where to begin reading from in the file. If position is null or -1 , data will be read from the current file position, and the file position will be updated. If position is an integer, the file position will be unchanged. |
-| callback | function(Error?, number?, Buffer?) |  | false |  |
+| callback | function(Error \| null, number \| undefined, Buffer \| undefined):any |  | false |  |
 
 ## [`readdir(path, options, callback)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L956)
 
@@ -1137,13 +1137,13 @@ Asynchronously read all entries in a directory.
 
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
-| path | string \| Buffer \| URL  |  | false |  |
-| options | object? \| function(Error?, object) |  | true |  |
-| options.encoding ? utf8 | string? |  | true |  |
-| options.withFileTypes ? false | boolean? |  | true |  |
-| callback | function(Error?, object) |  | false |  |
+| path | string \| Buffer \| URL |  | false |  |
+| options | object \| function(Error \| null, (Dirent \| string) \| undefined):any |  | true |  |
+| options.encoding | string | utf8 | true |  |
+| options.withFileTypes | boolean | false | true |  |
+| callback | function(Error \| null, (Dirent \| string)):any |  | false |  |
 
-## [`readdirSync(path, options)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L1008)
+## [`readdirSync(path, options)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L1009)
 
 External docs: https://nodejs.org/api/fs.html#fsreaddirpath-options-callback
 Synchronously read all entries in a directory.
@@ -1151,24 +1151,28 @@ Synchronously read all entries in a directory.
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string \| Buffer \| URL  |  | false |  |
-| options | object? \| function(Error?, object) |  | true |  |
-| options.encoding ? utf8 | string? |  | true |  |
-| options.withFileTypes ? false | boolean? |  | true |  |
+| options | object |  | true |  |
+| options.encoding ? utf8 | string |  | true |  |
+| options.withFileTypes ? false | boolean |  | true |  |
 
-## [`readFile(path, options, callback)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L1038)
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | (Dirent \| string)[] |  |
+
+## [`readFile(path, options, callback)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L1039)
 
 
 
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
-| path | string \| Buffer \| URL \| number  |  | false |  |
-| options | object? \| function(Error?, Buffer?) |  | true |  |
-| options.encoding ? utf8 | string? |  | true |  |
-| options.flag ? r | string? |  | true |  |
-| options.signal | AbortSignal? |  | true |  |
-| callback | function(Error?, Buffer?) |  | false |  |
+| path | string \| Buffer \| URL \| number |  | false |  |
+| options | object \| function(Error \| null, Buffer \| string \| undefined):any |  | false |  |
+| options.encoding | string | utf8 | true |  |
+| options.flag | string | r | true |  |
+| options.signal | AbortSignal \| undefined |  | true |  |
+| callback | function(Error \| null, Buffer \| string \| undefined):any |  | false |  |
 
-## [`readFileSync(path, } options, options)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L1080)
+## [`readFileSync(path, } options, options)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L1082)
 
 
 
@@ -1176,36 +1180,44 @@ Synchronously read all entries in a directory.
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string \| Buffer \| URL \| number |  | false |  |
 | } options | { encoding?: string = 'utf8', flags?: string = 'r' |  | false |  |
-| options | object? \| function(Error?, Buffer?) |  | true |  |
-| options.signal | AbortSignal? |  | true |  |
+| options | object \| function(Error \| null, Buffer \| undefined):any |  | true |  |
+| options.signal | AbortSignal \| undefined |  | true |  |
 
-## [`readlink(path, callback)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L1143)
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | string \| Buffer |  |
+
+## [`readlink(path, callback)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L1145)
 
 Reads link at `path`
 
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string |  | false |  |
-| callback | function(err, string) |  | false |  |
+| callback | function(Error \| null, string \| undefined):any |  | false |  |
 
-## [`realpath(path, callback)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L1163)
-
-Computes real path for `path`
-
-| Argument | Type | Default | Optional | Description |
-| :---     | :--- | :---:   | :---:    | :---        |
-| path | string |  | false |  |
-| callback | function(err, string) |  | false |  |
-
-## [`realpathSync(path)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L1181)
+## [`realpath(path, callback)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L1165)
 
 Computes real path for `path`
 
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string |  | false |  |
+| callback | function(Error \| null, string \| undefined):any |  | false |  |
 
-## [`rename(src, dest, callback)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L1199)
+## [`realpathSync(path)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L1184)
+
+Computes real path for `path`
+
+| Argument | Type | Default | Optional | Description |
+| :---     | :--- | :---:   | :---:    | :---        |
+| path | string |  | false |  |
+
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | string |  |
+
+## [`rename(src, dest, callback)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L1204)
 
 Renames file or directory at `src` to `dest`.
 
@@ -1213,9 +1225,9 @@ Renames file or directory at `src` to `dest`.
 | :---     | :--- | :---:   | :---:    | :---        |
 | src | string |  | false |  |
 | dest | string |  | false |  |
-| callback | function |  | false |  |
+| callback | function(Error \| null):any |  | false |  |
 
-## [`renameSync(src, dest)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L1225)
+## [`renameSync(src, dest)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L1230)
 
 Renames file or directory at `src` to `dest`, synchronously.
 
@@ -1224,16 +1236,16 @@ Renames file or directory at `src` to `dest`, synchronously.
 | src | string |  | false |  |
 | dest | string |  | false |  |
 
-## [`rmdir(path, callback)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L1249)
+## [`rmdir(path, callback)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L1254)
 
 Removes directory at `path`.
 
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string |  | false |  |
-| callback | function |  | false |  |
+| callback | function(Error \| null):any |  | false |  |
 
-## [`rmdirSync(path)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L1269)
+## [`rmdirSync(path)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L1274)
 
 Removes directory at `path`, synchronously.
 
@@ -1241,44 +1253,44 @@ Removes directory at `path`, synchronously.
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string |  | false |  |
 
-## [`statSync(path, options)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L1290)
+## [`statSync(path, options)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L1295)
 
 Synchronously get the stats of a file
 
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
-| path | string \| Buffer \| URL \| number  |  | false | filename or file descriptor |
-| options | object? |  | false |  |
-| options.encoding ? utf8 | string? |  | true |  |
-| options.flag ? r | string? |  | true |  |
+| path | string |  | false | filename or file descriptor |
+| options | object |  | true |  |
+| options.encoding ? utf8 | string |  | true |  |
+| options.flag ? r | string |  | true |  |
 
-## [`stat(path, options, callback)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L1310)
+## [`stat(path, options, callback)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L1315)
 
 Get the stats of a file
 
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
-| path | string \| Buffer \| URL \| number  |  | false | filename or file descriptor |
-| options | object? |  | false |  |
-| options.encoding ? utf8 | string? |  | true |  |
-| options.flag ? r | string? |  | true |  |
-| options.signal | AbortSignal? |  | true |  |
-| callback | function(Error?, Stats?) |  | false |  |
+| path | string \| Buffer \| URL \| number |  | false | filename or file descriptor |
+| options | object \| function(Error \| null, Stats \| undefined):any |  | true |  |
+| options.encoding ? utf8 | string |  | true |  |
+| options.flag ? r | string |  | true |  |
+| options.signal | AbortSignal \| undefined |  | true |  |
+| callback | function(Error \| null, Stats \| undefined):any |  | false |  |
 
-## [`lstat(path, options, callback)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L1382)
+## [`lstat(path, options, callback)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L1387)
 
 Get the stats of a symbolic link
 
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
-| path | string \| Buffer \| URL \| number  |  | false | filename or file descriptor |
-| options | object? |  | false |  |
-| options.encoding ? utf8 | string? |  | true |  |
-| options.flag ? r | string? |  | true |  |
-| options.signal | AbortSignal? |  | true |  |
-| callback | function(Error?, Stats?) |  | false |  |
+| path | string \| Buffer \| URL \| number |  | false | filename or file descriptor |
+| options | object \| function(Error \| null, Stats \| undefined):any |  | true |  |
+| options.encoding ? utf8 | string |  | true |  |
+| options.flag ? r | string |  | true |  |
+| options.signal | AbortSignal \| undefined |  | true |  |
+| callback | function(Error \| null, Stats \| undefined):any |  | false |  |
 
-## [`symlink(src, dest)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L1423)
+## [`symlink(src, dest, callback)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L1429)
 
 Creates a symlink of `src` at `dest`.
 
@@ -1286,17 +1298,18 @@ Creates a symlink of `src` at `dest`.
 | :---     | :--- | :---:   | :---:    | :---        |
 | src | string |  | false |  |
 | dest | string |  | false |  |
+| callback | function(Error \| null):any |  | false |  |
 
-## [`unlink(path, callback)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L1466)
+## [`unlink(path, callback)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L1472)
 
 Unlinks (removes) file at `path`.
 
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string |  | false |  |
-| callback | function |  | false |  |
+| callback | function(Error \| null):any |  | false |  |
 
-## [`unlinkSync(path)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L1486)
+## [`unlinkSync(path)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L1492)
 
 Unlinks (removes) file at `path`, synchronously.
 
@@ -1304,37 +1317,38 @@ Unlinks (removes) file at `path`, synchronously.
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string |  | false |  |
 
-## [`writeFile(path, data, options, callback)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L1511)
+## [`writeFile(path, data, options, callback)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L1517)
 
+External docs: https://nodejs.org/api/fs.html#fswritefilefile-data-options-callback
 
 
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
-| path | string \| Buffer \| URL \| number  |  | false | filename or file descriptor |
-| data | string \| Buffer \| TypedArray \| DataView \| object  |  | false |  |
-| options | object? |  | false |  |
-| options.encoding ? utf8 | string? |  | true |  |
-| options.mode ? 0o666 | string? |  | true |  |
-| options.flag ? w | string? |  | true |  |
-| options.signal | AbortSignal? |  | true |  |
-| callback | function(Error?) |  | false |  |
+| path | string \| Buffer \| URL \| number |  | false | filename or file descriptor |
+| data | string \| Buffer \| TypedArray \| DataView \| object |  | false |  |
+| options | object \| function(Error \| null):any |  | true |  |
+| options.encoding ? utf8 | string |  | true |  |
+| options.mode ? 0o666 | string |  | true |  |
+| options.flag ? w | string |  | true |  |
+| options.signal | AbortSignal \| undefined |  | true |  |
+| callback | function(Error \| null):any |  | false |  |
 
-## [`writeFileSync(path, data, options)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L1556)
+## [`writeFileSync(path, data, options)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L1562)
 
 External docs: https://nodejs.org/api/fs.html#fswritefilesyncfile-data-options
 Writes data to a file synchronously.
 
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
-| path | string \| Buffer \| URL \| number  |  | false | filename or file descriptor |
-| data | string \| Buffer \| TypedArray \| DataView \| object  |  | false |  |
-| options | object? |  | false |  |
-| options.encoding ? utf8 | string? |  | true |  |
-| options.mode ? 0o666 | string? |  | true |  |
-| options.flag ? w | string? |  | true |  |
-| options.signal | AbortSignal? |  | true |  |
+| path | string \| Buffer \| URL \| number |  | false | filename or file descriptor |
+| data | string \| Buffer \| TypedArray \| DataView \| object |  | false |  |
+| options | object |  | true |  |
+| options.encoding ? utf8 | string |  | true |  |
+| options.mode ? 0o666 | string |  | true |  |
+| options.flag ? w | string |  | true |  |
+| options.signal | AbortSignal \| undefined |  | true |  |
 
-## [`watch(, options, callback)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L1591)
+## [`watch(, options, callback)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/index.js#L1597)
 
 Watch for changes at `path` calling `callback`
 
@@ -1343,7 +1357,7 @@ Watch for changes at `path` calling `callback`
 | (Position 0) | string |  | false |  |
 | options | function \| object |  | true |  |
 | options.encoding | string | utf8 | true |  |
-| callback | ?function |  | true |  |
+| callback | function |  | true |  |
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
@@ -1385,8 +1399,8 @@ Asynchronously check access a file.
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string \| Buffer \| URL |  | false |  |
-| mode | string? |  | true |  |
-| options | object? |  | true |  |
+| mode | number |  | true |  |
+| options | object |  | true |  |
 
 ## [`chmod(path, mode)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/promises.js#L122)
 
@@ -1471,7 +1485,7 @@ Asynchronously creates a directory.
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
-| Not specified | Promise<any> | Upon success, fulfills with undefined if recursive is false, or the first directory path created if recursive is true. |
+| Not specified | Promise | Upon success, fulfills with undefined if recursive is false, or the first directory path created if recursive is true. |
 
 ## [`open(path, flags, mode)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/promises.js#L292)
 
@@ -1497,15 +1511,15 @@ External docs: https://nodejs.org/api/fs.html#fspromisesopendirpath-options
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string \| Buffer \| URL |  | false |  |
-| options | object? |  | true |  |
-| options.encoding | string? | utf8 | true |  |
-| options.bufferSize | number? | 32 | true |  |
+| options | object |  | true |  |
+| options.encoding | string | utf8 | true |  |
+| options.bufferSize | number | 32 | true |  |
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
 | Not specified | Promise<Dir> |  |
 
-## [`readdir(path, options)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/promises.js#L318)
+## [`readdir(path, options)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/promises.js#L319)
 
 External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesreaddirpath-options
 
@@ -1513,11 +1527,15 @@ External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesr
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string \| Buffer \| URL |  | false |  |
-| options | object? |  | false |  |
-| options.encoding | string? | utf8 | true |  |
-| options.withFileTypes | boolean? | false | true |  |
+| options | object |  | true |  |
+| options.encoding | string | utf8 | true |  |
+| options.withFileTypes | boolean | false | true |  |
 
-## [`readFile(path, options)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/promises.js#L356)
+| Return Value | Type | Description |
+| :---         | :--- | :---        |
+| Not specified | Promise<(string \| Dirent)[]> |  |
+
+## [`readFile(path, options)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/promises.js#L357)
 
 External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesreadfilepath-options
 
@@ -1525,16 +1543,16 @@ External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesr
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string |  | false |  |
-| options | object? |  | true |  |
-| options.encoding | (string \| null)? | null | true |  |
-| options.flag | string? | r | true |  |
-| options.signal | AbortSignal? |  | true |  |
+| options | object |  | true |  |
+| options.encoding | string \| null | null | true |  |
+| options.flag | string | r | true |  |
+| options.signal | AbortSignal \| undefined |  | true |  |
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
 | Not specified | Promise<Buffer \| string> |  |
 
-## [`readlink(path)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/promises.js#L374)
+## [`readlink(path)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/promises.js#L375)
 
 Reads link at `path`
 
@@ -1546,7 +1564,7 @@ Reads link at `path`
 | :---         | :--- | :---        |
 | Not specified | Promise<string> |  |
 
-## [`realpath(path)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/promises.js#L395)
+## [`realpath(path)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/promises.js#L396)
 
 Computes real path for `path`
 
@@ -1558,7 +1576,7 @@ Computes real path for `path`
 | :---         | :--- | :---        |
 | Not specified | Promise<string> |  |
 
-## [`rename(src, dest)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/promises.js#L417)
+## [`rename(src, dest)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/promises.js#L418)
 
 Renames file or directory at `src` to `dest`.
 
@@ -1571,7 +1589,7 @@ Renames file or directory at `src` to `dest`.
 | :---         | :--- | :---        |
 | Not specified | Promise |  |
 
-## [`rmdir(path)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/promises.js#L441)
+## [`rmdir(path)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/promises.js#L442)
 
 Removes directory at `path`.
 
@@ -1583,7 +1601,7 @@ Removes directory at `path`.
 | :---         | :--- | :---        |
 | Not specified | Promise |  |
 
-## [`stat(path, options)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/promises.js#L463)
+## [`stat(path, options)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/promises.js#L464)
 
 External docs: https://nodejs.org/api/fs.html#fspromisesstatpath-options
 Get the stats of a file
@@ -1591,14 +1609,14 @@ Get the stats of a file
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string \| Buffer \| URL |  | false |  |
-| options | object? |  | true |  |
-| options.bigint | boolean? | false | true |  |
+| options | object |  | true |  |
+| options.bigint | boolean | false | true |  |
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
 | Not specified | Promise<Stats> |  |
 
-## [`lstat(path, options)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/promises.js#L478)
+## [`lstat(path, options)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/promises.js#L479)
 
 External docs: https://nodejs.org/api/fs.html#fspromiseslstatpath-options
 Get the stats of a symbolic link.
@@ -1606,14 +1624,14 @@ Get the stats of a symbolic link.
 | Argument | Type | Default | Optional | Description |
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string \| Buffer \| URL |  | false |  |
-| options | object? |  | true |  |
-| options.bigint | boolean? | false | true |  |
+| options | object |  | true |  |
+| options.bigint | boolean | false | true |  |
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
 | Not specified | Promise<Stats> |  |
 
-## [`symlink(src, dest)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/promises.js#L491)
+## [`symlink(src, dest)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/promises.js#L492)
 
 Creates a symlink of `src` at `dest`.
 
@@ -1626,7 +1644,7 @@ Creates a symlink of `src` at `dest`.
 | :---         | :--- | :---        |
 | Not specified | Promise |  |
 
-## [`unlink(path)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/promises.js#L527)
+## [`unlink(path)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/promises.js#L528)
 
 Unlinks (removes) file at `path`.
 
@@ -1638,7 +1656,7 @@ Unlinks (removes) file at `path`.
 | :---         | :--- | :---        |
 | Not specified | Promise |  |
 
-## [`writeFile(path, data, options)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/promises.js#L552)
+## [`writeFile(path, data, options)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/promises.js#L553)
 
 External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromiseswritefilefile-data-options
 
@@ -1647,17 +1665,17 @@ External docs: https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesw
 | :---     | :--- | :---:   | :---:    | :---        |
 | path | string \| Buffer \| URL \| FileHandle |  | false | filename or FileHandle |
 | data | string \| Buffer \| Array \| DataView \| TypedArray |  | false |  |
-| options | object? |  | true |  |
+| options | object |  | true |  |
 | options.encoding | string \| null | utf8 | true |  |
 | options.mode | number | 0o666 | true |  |
 | options.flag | string | w | true |  |
-| options.signal | AbortSignal? |  | true |  |
+| options.signal | AbortSignal \| undefined |  | true |  |
 
 | Return Value | Type | Description |
 | :---         | :--- | :---        |
 | Not specified | Promise<void> |  |
 
-## [`watch(, options)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/promises.js#L573)
+## [`watch(, options)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/fs/promises.js#L574)
 
 Watch for changes at `path` calling `callback`
 

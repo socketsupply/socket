@@ -4130,74 +4130,304 @@ declare module "socket:fs/constants" {
     /**
      * This flag can be used with uv_fs_copyfile() to return an error if the
      * destination already exists.
+     * @type {number}
      */
-    export const COPYFILE_EXCL: 1;
+    export const COPYFILE_EXCL: number;
     /**
      * This flag can be used with uv_fs_copyfile() to attempt to create a reflink.
      * If copy-on-write is not supported, a fallback copy mechanism is used.
+     * @type {number}
      */
-    export const COPYFILE_FICLONE: 2;
+    export const COPYFILE_FICLONE: number;
     /**
      * This flag can be used with uv_fs_copyfile() to attempt to create a reflink.
      * If copy-on-write is not supported, an error is returned.
+     * @type {number}
      */
-    export const COPYFILE_FICLONE_FORCE: 4;
-    export const UV_DIRENT_UNKNOWN: any;
-    export const UV_DIRENT_FILE: any;
-    export const UV_DIRENT_DIR: any;
-    export const UV_DIRENT_LINK: any;
-    export const UV_DIRENT_FIFO: any;
-    export const UV_DIRENT_SOCKET: any;
-    export const UV_DIRENT_CHAR: any;
-    export const UV_DIRENT_BLOCK: any;
-    export const UV_FS_SYMLINK_DIR: any;
-    export const UV_FS_SYMLINK_JUNCTION: any;
-    export const UV_FS_O_FILEMAP: any;
-    export const O_RDONLY: any;
-    export const O_WRONLY: any;
-    export const O_RDWR: any;
-    export const O_APPEND: any;
-    export const O_ASYNC: any;
-    export const O_CLOEXEC: any;
-    export const O_CREAT: any;
-    export const O_DIRECT: any;
-    export const O_DIRECTORY: any;
-    export const O_DSYNC: any;
-    export const O_EXCL: any;
-    export const O_LARGEFILE: any;
-    export const O_NOATIME: any;
-    export const O_NOCTTY: any;
-    export const O_NOFOLLOW: any;
-    export const O_NONBLOCK: any;
-    export const O_NDELAY: any;
-    export const O_PATH: any;
-    export const O_SYNC: any;
-    export const O_TMPFILE: any;
-    export const O_TRUNC: any;
-    export const S_IFMT: any;
-    export const S_IFREG: any;
-    export const S_IFDIR: any;
-    export const S_IFCHR: any;
-    export const S_IFBLK: any;
-    export const S_IFIFO: any;
-    export const S_IFLNK: any;
-    export const S_IFSOCK: any;
-    export const S_IRWXU: any;
-    export const S_IRUSR: any;
-    export const S_IWUSR: any;
-    export const S_IXUSR: any;
-    export const S_IRWXG: any;
-    export const S_IRGRP: any;
-    export const S_IWGRP: any;
-    export const S_IXGRP: any;
-    export const S_IRWXO: any;
-    export const S_IROTH: any;
-    export const S_IWOTH: any;
-    export const S_IXOTH: any;
-    export const F_OK: any;
-    export const R_OK: any;
-    export const W_OK: any;
-    export const X_OK: any;
+    export const COPYFILE_FICLONE_FORCE: number;
+    /**
+     * A constant representing a directory entry whose type is unknown.
+     * It indicates that the type of the file or directory cannot be determined.
+     * @type {number}
+     */
+    export const UV_DIRENT_UNKNOWN: number;
+    /**
+     * A constant representing a directory entry of type file.
+     * It indicates that the entry is a regular file.
+     * @type {number}
+     */
+    export const UV_DIRENT_FILE: number;
+    /**
+     * A constant epresenting a directory entry of type directory.
+     * It indicates that the entry is a directory.
+     * @type {number}
+     */
+    export const UV_DIRENT_DIR: number;
+    /**
+     * A constant representing a directory entry of type symbolic link.
+     * @type {number}
+     */
+    export const UV_DIRENT_LINK: number;
+    /**
+     * A constant representing a directory entry of type FIFO (named pipe).
+     * @type {number}
+     */
+    export const UV_DIRENT_FIFO: number;
+    /**
+     * A constant representing a directory entry of type socket.
+     * @type {number}
+     */
+    export const UV_DIRENT_SOCKET: number;
+    /**
+     * A constant representing a directory entry of type character device
+     * @type {number}
+     */
+    export const UV_DIRENT_CHAR: number;
+    /**
+     * A constant representing a directory entry of type block device.
+     * @type {number}
+     */
+    export const UV_DIRENT_BLOCK: number;
+    /**
+     * A constant representing a symlink should target a directory.
+     * @type {number}
+     */
+    export const UV_FS_SYMLINK_DIR: number;
+    /**
+     * A constant representing a symlink should be created as a Windows junction.
+     * @type {number}
+     */
+    export const UV_FS_SYMLINK_JUNCTION: number;
+    /**
+     * A constant representing an opened file for memory mapping on Windows systems.
+     * @type {number}
+     */
+    export const UV_FS_O_FILEMAP: number;
+    /**
+     * Opens a file for read-only access.
+     * @type {number}
+     */
+    export const O_RDONLY: number;
+    /**
+     * Opens a file for write-only access.
+     * @type {number}
+     */
+    export const O_WRONLY: number;
+    /**
+     * Opens a file for both reading and writing.
+     * @type {number}
+     */
+    export const O_RDWR: number;
+    /**
+     * Appends data to the file instead of overwriting.
+     * @type {number}
+     */
+    export const O_APPEND: number;
+    /**
+     * Enables asynchronous I/O notifications.
+     * @type {number}
+     */
+    export const O_ASYNC: number;
+    /**
+     * Ensures file descriptors are closed on `exec()` calls.
+     * @type {number}
+     */
+    export const O_CLOEXEC: number;
+    /**
+     * Creates a new file if it does not exist.
+     * @type {number}
+     */
+    export const O_CREAT: number;
+    /**
+     * Minimizes caching effects for file I/O.
+     * @type {number}
+     */
+    export const O_DIRECT: number;
+    /**
+     * Ensures the opened file is a directory.
+     * @type {number}
+     */
+    export const O_DIRECTORY: number;
+    /**
+     * Writes file data synchronously.
+     * @type {number}
+     */
+    export const O_DSYNC: number;
+    /**
+     * Fails the operation if the file already exists.
+     * @type {number}
+     */
+    export const O_EXCL: number;
+    /**
+     * Enables handling of large files.
+     * @type {number}
+     */
+    export const O_LARGEFILE: number;
+    /**
+     * Prevents updating the file's last access time.
+     * @type {number}
+     */
+    export const O_NOATIME: number;
+    /**
+     * Prevents becoming the controlling terminal for the process.
+     * @type {number}
+     */
+    export const O_NOCTTY: number;
+    /**
+     * Does not follow symbolic links.
+     * @type {number}
+     */
+    export const O_NOFOLLOW: number;
+    /**
+     * Opens the file in non-blocking mode.
+     * @type {number}
+     */
+    export const O_NONBLOCK: number;
+    /**
+     * Alias for `O_NONBLOCK` on some systems.
+     * @type {number}
+     */
+    export const O_NDELAY: number;
+    /**
+     * Obtains a file descriptor for a file but does not open it.
+     * @type {number}
+     */
+    export const O_PATH: number;
+    /**
+     * Writes both file data and metadata synchronously.
+     * @type {number}
+     */
+    export const O_SYNC: number;
+    /**
+     * Creates a temporary file that is not linked to a directory.
+     * @type {number}
+     */
+    export const O_TMPFILE: number;
+    /**
+     * Truncates the file to zero length if it exists.
+     * @type {number}
+     */
+    export const O_TRUNC: number;
+    /**
+     * Bitmask for extracting the file type from a mode.
+     * @type {number}
+     */
+    export const S_IFMT: number;
+    /**
+     * Indicates a regular file.
+     * @type {number}
+     */
+    export const S_IFREG: number;
+    /**
+     * Indicates a directory.
+     * @type {number}
+     */
+    export const S_IFDIR: number;
+    /**
+     * Indicates a character device.
+     * @type {number}
+     */
+    export const S_IFCHR: number;
+    /**
+     * Indicates a block device.
+     * @type {number}
+     */
+    export const S_IFBLK: number;
+    /**
+     * Indicates a FIFO (named pipe).
+     * @type {number}
+     */
+    export const S_IFIFO: number;
+    /**
+     * Indicates a symbolic link.
+     * @type {number}
+     */
+    export const S_IFLNK: number;
+    /**
+     * Indicates a socket.
+     * @type {number}
+     */
+    export const S_IFSOCK: number;
+    /**
+     * Grants read, write, and execute permissions for the file owner.
+     * @type {number}
+     */
+    export const S_IRWXU: number;
+    /**
+     * Grants read permission for the file owner.
+     * @type {number}
+     */
+    export const S_IRUSR: number;
+    /**
+     * Grants write permission for the file owner.
+     * @type {number}
+     */
+    export const S_IWUSR: number;
+    /**
+     * Grants execute permission for the file owner.
+     * @type {number}
+     */
+    export const S_IXUSR: number;
+    /**
+     * Grants read, write, and execute permissions for the group.
+     * @type {number}
+     */
+    export const S_IRWXG: number;
+    /**
+     * Grants read permission for the group.
+     * @type {number}
+     */
+    export const S_IRGRP: number;
+    /**
+     * Grants write permission for the group.
+     * @type {number}
+     */
+    export const S_IWGRP: number;
+    /**
+     * Grants execute permission for the group.
+     * @type {number}
+     */
+    export const S_IXGRP: number;
+    /**
+     * Grants read, write, and execute permissions for others.
+     * @type {number}
+     */
+    export const S_IRWXO: number;
+    /**
+     * Grants read permission for others.
+     * @type {number}
+     */
+    export const S_IROTH: number;
+    /**
+     * Grants write permission for others.
+     * @type {number}
+     */
+    export const S_IWOTH: number;
+    /**
+     * Grants execute permission for others.
+     * @type {number}
+     */
+    export const S_IXOTH: number;
+    /**
+     * Checks for the existence of a file.
+     * @type {number}
+     */
+    export const F_OK: number;
+    /**
+     * Checks for read permission on a file.
+     * @type {number}
+     */
+    export const R_OK: number;
+    /**
+     * Checks for write permission on a file.
+     * @type {number}
+     */
+    export const W_OK: number;
+    /**
+     * Checks for execute permission on a file.
+     * @type {number}
+     */
+    export const X_OK: number;
     export default exports;
     import * as exports from "socket:fs/constants";
     
@@ -4287,7 +4517,7 @@ declare module "socket:fs/stream" {
 }
 
 declare module "socket:fs/flags" {
-    export function normalizeFlags(flags: any): any;
+    export function normalizeFlags(flags: any): number;
     export default exports;
     import * as exports from "socket:fs/flags";
     
@@ -5380,7 +5610,7 @@ declare module "socket:fs/handle" {
      * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#class-filehandle}
      */
     export class FileHandle extends EventEmitter {
-        static get DEFAULT_ACCESS_MODE(): any;
+        static get DEFAULT_ACCESS_MODE(): number;
         static get DEFAULT_OPEN_FLAGS(): string;
         static get DEFAULT_OPEN_MODE(): number;
         /**
@@ -5413,7 +5643,7 @@ declare module "socket:fs/handle" {
          * @param {object} options
          */
         constructor(options: object);
-        flags: any;
+        flags: number;
         path: any;
         mode: any;
         id: string;
@@ -5729,14 +5959,14 @@ declare module "socket:fs/dir" {
      * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#class-fsdirent}
      */
     export class Dirent {
-        static get UNKNOWN(): any;
-        static get FILE(): any;
-        static get DIR(): any;
-        static get LINK(): any;
-        static get FIFO(): any;
-        static get SOCKET(): any;
-        static get CHAR(): any;
-        static get BLOCK(): any;
+        static get UNKNOWN(): number;
+        static get FILE(): number;
+        static get DIR(): number;
+        static get LINK(): number;
+        static get FIFO(): number;
+        static get SOCKET(): number;
+        static get CHAR(): number;
+        static get BLOCK(): number;
         /**
          * Creates `Dirent` instance from input.
          * @param {object|string} name
@@ -6197,11 +6427,11 @@ declare module "socket:fs/promises" {
     /**
      * Asynchronously check access a file.
      * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesaccesspath-mode}
-     * @param {string | Buffer | URL} path
-     * @param {string?} [mode]
-     * @param {object?} [options]
+     * @param {string|Buffer|URL} path
+     * @param {number=} [mode]
+     * @param {object=} [options]
      */
-    export function access(path: string | Buffer | URL, mode?: string | null, options?: object | null): Promise<boolean>;
+    export function access(path: string | Buffer | URL, mode?: number | undefined, options?: object | undefined): Promise<boolean>;
     /**
      * @see {@link https://nodejs.org/api/fs.html#fspromiseschmodpath-mode}
      * @param {string | Buffer | URL} path
@@ -6247,7 +6477,7 @@ declare module "socket:fs/promises" {
      * @param {object} [options] - The optional options argument can be an integer specifying mode (permission and sticky bits), or an object with a mode property and a recursive property indicating whether parent directories should be created. Calling fs.mkdir() when path is a directory that exists results in an error only when recursive is false.
      * @param {boolean} [options.recursive=false] - Recursively create missing path segments.
      * @param {number} [options.mode=0o777] - Set the mode of directory, or missing path segments when recursive is true.
-     * @return {Promise<any>} - Upon success, fulfills with undefined if recursive is false, or the first directory path created if recursive is true.
+     * @return {Promise} - Upon success, fulfills with undefined if recursive is false, or the first directory path created if recursive is true.
      */
     export function mkdir(path: string, options?: {
         recursive?: boolean;
@@ -6266,30 +6496,31 @@ declare module "socket:fs/promises" {
     /**
      * @see {@link https://nodejs.org/api/fs.html#fspromisesopendirpath-options}
      * @param {string | Buffer | URL} path
-     * @param {object?} [options]
-     * @param {string?} [options.encoding = 'utf8']
-     * @param {number?} [options.bufferSize = 32]
+     * @param {object=} [options]
+     * @param {string=} [options.encoding = 'utf8']
+     * @param {number=} [options.bufferSize = 32]
      * @return {Promise<Dir>}
      */
-    export function opendir(path: string | Buffer | URL, options?: object | null): Promise<Dir>;
+    export function opendir(path: string | Buffer | URL, options?: object | undefined): Promise<Dir>;
     /**
      * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesreaddirpath-options}
-     * @param {string | Buffer | URL} path
-     * @param {object?} options
-     * @param {string?} [options.encoding = 'utf8']
-     * @param {boolean?} [options.withFileTypes = false]
+     * @param {string|Buffer|URL} path
+     * @param {object=} [options]
+     * @param {string=} [options.encoding = 'utf8']
+     * @param {boolean=} [options.withFileTypes = false]
+     * @return {Promise<(string|Dirent)[]>}
      */
-    export function readdir(path: string | Buffer | URL, options: object | null): Promise<(string | Dirent)[]>;
+    export function readdir(path: string | Buffer | URL, options?: object | undefined): Promise<(string | Dirent)[]>;
     /**
      * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesreadfilepath-options}
      * @param {string} path
-     * @param {object?} [options]
-     * @param {(string|null)?} [options.encoding = null]
-     * @param {string?} [options.flag = 'r']
-     * @param {AbortSignal?} [options.signal]
+     * @param {object=} [options]
+     * @param {(string|null)=} [options.encoding = null]
+     * @param {string=} [options.flag = 'r']
+     * @param {AbortSignal|undefined} [options.signal]
      * @return {Promise<Buffer | string>}
      */
-    export function readFile(path: string, options?: object | null): Promise<Buffer | string>;
+    export function readFile(path: string, options?: object | undefined): Promise<Buffer | string>;
     /**
      * Reads link at `path`
      * @param {string} path
@@ -6319,20 +6550,20 @@ declare module "socket:fs/promises" {
      * Get the stats of a file
      * @see {@link https://nodejs.org/api/fs.html#fspromisesstatpath-options}
      * @param {string | Buffer | URL} path
-     * @param {object?} [options]
-     * @param {boolean?} [options.bigint = false]
+     * @param {object=} [options]
+     * @param {boolean=} [options.bigint = false]
      * @return {Promise<Stats>}
      */
-    export function stat(path: string | Buffer | URL, options?: object | null): Promise<Stats>;
+    export function stat(path: string | Buffer | URL, options?: object | undefined): Promise<Stats>;
     /**
      * Get the stats of a symbolic link.
      * @see {@link https://nodejs.org/api/fs.html#fspromiseslstatpath-options}
      * @param {string | Buffer | URL} path
-     * @param {object?} [options]
-     * @param {boolean?} [options.bigint = false]
+     * @param {object=} [options]
+     * @param {boolean=} [options.bigint = false]
      * @return {Promise<Stats>}
      */
-    export function lstat(path: string | Buffer | URL, options?: object | null): Promise<Stats>;
+    export function lstat(path: string | Buffer | URL, options?: object | undefined): Promise<Stats>;
     /**
      * Creates a symlink of `src` at `dest`.
      * @param {string} src
@@ -6348,16 +6579,16 @@ declare module "socket:fs/promises" {
     export function unlink(path: string): Promise<any>;
     /**
      * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromiseswritefilefile-data-options}
-     * @param {string | Buffer | URL | FileHandle} path - filename or FileHandle
+     * @param {string|Buffer|URL|FileHandle} path - filename or FileHandle
      * @param {string|Buffer|Array|DataView|TypedArray} data
-     * @param {object?} [options]
-     * @param {string|null} [options.encoding = 'utf8']
-     * @param {number} [options.mode = 0o666]
-     * @param {string} [options.flag = 'w']
-     * @param {AbortSignal?} [options.signal]
+     * @param {object=} [options]
+     * @param {(string|null)=} [options.encoding = 'utf8']
+     * @param {number=} [options.mode = 0o666]
+     * @param {string=} [options.flag = 'w']
+     * @param {AbortSignal|undefined} [options.signal]
      * @return {Promise<void>}
      */
-    export function writeFile(path: string | Buffer | URL | FileHandle, data: string | Buffer | any[] | DataView | TypedArray, options?: object | null): Promise<void>;
+    export function writeFile(path: string | Buffer | URL | FileHandle, data: string | Buffer | any[] | DataView | TypedArray, options?: object | undefined): Promise<void>;
     /**
      * Watch for changes at `path` calling `callback`
      * @param {string}
@@ -6393,10 +6624,10 @@ declare module "socket:fs/index" {
      * upon success or error.
      * @see {@link https://nodejs.org/api/fs.html#fsopenpath-flags-mode-callback}
      * @param {string | Buffer | URL} path
-     * @param {string?|function(Error?)?} [mode = F_OK(0)]
-     * @param {function(Error?)?} [callback]
+     * @param {number?|function(Error|null):any?} [mode = F_OK(0)]
+     * @param {function(Error|null):any?} [callback]
      */
-    export function access(path: string | Buffer | URL, mode: any, callback?: ((arg0: Error | null) => any) | null): void;
+    export function access(path: string | Buffer | URL, mode: any, callback?: (arg0: Error | null) => any | null): void;
     /**
      * Synchronously check access a file for a given mode calling `callback`
      * upon success or error.
@@ -6548,124 +6779,127 @@ declare module "socket:fs/index" {
      * Asynchronously open a file calling `callback` upon success or error.
      * @see {@link https://nodejs.org/api/fs.html#fsopenpath-flags-mode-callback}
      * @param {string | Buffer | URL} path
-     * @param {string?} [flags = 'r']
-     * @param {string?} [mode = 0o666]
-     * @param {object?|function?} [options]
-     * @param {function(Error?, number?)?} [callback]
+     * @param {string=} [flags = 'r']
+     * @param {number=} [mode = 0o666]
+     * @param {(object|function(Error|null, number|undefined):any)=} [options]
+     * @param {(function(Error|null, number|undefined):any)|null} [callback]
      */
-    export function open(path: string | Buffer | URL, flags?: string | null, mode?: string | null, options?: any, callback?: ((arg0: Error | null, arg1: number | null) => any) | null): void;
+    export function open(path: string | Buffer | URL, flags?: string | undefined, mode?: number | undefined, options?: (object | ((arg0: Error | null, arg1: number | undefined) => any)) | undefined, callback?: ((arg0: Error | null, arg1: number | undefined) => any) | null): void;
     /**
      * Synchronously open a file.
-     * @param {string | Buffer | URL} path
-     * @param {string?} [flags = 'r']
-     * @param {string?} [mode = 0o666]
-     * @param {object?|function?} [options]
+     * @param {string|Buffer|URL} path
+     * @param {string=} [flags = 'r']
+     * @param {string=} [mode = 0o666]
+     * @param {object=} [options]
      */
-    export function openSync(path: string | Buffer | URL, flags?: string | null, mode?: string | null, options?: any): any;
+    export function openSync(path: string | Buffer | URL, flags?: string | undefined, mode?: string | undefined, options?: object | undefined): any;
     /**
      * Asynchronously open a directory calling `callback` upon success or error.
      * @see {@link https://nodejs.org/api/fs.html#fsreaddirpath-options-callback}
      * @param {string | Buffer | URL} path
-     * @param {object?|function(Error?, Dir?)} [options]
-     * @param {string?} [options.encoding = 'utf8']
-     * @param {boolean?} [options.withFileTypes = false]
-     * @param {function(Error?, Dir?)?} callback
+     * @param {(object|function(Error|Null, Dir|undefined):any)=} [options]
+     * @param {string=} [options.encoding = 'utf8']
+     * @param {boolean=} [options.withFileTypes = false]
+     * @param {function(Error|null, Dir|undefined):any)} callback
      */
-    export function opendir(path: string | Buffer | URL, options: {}, callback: ((arg0: Error | null, arg1: Dir | null) => any) | null): void;
+    export function opendir(path: string | Buffer | URL, options?: (object | ((arg0: Error | null, arg1: Dir | undefined) => any)) | undefined, callback: any): void;
     /**
      * Synchronously open a directory.
      * @see {@link https://nodejs.org/api/fs.html#fsreaddirpath-options-callback}
-     * @param {string | Buffer | URL} path
-     * @param {object?|function(Error?, Dir?)} [options]
-     * @param {string?} [options.encoding = 'utf8']
-     * @param {boolean?} [options.withFileTypes = false]
+     * @param {string|Buffer|URL} path
+     * @param {objec} [options]
+     * @param {string=} [options.encoding = 'utf8']
+     * @param {boolean=} [options.withFileTypes = false]
      * @return {Dir}
      */
-    export function opendirSync(path: string | Buffer | URL, options?: {}): Dir;
+    export function opendirSync(path: string | Buffer | URL, options?: objec): Dir;
     /**
      * Asynchronously read from an open file descriptor.
      * @see {@link https://nodejs.org/api/fs.html#fsreadfd-buffer-offset-length-position-callback}
      * @param {number} fd
-     * @param {object | Buffer | TypedArray} buffer - The buffer that the data will be written to.
+     * @param {object|Buffer|Uint8Array} buffer - The buffer that the data will be written to.
      * @param {number} offset - The position in buffer to write the data to.
      * @param {number} length - The number of bytes to read.
-     * @param {number | BigInt | null} position - Specifies where to begin reading from in the file. If position is null or -1 , data will be read from the current file position, and the file position will be updated. If position is an integer, the file position will be unchanged.
-     * @param {function(Error?, number?, Buffer?)} callback
+     * @param {number|BigInt|null} position - Specifies where to begin reading from in the file. If position is null or -1 , data will be read from the current file position, and the file position will be updated. If position is an integer, the file position will be unchanged.
+     * @param {function(Error|null, number|undefined, Buffer|undefined):any} callback
      */
-    export function read(fd: number, buffer: object | Buffer | TypedArray, offset: number, length: number, position: number | BigInt | null, options: any, callback: (arg0: Error | null, arg1: number | null, arg2: Buffer | null) => any): void;
+    export function read(fd: number, buffer: object | Buffer | Uint8Array, offset: number, length: number, position: number | BigInt | null, options: any, callback: (arg0: Error | null, arg1: number | undefined, arg2: Buffer | undefined) => any): void;
     /**
      * Asynchronously write to an open file descriptor.
      * @see {@link https://nodejs.org/api/fs.html#fswritefd-buffer-offset-length-position-callback}
      * @param {number} fd
-     * @param {object | Buffer | TypedArray} buffer - The buffer that the data will be written to.
+     * @param {object|Buffer|Uint8Array} buffer - The buffer that the data will be written to.
      * @param {number} offset - The position in buffer to write the data to.
      * @param {number} length - The number of bytes to read.
-     * @param {number | BigInt | null} position - Specifies where to begin reading from in the file. If position is null or -1 , data will be read from the current file position, and the file position will be updated. If position is an integer, the file position will be unchanged.
-     * @param {function(Error?, number?, Buffer?)} callback
+     * @param {number|BigInt|null} position - Specifies where to begin reading from in the file. If position is null or -1 , data will be read from the current file position, and the file position will be updated. If position is an integer, the file position will be unchanged.
+     * @param {function(Error|null, number|undefined, Buffer|undefined):any} callback
      */
-    export function write(fd: number, buffer: object | Buffer | TypedArray, offset: number, length: number, position: number | BigInt | null, options: any, callback: (arg0: Error | null, arg1: number | null, arg2: Buffer | null) => any): void;
+    export function write(fd: number, buffer: object | Buffer | Uint8Array, offset: number, length: number, position: number | BigInt | null, options: any, callback: (arg0: Error | null, arg1: number | undefined, arg2: Buffer | undefined) => any): void;
     /**
      * Asynchronously read all entries in a directory.
      * @see {@link https://nodejs.org/api/fs.html#fsreaddirpath-options-callback}
-     * @param {string | Buffer | URL } path
-     * @param {object?|function(Error?, object[])} [options]
-     * @param {string?} [options.encoding ? 'utf8']
-     * @param {boolean?} [options.withFileTypes ? false]
-     * @param {function(Error?, object[])} callback
+     * @param {string|Buffer|URL} path
+     * @param {object|function(Error|null, (Dirent|string)[]|undefined):any} [options]
+     * @param {string=} [options.encoding = 'utf8']
+     * @param {boolean=} [options.withFileTypes = false]
+     * @param {function(Error|null, (Dirent|string)[]):any} callback
      */
-    export function readdir(path: string | Buffer | URL, options: {}, callback: (arg0: Error | null, arg1: object[]) => any): void;
+    export function readdir(path: string | Buffer | URL, options?: object | ((arg0: Error | null, arg1: (Dirent | string)[] | undefined) => any), callback: (arg0: Error | null, arg1: (Dirent | string)[]) => any): void;
     /**
      * Synchronously read all entries in a directory.
      * @see {@link https://nodejs.org/api/fs.html#fsreaddirpath-options-callback}
-     * @param {string | Buffer | URL } path
-     * @param {object?|function(Error?, object[])} [options]
-     * @param {string?} [options.encoding ? 'utf8']
-     * @param {boolean?} [options.withFileTypes ? false]
+     * @param {string|Buffer | URL } path
+     * @param {object=} [options]
+     * @param {string=} [options.encoding ? 'utf8']
+     * @param {boolean=} [options.withFileTypes ? false]
+     * @return {(Dirent|string)[]}
      */
-    export function readdirSync(path: string | Buffer | URL, options?: {}): any[];
+    export function readdirSync(path: string | Buffer | URL, options?: object | undefined): (Dirent | string)[];
     /**
-     * @param {string | Buffer | URL | number } path
-     * @param {object?|function(Error?, Buffer?)} [options]
-     * @param {string?} [options.encoding ? 'utf8']
-     * @param {string?} [options.flag ? 'r']
-     * @param {AbortSignal?} [options.signal]
-     * @param {function(Error?, Buffer?)} callback
+     * @param {string|Buffer|URL|number} path
+     * @param {object|function(Error|null, Buffer|string|undefined):any} options
+     * @param {string=} [options.encoding = 'utf8']
+     * @param {string=} [options.flag = 'r']
+     * @param {AbortSignal|undefined} [options.signal]
+     * @param {function(Error|null, Buffer|string|undefined):any} callback
      */
-    export function readFile(path: string | Buffer | URL | number, options: {}, callback: (arg0: Error | null, arg1: Buffer | null) => any): void;
+    export function readFile(path: string | Buffer | URL | number, options: object | ((arg0: Error | null, arg1: Buffer | string | undefined) => any), callback: (arg0: Error | null, arg1: Buffer | string | undefined) => any): void;
     /**
      * @param {string|Buffer|URL|number} path
      * @param {{ encoding?: string = 'utf8', flags?: string = 'r'}} [options]
-     * @param {object?|function(Error?, Buffer?)} [options]
-     * @param {AbortSignal?} [options.signal]
+     * @param {object|function(Error|null, Buffer|undefined):any} [options]
+     * @param {AbortSignal|undefined} [options.signal]
+     * @return {string|Buffer}
      */
     export function readFileSync(path: string | Buffer | URL | number, options?: {
         encoding?: string;
         flags?: string;
-    }): any;
+    }): string | Buffer;
     /**
      * Reads link at `path`
      * @param {string} path
-     * @param {function(err, string)} callback
+     * @param {function(Error|null, string|undefined):any} callback
      */
-    export function readlink(path: string, callback: (arg0: err, arg1: string) => any): void;
+    export function readlink(path: string, callback: (arg0: Error | null, arg1: string | undefined) => any): void;
     /**
      * Computes real path for `path`
      * @param {string} path
-     * @param {function(err, string)} callback
+     * @param {function(Error|null, string|undefined):any} callback
      */
-    export function realpath(path: string, callback: (arg0: err, arg1: string) => any): void;
+    export function realpath(path: string, callback: (arg0: Error | null, arg1: string | undefined) => any): void;
     /**
      * Computes real path for `path`
      * @param {string} path
+     * @return {string}
      */
-    export function realpathSync(path: string): void;
+    export function realpathSync(path: string): string;
     /**
      * Renames file or directory at `src` to `dest`.
      * @param {string} src
      * @param {string} dest
-     * @param {function} callback
+     * @param {function(Error|null):any} callback
      */
-    export function rename(src: string, dest: string, callback: Function): void;
+    export function rename(src: string, dest: string, callback: (arg0: Error | null) => any): void;
     /**
      * Renames file or directory at `src` to `dest`, synchronously.
      * @param {string} src
@@ -6675,9 +6909,9 @@ declare module "socket:fs/index" {
     /**
      * Removes directory at `path`.
      * @param {string} path
-     * @param {function} callback
+     * @param {function(Error|null):any} callback
      */
-    export function rmdir(path: string, callback: Function): void;
+    export function rmdir(path: string, callback: (arg0: Error | null) => any): void;
     /**
      * Removes directory at `path`, synchronously.
      * @param {string} path
@@ -6685,82 +6919,83 @@ declare module "socket:fs/index" {
     export function rmdirSync(path: string): void;
     /**
      * Synchronously get the stats of a file
-     * @param {string | Buffer | URL | number } path - filename or file descriptor
-     * @param {object?} options
-     * @param {string?} [options.encoding ? 'utf8']
-     * @param {string?} [options.flag ? 'r']
+     * @param {string} path - filename or file descriptor
+     * @param {object=} [options]
+     * @param {string=} [options.encoding ? 'utf8']
+     * @param {string=} [options.flag ? 'r']
      */
-    export function statSync(path: string | Buffer | URL | number, options?: object | null): promises.Stats;
+    export function statSync(path: string, options?: object | undefined): promises.Stats;
     /**
      * Get the stats of a file
-     * @param {string | Buffer | URL | number } path - filename or file descriptor
-     * @param {object?} options
-     * @param {string?} [options.encoding ? 'utf8']
-     * @param {string?} [options.flag ? 'r']
-     * @param {AbortSignal?} [options.signal]
-     * @param {function(Error?, Stats?)} callback
+     * @param {string|Buffer|URL|number} path - filename or file descriptor
+     * @param {(object|function(Error|null, Stats|undefined):any)=} [options]
+     * @param {string=} [options.encoding ? 'utf8']
+     * @param {string=} [options.flag ? 'r']
+     * @param {AbortSignal|undefined} [options.signal]
+     * @param {function(Error|null, Stats|undefined):any} callback
      */
-    export function stat(path: string | Buffer | URL | number, options: object | null, callback: (arg0: Error | null, arg1: Stats | null) => any): void;
+    export function stat(path: string | Buffer | URL | number, options?: (object | ((arg0: Error | null, arg1: Stats | undefined) => any)) | undefined, callback: (arg0: Error | null, arg1: Stats | undefined) => any): void;
     /**
      * Get the stats of a symbolic link
-     * @param {string | Buffer | URL | number } path - filename or file descriptor
-     * @param {object?} options
-     * @param {string?} [options.encoding ? 'utf8']
-     * @param {string?} [options.flag ? 'r']
-     * @param {AbortSignal?} [options.signal]
-     * @param {function(Error?, Stats?)} callback
+     * @param {string|Buffer|URL|number} path - filename or file descriptor
+     * @param {(object|function(Error|null, Stats|undefined):any)=} [options]
+     * @param {string=} [options.encoding ? 'utf8']
+     * @param {string=} [options.flag ? 'r']
+     * @param {AbortSignal|undefined} [options.signal]
+     * @param {function(Error|null, Stats|undefined):any} callback
      */
-    export function lstat(path: string | Buffer | URL | number, options: object | null, callback: (arg0: Error | null, arg1: Stats | null) => any): void;
+    export function lstat(path: string | Buffer | URL | number, options?: (object | ((arg0: Error | null, arg1: Stats | undefined) => any)) | undefined, callback: (arg0: Error | null, arg1: Stats | undefined) => any): void;
     /**
      * Creates a symlink of `src` at `dest`.
      * @param {string} src
      * @param {string} dest
+     * @param {function(Error|null):any} callback
      */
-    export function symlink(src: string, dest: string, type: any, callback: any): void;
+    export function symlink(src: string, dest: string, type: any, callback: (arg0: Error | null) => any): void;
     /**
      * Unlinks (removes) file at `path`.
      * @param {string} path
-     * @param {function} callback
+     * @param {function(Error|null):any} callback
      */
-    export function unlink(path: string, callback: Function): void;
+    export function unlink(path: string, callback: (arg0: Error | null) => any): void;
     /**
      * Unlinks (removes) file at `path`, synchronously.
      * @param {string} path
      */
     export function unlinkSync(path: string): void;
     /**
-     * @see {@url https://nodejs.org/api/fs.html#fswritefilefile-data-options-callback}
-     * @param {string | Buffer | URL | number } path - filename or file descriptor
-     * @param {string | Buffer | TypedArray | DataView | object } data
-     * @param {object?} options
-     * @param {string?} [options.encoding ? 'utf8']
-     * @param {string?} [options.mode ? 0o666]
-     * @param {string?} [options.flag ? 'w']
-     * @param {AbortSignal?} [options.signal]
-     * @param {function(Error?)} callback
+     * @see {@link https://nodejs.org/api/fs.html#fswritefilefile-data-options-callback}
+     * @param {string|Buffer|URL|number} path - filename or file descriptor
+     * @param {string|Buffer|TypedArray|DataView|object} data
+     * @param {(object|function(Error|null):any)=} [options]
+     * @param {string=} [options.encoding ? 'utf8']
+     * @param {string=} [options.mode ? 0o666]
+     * @param {string=} [options.flag ? 'w']
+     * @param {AbortSignal|undefined} [options.signal]
+     * @param {function(Error|null):any} callback
      */
-    export function writeFile(path: string | Buffer | URL | number, data: string | Buffer | TypedArray | DataView | object, options: object | null, callback: (arg0: Error | null) => any): void;
+    export function writeFile(path: string | Buffer | URL | number, data: string | Buffer | TypedArray | DataView | object, options?: (object | ((arg0: Error | null) => any)) | undefined, callback: (arg0: Error | null) => any): void;
     /**
      * Writes data to a file synchronously.
-     * @param {string | Buffer | URL | number } path - filename or file descriptor
-     * @param {string | Buffer | TypedArray | DataView | object } data
-     * @param {object?} options
-     * @param {string?} [options.encoding ? 'utf8']
-     * @param {string?} [options.mode ? 0o666]
-     * @param {string?} [options.flag ? 'w']
-     * @param {AbortSignal?} [options.signal]
+     * @param {string|Buffer|URL|number} path - filename or file descriptor
+     * @param {string|Buffer|TypedArray|DataView|object} data
+     * @param {object=} [options]
+     * @param {string=} [options.encoding ? 'utf8']
+     * @param {string=} [options.mode ? 0o666]
+     * @param {string=} [options.flag ? 'w']
+     * @param {AbortSignal|undefined} [options.signal]
      * @see {@link https://nodejs.org/api/fs.html#fswritefilesyncfile-data-options}
      */
-    export function writeFileSync(path: string | Buffer | URL | number, data: string | Buffer | TypedArray | DataView | object, options: object | null): void;
+    export function writeFileSync(path: string | Buffer | URL | number, data: string | Buffer | TypedArray | DataView | object, options?: object | undefined): void;
     /**
      * Watch for changes at `path` calling `callback`
      * @param {string}
      * @param {function|object=} [options]
      * @param {string=} [options.encoding = 'utf8']
-     * @param {?function} [callback]
+     * @param {function=} [callback]
      * @return {Watcher}
      */
-    export function watch(path: any, options?: (Function | object) | undefined, callback?: Function | null): Watcher;
+    export function watch(path: any, options?: (Function | object) | undefined, callback?: Function | undefined): Watcher;
     export default exports;
     export type Buffer = import("socket:buffer").Buffer;
     export type TypedArray = Uint8Array | Int8Array;
@@ -6768,13 +7003,13 @@ declare module "socket:fs/index" {
     import { ReadStream } from "socket:fs/stream";
     import { WriteStream } from "socket:fs/stream";
     import { Dir } from "socket:fs/dir";
+    import { Dirent } from "socket:fs/dir";
     import * as promises from "socket:fs/promises";
     import { Stats } from "socket:fs/stats";
     import { Watcher } from "socket:fs/watcher";
     import bookmarks from "socket:fs/bookmarks";
     import * as constants from "socket:fs/constants";
     import { DirectoryHandle } from "socket:fs/handle";
-    import { Dirent } from "socket:fs/dir";
     import fds from "socket:fs/fds";
     import { FileHandle } from "socket:fs/handle";
     import * as exports from "socket:fs/index";

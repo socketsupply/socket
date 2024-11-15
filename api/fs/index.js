@@ -105,8 +105,8 @@ async function visit (path, options = null, callback) {
  * upon success or error.
  * @see {@link https://nodejs.org/api/fs.html#fsopenpath-flags-mode-callback}
  * @param {string | Buffer | URL} path
- * @param {string?|function(Error?)?} [mode = F_OK(0)]
- * @param {function(Error?)?} [callback]
+ * @param {number?|function(Error|null):any?} [mode = F_OK(0)]
+ * @param {function(Error|null):any?} [callback]
  */
 export function access (path, mode, callback) {
   if (typeof mode === 'function') {
@@ -725,12 +725,12 @@ export function mkdirSync (path, options = null) {
  * Asynchronously open a file calling `callback` upon success or error.
  * @see {@link https://nodejs.org/api/fs.html#fsopenpath-flags-mode-callback}
  * @param {string | Buffer | URL} path
- * @param {string?} [flags = 'r']
- * @param {string?} [mode = 0o666]
- * @param {object?|function?} [options]
- * @param {function(Error?, number?)?} [callback]
+ * @param {string=} [flags = 'r']
+ * @param {number=} [mode = 0o666]
+ * @param {(object|function(Error|null, number|undefined):any)=} [options]
+ * @param {(function(Error|null, number|undefined):any)|null} [callback]
  */
-export function open (path, flags = 'r', mode = 0o666, options = null, callback) {
+export function open (path, flags = 'r', mode = 0o666, options = null, callback = null) {
   if (typeof flags === 'object') {
     callback = mode
     options = flags
@@ -778,10 +778,10 @@ export function open (path, flags = 'r', mode = 0o666, options = null, callback)
 
 /**
  * Synchronously open a file.
- * @param {string | Buffer | URL} path
- * @param {string?} [flags = 'r']
- * @param {string?} [mode = 0o666]
- * @param {object?|function?} [options]
+ * @param {string|Buffer|URL} path
+ * @param {string=} [flags = 'r']
+ * @param {string=} [mode = 0o666]
+ * @param {object=} [options]
  */
 export function openSync (path, flags = 'r', mode = 0o666, options = null) {
   if (typeof flags === 'object') {
@@ -825,10 +825,10 @@ export function openSync (path, flags = 'r', mode = 0o666, options = null) {
  * Asynchronously open a directory calling `callback` upon success or error.
  * @see {@link https://nodejs.org/api/fs.html#fsreaddirpath-options-callback}
  * @param {string | Buffer | URL} path
- * @param {object?|function(Error?, Dir?)} [options]
- * @param {string?} [options.encoding = 'utf8']
- * @param {boolean?} [options.withFileTypes = false]
- * @param {function(Error?, Dir?)?} callback
+ * @param {(object|function(Error|Null, Dir|undefined):any)=} [options]
+ * @param {string=} [options.encoding = 'utf8']
+ * @param {boolean=} [options.withFileTypes = false]
+ * @param {function(Error|null, Dir|undefined):any)} callback
  */
 export function opendir (path, options = {}, callback) {
   if (typeof options === 'function') {
@@ -851,10 +851,10 @@ export function opendir (path, options = {}, callback) {
 /**
  * Synchronously open a directory.
  * @see {@link https://nodejs.org/api/fs.html#fsreaddirpath-options-callback}
- * @param {string | Buffer | URL} path
- * @param {object?|function(Error?, Dir?)} [options]
- * @param {string?} [options.encoding = 'utf8']
- * @param {boolean?} [options.withFileTypes = false]
+ * @param {string|Buffer|URL} path
+ * @param {objec} [options]
+ * @param {string=} [options.encoding = 'utf8']
+ * @param {boolean=} [options.withFileTypes = false]
  * @return {Dir}
  */
 export function opendirSync (path, options = {}) {
@@ -878,11 +878,11 @@ export function opendirSync (path, options = {}) {
  * Asynchronously read from an open file descriptor.
  * @see {@link https://nodejs.org/api/fs.html#fsreadfd-buffer-offset-length-position-callback}
  * @param {number} fd
- * @param {object | Buffer | TypedArray} buffer - The buffer that the data will be written to.
+ * @param {object|Buffer|Uint8Array} buffer - The buffer that the data will be written to.
  * @param {number} offset - The position in buffer to write the data to.
  * @param {number} length - The number of bytes to read.
- * @param {number | BigInt | null} position - Specifies where to begin reading from in the file. If position is null or -1 , data will be read from the current file position, and the file position will be updated. If position is an integer, the file position will be unchanged.
- * @param {function(Error?, number?, Buffer?)} callback
+ * @param {number|BigInt|null} position - Specifies where to begin reading from in the file. If position is null or -1 , data will be read from the current file position, and the file position will be updated. If position is an integer, the file position will be unchanged.
+ * @param {function(Error|null, number|undefined, Buffer|undefined):any} callback
  */
 export function read (fd, buffer, offset, length, position, options, callback) {
   if (typeof options === 'function') {
@@ -913,11 +913,11 @@ export function read (fd, buffer, offset, length, position, options, callback) {
  * Asynchronously write to an open file descriptor.
  * @see {@link https://nodejs.org/api/fs.html#fswritefd-buffer-offset-length-position-callback}
  * @param {number} fd
- * @param {object | Buffer | TypedArray} buffer - The buffer that the data will be written to.
+ * @param {object|Buffer|Uint8Array} buffer - The buffer that the data will be written to.
  * @param {number} offset - The position in buffer to write the data to.
  * @param {number} length - The number of bytes to read.
- * @param {number | BigInt | null} position - Specifies where to begin reading from in the file. If position is null or -1 , data will be read from the current file position, and the file position will be updated. If position is an integer, the file position will be unchanged.
- * @param {function(Error?, number?, Buffer?)} callback
+ * @param {number|BigInt|null} position - Specifies where to begin reading from in the file. If position is null or -1 , data will be read from the current file position, and the file position will be updated. If position is an integer, the file position will be unchanged.
+ * @param {function(Error|null, number|undefined, Buffer|undefined):any} callback
  */
 export function write (fd, buffer, offset, length, position, options, callback) {
   if (typeof options === 'function') {
@@ -947,11 +947,11 @@ export function write (fd, buffer, offset, length, position, options, callback) 
 /**
  * Asynchronously read all entries in a directory.
  * @see {@link https://nodejs.org/api/fs.html#fsreaddirpath-options-callback}
- * @param {string | Buffer | URL } path
- * @param {object?|function(Error?, object[])} [options]
- * @param {string?} [options.encoding ? 'utf8']
- * @param {boolean?} [options.withFileTypes ? false]
- * @param {function(Error?, object[])} callback
+ * @param {string|Buffer|URL} path
+ * @param {object|function(Error|null, (Dirent|string)[]|undefined):any} [options]
+ * @param {string=} [options.encoding = 'utf8']
+ * @param {boolean=} [options.withFileTypes = false]
+ * @param {function(Error|null, (Dirent|string)[]):any} callback
  */
 export function readdir (path, options = {}, callback) {
   if (typeof options === 'function') {
@@ -1000,10 +1000,11 @@ export function readdir (path, options = {}, callback) {
 /**
  * Synchronously read all entries in a directory.
  * @see {@link https://nodejs.org/api/fs.html#fsreaddirpath-options-callback}
- * @param {string | Buffer | URL } path
- * @param {object?|function(Error?, object[])} [options]
- * @param {string?} [options.encoding ? 'utf8']
- * @param {boolean?} [options.withFileTypes ? false]
+ * @param {string|Buffer | URL } path
+ * @param {object=} [options]
+ * @param {string=} [options.encoding ? 'utf8']
+ * @param {boolean=} [options.withFileTypes ? false]
+ * @return {(Dirent|string)[]}
  */
 export function readdirSync (path, options = {}) {
   options = {
@@ -1028,12 +1029,12 @@ export function readdirSync (path, options = {}) {
 }
 
 /**
- * @param {string | Buffer | URL | number } path
- * @param {object?|function(Error?, Buffer?)} [options]
- * @param {string?} [options.encoding ? 'utf8']
- * @param {string?} [options.flag ? 'r']
- * @param {AbortSignal?} [options.signal]
- * @param {function(Error?, Buffer?)} callback
+ * @param {string|Buffer|URL|number} path
+ * @param {object|function(Error|null, Buffer|string|undefined):any} options
+ * @param {string=} [options.encoding = 'utf8']
+ * @param {string=} [options.flag = 'r']
+ * @param {AbortSignal|undefined} [options.signal]
+ * @param {function(Error|null, Buffer|string|undefined):any} callback
  */
 export function readFile (path, options = {}, callback) {
   if (typeof options === 'function') {
@@ -1074,8 +1075,9 @@ export function readFile (path, options = {}, callback) {
 /**
  * @param {string|Buffer|URL|number} path
  * @param {{ encoding?: string = 'utf8', flags?: string = 'r'}} [options]
- * @param {object?|function(Error?, Buffer?)} [options]
- * @param {AbortSignal?} [options.signal]
+ * @param {object|function(Error|null, Buffer|undefined):any} [options]
+ * @param {AbortSignal|undefined} [options.signal]
+ * @return {string|Buffer}
  */
 export function readFileSync (path, options = null) {
   if (typeof options === 'string') {
@@ -1138,7 +1140,7 @@ export function readFileSync (path, options = null) {
 /**
  * Reads link at `path`
  * @param {string} path
- * @param {function(err, string)} callback
+ * @param {function(Error|null, string|undefined):any} callback
  */
 export function readlink (path, callback) {
   if (typeof path !== 'string') {
@@ -1158,7 +1160,7 @@ export function readlink (path, callback) {
 /**
  * Computes real path for `path`
  * @param {string} path
- * @param {function(err, string)} callback
+ * @param {function(Error|null, string|undefined):any} callback
  */
 export function realpath (path, callback) {
   if (typeof path !== 'string') {
@@ -1177,6 +1179,7 @@ export function realpath (path, callback) {
 /**
  * Computes real path for `path`
  * @param {string} path
+ * @return {string}
  */
 export function realpathSync (path) {
   if (typeof path !== 'string') {
@@ -1188,13 +1191,15 @@ export function realpathSync (path) {
   if (result.err) {
     throw result.err
   }
+
+  return result.data
 }
 
 /**
  * Renames file or directory at `src` to `dest`.
  * @param {string} src
  * @param {string} dest
- * @param {function} callback
+ * @param {function(Error|null):any} callback
  */
 export function rename (src, dest, callback) {
   src = normalizePath(src)
@@ -1244,7 +1249,7 @@ export function renameSync (src, dest) {
 /**
  * Removes directory at `path`.
  * @param {string} path
- * @param {function} callback
+ * @param {function(Error|null):any} callback
  */
 export function rmdir (path, callback) {
   path = normalizePath(path)
@@ -1282,10 +1287,10 @@ export function rmdirSync (path) {
 
 /**
  * Synchronously get the stats of a file
- * @param {string | Buffer | URL | number } path - filename or file descriptor
- * @param {object?} options
- * @param {string?} [options.encoding ? 'utf8']
- * @param {string?} [options.flag ? 'r']
+ * @param {string} path - filename or file descriptor
+ * @param {object=} [options]
+ * @param {string=} [options.encoding ? 'utf8']
+ * @param {string=} [options.flag ? 'r']
  */
 export function statSync (path, options = null) {
   path = normalizePath(path)
@@ -1300,12 +1305,12 @@ export function statSync (path, options = null) {
 
 /**
  * Get the stats of a file
- * @param {string | Buffer | URL | number } path - filename or file descriptor
- * @param {object?} options
- * @param {string?} [options.encoding ? 'utf8']
- * @param {string?} [options.flag ? 'r']
- * @param {AbortSignal?} [options.signal]
- * @param {function(Error?, Stats?)} callback
+ * @param {string|Buffer|URL|number} path - filename or file descriptor
+ * @param {(object|function(Error|null, Stats|undefined):any)=} [options]
+ * @param {string=} [options.encoding ? 'utf8']
+ * @param {string=} [options.flag ? 'r']
+ * @param {AbortSignal|undefined} [options.signal]
+ * @param {function(Error|null, Stats|undefined):any} callback
  */
 export function stat (path, options, callback) {
   if (typeof options === 'function') {
@@ -1372,12 +1377,12 @@ export function stat (path, options, callback) {
 
 /**
  * Get the stats of a symbolic link
- * @param {string | Buffer | URL | number } path - filename or file descriptor
- * @param {object?} options
- * @param {string?} [options.encoding ? 'utf8']
- * @param {string?} [options.flag ? 'r']
- * @param {AbortSignal?} [options.signal]
- * @param {function(Error?, Stats?)} callback
+ * @param {string|Buffer|URL|number} path - filename or file descriptor
+ * @param {(object|function(Error|null, Stats|undefined):any)=} [options]
+ * @param {string=} [options.encoding ? 'utf8']
+ * @param {string=} [options.flag ? 'r']
+ * @param {AbortSignal|undefined} [options.signal]
+ * @param {function(Error|null, Stats|undefined):any} callback
  */
 export function lstat (path, options, callback) {
   if (typeof options === 'function') {
@@ -1419,6 +1424,7 @@ export function lstat (path, options, callback) {
  * Creates a symlink of `src` at `dest`.
  * @param {string} src
  * @param {string} dest
+ * @param {function(Error|null):any} callback
  */
 export function symlink (src, dest, type = null, callback) {
   let flags = 0
@@ -1461,7 +1467,7 @@ export function symlink (src, dest, type = null, callback) {
 /**
  * Unlinks (removes) file at `path`.
  * @param {string} path
- * @param {function} callback
+ * @param {function(Error|null):any} callback
  */
 export function unlink (path, callback) {
   path = normalizePath(path)
@@ -1498,15 +1504,15 @@ export function unlinkSync (path) {
 }
 
 /**
- * @see {@url https://nodejs.org/api/fs.html#fswritefilefile-data-options-callback}
- * @param {string | Buffer | URL | number } path - filename or file descriptor
- * @param {string | Buffer | TypedArray | DataView | object } data
- * @param {object?} options
- * @param {string?} [options.encoding ? 'utf8']
- * @param {string?} [options.mode ? 0o666]
- * @param {string?} [options.flag ? 'w']
- * @param {AbortSignal?} [options.signal]
- * @param {function(Error?)} callback
+ * @see {@link https://nodejs.org/api/fs.html#fswritefilefile-data-options-callback}
+ * @param {string|Buffer|URL|number} path - filename or file descriptor
+ * @param {string|Buffer|TypedArray|DataView|object} data
+ * @param {(object|function(Error|null):any)=} [options]
+ * @param {string=} [options.encoding ? 'utf8']
+ * @param {string=} [options.mode ? 0o666]
+ * @param {string=} [options.flag ? 'w']
+ * @param {AbortSignal|undefined} [options.signal]
+ * @param {function(Error|null):any} callback
  */
 export function writeFile (path, data, options, callback) {
   if (typeof options === 'function') {
@@ -1544,13 +1550,13 @@ export function writeFile (path, data, options, callback) {
 
 /**
  * Writes data to a file synchronously.
- * @param {string | Buffer | URL | number } path - filename or file descriptor
- * @param {string | Buffer | TypedArray | DataView | object } data
- * @param {object?} options
- * @param {string?} [options.encoding ? 'utf8']
- * @param {string?} [options.mode ? 0o666]
- * @param {string?} [options.flag ? 'w']
- * @param {AbortSignal?} [options.signal]
+ * @param {string|Buffer|URL|number} path - filename or file descriptor
+ * @param {string|Buffer|TypedArray|DataView|object} data
+ * @param {object=} [options]
+ * @param {string=} [options.encoding ? 'utf8']
+ * @param {string=} [options.mode ? 0o666]
+ * @param {string=} [options.flag ? 'w']
+ * @param {AbortSignal|undefined} [options.signal]
  * @see {@link https://nodejs.org/api/fs.html#fswritefilesyncfile-data-options}
  */
 export function writeFileSync (path, data, options) {
@@ -1585,7 +1591,7 @@ export function writeFileSync (path, data, options) {
  * @param {string}
  * @param {function|object=} [options]
  * @param {string=} [options.encoding = 'utf8']
- * @param {?function} [callback]
+ * @param {function=} [callback]
  * @return {Watcher}
  */
 export function watch (path, options, callback = null) {

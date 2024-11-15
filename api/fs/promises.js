@@ -104,9 +104,9 @@ async function visit (path, options, callback) {
 /**
  * Asynchronously check access a file.
  * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesaccesspath-mode}
- * @param {string | Buffer | URL} path
- * @param {string?} [mode]
- * @param {object?} [options]
+ * @param {string|Buffer|URL} path
+ * @param {number=} [mode]
+ * @param {object=} [options]
  */
 export async function access (path, mode, options) {
   path = normalizePath(path)
@@ -257,7 +257,7 @@ export async function link (src, dest) {
  * @param {object} [options] - The optional options argument can be an integer specifying mode (permission and sticky bits), or an object with a mode property and a recursive property indicating whether parent directories should be created. Calling fs.mkdir() when path is a directory that exists results in an error only when recursive is false.
  * @param {boolean} [options.recursive=false] - Recursively create missing path segments.
  * @param {number} [options.mode=0o777] - Set the mode of directory, or missing path segments when recursive is true.
- * @return {Promise<any>} - Upon success, fulfills with undefined if recursive is false, or the first directory path created if recursive is true.
+ * @return {Promise} - Upon success, fulfills with undefined if recursive is false, or the first directory path created if recursive is true.
  */
 export async function mkdir (path, options = {}) {
   const mode = options.mode ?? 0o777
@@ -297,9 +297,9 @@ export async function open (path, flags = 'r', mode = 0o666) {
 /**
  * @see {@link https://nodejs.org/api/fs.html#fspromisesopendirpath-options}
  * @param {string | Buffer | URL} path
- * @param {object?} [options]
- * @param {string?} [options.encoding = 'utf8']
- * @param {number?} [options.bufferSize = 32]
+ * @param {object=} [options]
+ * @param {string=} [options.encoding = 'utf8']
+ * @param {number=} [options.bufferSize = 32]
  * @return {Promise<Dir>}
  */
 export async function opendir (path, options) {
@@ -310,10 +310,11 @@ export async function opendir (path, options) {
 
 /**
  * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesreaddirpath-options}
- * @param {string | Buffer | URL} path
- * @param {object?} options
- * @param {string?} [options.encoding = 'utf8']
- * @param {boolean?} [options.withFileTypes = false]
+ * @param {string|Buffer|URL} path
+ * @param {object=} [options]
+ * @param {string=} [options.encoding = 'utf8']
+ * @param {boolean=} [options.withFileTypes = false]
+ * @return {Promise<(string|Dirent)[]>}
  */
 export async function readdir (path, options) {
   path = normalizePath(path)
@@ -347,10 +348,10 @@ export async function readdir (path, options) {
 /**
  * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromisesreadfilepath-options}
  * @param {string} path
- * @param {object?} [options]
- * @param {(string|null)?} [options.encoding = null]
- * @param {string?} [options.flag = 'r']
- * @param {AbortSignal?} [options.signal]
+ * @param {object=} [options]
+ * @param {(string|null)=} [options.encoding = null]
+ * @param {string=} [options.flag = 'r']
+ * @param {AbortSignal|undefined} [options.signal]
  * @return {Promise<Buffer | string>}
  */
 export async function readFile (path, options) {
@@ -456,8 +457,8 @@ export async function rmdir (path) {
  * Get the stats of a file
  * @see {@link https://nodejs.org/api/fs.html#fspromisesstatpath-options}
  * @param {string | Buffer | URL} path
- * @param {object?} [options]
- * @param {boolean?} [options.bigint = false]
+ * @param {object=} [options]
+ * @param {boolean=} [options.bigint = false]
  * @return {Promise<Stats>}
  */
 export async function stat (path, options) {
@@ -471,8 +472,8 @@ export async function stat (path, options) {
  * Get the stats of a symbolic link.
  * @see {@link https://nodejs.org/api/fs.html#fspromiseslstatpath-options}
  * @param {string | Buffer | URL} path
- * @param {object?} [options]
- * @param {boolean?} [options.bigint = false]
+ * @param {object=} [options]
+ * @param {boolean=} [options.bigint = false]
  * @return {Promise<Stats>}
  */
 export async function lstat (path, options) {
@@ -540,13 +541,13 @@ export async function unlink (path) {
 
 /**
  * @see {@link https://nodejs.org/dist/latest-v20.x/docs/api/fs.html#fspromiseswritefilefile-data-options}
- * @param {string | Buffer | URL | FileHandle} path - filename or FileHandle
+ * @param {string|Buffer|URL|FileHandle} path - filename or FileHandle
  * @param {string|Buffer|Array|DataView|TypedArray} data
- * @param {object?} [options]
- * @param {string|null} [options.encoding = 'utf8']
- * @param {number} [options.mode = 0o666]
- * @param {string} [options.flag = 'w']
- * @param {AbortSignal?} [options.signal]
+ * @param {object=} [options]
+ * @param {(string|null)=} [options.encoding = 'utf8']
+ * @param {number=} [options.mode = 0o666]
+ * @param {string=} [options.flag = 'w']
+ * @param {AbortSignal|undefined} [options.signal]
  * @return {Promise<void>}
  */
 export async function writeFile (path, data, options) {
