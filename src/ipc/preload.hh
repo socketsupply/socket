@@ -70,7 +70,7 @@ namespace SSC::IPC {
         };
 
       bool headless = false;
-      bool debug = false;
+      bool debug = isDebugEnabled();
 
       Features features;
       UniqueClient client;
