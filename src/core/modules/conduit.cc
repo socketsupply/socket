@@ -325,7 +325,6 @@ namespace SSC {
       .setSearchParam("id", client->id)
       .setSearchParams(decoded.getOptionsAsMap())
       .build(); */
-
     std::stringstream ss;
 
     ss << "ipc://";
@@ -338,12 +337,16 @@ namespace SSC {
       ss << "&" << key << "=" << value;
     }
 
-    const auto uri = ss.str();
+    const auto bytes = vectorToSharedPointer(decoded.payload);
+    const auto size = decoded.payload.size();
     const auto app = App::sharedApplication();
-    const auto window = app->windowManager.getWindowForClient({ .id = client->clientId });
+    const auto uri = ss.str();
+
+    auto window = client && client->clientId > 0
+      ? app->windowManager.getWindowForClient({ .id = client->clientId })
+      : nullptr;
+
     if (window != nullptr) {
-      const auto bytes = vectorToSharedPointer(decoded.payload);
-      const auto size = decoded.payload.size();
       app->dispatch([app, window, uri, client, bytes, size]() {
         const auto invoked = window->bridge.router.invoke(
           uri,
@@ -357,7 +360,20 @@ namespace SSC {
         }
       });
     } else {
-      // TODO(@jwerle,@heapwolf): handle this
+      app->dispatch([app, window, uri, client, bytes, size]() {
+        const auto invoked = window->bridge.router.invoke(
+          uri,
+          bytes,
+          size,
+          [client](const auto result) {
+            const auto data = result.json().str();
+            const auto size = data.size();
+            const auto payload = std::make_shared<char[]>(size);
+            memcpy(payload.get(), data.c_str(), size);
+            client->emit({}, payload, size);
+          }
+        );
+      });
     }
   }
 
@@ -546,7 +562,7 @@ namespace SSC {
       });
     };
 
-    this->emit({}, vectorToSharedPointer({ 0x00}), 1, 0x08, closeHandle);
+    this->emit({}, vectorToSharedPointer({ 0x00 }), 1, 0x08, closeHandle);
   }
 
   void CoreConduit::start (const StartCallback& callback) {
