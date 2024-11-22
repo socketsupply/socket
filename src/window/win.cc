@@ -599,6 +599,7 @@ namespace SSC {
     : core(core),
       options(options),
       bridge(core, IPC::Bridge::Options {
+        options.index,
         options.userConfig,
         options.as<IPC::Preload::Options>()
       }),
