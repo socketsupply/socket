@@ -25,7 +25,7 @@ extern "C" {
 
     if (sharedBridge == nullptr) {
       g_object_ref(context);
-      auto options = IPC::Bridge::Options(app->userConfig);
+      auto options = IPC::Bridge::Options(-1, app->userConfig);
       sharedBridge = std::make_shared<IPC::Bridge>(app->core, options);
       sharedBridge->dispatchFunction = [](auto callback) {
         callback();
