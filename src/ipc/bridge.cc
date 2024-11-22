@@ -164,10 +164,14 @@ export * from '{{url}}'
   }
 #endif
   Bridge::Options::Options (
+    int index,
     const Map& userConfig,
-    const Preload::Options& preload
+    const Preload::Options& preload,
+    uint64_t id
   ) : userConfig(userConfig),
-      preload(preload)
+      preload(preload),
+      index(index),
+      id(id)
   {}
 
   Bridge::Bridge (
@@ -179,7 +183,21 @@ export * from '{{url}}'
       navigator(this),
       schemeHandlers(this)
   {
-    this->id = rand64();
+    this->id = options.id > 0 ? options.id : rand64();
+    // '-1' may mean the bridge is running as a WebKit web process extension
+    if (options.index >= 0) {
+      const auto windowClientConfigKey = String("window.") + std::to_string(options.index) + ".client";
+
+      // handle user defined window client id
+      if (this->userConfig[windowClientConfigKey + ".id"].size() > 0) {
+        try {
+          this->id = std::stoull(this->userConfig[windowClientConfigKey + ".id"]);
+        } catch (const Exception& e) {
+          debug("Invalid window client ID given in '[window.%d.client] id'", options.index);
+        }
+      }
+    }
+
     this->client.id = this->id;
   #if SOCKET_RUNTIME_PLATFORM_ANDROID
     this->isAndroidEmulator = App::sharedApplication()->isAndroidEmulator;

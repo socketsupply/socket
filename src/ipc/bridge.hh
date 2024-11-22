@@ -22,9 +22,13 @@ namespace SSC::IPC {
       struct Options : public SSC::Options {
         Map userConfig = {};
         Preload::Options preload;
+        uint64_t id = 0;
+        int index = 0;
         Options (
+          int index,
           const Map& userConfig = {},
-          const Preload::Options& preload = {}
+          const Preload::Options& preload = {},
+          uint64_t id = 0
         );
       };
 
