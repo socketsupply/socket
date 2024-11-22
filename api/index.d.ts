@@ -9478,11 +9478,9 @@ declare module "socket:internal/conduit" {
          *
          * @param {object} params - The parameters for the Conduit.
          * @param {string} params.id - The ID for the connection.
-         * @param {string} params.method - The method to use for the connection.
          */
         constructor({ id }: {
             id: string;
-            method: string;
         });
         /**
          * @type {boolean}

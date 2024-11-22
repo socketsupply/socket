@@ -188,7 +188,6 @@ export class Conduit extends EventTarget {
    *
    * @param {object} params - The parameters for the Conduit.
    * @param {string} params.id - The ID for the connection.
-   * @param {string} params.method - The method to use for the connection.
    */
   constructor ({ id }) {
     super()
