@@ -2,6 +2,7 @@
 #include "../cli/cli.hh"
 #include "../core/json.hh"
 #include "../core/resource.hh"
+#include "../core/headers.hh"
 #include "../extension/extension.hh"
 #include "../window/window.hh"
 #include "ipc.hh"
@@ -2439,6 +2440,60 @@ static void mapIPCRoutes (Router *router) {
       json.push_back(registration.json());
     }
     return reply(Result::Data { message, json });
+  });
+
+  /**
+   * @param method
+   * @param scheme
+   * @param hostname
+   * @param pathname
+   * @param query
+   */
+  router->map("serviceWorker.fetch", [=](auto message, auto router, auto reply) {
+    const auto fetch = ServiceWorkerContainer::FetchRequest {
+      message.get("method", "GET"),
+      message.get("scheme", "socket"),
+      message.get("hostname", router->bridge->userConfig["meta_bundle_identifier"]),
+      message.get("pathname", "/"),
+      message.get("query", ""),
+      Headers(message.get("headers", "")),
+      ServiceWorkerContainer::FetchBody { message.buffer.size, message.buffer.bytes },
+      router->bridge->client
+    };
+
+    const auto fetched = router->bridge->navigator.serviceWorker.fetch(fetch, [=] (auto res) mutable {
+      if (res.statusCode == 0) {
+        return reply(Result::Err {
+          message,
+          JSON::Object::Entries {
+            {"message", "ServiceWorker request failed"}
+          }
+        });
+      } else {
+        reply(Result {
+          message.seq,
+          message,
+          JSON::Object {},
+          Post {
+            rand64(),
+            0,
+            res.body.bytes,
+            res.body.size,
+            res.headers.str()
+          }
+        });
+      }
+    });
+
+    if (!fetched) {
+      return reply(Result::Err {
+        message,
+        JSON::Object::Entries {
+          {"message", "Not found"},
+          {"type", "NotFoundError"}
+        }
+      });
+    }
   });
 
   /**

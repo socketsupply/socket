@@ -383,11 +383,16 @@ namespace SSC {
           bytes,
           size,
           [client](const auto result) {
-            const auto data = result.json().str();
-            const auto size = data.size();
-            const auto payload = std::make_shared<char[]>(size);
-            memcpy(payload.get(), data.c_str(), size);
-            client->emit({}, payload, size);
+            auto token = result.token;
+            if (result.post.body != nullptr && result.post.length > 0) {
+              client->emit({{"token", token}}, result.post.body, result.post.length);
+            } else {
+              const auto data = result.json().str();
+              const auto size = data.size();
+              const auto payload = std::make_shared<char[]>(size);
+              memcpy(payload.get(), data.c_str(), size);
+              client->emit({{"token", token}}, payload, size);
+            }
           }
         );
       });
