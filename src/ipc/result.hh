@@ -34,6 +34,7 @@ namespace SSC::IPC {
       Message::Seq seq = "-1";
       uint64_t id = 0;
       String source = "";
+      String token = "";
       JSON::Any value = nullptr;
       JSON::Any data = nullptr;
       JSON::Any err = nullptr;
@@ -42,7 +43,7 @@ namespace SSC::IPC {
 
       Result () = default;
       Result (const Result&) = default;
-      Result (const JSON::Any);
+      Result (const JSON::Any, const String& token = "");
       Result (const Err error);
       Result (const Data data);
       Result (const Message::Seq&, const Message&);

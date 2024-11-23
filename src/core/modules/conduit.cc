@@ -120,10 +120,6 @@ namespace SSC {
   CoreConduit::Client::~Client () {
     auto handle = reinterpret_cast<uv_handle_t*>(&this->handle);
 
-    if (frameBuffer) {
-      delete [] frameBuffer;
-    }
-
     if (
       this->isClosing == false &&
       this->isClosed == false &&
@@ -269,7 +265,7 @@ namespace SSC {
     int fin = data[0] & 0x80;
     int opcode = data[0] & 0x0F;
     int mask = data[1] & 0x80;
-    uint64_t payload_len = data[1] & 0x7F;
+    uint64_t payloadSize = data[1] & 0x7F;
     size_t pos = 2;
 
     if (opcode == 0x08) {
@@ -277,44 +273,64 @@ namespace SSC {
       return;
     }
 
-    if (payload_len == 126) {
+    if (payloadSize == 126) {
       if (len < 4) return; // too short to be valid
-      payload_len = (data[2] << 8) | data[3];
+      payloadSize = (data[2] << 8) | data[3];
       pos = 4;
-    } else if (payload_len == 127) {
+    } else if (payloadSize == 127) {
       if (len < 10) return; // too short to be valid
-      payload_len = 0;
+      payloadSize = 0;
       for (int i = 0; i < 8; i++) {
-        payload_len = (payload_len << 8) | data[2 + i];
+        payloadSize = (payloadSize << 8) | data[2 + i];
       }
       pos = 10;
     }
 
     if (!mask) return;
-    if (len < pos + 4 + payload_len) return; // too short to be valid
+    if (len < pos + 4 + payloadSize) return; // too short to be valid
 
-    unsigned char masking_key[4];
-    memcpy(masking_key, data + pos, 4);
+    unsigned char maskingKey[4];
+    memcpy(maskingKey, data + pos, 4);
     pos += 4;
 
-    if (payload_len > client->frameBufferSize) {
-      // TODO(@jwerle): refactor to drop usage of `realloc()`
-      client->frameBuffer = static_cast<unsigned char *>(realloc(client->frameBuffer, payload_len));
-      client->frameBufferSize = payload_len;
+    // resize client frame buffer if payload size is too big to fit
+    if (payloadSize > client->frameBuffer.size()) {
+      client->frameBuffer.resize(payloadSize);
     }
 
-    unsigned char *payload = client->frameBuffer;
-
-    for (uint64_t i = 0; i < payload_len; i++) {
-      payload[i] = data[pos + i] ^ masking_key[i % 4];
+    for (uint64_t i = 0; i < payloadSize; ++i) {
+      client->frameBuffer[i] = data[pos + i] ^ maskingKey[i % 4];
     }
 
-    pos += payload_len;
+    pos += payloadSize;
 
-    Vector<uint8_t> vec(payload, payload + payload_len);
-    auto decoded = this->decodeMessage(vec);
+    auto decoded = this->decodeMessage(client->frameBuffer.slice<uint8_t>(0, payloadSize));
 
     if (!decoded.has("route")) {
+      if (decoded.has("to")) {
+        try {
+          const auto from = client->id;
+          const auto to = std::stoull(decoded.get("to"));
+          if (to != from) {
+            const auto app = App::sharedApplication();
+            const auto options = decoded.options;
+            const auto size = decoded.payload.size();
+            const auto payload = std::make_shared<char[]>(size);
+            memcpy(payload.get(), decoded.payload.data(), size);
+            app->dispatch([this, options, size, payload, from, to] () {
+              Lock lock(this->mutex);
+              auto recipient = this->clients[to];
+              auto client = this->clients[from];
+              if (client != nullptr && recipient != nullptr) {
+                recipient->emit(options, payload, size);
+              }
+            });
+          }
+        } catch (...) {
+          debug("Invalid 'to' parameter in encoded message");
+        }
+      }
+
       // TODO(@jwerle,@heapwolf): handle this
       return;
     }
@@ -347,7 +363,7 @@ namespace SSC {
       : nullptr;
 
     if (window != nullptr) {
-      app->dispatch([app, window, uri, client, bytes, size]() {
+      app->dispatch([window, uri, bytes, size]() {
         const auto invoked = window->bridge.router.invoke(
           uri,
           bytes,
@@ -360,7 +376,8 @@ namespace SSC {
         }
       });
     } else {
-      app->dispatch([app, window, uri, client, bytes, size]() {
+      window = app->windowManager.getWindow(0);
+      app->dispatch([window, uri, client, bytes, size]() {
         const auto invoked = window->bridge.router.invoke(
           uri,
           bytes,
@@ -487,6 +504,13 @@ namespace SSC {
 
     this->isClosing = true;
 
+    do {
+      Lock lock(this->conduit->mutex);
+      if (this->conduit->clients.contains(this->id)) {
+        this->conduit->clients.erase(this->id);
+      }
+    } while (0);
+
     if (handle->loop == nullptr || uv_is_closing(handle)) {
       this->isClosed = true;
       this->isClosing = false;
@@ -511,13 +535,6 @@ namespace SSC {
         }
         return;
       }
-
-      do {
-        Lock lock(this->conduit->mutex);
-        if (this->conduit->clients.contains(this->id)) {
-          conduit->clients.erase(this->id);
-        }
-      } while (0);
 
       auto shutdown = new uv_shutdown_t;
       uv_handle_set_data(
@@ -651,8 +668,23 @@ namespace SSC {
           auto data = uv_handle_get_data(reinterpret_cast<uv_handle_t*>(stream));
           auto client = static_cast<CoreConduit::Client*>(data);
 
-          if (client && !client->isClosing && nread > 0) {
+          if (client && !client->isClosing && !client->isClosed && nread > 0) {
             if (client->isHandshakeDone) {
+              do {
+                Lock lock(client->conduit->mutex);
+                if (!client->conduit->clients.contains(client->id)) {
+                  if (buf->base) {
+                    delete [] buf->base;
+                  }
+                  client->close([client]() {
+                    if (client->isClosed) {
+                      delete client;
+                    }
+                  });
+                  return;
+                }
+              } while (0);
+
               client->conduit->processFrame(client, buf->base, nread);
             } else {
               client->conduit->handshake(client, buf->base);

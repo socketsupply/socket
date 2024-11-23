@@ -53,6 +53,53 @@ namespace SSC {
         }
       };
 
+      struct FrameBuffer {
+        Vector<unsigned char> vector;
+
+        inline const size_t size () const {
+          return this->vector.size();
+        }
+
+        inline const unsigned char* data () const {
+          return this->vector.data();
+        }
+
+        inline void resize (const size_t size) {
+          this->vector.resize(size);
+        }
+
+        unsigned char operator [] (const unsigned int index) const {
+          if (index >= this->size()) {
+            return 0;
+          }
+
+          return this->vector.at(index);
+        }
+
+        unsigned char& operator [] (const unsigned int index) {
+          if (index >= this->size()) {
+            this->vector.resize(index + 1);
+          }
+
+          return this->vector.at(index);
+        }
+
+        const Vector<unsigned int> slice (
+          Vector<unsigned int>::const_iterator& begin,
+          Vector<unsigned int>::const_iterator& end
+        ) {
+          return std::move(Vector<unsigned int>(begin, end));
+        }
+
+        template<typename T = unsigned int>
+        const Vector<T> slice (
+          Vector<unsigned int>::size_type start,
+          Vector<unsigned int>::size_type end
+        ) {
+          return Vector<T>(this->vector.begin() + start, this->vector.begin() + end);
+        }
+      };
+
       class Client {
         public:
           using CloseCallback = Function<void()>;
@@ -71,9 +118,7 @@ namespace SSC {
           uv_stream_t* stream = nullptr;
 
           // websocket frame buffer state
-          unsigned char *frameBuffer = nullptr;
-          size_t frameBufferSize = 0;
-
+          FrameBuffer frameBuffer;
           CoreConduit* conduit = nullptr;
 
           Client (CoreConduit* conduit)
