@@ -16,14 +16,17 @@ let isApplicationPaused = false
  * The default Conduit port
  * @type {number}
  */
-let defaultConduitPort = globalThis.__args.conduit || 0
+let defaultConduitPort = globalThis.__args.conduit?.port || 0
 
 /**
  * @typedef {{ options: object, payload: Uint8Array }} ReceiveMessage
  * @typedef {function(Error?, ReceiveCallback | undefined)} ReceiveCallback
- * @typedef {{ id?: string|BigInt|number, reconnect?: {} }} ConduitOptions
  * @typedef {{ isActive: boolean, handles: { ids: string[], count: number }}} ConduitDiagnostics
  * @typedef {{ isActive: boolean, port: number }} ConduitStatus
+ * @typedef {{
+ *   id?: string|BigInt|number,
+ *   sharedKey?: string
+ *}} ConduitOptions
  */
 export const DEFALUT_MAX_RECONNECT_RETRIES = 32
 export const DEFAULT_MAX_RECONNECT_TIMEOUT = 256
@@ -161,6 +164,11 @@ export class Conduit extends EventTarget {
   id = null
 
   /**
+   * @type {string}
+   */
+  sharedKey = globalThis.__args?.conduit?.sharedKey ?? ''
+
+  /**
    * @private
    * @type {function(MessageEvent)}
    */
@@ -186,13 +194,13 @@ export class Conduit extends EventTarget {
   /**
    * Creates an instance of Conduit.
    *
-   * @param {object} params - The parameters for the Conduit.
-   * @param {string} params.id - The ID for the connection.
+   * @param {ConduitOptions} options
    */
-  constructor ({ id }) {
+  constructor (options) {
     super()
 
-    this.id = id
+    this.id = options.id
+    this.sharedKey = options.sharedKey || this.sharedKey
     // @ts-ignore
     this.port = this.constructor.port
     this.connect()
@@ -206,7 +214,7 @@ export class Conduit extends EventTarget {
    * @type {string}
    */
   get url () {
-    return `ws://localhost:${this.port}/${this.id}/${client.top.id}`
+    return `ws://localhost:${this.port}/${this.id}/${client.top.id}?key=${this.sharedKey || ''}`
   }
 
   /**

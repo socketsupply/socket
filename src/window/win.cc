@@ -707,8 +707,13 @@ namespace SSC {
         .index = this->bridge.client.index
       },
       .index = options.index,
-      .conduit = this->core->conduit.port,
-      .userScript = options.userScript
+      .userScript = options.userScript,
+      .userConfig = options.userConfig,
+      .conduit = {
+        {"port", this->core->conduit.port},
+        {"hostname", this->core->conduit.hostname},
+        {"sharedKey", this->core->conduit.sharedKey}
+      }
     });
 
     if (options.aspectRatio.size() > 0) {
@@ -911,8 +916,13 @@ namespace SSC {
                   .index = this->bridge.client.index
                 },
                 .index = this->options.index,
-                .conduit = this->core->conduit.port,
-                .userScript = this->options.userScript
+                .userScript = this->options.userScript,
+                .userConfig = this->options.userConfig,
+                .conduit = {
+                  {"port", this->core->conduit.port},
+                  {"hostname", this->core->conduit.hostname},
+                  {"sharedKey", this->core->conduit.sharedKey}
+                }
               });
 
               this->webview->AddScriptToExecuteOnDocumentCreated(

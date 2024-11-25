@@ -16,6 +16,47 @@ namespace SSC {
       static const Components parse (const String& url);
     };
 
+    struct PathComponents {
+      using Iterator = Vector<String>::const_iterator;
+      using const_iterator = Vector<String>::const_iterator;
+
+      Vector<String> parts;
+
+      PathComponents () = default;
+      PathComponents (const String& pathname);
+      const String operator[] (const size_t index) const;
+      const String& operator[] (const size_t index);
+
+      void set (const String& pathname);
+      const String& at (const size_t index) const;
+      const String str () const noexcept;
+      const Iterator begin () const noexcept;
+      const size_t size () const noexcept;
+      const Iterator end () const noexcept;
+      const bool empty () const noexcept;
+
+      template <typename T>
+      const T get (const size_t index) const;
+    };
+
+    class SearchParams : public JSON::Object {
+      public:
+        class Value : public JSON::Any {
+          public:
+            Value (const Any& value)
+              : JSON::Any(value.str())
+            {}
+        };
+
+        using Entries = JSON::Object::Entries;
+        SearchParams () = default;
+        SearchParams (const SearchParams&);
+        SearchParams (const String&);
+        SearchParams (const Map&);
+        SearchParams (const JSON::Object&);
+        const String str () const;
+    };
+
     struct Builder {
       String protocol = "";
       String username = "";
@@ -60,7 +101,10 @@ namespace SSC {
     String scheme;
     String fragment;
     String query;
-    Map searchParams;
+
+    SearchParams searchParams;
+
+    PathComponents pathComponents;
 
     URL () = default;
     URL (const String& href);

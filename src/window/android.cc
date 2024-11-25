@@ -16,6 +16,7 @@ namespace SSC {
       hotkey(this),
       dialog(this)
   {
+    auto userConfig = options.userConfig;
     const auto app = App::sharedApplication();
     const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
 
@@ -37,8 +38,13 @@ namespace SSC {
         .index = this->bridge.client.index
       },
       .index = options.index,
-      .conduit = this->core->conduit.port,
-      .userScript = options.userScript
+      .userScript = options.userScript,
+      .userConfig = options.userConfig,
+      .conduit = {
+        {"port", this->core->conduit.port},
+        {"hostname", this->core->conduit.hostname},
+        {"sharedKey", this->core->conduit.sharedKey}
+      }
     });
 
     // `activity.createWindow(index, shouldExitApplicationOnClose): Unit`
@@ -500,22 +506,22 @@ extern "C" {
 
     if (callback != nullptr) {
       if (result == "null" || result == "undefined") {
-        callback(nullptr);
+        callback(JSON::Null());
       } else if (result == "true") {
-        callback(true);
+        callback(JSON::Boolean(true));
       } else if (result == "false") {
-        callback(false);
+        callback(JSON::Boolean(false));
       } else {
         double number = 0.0f;
 
         try {
           number = std::stod(result);
         } catch (...) {
-          callback(result);
+          callback(JSON::String(result));
           return;
         }
 
-        callback(number);
+        callback(JSON::Number(number));
       }
     }
   }
@@ -564,6 +570,7 @@ extern "C" {
       return nullptr;
     }
 
+    auto userConfig = window->options.userConfig;
     auto preloadUserScriptSource = IPC::Preload::compile({
       .features = IPC::Preload::Options::Features {
         .useGlobalCommonJS = false,
@@ -578,8 +585,13 @@ extern "C" {
         .index = window->bridge.client.index
       },
       .index = window->options.index,
-      .conduit = window->core->conduit.port,
-      .userScript = window->options.userScript
+      .userScript = window->options.userScript,
+      .userConfig = window->options.userConfig,
+      .conduit = {
+        {"port", window->core->conduit.port},
+        {"hostname", window->core->conduit.hostname},
+        {"sharedKey", window->core->conduit.sharedKey}
+      }
     });
 
     return env->NewStringUTF(preloadUserScriptSource.compile().c_str());

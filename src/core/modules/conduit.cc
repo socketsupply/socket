@@ -17,6 +17,20 @@ namespace SSC {
     return std::move(pointer);
   }
 
+  CoreConduit::CoreConduit (Core* core) : CoreModule(core) {
+    auto userConfig = getUserConfig();
+    const auto sharedKey = Env::get(
+      "SOCKET_RUNTIME_CONDUIT_SHARED_KEY",
+      userConfig["application_conduit_shared_key"]
+    );
+
+    if (sharedKey.size() >= 8) {
+      this->sharedKey = sharedKey;
+    } else {
+      this->sharedKey = std::to_string(rand64());
+    }
+  }
+
   CoreConduit::~CoreConduit () {
     this->stop();
   }
@@ -142,52 +156,57 @@ namespace SSC {
     return nullptr;
   }
 
-  void CoreConduit::handshake (CoreConduit::Client *client, const char *request) {
-    String requestString(request);
+  void CoreConduit::handshake (
+    CoreConduit::Client* client,
+    const char* buffer
+  ) {
+    const auto request = String(buffer);
+    const auto crlf = request.find("\r\n");
 
-    auto reqeol = requestString.find("\r\n");
-    if (reqeol == String::npos) return; // nope
+    if (crlf == String::npos) {
+      // TODO(@jwerle); handle malformed handshake request
+      return;
+    }
 
-    std::istringstream iss(requestString.substr(0, reqeol));
     String method;
-    String url;
+    String uri;
     String version;
 
-    iss >> method >> url >> version;
+    auto inputStream = std::istringstream(request.substr(0, crlf));
+    inputStream
+      >> method
+      >> uri
+      >> version;
 
-    URL parsed(url);
-    Headers headers(request);
-    auto keyHeader = headers["Sec-WebSocket-Key"];
+    const auto url = URL(uri);
+    const auto headers = Headers(request);
+    const auto webSocketKey = headers.get("Sec-WebSocket-Key");
+    const auto sharedKey = url.searchParams.get("key");
 
-    if (keyHeader.empty()) {
+    if (webSocketKey.empty()) {
       // debug("Sec-WebSocket-Key is required but missing.");
       return;
     }
 
-    auto parts = split(parsed.pathname, "/");
-    uint64_t socketId = 0;
-    uint64_t clientId = 0;
+    if (url.pathComponents.size() >= 2) {
+      try {
+        client->id = url.pathComponents.get<int>(0);
+      } catch (...) {
+        // debug("Unable to parse socket id");
+      }
 
-    try {
-      socketId = std::stoull(trim(parts[1]));
-    } catch (...) {
-      // debug("Unable to parse socket id");
+      try {
+        client->clientId = url.pathComponents.get<int>(1);
+      } catch (...) {
+        // debug("Unable to parse client id");
+      }
     }
-
-    try {
-      clientId = std::stoull(trim(parts[2]));
-    } catch (...) {
-      // debug("Unable to parse client id");
-    }
-
-    client->id = socketId;
-    client->clientId = clientId;
 
     do {
       Lock lock(this->mutex);
-      if (this->clients.contains(socketId)) {
-        auto existingClient = this->clients.at(socketId);
-        this->clients.erase(socketId);
+      if (this->clients.contains(client->id)) {
+        auto existingClient = this->clients.at(client->id);
+        this->clients.erase(client->id);
         existingClient->close([existingClient]() {
           if (existingClient->isClosed) {
             delete existingClient;
@@ -195,19 +214,22 @@ namespace SSC {
         });
       }
 
-      this->clients.emplace(socketId, client);
+      this->clients.emplace(client->id, client);
 
       // std::cout << "added client " << this->clients.size() << std::endl;
     } while (0);
 
-    // debug("Received key: %s", keyHeader.c_str());
+    if (sharedKey != this->sharedKey) {
+      debug("conduit client failed auth");
+      client->close();
+      return;
+    }
 
-    String acceptKey = keyHeader + WS_GUID;
-    char calculatedHash[SHA_DIGEST_LENGTH];
-    shacalc(acceptKey.c_str(), calculatedHash);
+    // debug("Received key: %s", webSocketKey.c_str());
 
-    size_t base64_len;
-    unsigned char *base64_accept_key = base64Encode((unsigned char*)calculatedHash, SHA_DIGEST_LENGTH, &base64_len);
+    const auto acceptKey = webSocketKey + WS_GUID;
+    const auto acceptKeyHash = shacalc(acceptKey);
+    const auto encodedAcceptKeyHash = encodeBase64(acceptKeyHash);
 
     // debug("Generated Accept Key: %s\n", base64_accept_key);  // Debugging statement
 
@@ -216,7 +238,7 @@ namespace SSC {
       << "HTTP/1.1 101 Switching Protocols\r\n"
       << "Upgrade: websocket\r\n"
       << "Connection: Upgrade\r\n"
-      << "Sec-WebSocket-Accept: " << base64_accept_key << "\r\n\r\n";
+      << "Sec-WebSocket-Accept: " << encodedAcceptKeyHash.data() << "\r\n\r\n";
 
     const auto response = oss.str();
     const auto size = response.size();
@@ -224,32 +246,23 @@ namespace SSC {
     memcpy(data, response.c_str(), size);
 
     const auto buf = uv_buf_init(data, size);
+
     auto req = new uv_write_t;
+    auto handle = reinterpret_cast<uv_handle_t*>(req);
+    auto stream = reinterpret_cast<uv_stream_t*>(&client->handle);
 
-    uv_handle_set_data(
-      reinterpret_cast<uv_handle_t*>(req),
-      data
-    );
+    uv_handle_set_data(handle, data);
+    uv_write(req, stream, &buf, 1, [](uv_write_t *req, int status) {
+      const auto data = reinterpret_cast<char*>(
+        uv_handle_get_data(reinterpret_cast<uv_handle_t*>(req))
+      );
 
-    uv_write(
-      req,
-      reinterpret_cast<uv_stream_t*>(&client->handle),
-      &buf,
-      1,
-      [](uv_write_t *req, int status) {
-        const auto data = reinterpret_cast<char*>(
-          uv_handle_get_data(reinterpret_cast<uv_handle_t*>(req))
-        );
-
-        if (data != nullptr) {
-          delete [] data;
-        }
-
-        delete req;
+      if (data != nullptr) {
+        delete [] data;
       }
-    );
 
-    free(base64_accept_key);
+      delete req;
+    });
 
     client->isHandshakeDone = 1;
   }
@@ -322,7 +335,7 @@ namespace SSC {
               auto recipient = this->clients[to];
               auto client = this->clients[from];
               if (client != nullptr && recipient != nullptr) {
-                recipient->emit(options, payload, size);
+                recipient->send(options, payload, size);
               }
             });
           }
@@ -385,13 +398,13 @@ namespace SSC {
           [client](const auto result) {
             auto token = result.token;
             if (result.post.body != nullptr && result.post.length > 0) {
-              client->emit({{"token", token}}, result.post.body, result.post.length);
+              client->send({{"token", token}}, result.post.body, result.post.length);
             } else {
               const auto data = result.json().str();
               const auto size = data.size();
               const auto payload = std::make_shared<char[]>(size);
               memcpy(payload.get(), data.c_str(), size);
-              client->emit({{"token", token}}, payload, size);
+              client->send({{"token", token}}, payload, size);
             }
           }
         );
@@ -404,7 +417,7 @@ namespace SSC {
     const Function<void()> callback = nullptr;
   };
 
-  bool CoreConduit::Client::emit (
+  bool CoreConduit::Client::send (
     const CoreConduit::Options& options,
     SharedPointer<char[]> bytes,
     size_t length,
@@ -584,7 +597,7 @@ namespace SSC {
       });
     };
 
-    this->emit({}, vectorToSharedPointer({ 0x00 }), 1, 0x08, closeHandle);
+    this->send({}, vectorToSharedPointer({ 0x00 }), 1, 0x08, closeHandle);
   }
 
   void CoreConduit::start (const StartCallback& callback) {
@@ -599,7 +612,7 @@ namespace SSC {
 
     this->isStarting = true;
 
-    auto ip = Env::get("SOCKET_RUNTIME_CONDUIT_HOSTNAME", "0.0.0.0");
+    this->hostname = Env::get("SOCKET_RUNTIME_CONDUIT_HOSTNAME", this->hostname);
     auto port = this->port.load();
 
     if (Env::has("SOCKET_RUNTIME_CONDUIT_PORT")) {
@@ -608,7 +621,7 @@ namespace SSC {
       } catch (...) {}
     }
 
-    uv_ip4_addr(ip.c_str(), port, &this->addr);
+    uv_ip4_addr(this->hostname.c_str(), port, &this->addr);
     uv_tcp_init(loop, &this->socket);
     uv_tcp_bind(
       &this->socket,

@@ -56,7 +56,7 @@ namespace SSC::IPC {
       }
 
       if (pair[0].compare("value") == 0) {
-        this->value = decodeURIComponent(pair[1]);
+        this->value = decodeValues ? decodeURIComponent(pair[1]) : pair[1];
       }
 
       if (pair[0].compare("seq") == 0) {

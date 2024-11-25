@@ -26,9 +26,12 @@ namespace SSC {
           bool operator != (const Value&) const;
           bool operator == (const String&) const;
           bool operator != (const String&) const;
+          const String operator + (const String&) const;
 
           const String& str () const;
           const char * c_str() const;
+          bool empty () const;
+          size_t size () const;
 
           template <typename T> void set (T value) {
             auto v = Value(value);
@@ -47,6 +50,9 @@ namespace SSC {
           bool operator != (const Header&) const;
           bool operator == (const String&) const;
           bool operator != (const String&) const;
+          const String operator + (const String&) const;
+          size_t size () const;
+          bool empty () const;
       };
 
       using Entries = Vector<Header>;
@@ -60,6 +66,7 @@ namespace SSC {
       Headers (const Entries& entries);
       size_t size () const;
       String str () const;
+      bool empty () const;
 
       void set (const String& name, const String& value) noexcept;
       void set (const Header& header) noexcept;

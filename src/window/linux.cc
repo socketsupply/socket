@@ -226,8 +226,13 @@ namespace SSC {
         .index = this->bridge.client.index
       },
       .index = options.index,
-      .conduit = this->core->conduit.port,
-      .userScript = options.userScript
+      .userScript = options.userScript,
+      .userConfig = options.userConfig,
+      .conduit = {
+        {"port", this->core->conduit.port},
+        {"hostname", this->core->conduit.hostname},
+        {"sharedKey", this->core->conduit.sharedKey}
+      }
     });
 
     auto preloadUserScript = webkit_user_script_new(
@@ -282,8 +287,13 @@ namespace SSC {
         .index = this->bridge.client.index
       },
       .index = options.index,
-      .conduit = this->core->conduit.port,
-      .userScript = options.userScript
+      .userScript = options.userScript,
+      .userConfig = options.userConfig,
+      .conduit = {
+        {"port", this->core->conduit.port},
+        {"hostname", this->core->conduit.hostname},
+        {"sharedKey", this->core->conduit.sharedKey}
+      }
     });
 
     gtk_box_pack_end(GTK_BOX(this->vbox), GTK_WIDGET(this->webview), true, true, 0);
@@ -1132,7 +1142,7 @@ namespace SSC {
                 const auto message = jsc_exception_get_message(exception);
                 (*callback)(JSON::Error(message));
               } else {
-                (*callback)(stringValue);
+                (*callback)(JSON::String(stringValue));
               }
 
               g_free(stringValue);
@@ -1145,7 +1155,7 @@ namespace SSC {
                 const auto message = jsc_exception_get_message(exception);
                 (*callback)(JSON::Error(message));
               } else {
-                (*callback)(booleanValue);
+                (*callback)(JSON::Boolean(booleanValue));
               }
             } else if (jsc_value_is_null(value)) {
               const auto context = jsc_value_get_context(value);
@@ -1155,7 +1165,7 @@ namespace SSC {
                 const auto message = jsc_exception_get_message(exception);
                 (*callback)(JSON::Error(message));
               } else {
-                (*callback)(nullptr);
+                (*callback)(JSON::Null());
               }
             } else if (jsc_value_is_number(value)) {
               const auto context = jsc_value_get_context(value);
@@ -1166,7 +1176,7 @@ namespace SSC {
                 const auto message = jsc_exception_get_message(exception);
                 (*callback)(JSON::Error(message));
               } else {
-                (*callback)(numberValue);
+                (*callback)(JSON::Number(numberValue));
               }
             } else if (jsc_value_is_undefined(value)) {
               const auto context = jsc_value_get_context(value);
@@ -1177,6 +1187,18 @@ namespace SSC {
                 (*callback)(JSON::Error(message));
               } else {
                 (*callback)(nullptr);
+              }
+            } else if (jsc_value_is_array(value) || jsc_value_is_object(value)) {
+              const auto context = jsc_value_get_context(value);
+              const auto exception = jsc_context_get_exception(context);
+
+              if (exception) {
+                const auto message = jsc_exception_get_message(exception);
+                (*callback)(JSON::Error(message));
+              } else if (jsc_value_is_array(value)) {
+                (*callback)(JSON::Array(value));
+              } else {
+                (*callback)(JSON::Object(value));
               }
             }
 

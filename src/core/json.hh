@@ -59,6 +59,10 @@ namespace SSC::JSON {
       bool isObject () const { return this->type == Type::Object; }
       bool isString () const { return this->type == Type::String; }
       bool isEmpty () const { return this->type == Type::Empty; }
+
+      const SSC::String str () const {
+        return "";
+      }
   };
 
   class Error : public std::invalid_argument, public Value<SSC::String, Type::Error> {
@@ -68,110 +72,45 @@ namespace SSC::JSON {
       SSC::String message;
       SSC::String location;
 
-      Error () : std::invalid_argument("") {};
-      Error (const Error& error) : std::invalid_argument(error.str()) {
-        this->code = error.code;
-        this->name = error.name;
-        this->message = error.message;
-        this->location = error.location;
-      }
-
-      Error (Error* error) : std::invalid_argument(error->str()) {
-        this->code = error->code;
-        this->name = error->name;
-        this->message = error->message;
-        this->location = error->location;
-      }
-
+      Error ();
+      Error (const SSC::String& message);
+      Error (const Error& error);
+      Error (Error* error);
       Error (
         const SSC::String& name,
         const SSC::String& message,
         int code = 0
-      ) : std::invalid_argument(name + ": " + message) {
-        this->name = name;
-        this->code = code;
-        this->message = message;
-      }
-
-      Error (
-        const SSC::String& message
-      ) : std::invalid_argument(message) {
-        this->message = message;
-      }
-
+      );
       Error (
         const SSC::String& name,
         const SSC::String& message,
         const SSC::String& location
-      ) : std::invalid_argument(name + ": " + message + " (from " + location + ")") {
-        this->name = name;
-        this->message = message;
-        this->location = location;
-      }
+      );
 
-      SSC::String value () const {
-        return this->str();
-      }
-
-      const char* what () const noexcept override {
-        return this->message.c_str();
-      }
-
-      const SSC::String str () const {
-        if (this->name.size() > 0 && this->message.size() > 0 && this->location.size() > 0) {
-          return this->name + ": " + this->message + " (from " + this->location + ")";
-        } else if (this->name.size() > 0 && this->message.size() > 0) {
-          return this->name + ": " + this->message;
-        } else if (this->name.size() > 0 && this->location.size() > 0) {
-          return this->name + " (from " + this->location + ")";
-        } else if (this->message.size() > 0 && this->location.size() > 0) {
-          return this->message + " (from " + this->location + ")";
-        } else if (this->name.size() > 0) {
-          return this->name;
-        } else if (this->message.size() > 0) {
-          return this->message;
-        }
-
-        return "";
-      }
+      const SSC::String value () const;
+      const char* what () const noexcept override;
+      const SSC::String str () const;
   };
 
   class Null : public Value<std::nullptr_t, Type::Null> {
     public:
-      Null () {}
-      Null (std::nullptr_t) : Null() {}
-      std::nullptr_t value () const {
-        return nullptr;
-      }
-
-      SSC::String str () const {
-        return "null";
-      }
+      Null () = default;
+      Null (std::nullptr_t);
+      std::nullptr_t value () const;
+      const SSC::String str () const;
   };
-
-  extern Null null;
 
   class Any : public Value<void *, Type::Any> {
     public:
       SharedPointer<void> pointer = nullptr;
 
-      Any () {
-        this->pointer = nullptr;
-        this->type = Type::Null;
-      }
-
-      Any (const Any& any) : pointer(any.pointer) {
-        this->type = any.type;
-      }
-
-      Any (Type type, SharedPointer<void> pointer) : pointer(pointer) {
-        this->type = type;
-      }
-
+      Any ();
+      Any (const Any& any);
+      Any (Type type, SharedPointer<void> pointer);
       Any (std::nullptr_t);
       Any (const Null);
+
       Any (bool);
-      Any (const Boolean);
       Any (int64_t);
       Any (uint64_t);
       Any (uint32_t);
@@ -183,30 +122,51 @@ namespace SSC::JSON {
     #elif !SOCKET_RUNTIME_PLATFORM_WINDOWS
       Any (long long);
     #endif
-      Any (const Number);
+
+      Any (Atomic<bool>&);
+      Any (Atomic<int64_t>&);
+      Any (Atomic<uint64_t>&);
+      Any (Atomic<uint32_t>&);
+      Any (Atomic<int32_t>&);
+      Any (Atomic<double>&);
+    #if SOCKET_RUNTIME_PLATFORM_APPLE
+      Any (Atomic<size_t>&);
+      Any (Atomic<ssize_t>&);
+    #elif !SOCKET_RUNTIME_PLATFORM_WINDOWS
+      Any (Atomic<long long>&);
+    #endif
+
       Any (const char);
       Any (const char *);
-      Any (const SSC::String);
-      Any (const SSC::Path);
-      Any (const String);
-      Any (const Object);
-      Any (const ObjectEntries);
-      Any (const Array);
-      Any (const ArrayEntries);
-      Any (const Raw);
-      Any (const Error);
+
+      Any (const SSC::String&);
+      Any (const SSC::Path&);
+
+      Any (const Boolean&);
+      Any (const Number&);
+      Any (const String&);
+      Any (const Object&);
+      Any (const Array&);
+      Any (const Raw&);
+      Any (const Error&);
     #if SOCKET_RUNTIME_PLATFORM_APPLE
       Any (const NSError*);
     #elif SOCKET_RUNTIME_PLATFORM_LINUX
       Any (const GError*);
     #endif
 
-      ~Any () {
-        this->pointer = nullptr;
-        this->type = Type::Any;
-      }
+      Any (const ArrayEntries&);
+      Any (const ObjectEntries&);
 
-      SSC::String str () const;
+      ~Any ();
+
+      Any operator[](const SSC::String& key) const;
+      Any& operator[](const SSC::String& key);
+      Any operator[](const unsigned int index) const;
+      Any& operator[](const unsigned int index);
+
+      bool operator == (const Any&) const;
+      bool operator != (const Any&) const;
 
       template <typename T> T& as () const {
         auto ptr = this->pointer.get();
@@ -218,336 +178,127 @@ namespace SSC::JSON {
         throw Error("BadCastError", "cannot cast to null value", __PRETTY_FUNCTION__);
       }
 
-      Any operator[](const SSC::String& key) const;
-      Any& operator[](const SSC::String& key);
-      Any operator[](const unsigned int index) const;
-      Any& operator[](const unsigned int index);
+      const SSC::String str () const;
   };
 
   class Raw : public Value<SSC::String, Type::Raw> {
     public:
-      Raw (const Raw& raw) { this->data = raw.data; }
-      Raw (const Raw* raw) { this->data = raw->data; }
-      Raw (const SSC::String& source) { this->data = source; }
-
-      const SSC::String str () const {
-        return this->data;
-      }
+      Raw (const Raw& raw);
+      Raw (const Raw* raw);
+      Raw (const SSC::String& source);
+      const SSC::String str () const;
   };
-
-  extern Any anyNull;
-
-  inline const auto typeof (const Any& any) {
-    return any.typeof();
-  }
 
   class Object : public Value<ObjectEntries, Type::Object> {
     public:
       using Entries = ObjectEntries;
+      using const_iterator = Entries::const_iterator;
       Object () = default;
-      Object (std::map<SSC::String, int> entries) {
-        for (auto const &tuple : entries) {
-          auto key = tuple.first;
-          auto value = tuple.second;
-          this->data.insert_or_assign(key, value);
-        }
-      }
+    #if SOCKET_RUNTIME_PLATFORM_LINUX
+      Object (JSCValue* value);
+    #endif
+      Object (const std::map<SSC::String, int>& entries);
+      Object (const std::map<SSC::String, bool>& entries);
+      Object (const std::map<SSC::String, double>& entries);
+      Object (const std::map<SSC::String, int64_t>& entries);
+      Object (const Object::Entries& entries);
+      Object (const Object& object);
+      Object (const std::map<SSC::String, SSC::String>& map);
+      Object (const Error& error);
 
-      Object (std::map<SSC::String, bool> entries) {
-        for (auto const &tuple : entries) {
-          auto key = tuple.first;
-          auto value = tuple.second;
-          this->data.insert_or_assign(key, value);
-        }
-      }
+      Any operator [] (const SSC::String& key) const;
+      Any &operator [] (const SSC::String& key);
 
-      Object (std::map<SSC::String, double> entries) {
-        for (auto const &tuple : entries) {
-          auto key = tuple.first;
-          auto value = tuple.second;
-          this->data.insert_or_assign(key, value);
-        }
-      }
-
-      Object (std::map<SSC::String, int64_t> entries) {
-        for (auto const &tuple : entries) {
-          auto key = tuple.first;
-          auto value = tuple.second;
-          this->data.insert_or_assign(key, value);
-        }
-      }
-
-      Object (const Object::Entries entries) {
-        for (const auto& tuple : entries) {
-          auto key = tuple.first;
-          auto value = tuple.second;
-          this->data.insert_or_assign(key, value);
-        }
-      }
-
-      Object (const Object& object) {
-        this->data = object.value();
-      }
-
-      Object (const std::map<SSC::String, SSC::String> map) {
-        for (const auto& tuple : map) {
-          auto key = tuple.first;
-          auto value = Any(tuple.second);
-          this->data.insert_or_assign(key, value);
-        }
-      }
-
-      Object (const Error& error) {
-        if (error.name.size() > 0) {
-          this->set("name", error.name);
-        }
-
-        if (error.message.size() > 0) {
-          this->set("message", error.message);
-        }
-
-        if (error.location.size() > 0) {
-          this->set("location", error.location);
-        }
-
-        if (error.code != 0) {
-          this->set("code", error.code);
-        }
-      }
-
-      SSC::String str () const;
-
-      const Object::Entries value () const {
-        return this->data;
-      }
-
-      Any& get (const SSC::String key) {
-        if (this->data.find(key) != this->data.end()) {
-          return this->data.at(key);
-        }
-
-        return anyNull;
-      }
-
-      void set (const SSC::String key, Any value) {
-        this->data[key] = value;
-      }
-
-      bool has (const SSC::String& key) const {
-        return this->data.find(key) != this->data.end();
-      }
-
-      Any operator [] (const SSC::String& key) const {
-        if (this->data.find(key) != this->data.end()) {
-          return this->data.at(key);
-        }
-
-        return nullptr;
-      }
-
-      Any &operator [] (const SSC::String& key) {
-        return this->data[key];
-      }
-
-      auto size () const {
-        return this->data.size();
-      }
+      const SSC::String str () const;
+      const Object::Entries value () const;
+      const Any& get (const SSC::String& key) const;
+      Any& get (const SSC::String& key);
+      void set (const SSC::String& key, const Any& value);
+      bool has (const SSC::String& key) const;
+      bool contains (const SSC::String& key) const;
+      Entries::size_type size () const;
+      const const_iterator begin () const noexcept;
+      const const_iterator end () const noexcept;
   };
 
   class Array : public Value<ArrayEntries, Type::Array> {
     public:
       using Entries = ArrayEntries;
+      using const_iterator = Entries::const_iterator;
       Array () = default;
-      Array (const Array& array) {
-        this->data = array.value();
-      }
+      Array (const Array& array);
+      Array (const Array::Entries& entries);
+    #if SOCKET_RUNTIME_PLATFORM_LINUX
+      Array (JSCValue* value);
+    #endif
 
-      Array (const Array::Entries entries) {
-        for (const auto& value : entries) {
-          this->data.push_back(value);
-        }
-      }
+      Any operator [] (const unsigned int index) const;
+      Any &operator [] (const unsigned int index);
 
-      SSC::String str () const;
-
-      Array::Entries value () const {
-        return this->data;
-      }
-
-      bool has (const unsigned int index) const {
-        return this->data.size() < index;
-      }
-
-      auto size () const {
-        return this->data.size();
-      }
-
-      Any get (const unsigned int index) const {
-        if (index < this->data.size()) {
-          return this->data.at(index);
-        }
-
-        return nullptr;
-      }
-
-      void set (const unsigned int index, Any value) {
-        if (index >= this->data.size()) {
-          this->data.resize(index + 1);
-        }
-
-        this->data[index] = value;
-      }
-
-      void push (Any value) {
-        this->set(this->size(), value);
-      }
-
-      Any& pop () {
-        if (this->size() == 0) {
-          return anyNull;
-        }
-
-        auto& value = this->data.back();
-        this->data.pop_back();
-        return value;
-      }
-
-      Any operator [] (const unsigned int index) const {
-        if (index >= this->data.size()) {
-          return nullptr;
-        }
-
-        return this->data.at(index);
-      }
-
-      Any &operator [] (const unsigned int index) {
-        if (index >= this->data.size()) {
-          this->data.resize(index + 1);
-        }
-
-        return this->data.at(index);
-      }
+      const SSC::String str () const;
+      Array::Entries value () const;
+      bool has (const unsigned int index) const;
+      Entries::size_type size () const;
+      Any get (const unsigned int index) const;
+      void set (const unsigned int index, const Any& value);
+      void push (Any value);
+      Any& pop ();
+      const const_iterator begin () const noexcept;
+      const const_iterator end () const noexcept;
   };
 
   class Boolean : public Value<bool, Type::Boolean> {
     public:
       Boolean () = default;
-      Boolean (const Boolean& boolean) {
-        this->data = boolean.value();
-      }
+      Boolean (const Boolean& boolean);
+      Boolean (bool boolean);
+      Boolean (int data);
+      Boolean (int64_t data);
+      Boolean (double data);
+      Boolean (void *data);
+      Boolean (const SSC::String& string);
 
-      Boolean (bool boolean) {
-        this->data = boolean;
-      }
-
-      Boolean (int data) {
-        this->data = data != 0;
-      }
-
-      Boolean (int64_t data) {
-        this->data = data != 0;
-      }
-
-      Boolean (double data) {
-        this->data = data != 0;
-      }
-
-      Boolean (void *data) {
-        this->data = data != nullptr;
-      }
-
-      Boolean (SSC::String string) {
-        this->data = string.size() > 0;
-      }
-
-      bool value () const {
-        return this->data;
-      }
-
-      SSC::String str () const {
-        return this->data ? "true" : "false";
-      }
+      bool value () const;
+      const SSC::String str () const;
   };
 
   class Number : public Value<double, Type::Number> {
     public:
       Number () = default;
-      Number (const Number& number) {
-        this->data = number.value();
-      }
-
-      Number (double number) {
-        this->data = number;
-      }
-
-      Number (char number) {
-        this->data = (double) number;
-      }
-
-      Number (int number) {
-        this->data = (double) number;
-      }
-
-      Number (int64_t number) {
-        this->data = (double) number;
-      }
-
-      Number (bool number) {
-        this->data = (double) number;
-      }
-
+      Number (const Number& number);
+      Number (double number);
+      Number (char number);
+      Number (int number);
+      Number (int64_t number);
+      Number (bool number);
       Number (const String& string);
 
-      float value () const {
-        return this->data;
-      }
-
-      SSC::String str () const;
+      float value () const;
+      const SSC::String str () const;
   };
 
   class String : public Value<SSC::String, Type::String> {
     public:
       String () = default;
-      String (const String& data) {
-        this->data = SSC::String(data.value());
-      }
-
-      String (const SSC::String data) {
-        this->data = data;
-      }
-
-      String (const char data) {
-        this->data = SSC::String(1, data);
-      }
-
-      String (const char *data) {
-        this->data = SSC::String(data);
-      }
-
-      String (const Any& any) {
-        this->data = any.str();
-      }
-
+      String (const String& data);
+      String (const SSC::String& data);
+      String (const char data);
+      String (const char *data);
+      String (const Any& any);
       String (const Number& number);
+      String (const Boolean& boolean);
+      String (const Error& error);
 
-      String (const Boolean& boolean) {
-        this->data = boolean.str();
-      }
-
-      String (const Error& error) {
-        this->data = error.str();
-      }
-
-      SSC::String str () const;
-
-      SSC::String value () const {
-        return this->data;
-      }
-
-      auto size () const {
-        return this->data.size();
-      }
+      const SSC::String str () const;
+      SSC::String value () const;
+      SSC::String::size_type size () const;
   };
-}
 
+  extern Null null;
+  extern Any anyNull;
+
+  inline const auto typeof (const Any& any) {
+    return any.typeof();
+  }
+}
 #endif

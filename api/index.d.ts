@@ -8082,9 +8082,9 @@ declare module "socket:application" {
     export const debug: boolean;
     /**
      * Application configuration.
-     * @type {object}
+     * @type {Record<string, string|number|boolean|(string|number|boolean)[]>}
      */
-    export const config: object;
+    export const config: Record<string, string | number | boolean | (string | number | boolean)[]>;
     export namespace backend {
         /**
          * @param {object} opts - an options object
@@ -9433,9 +9433,12 @@ declare module "socket:internal/conduit" {
     /**
      * @typedef {{ options: object, payload: Uint8Array }} ReceiveMessage
      * @typedef {function(Error?, ReceiveCallback | undefined)} ReceiveCallback
-     * @typedef {{ id?: string|BigInt|number, reconnect?: {} }} ConduitOptions
      * @typedef {{ isActive: boolean, handles: { ids: string[], count: number }}} ConduitDiagnostics
      * @typedef {{ isActive: boolean, port: number }} ConduitStatus
+     * @typedef {{
+     *   id?: string|BigInt|number,
+     *   sharedKey?: string
+     *}} ConduitOptions
      */
     export const DEFALUT_MAX_RECONNECT_RETRIES: 32;
     export const DEFAULT_MAX_RECONNECT_TIMEOUT: 256;
@@ -9476,12 +9479,9 @@ declare module "socket:internal/conduit" {
         /**
          * Creates an instance of Conduit.
          *
-         * @param {object} params - The parameters for the Conduit.
-         * @param {string} params.id - The ID for the connection.
+         * @param {ConduitOptions} options
          */
-        constructor({ id }: {
-            id: string;
-        });
+        constructor(options: ConduitOptions);
         /**
          * @type {boolean}
          */
@@ -9506,6 +9506,10 @@ declare module "socket:internal/conduit" {
          * @type {number?}
          */
         id: number | null;
+        /**
+         * @type {string}
+         */
+        sharedKey: string;
         /**
          * The URL string for the WebSocket server.
          * @type {string}
@@ -9597,10 +9601,6 @@ declare module "socket:internal/conduit" {
         payload: Uint8Array;
     };
     export type ReceiveCallback = (arg0: Error | null, arg1: ReceiveCallback | undefined) => any;
-    export type ConduitOptions = {
-        id?: string | BigInt | number;
-        reconnect?: {};
-    };
     export type ConduitDiagnostics = {
         isActive: boolean;
         handles: {
@@ -9611,6 +9611,10 @@ declare module "socket:internal/conduit" {
     export type ConduitStatus = {
         isActive: boolean;
         port: number;
+    };
+    export type ConduitOptions = {
+        id?: string | BigInt | number;
+        sharedKey?: string;
     };
 }
 

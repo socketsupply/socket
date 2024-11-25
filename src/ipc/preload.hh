@@ -76,15 +76,18 @@ namespace SSC::IPC {
       UniqueClient client;
 
       int index = 0;
-      int conduit = 0;
 
+      Vector<String> argv;
       Headers headers = {}; // depends on 'features.useHTMLMarkup'
+      String userScript = "";
       Map metadata; // depends on 'features.useHTMLMarkup'
       Map env;
       Map userConfig;
-      Vector<String> argv;
-
-      String userScript = "";
+      JSON::Object::Entries conduit = {
+        {"host", "0.0.0.0"},
+        {"port", JSON::Number(0)},
+        {"sharedKey", ""}
+      };
 
       // only use if you know what you are doing
       String RUNTIME_PRIMORDIAL_OVERRIDES = "";

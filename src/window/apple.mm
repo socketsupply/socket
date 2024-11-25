@@ -207,8 +207,13 @@ namespace SSC {
         .index = this->bridge.client.index
       },
       .index = options.index,
-      .conduit = this->core->conduit.port,
-      .userScript = options.userScript
+      .userScript = options.userScript,
+      .userConfig = options.userConfig,
+      .conduit = {
+        {"port", this->core->conduit.port},
+        {"hostname", this->core->conduit.hostname},
+        {"sharedKey", this->core->conduit.sharedKey}
+      }
     });
 
     configuration.defaultWebpagePreferences.allowsContentJavaScript = YES;
@@ -250,8 +255,13 @@ namespace SSC {
         .index = this->bridge.client.index
       },
       .index = options.index,
-      .conduit = this->core->conduit.port,
-      .userScript = options.userScript
+      .userScript = options.userScript,
+      .userConfig = options.userConfig,
+      .conduit = {
+        {"port", this->core->conduit.port},
+        {"hostname", this->core->conduit.hostname},
+        {"sharedKey", this->core->conduit.sharedKey}
+      }
     });
 
     [preloadUserScript
@@ -848,11 +858,11 @@ namespace SSC {
             if ([result isKindOfClass: NSString.class]) {
               const auto value = String([result UTF8String]);
               if (value == "null" || value == "undefined") {
-                callback(nullptr);
+                callback(JSON::Null());
               } else if (value == "true") {
-                callback(true);
+                callback(JSON::Boolean(true));
               } else if (value == "false") {
-                callback(value);
+                callback(JSON::Boolean(false));
               } else {
                 double number = 0.0f;
 

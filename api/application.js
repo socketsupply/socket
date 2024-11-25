@@ -603,7 +603,7 @@ export const debug = !!globalThis.__args?.debug
 
 /**
  * Application configuration.
- * @type {object}
+ * @type {Record<string, string|number|boolean|(string|number|boolean)[]>}
  */
 export const config = globalThis.__args?.config ?? {}
 

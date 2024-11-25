@@ -39,6 +39,7 @@ namespace SSC {
   using Path = fs::path;
   using Thread = std::thread;
   using Exception = std::exception;
+  using Error = std::runtime_error;
 
   template <typename T> using Atomic = std::atomic<T>;
   template <typename T, int k> using Array = std::array<T, k>;

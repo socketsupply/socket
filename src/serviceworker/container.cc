@@ -466,12 +466,15 @@ namespace SSC {
     Lock lock(this->mutex);
     auto scope = options.scope;
     auto scriptURL = options.scriptURL;
+    auto userConfig = this->bridge != nullptr
+      ? this->bridge->userConfig
+      : getUserConfig();
 
     if (scope.size() == 0) {
-      auto tmp = options.scriptURL;
+      auto tmp = trim(options.scriptURL);
       tmp = replace(tmp, "https://", "");
       tmp = replace(tmp, "socket://", "");
-      tmp = replace(tmp, this->bridge->userConfig["meta_bundle_identifier"], "");
+      tmp = replace(tmp, userConfig["meta_bundle_identifier"], "");
 
       auto parts = split(tmp, "/");
       parts = Vector<String>(parts.begin(), parts.end() - 1);
@@ -482,7 +485,7 @@ namespace SSC {
       scriptURL = String("socket://");
     #endif
 
-      scriptURL += bridge->userConfig["meta_bundle_identifier"];
+      scriptURL += userConfig["meta_bundle_identifier"];
       scriptURL += tmp;
 
       scope = join(parts, "/");

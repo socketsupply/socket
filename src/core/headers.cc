@@ -27,6 +27,18 @@ namespace SSC {
     return this->value.string != string;
   }
 
+  const String Headers::Header::operator + (const String& string) const {
+    return this->value + string;
+  }
+
+  bool Headers::Header::empty () const {
+    return this->value.empty();
+  }
+
+  size_t Headers::Header::size() const {
+    return this->value.size();
+  }
+
   Headers::Headers (const String& source) {
     for (const auto& entry : split(source, '\n')) {
       const auto tuple = split(entry, ':');
@@ -104,6 +116,10 @@ namespace SSC {
 
   size_t Headers::size () const {
     return this->entries.size();
+  }
+
+  bool Headers::empty () const {
+    return this->entries.empty();
   }
 
   String Headers::str () const {
@@ -235,12 +251,24 @@ namespace SSC {
     return this->string != string;
   }
 
+  const String Headers::Value::operator + (const String& string) const {
+    return this->string + string;
+  }
+
   const String& Headers::Value::str () const {
     return this->string;
   }
 
   const char * Headers::Value::c_str() const {
     return this->str().c_str();
+  }
+
+  size_t Headers::Value::size() const {
+    return this->string.size();
+  }
+
+  bool Headers::Value::empty () const {
+    return this->string.empty();
   }
 
   const String toHeaderCase (const String& source) {

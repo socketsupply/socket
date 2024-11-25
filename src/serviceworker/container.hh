@@ -101,7 +101,7 @@ namespace SSC {
       };
 
       using Registrations = std::map<String, Registration>;
-      using FetchCallback = std::function<void(const FetchResponse)>;
+      using FetchCallback = Function<void(const FetchResponse)>;
       using FetchCallbacks = std::map<ID, FetchCallback>;
       using FetchRequests = std::map<ID, FetchRequest>;
 

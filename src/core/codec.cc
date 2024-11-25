@@ -61,6 +61,12 @@ static const char SAFE[256] = {
   /* F */ 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0
 };
 
+// encoding table for base64 encoding
+static const char BASE64_ENCODING_TABLE[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+// modulus table for base64 encoding
+static const int BASE64_MOD_TABLE[] = {0, 2, 1};
+
 namespace SSC {
   const Array<uint8_t, 8> toBytes (const uint64_t input) {
     Array<uint8_t, 8> bytes;
@@ -174,31 +180,66 @@ namespace SSC {
     memcpy(dest, hash, 20);
   }
 
-  unsigned char* base64Encode(const unsigned char *data, size_t input_length, size_t *output_length) {
-    *output_length = (size_t) (4.0 * ceil((double) input_length / 3.0));
-    unsigned char *encoded_data = (unsigned char *) malloc(*output_length + 1);
-    if (!encoded_data) return 0;
+  const String shacalc (const String& input, size_t size) {
+    char output[size];
+    shacalc(input.data(), output);
+    return String(output, size);
+  }
 
+  size_t encodeBase64Length (size_t inputLength) {
+    return (size_t) (4.0 * ceil((double) inputLength / 3.0));
+  }
+
+  unsigned char* encodeBase64 (
+    const unsigned char* input,
+    unsigned char* output,
+    size_t inputLength,
+    size_t* outputLength
+  ) {
     int i = 0;
     int j = 0;
 
-    for (i = 0, j = 0; i < input_length;) {
-      uint32_t octet_a = i < input_length ? data[i++] : 0;
-      uint32_t octet_b = i < input_length ? data[i++] : 0;
-      uint32_t octet_c = i < input_length ? data[i++] : 0;
-      uint32_t triple = (octet_a << 0x10) + (octet_b << 0x08) + octet_c;
-      encoded_data[j++] = encoding_table[(triple >> 3 * 6) & 0x3F];
-      encoded_data[j++] = encoding_table[(triple >> 2 * 6) & 0x3F];
-      encoded_data[j++] = encoding_table[(triple >> 1 * 6) & 0x3F];
-      encoded_data[j++] = encoding_table[(triple >> 0 * 6) & 0x3F];
+    if (!output) {
+      return nullptr;
     }
 
-    for (i = 0; i < mod_table[input_length % 3]; i++) {
-      encoded_data[*output_length - 1 - i] = '=';
+    const auto length = encodeBase64Length(inputLength);
+
+    for (i = 0, j = 0; i < inputLength;) {
+      uint32_t octetA = i < inputLength ? input[i++] : 0;
+      uint32_t octetB = i < inputLength ? input[i++] : 0;
+      uint32_t octetC = i < inputLength ? input[i++] : 0;
+      uint32_t triple = (octetA << 0x10) + (octetB << 0x08) + octetC;
+      output[j++] = BASE64_ENCODING_TABLE[(triple >> 3 * 6) & 0x3F];
+      output[j++] = BASE64_ENCODING_TABLE[(triple >> 2 * 6) & 0x3F];
+      output[j++] = BASE64_ENCODING_TABLE[(triple >> 1 * 6) & 0x3F];
+      output[j++] = BASE64_ENCODING_TABLE[(triple >> 0 * 6) & 0x3F];
     }
 
-    encoded_data[*output_length] = '\0'; // Null-terminate the string
-    return encoded_data;
+    for (i = 0; i < BASE64_MOD_TABLE[inputLength % 3]; i++) {
+      output[length - 1 - i] = '=';
+    }
+
+    output[length] = 0;
+
+    if (outputLength != nullptr) {
+      *outputLength = length;
+    }
+
+    return output;
+  }
+
+  const Vector<unsigned char> encodeBase64 (const String& input) {
+    size_t size;
+    unsigned char output[encodeBase64Length(input.size())];
+    encodeBase64(
+      reinterpret_cast<const unsigned char*>(input.data()),
+      output,
+      input.size(),
+      &size
+    );
+
+    return Vector<unsigned char>(output, output + size + 1);
   }
 
   String encodeURIComponent (const String& input) {

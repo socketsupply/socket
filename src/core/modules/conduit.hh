@@ -130,7 +130,7 @@ namespace SSC {
 
           ~Client ();
 
-          bool emit (
+          bool send (
             const CoreConduit::Options& options,
             SharedPointer<char[]> payload,
             size_t length,
@@ -143,11 +143,13 @@ namespace SSC {
 
       // state
       std::map<uint64_t, Client*> clients;
+      String sharedKey;
       Atomic<bool> isStarting = false;
       Atomic<int> port = 0;
+      String hostname = "0.0.0.0";
       Mutex mutex;
 
-      CoreConduit (Core* core) : CoreModule(core) {};
+      CoreConduit (Core* core);
       ~CoreConduit ();
 
       // codec

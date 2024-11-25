@@ -3,6 +3,8 @@
 
 #include "../platform/types.hh"
 
+#define SHA_DIGEST_LENGTH 20
+
 namespace SSC {
   /**
    * Encodes input by replacing certain characters by
@@ -85,21 +87,26 @@ namespace SSC {
    * @param dest Pointer to the destination buffer to store the hash
    */
   void shacalc (const char* src, char* dest);
+  const String shacalc (const String&, size_t size = SHA_DIGEST_LENGTH);
 
   /**
    * Encodes a given input data to a Base64 encoded string.
-   * @param data Pointer to the input data
-   * @param input_length Length of the input data
-   * @param output_length Pointer to store the length of the encoded output
+   * @param input Pointer to the input data
+   * @param output Pointer to the output data
+   * @param inputLength Length of the input data
+   * @param outputLength Pointer to store the length of the encoded output
    * @return Pointer to the Base64 encoded string
    */
-  unsigned char* base64Encode(const unsigned char *data, size_t input_length, size_t *output_length);
+  unsigned char* encodeBase64 (
+    const unsigned char* input,
+    unsigned char* output,
+    size_t inputLength,
+    size_t* outputLength
+  );
 
-  // Encoding table for base64 encoding
-  const char encoding_table[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  size_t encodeBase64Length (size_t inputLength);
 
-  // Modulus table for base64 encoding
-  const int mod_table[] = {0, 2, 1};
+  const Vector<unsigned char> encodeBase64 (const String&);
 }
 
 #endif

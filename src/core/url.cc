@@ -1,3 +1,5 @@
+#include <type_traits>
+
 #include "codec.hh"
 #include "debug.hh"
 #include "url.hh"
@@ -81,6 +83,154 @@ namespace SSC {
     }
 
     return components;
+  }
+
+  URL::PathComponents::PathComponents (const String& pathname) {
+    this->set(pathname);
+  }
+
+  void URL::PathComponents::set (const String& pathname) {
+    const auto parts = split(pathname, "/");
+    for (const auto& part : parts) {
+      const auto value = trim(part);
+      if (value.size() > 0) {
+        this->parts.push_back(value);
+      }
+    }
+  }
+
+  const String URL::PathComponents::operator[] (const size_t index) const {
+    return this->parts[index];
+  }
+
+  const String& URL::PathComponents::operator[] (const size_t index) {
+    return this->parts[index];
+  }
+
+  const String& URL::PathComponents:: at (const size_t index) const {
+    return this->parts.at(index);
+  }
+
+  const String URL::PathComponents::str () const noexcept {
+    return "/" + join(this->parts, "/");
+  }
+
+  const URL::PathComponents::Iterator URL::PathComponents::begin () const noexcept {
+    return this->parts.begin();
+  }
+
+  const URL::PathComponents::Iterator URL::PathComponents::end () const noexcept {
+    return this->parts.end();
+  }
+
+  const size_t URL::PathComponents::size () const noexcept {
+    return this->parts.size();
+  }
+
+  const bool URL::PathComponents::empty () const noexcept {
+    return this->parts.empty();
+  }
+
+  template <typename T>
+  const T URL::PathComponents::get (const size_t index) const {
+    if (std::is_same<T, uint64_t>::value) {
+      return std::stoull(this->at(index));
+    }
+
+    if (std::is_same<T, int64_t>::value) {
+      return std::stoll(this->at(index));
+    }
+
+    if (std::is_same<T, uint32_t>::value) {
+      return std::stoul(this->at(index));
+    }
+
+    if (std::is_same<T, int32_t>::value) {
+      return std::stol(this->at(index));
+    }
+
+    if (std::is_same<T, uint16_t>::value) {
+      return std::stoul(this->at(index));
+    }
+
+    if (std::is_same<T, int16_t>::value) {
+      return std::stol(this->at(index));
+    }
+
+    if (std::is_same<T, uint8_t>::value) {
+      return std::stoul(this->at(index));
+    }
+
+    if (std::is_same<T, int8_t>::value) {
+      return std::stod(this->at(index));
+    }
+
+    if (std::is_same<T, bool>::value) {
+      if (std::stod(this->at(index)) == 0) {
+        return false;
+      }
+
+      return true;
+    }
+
+    throw new Error("unhandled type in URL::PathComponents::get");
+  }
+
+  template const uint64_t URL::PathComponents::get (const size_t index) const;
+  template const int64_t URL::PathComponents::get (const size_t index) const;
+  template const uint32_t URL::PathComponents::get (const size_t index) const;
+  template const int32_t URL::PathComponents::get (const size_t index) const;
+  template const uint16_t URL::PathComponents::get (const size_t index) const;
+  template const int16_t URL::PathComponents::get (const size_t index) const;
+  template const uint8_t URL::PathComponents::get (const size_t index) const;
+  template const int8_t URL::PathComponents::get (const size_t index) const;
+  template const bool URL::PathComponents::get (const size_t index) const;
+
+  URL::SearchParams::SearchParams (const String& input) {
+    const auto query = input.starts_with("?")
+      ? input.substr(1)
+      : input;
+
+    for (const auto& entry : split(query, '&')) {
+      const auto parts = split(entry, '=');
+      if (parts.size() == 2) {
+        const auto key = decodeURIComponent(trim(parts[0]));
+        const auto value = decodeURIComponent(trim(parts[1]));
+        this->set(key, value);
+      }
+    }
+  }
+
+  URL::SearchParams::SearchParams (const SearchParams& input) {
+    for (const auto& entry : input) {
+      this->set(entry.first, entry.second);
+    }
+  }
+
+  URL::SearchParams::SearchParams (const Map& input) {
+    for (const auto& entry : input) {
+      this->set(entry.first, entry.second);
+    }
+  }
+
+  URL::SearchParams::SearchParams (const JSON::Object& input) {
+    for (const auto& entry : input) {
+      this->set(entry.first, entry.second);
+    }
+  }
+
+  const String URL::SearchParams::str () const {
+    Vector<String> components;
+    for (const auto& entry : *this) {
+      const auto parts = Vector<String> {
+        entry.first,
+        entry.second.str()
+      };
+
+      components.push_back(join(parts, "="));
+    }
+
+    return join(components, "&");
   }
 
   URL::Builder& URL::Builder::setProtocol (const String& protocol) {
@@ -281,9 +431,13 @@ namespace SSC {
         if (parts.size() == 2) {
           const auto key = decodeURIComponent(trim(parts[0]));
           const auto value = decodeURIComponent(trim(parts[1]));
-          this->searchParams.insert_or_assign(key, value);
+          this->searchParams.set(key, value);
         }
       }
+    }
+
+    if (this->pathname.size() > 0) {
+      this->pathComponents.set(this->pathname);
     }
   }
 

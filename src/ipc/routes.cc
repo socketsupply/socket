@@ -2927,7 +2927,7 @@ static void mapIPCRoutes (Router *router) {
           };
 
           auto client = router->bridge->core->conduit.get(id);
-          client->emit(options, post.body, post.length);
+          client->send(options, post.body, post.length);
           return;
         }
 
@@ -3582,21 +3582,63 @@ static void mapIPCRoutes (Router *router) {
   });
 
   /**
+   * @param index
+   * @param value
+   */
+  router->map("window.eval", [=](auto message, auto router, auto reply) {
+    const auto app = App::sharedApplication();
+
+    if (app == nullptr) {
+      return reply(Result::Err { message, "Application is in invalid state" });
+    }
+
+    int index = 0;
+    if (message.has("index")) {
+      REQUIRE_AND_GET_MESSAGE_VALUE(index, "index", std::stoi);
+    }
+
+    const auto value = message.get("value");
+    const auto window = app->windowManager.getWindow(index);
+
+    if (!window) {
+      return reply(Result::Err {
+        message,
+        JSON::Object::Entries {
+          {"message", "Target window not found"},
+          {"type", "NotFoundError"}
+        }
+      });
+    }
+
+    window->eval(value, [=](const auto result) {
+      reply(Result::Data { message, result });
+    });
+  });
+
+  /**
    * Send an event to another window
    * @param event
    * @param value
-   * @param targetWindowIndex
+   * @param targetWindowIndex (DEPRECATED) use `index` instead
+   * @param index
    */
   router->map("window.send", [=](auto message, auto router, auto reply) {
     const auto app = App::sharedApplication();
 
     if (app == nullptr) {
-      return reply(Result::Err { message, "Application is invalid state" });
+      return reply(Result::Err { message, "Application is in invalid state" });
     }
+
+    int targetWindowIndex = -1;
 
     const auto event = message.get("event");
     const auto value = message.get("value");
-    const auto targetWindowIndex = message.get("targetWindowIndex").size() >= 0 ? std::stoi(message.get("targetWindowIndex")) : -1;
+
+    try {
+      targetWindowIndex = message.get("targetWindowIndex").size() >= 0
+        ? std::stoi(message.get("targetWindowIndex"))
+        : -1;
+    } catch (...) {}
 
     if (targetWindowIndex < 0) {
       return reply(Result::Err { message, "Invalid target window index" });

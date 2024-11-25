@@ -97,6 +97,7 @@ declare sources=(
   $(find "$root"/src/app/*.cc)
   $(find "$root"/src/core/*.cc)
   $(find "$root"/src/core/modules/*.cc)
+  $(find "$root"/src/core/json/*.cc)
   $(find "$root"/src/extension/*.cc)
   $(find "$root"/src/ipc/*.cc)
   $(find "$root"/src/platform/*.cc)
