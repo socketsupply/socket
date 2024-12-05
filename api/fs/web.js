@@ -380,6 +380,10 @@ export async function createFileSystemFileHandle (file, options = null) {
     get [kFileDescriptor] () { return file[kFileDescriptor] }
 
     get name () {
+      if (typeof file === 'string') {
+        return path.basename(file)
+      }
+
       return file.name
     }
 
