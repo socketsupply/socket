@@ -260,15 +260,16 @@ export async function showOpenFilePicker (options = null) {
 export async function showSaveFilePicker (options = null) {
   requireUserActivation('showSaveFilePicker')
 
-  const { startIn, id, types, excludeAcceptAllOption } = options || {}
+  const { startIn, id, types, excludeAcceptAllOption, suggestedName } = options || {}
   const currentWindow = await application.getCurrentWindow()
-  const [filename] = await currentWindow.showSaveFilePicker(
+  const filename = await currentWindow.showSaveFilePicker(
     normalizeShowFileSystemPickerOptions({
       directories: false,
       multiple: false,
       files: true,
 
       excludeAcceptAllOption,
+      suggestedName,
       startIn,
       types,
       id
