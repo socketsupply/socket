@@ -1,10 +1,12 @@
 import { SecurityError } from '../errors.js'
 import application from '../application.js'
 import path from '../path.js'
+import fs from '../fs/promises.js'
 
 import {
   createFileSystemDirectoryHandle,
   createFileSystemFileHandle,
+  createFile,
   FileSystemHandle
 } from '../fs/web.js'
 
@@ -281,8 +283,10 @@ export async function showSaveFilePicker (options = null) {
   }
 
   bookmarks.temporary.set(filename, null)
+  const fd = await fs.open(filename, 'w+')
+  const file = await createFile(filename, { fd })
 
-  return await createFileSystemFileHandle(filename)
+  return await createFileSystemFileHandle(file)
 }
 
 export default {

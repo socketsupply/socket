@@ -1,6 +1,6 @@
 /* global ReadableStream, WritableStream, Blob */
+import { isBufferLike, toBuffer, splitBuffer } from '../util.js'
 import { DEFAULT_STREAM_HIGH_WATER_MARK } from './stream.js'
-import { isBufferLike, toBuffer } from '../util.js'
 import { NotAllowedError } from '../errors.js'
 import { readFileSync } from './index.js'
 import mime from '../mime.js'
@@ -282,7 +282,7 @@ export async function createFileSystemWritableFileStream (handle, options) {
 
   const file = await handle.getFile()
   let offset = 0
-  let fd = null
+  let fd = file?.[kFileDescriptor] || null
 
   if (options?.keepExistingData === true) {
     try {
@@ -350,7 +350,12 @@ export async function createFileSystemWritableFileStream (handle, options) {
         }
 
         const buffer = toBuffer(data)
-        await fd.write(buffer, 0, buffer.byteLength, offset)
+        const buffers = splitBuffer(buffer, 16 * 1024)
+        while (buffers.length) {
+          const buffer = buffers.shift()
+          await fd.write(buffer, 0, buffer.byteLength, offset)
+          offset += buffer.byteLength
+        }
       }
     }
 
@@ -384,7 +389,7 @@ export async function createFileSystemFileHandle (file, options = null) {
         return path.basename(file)
       }
 
-      return file.name
+      return file?.name ?? ''
     }
 
     get kind () {
