@@ -346,7 +346,11 @@ export function init () {
             value = value.slice()
           }
 
-          return append.call(this, name, value, filename)
+          if (name && value && filename) {
+            return append.call(this, name, value, filename)
+          } else {
+            return append.call(this, name, value)
+          }
         }
       },
 
@@ -366,7 +370,11 @@ export function init () {
             value = value.slice()
           }
 
-          return set.call(this, name, value, filename)
+          if (name && value && filename) {
+            return set.call(this, name, value, filename)
+          } else {
+            return set.call(this, name, value)
+          }
         }
       }
     })
