@@ -795,21 +795,23 @@ void signalHandler (int signum) {
 
     if (appStatus == -1) {
       appStatus = signum;
-      log("App result: " + std::to_string(signum));
+      log("App result (signal): " + std::to_string(signum));
     }
 
     if (signum == SIGTERM || signum == SIGINT) {
+    #if SOCKET_RUNTIME_PLATFORM_LINUX
+      while (wait(NULL) != -1 || errno == EINTR);
+    #endif
       signal(signum, SIG_DFL);
       raise(signum);
     }
 
   #if SOCKET_RUNTIME_PLATFORM_LINUX
-    msleep(500);
     if (gtk_main_level() > 0) {
       g_main_context_invoke(
         nullptr,
         +[](gpointer userData) -> gboolean {
-          msleep(16);
+          msleep(1000);
           gtk_main_quit();
           return true;
         },
