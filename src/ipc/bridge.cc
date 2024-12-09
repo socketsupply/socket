@@ -643,9 +643,11 @@ export * from '{{url}}'
                 response.setHeader("cache-control", "public");
                 response.send(resource);
               } else {
-                const auto html = this->client.preload.insertIntoHTML(resource.str(), {
-                  .protocolHandlerSchemes = this->navigator.serviceWorker.protocols.getSchemes()
-                });
+                const auto html = request->headers["runtime-preload-injection"] == "disabled"
+                  ? resource.str()
+                  : this->client.preload.insertIntoHTML(resource.str(), {
+                      .protocolHandlerSchemes = this->navigator.serviceWorker.protocols.getSchemes()
+                    });
 
                 response.setHeader("content-type", "text/html");
                 response.setHeader("content-length", html.size());

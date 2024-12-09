@@ -298,7 +298,7 @@ namespace SSC::IPC {
               enumerable: true,
               get: () => {
                 if (
-                  globalThis.origin.includes(globalThis.__args.config.meta_bundle_identifier) ||
+                  globalThis.origin.includes(globalThis.__args.config.meta_bundle_identifier.toLowerCase()) ||
                   globalThis.origin.includes(globalThis.__args.client.host + ':' + globalThis.__args.client.port)
                 ) {
                   return globalThis.top
@@ -466,7 +466,7 @@ namespace SSC::IPC {
           globalThis.document &&
           !globalThis.RUNTIME_APPLICATION_URL_EVENT_BACKLOG &&
           (
-            globalThis.origin.includes(globalThis.__args.config.meta_bundle_identifier) ||
+            globalThis.origin.includes(globalThis.__args.config.meta_bundle_identifier.toLowerCase()) ||
             globalThis.origin.includes(globalThis.__args.client.host + ':' + globalThis.__args.client.port)
           )
         ) {
@@ -557,7 +557,7 @@ namespace SSC::IPC {
             }
 
             if (
-              globalThis.origin.includes(globalThis.__args.config.meta_bundle_identifier) ||
+              globalThis.origin.includes(globalThis.__args.config.meta_bundle_identifier.toLowerCase()) ||
               globalThis.origin.includes(globalThis.__args.client.host + ':' + globalThis.__args.client.port)
             ) {
               if (globalThis.document && globalThis.document.readyState !== 'complete') {
@@ -598,7 +598,7 @@ namespace SSC::IPC {
         buffers.push_back(R"JAVASCRIPT(
           if (
             globalThis.document && !globalThis.module && (
-              globalThis.origin.includes(globalThis.__args.config.meta_bundle_identifier) ||
+              globalThis.origin.includes(globalThis.__args.config.meta_bundle_identifier.toLowerCase()) ||
               globalThis.origin.includes(globalThis.__args.client.host + ':' + globalThis.__args.client.port)
             )
           ) {
@@ -660,7 +660,7 @@ namespace SSC::IPC {
         buffers.push_back(R"JAVASCRIPT(
           if (
             globalThis.document && !globalThis.process && (
-              globalThis.origin.includes(globalThis.__args.config.meta_bundle_identifier) ||
+              globalThis.origin.includes(globalThis.__args.config.meta_bundle_identifier.toLowerCase()) ||
               globalThis.origin.includes(globalThis.__args.client.host + ':' + globalThis.__args.client.port)
             )
           ) {
