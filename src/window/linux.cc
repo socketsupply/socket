@@ -1038,7 +1038,9 @@ namespace SSC {
   }
 
   ScreenSize Window::getScreenSize () {
+    auto app = App::sharedApplication();
     auto list = gtk_window_list_toplevels();
+    auto defaultWindow = app->windowManager.getWindow(0);
     int width = 0;
     int height = 0;
 
@@ -1047,7 +1049,10 @@ namespace SSC {
         auto widget = (GtkWidget*) entry->data;
         auto window = GTK_WINDOW(widget);
 
-        if (window != nullptr) {
+        if (
+          (defaultWindow == nullptr && window != nullptr) ||
+          (GTK_WINDOW(defaultWindow->window) == window)
+        ) {
           auto geometry = GdkRectangle {};
           auto display = gtk_widget_get_display(widget);
           auto monitor = gdk_display_get_monitor_at_window(
