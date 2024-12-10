@@ -193,15 +193,7 @@ export async function onMessage (event) {
 
       // import module, which could be ESM, CommonJS,
       // or a simple ServiceWorker
-      const result = await import(scriptURL)
-
-      if (typeof module.exports === 'function') {
-        module.exports = {
-          default: module.exports
-        }
-      } else {
-        Object.assign(module.exports, result)
-      }
+      Object.assign(module.exports, await import(scriptURL))
 
       state.serviceWorker.state = 'registered'
       await state.notify('serviceWorker')
@@ -249,7 +241,7 @@ export async function onMessage (event) {
     if (typeof state.activate === 'function') {
       globalThis.addEventListener('activate', async (event) => {
         try {
-          const promise = state.activate(event.context.env, event.ontext)
+          const promise = state.activate(event.context.env, event.context)
           event.waitUntil(promise)
           await promise
         } catch (err) {
