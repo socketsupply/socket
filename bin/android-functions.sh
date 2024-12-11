@@ -22,11 +22,11 @@ declare ANDROID_SDK_MANAGER_DEFAULT_SEARCH_PATHS=(
 
 declare ANDROID_PLATFORM_TOOLS_URI_TEMPLATE="https://dl.google.com/android/repository/platform-tools-latest-{os}.zip"
 declare ANDROID_PLATFORM_TOOLS_PAGE_URI="https://developer.android.com/studio/releases/platform-tools"
-declare ANDROID_COMMAND_LINE_TOOLS_URI_TEMPLATE="https://dl.google.com/android/repository/commandlinetools-{os}-9477386_latest.zip"
+declare ANDROID_COMMAND_LINE_TOOLS_URI_TEMPLATE="https://dl.google.com/android/repository/commandlinetools-{os}-11076708_latest.zip"
 declare ANDROID_STUDIO_PAGE_URI="https://developer.android.com/studio"
-declare JDK_VERSION="19.0.2"
-declare JDK_URI_TEMPLATE="https://download.java.net/java/GA/jdk$JDK_VERSION/fdb695a9d9064ad6b064dc6df578380c/7/GPL/openjdk-$JDK_VERSION""_""{os}-{arch}_bin.{format}"
-declare GRADLE_VERSION="8.0.2"
+declare JDK_VERSION="20.0.2"
+declare JDK_URI_TEMPLATE="https://download.java.net/java/GA/jdk$JDK_VERSION/6e380f22cbe7469fa75fb448bd903d8e/9/GPL/openjdk-$JDK_VERSION""_""{os}-{arch}_bin.{format}"
+declare GRADLE_VERSION="8.2.1"
 declare GRADLE_URI_TEMPLATE="https://services.gradle.org/distributions/gradle-$GRADLE_VERSION-bin.zip"
 
 # TODO(mribbons): ubuntu / apt libs: apt-get install libc6:i386 libncurses5:i386 libstdc++6:i386 lib32z1 libbz2-1.0:i386
@@ -488,7 +488,7 @@ function android_supported_abis() {
 export ANDROID_DEPS_ERROR
 
 declare ANDROID_PLATFORM="34"
-declare NDK_VERSION="26.1.10909125"
+declare NDK_VERSION="27.2.12479018"
 
 export BUILD_ANDROID
 

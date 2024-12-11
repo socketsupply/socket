@@ -40,12 +40,12 @@ apply plugin: 'kotlin-android'
 
 android {
   compileSdkVersion 34
-  ndkVersion "26.1.10909125"
+  ndkVersion "27.2.12479018"
   flavorDimensions "default"
 
   defaultConfig {
     applicationId "socket.runtime"
-    minSdkVersion 24
+    minSdkVersion 34
     targetSdkVersion 34
     versionCode 1
     versionName "0.0.1"
