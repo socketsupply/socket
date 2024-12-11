@@ -662,7 +662,7 @@ Buffer.isEncoding = function isEncoding (encoding) {
   }
 }
 
-Buffer.concat = function concat (list, length) {
+Buffer.concat = function concat (list, length = undefined) {
   if (!Array.isArray(list)) {
     throw new TypeError('"list" argument must be an Array of Buffers')
   }

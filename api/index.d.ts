@@ -589,7 +589,7 @@ declare module "socket:buffer" {
         export function isBuffer(b: any): boolean;
         export function compare(a: any, b: any): 0 | 1 | -1;
         export function isEncoding(encoding: any): boolean;
-        export function concat(list: any, length: any): Uint8Array;
+        export function concat(list: any, length?: any): Uint8Array;
         export { byteLength };
     }
     export const kMaxLength: 2147483647;
