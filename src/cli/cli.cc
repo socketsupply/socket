@@ -771,8 +771,13 @@ void signalHandler (int signum) {
 #endif
 
   if (signum == SIGINT || signum == SIGTERM) {
+    if (appStatus == -1) {
+      log("App result (signal): " + std::to_string(signum));
+    }
+
     if (appProcess != nullptr) {
       appProcess->kill(signum);
+      appProcess->wait();
       appProcess = nullptr;
     }
 
@@ -795,7 +800,6 @@ void signalHandler (int signum) {
 
     if (appStatus == -1) {
       appStatus = signum;
-      log("App result (signal): " + std::to_string(signum));
     }
 
     if (signum == SIGTERM || signum == SIGINT) {
@@ -5319,7 +5323,7 @@ int main (int argc, char* argv[]) {
       StringStream sdkmanager;
       StringStream packages;
       StringStream gradlew;
-      String ndkVersion = "26.1.10909125";
+      String ndkVersion = "27.2.12479018";
       String androidPlatform = "android-34";
 
       if (platform.unix) {

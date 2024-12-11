@@ -478,7 +478,7 @@ constexpr auto gAndroidManifest = R"XML(
   xmlns:android="http://schemas.android.com/apk/res/android"
 >
   <uses-sdk
-    android:minSdkVersion="26"
+    android:minSdkVersion="34"
     android:targetSdkVersion="34"
   />
 
@@ -1346,7 +1346,7 @@ buildscript {
   }
 
   dependencies {
-    classpath 'com.android.tools.build:gradle:7.4.1'
+    classpath 'com.android.tools.build:gradle:8.2.0'
     classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
   }
 }
@@ -1372,22 +1372,26 @@ apply plugin: 'kotlin-android'
 
 android {
   compileSdkVersion 34
-  ndkVersion "26.1.10909125"
+  ndkVersion "27.2.12479018"
   flavorDimensions "default"
   namespace '{{android_bundle_identifier}}'
 
   compileOptions {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
+    sourceCompatibility = JavaVersion.VERSION_20
+    targetCompatibility = JavaVersion.VERSION_20
+  }
+
+  buildFeatures {
+    buildConfig = true
   }
 
   kotlinOptions {
-    jvmTarget = 17
+    jvmTarget = 20
   }
 
   defaultConfig {
     applicationId "{{android_bundle_identifier}}"
-    minSdkVersion 26
+    minSdkVersion 34
     targetSdkVersion 34
     versionCode {{meta_revision}}
     versionName "{{meta_version}}"
