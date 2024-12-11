@@ -11,6 +11,7 @@ import location from '../location.js'
 import path from '../path.js'
 import URL from '../url.js'
 import fs from '../fs.js'
+import os from '../os.js'
 
 const RUNTIME_SERVICE_WORKER_FETCH_MODE = 'Runtime-ServiceWorker-Fetch-Mode'
 const RUNTIME_REQUEST_SOURCE_HEADER = 'Runtime-Request-Source'
@@ -208,6 +209,7 @@ export class RequestStatus {
     }
 
     if (
+      os.platform() !== 'android' &&
       this.#request.id.includes(`://${application.config.meta_bundle_identifier}`)
     ) {
       try {
@@ -440,6 +442,7 @@ export class Request {
     }
 
     if (
+      os.platform() !== 'android' &&
       /^(socket:|https:)/.test(this.id) &&
       this.id.includes(`//${application.config.meta_bundle_identifier}/`)
     ) {
