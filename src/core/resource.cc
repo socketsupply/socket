@@ -733,10 +733,6 @@ namespace SSC {
 
   int FileResource::access (int mode) const noexcept {
     if (this->accessing) {
-      if (mode == ::access(this->path.string().c_str(), mode)) {
-        return mode;
-      }
-
     #if SOCKET_RUNTIME_PLATFORM_ANDROID
       if (this->isAndroidLocalAsset() || this->isAndroidContent()) {
         if (mode == F_OK || mode == R_OK) {
@@ -744,6 +740,10 @@ namespace SSC {
         }
       }
     #endif
+
+      if (mode == ::access(this->path.string().c_str(), mode)) {
+        return mode;
+      }
     }
 
     return -1; // `EPERM`

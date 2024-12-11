@@ -13,7 +13,7 @@ namespace SSC {
       using Options = std::unordered_map<String, String>;
       using StartCallback = Function<void()>;
 
-      struct EncodedMessage {
+      struct DecodedMessage {
         Options options;
         Vector<uint8_t> payload;
 
@@ -54,7 +54,7 @@ namespace SSC {
       };
 
       struct FrameBuffer {
-        Vector<unsigned char> vector;
+        Vector<uint8_t> vector;
 
         inline const size_t size () const {
           return this->vector.size();
@@ -84,17 +84,17 @@ namespace SSC {
           return this->vector.at(index);
         }
 
-        const Vector<unsigned int> slice (
-          Vector<unsigned int>::const_iterator& begin,
-          Vector<unsigned int>::const_iterator& end
+        const Vector<uint8_t> slice (
+          Vector<uint8_t>::const_iterator& begin,
+          Vector<uint8_t>::const_iterator& end
         ) {
-          return std::move(Vector<unsigned int>(begin, end));
+          return std::move(Vector<uint8_t>(begin, end));
         }
 
-        template<typename T = unsigned int>
+        template<typename T = uint8_t>
         const Vector<T> slice (
-          Vector<unsigned int>::size_type start,
-          Vector<unsigned int>::size_type end
+          Vector<uint8_t>::size_type start,
+          Vector<uint8_t>::size_type end
         ) {
           return Vector<T>(this->vector.begin() + start, this->vector.begin() + end);
         }
@@ -119,6 +119,8 @@ namespace SSC {
 
           // websocket frame buffer state
           FrameBuffer frameBuffer;
+          uint64_t frameBufferOffset = 0;
+          Vector<DecodedMessage> queue;
           CoreConduit* conduit = nullptr;
 
           Client (CoreConduit* conduit)
@@ -153,7 +155,7 @@ namespace SSC {
       ~CoreConduit ();
 
       // codec
-      EncodedMessage decodeMessage (const Vector<uint8_t>& data);
+      DecodedMessage decodeMessage (const Vector<uint8_t>& data);
       Vector<uint8_t> encodeMessage (
         const Options& options,
         const Vector<uint8_t>& payload

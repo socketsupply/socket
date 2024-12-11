@@ -76,10 +76,10 @@ namespace SSC {
     return encodedMessage;
   }
 
-  CoreConduit::EncodedMessage CoreConduit::decodeMessage (
+  CoreConduit::DecodedMessage CoreConduit::decodeMessage (
     const Vector<uint8_t>& data
   ) {
-    EncodedMessage message;
+    DecodedMessage message;
 
     if (data.size() < 1) return message;
 
@@ -220,7 +220,7 @@ namespace SSC {
     } while (0);
 
     if (sharedKey != this->sharedKey) {
-      debug("conduit client failed auth");
+      debug("CoreConduit::Client failed auth");
       client->close();
       return;
     }
@@ -306,18 +306,28 @@ namespace SSC {
     memcpy(maskingKey, data + pos, 4);
     pos += 4;
 
+    if (client->frameBuffer.size() == 0) {
+      client->frameBuffer.resize(payloadSize + (2 * 1024 * 1024));
+    }
+
     // resize client frame buffer if payload size is too big to fit
-    if (payloadSize > client->frameBuffer.size()) {
-      client->frameBuffer.resize(payloadSize);
+    if (payloadSize + client->frameBufferOffset > client->frameBuffer.size()) {
+      client->frameBuffer.resize(payloadSize + client->frameBufferOffset);
     }
 
     for (uint64_t i = 0; i < payloadSize; ++i) {
-      client->frameBuffer[i] = data[pos + i] ^ maskingKey[i % 4];
+      client->frameBuffer[client->frameBufferOffset + i] = data[pos + i] ^ maskingKey[i % 4];
     }
 
-    pos += payloadSize;
+    auto decoded = this->decodeMessage(client->frameBuffer.slice<uint8_t>(
+      client->frameBufferOffset,
+      client->frameBufferOffset + payloadSize
+    ));
 
-    auto decoded = this->decodeMessage(client->frameBuffer.slice<uint8_t>(0, payloadSize));
+    pos += payloadSize;
+    client->frameBufferOffset += payloadSize;
+
+    client->queue.push_back(decoded);
 
     if (!decoded.has("route")) {
       if (decoded.has("to")) {
@@ -327,9 +337,25 @@ namespace SSC {
           if (to != from) {
             const auto app = App::sharedApplication();
             const auto options = decoded.options;
-            const auto size = decoded.payload.size();
+            size_t size = 0;
+            size_t offset = 0;
+            Vector<uint8_t> buffer;
+            for (const auto& entry : client->queue) {
+              size += entry.payload.size();
+            }
+            buffer.resize(size);
+            for (const auto& entry : client->queue) {
+              for (int i = 0; i < entry.payload.size(); ++i) {
+                buffer[offset + i] = entry.payload[i];
+              }
+
+              offset += entry.payload.size();
+            }
+
+            const auto bytes = vectorToSharedPointer(buffer);
             const auto payload = std::make_shared<char[]>(size);
-            memcpy(payload.get(), decoded.payload.data(), size);
+
+            memcpy(payload.get(), bytes.get(), size);
             app->dispatch([this, options, size, payload, from, to] () {
               Lock lock(this->mutex);
               auto recipient = this->clients[to];
@@ -366,14 +392,31 @@ namespace SSC {
       ss << "&" << key << "=" << value;
     }
 
-    const auto bytes = vectorToSharedPointer(decoded.payload);
-    const auto size = decoded.payload.size();
+    size_t size = 0;
+    size_t offset = 0;
+    Vector<uint8_t> buffer;
+    for (const auto& entry : client->queue) {
+      size += entry.payload.size();
+    }
+    buffer.resize(size);
+    for (const auto& entry : client->queue) {
+      for (int i = 0; i < entry.payload.size(); ++i) {
+        buffer[offset + i] = entry.payload[i];
+      }
+
+      offset += entry.payload.size();
+    }
+
+    const auto bytes = vectorToSharedPointer(buffer);
     const auto app = App::sharedApplication();
     const auto uri = ss.str();
 
     auto window = client && client->clientId > 0
       ? app->windowManager.getWindowForClient({ .id = client->clientId })
       : nullptr;
+
+    client->queue.clear();
+    client->frameBufferOffset = 0;
 
     if (window != nullptr) {
       app->dispatch([window, uri, bytes, size]() {
