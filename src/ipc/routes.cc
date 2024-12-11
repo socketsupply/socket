@@ -2450,16 +2450,50 @@ static void mapIPCRoutes (Router *router) {
    * @param query
    */
   router->map("serviceWorker.fetch", [=](auto message, auto router, auto reply) {
-    const auto fetch = ServiceWorkerContainer::FetchRequest {
+    auto fetch = ServiceWorkerContainer::FetchRequest {
       message.get("method", "GET"),
       message.get("scheme", "socket"),
-      message.get("hostname", router->bridge->userConfig["meta_bundle_identifier"]),
+      message.get("hostname"),
       message.get("pathname", "/"),
       message.get("query", ""),
       Headers(message.get("headers", "")),
       ServiceWorkerContainer::FetchBody { message.buffer.size, message.buffer.bytes },
       router->bridge->client
     };
+
+    if (fetch.scheme == "socket" && fetch.hostname.size() == 0) {
+      fetch.hostname = router->bridge->userConfig["meta_bundle_identifier"];
+    }
+
+    if (fetch.method == "OPTIONS") {
+      const auto response = ServiceWorkerContainer::FetchResponse { rand64(), 204 };
+      return reply(Result {
+        message.seq,
+        message,
+        JSON::Object {},
+        Post {
+          rand64(),
+          0,
+          response.body.bytes,
+          response.body.size,
+          response.headers.str()
+        }
+      });
+    }
+
+    if (fetch.scheme == "npm") {
+      if (fetch.hostname.size() > 0) {
+        fetch.pathname = "/" + fetch.hostname;
+      }
+
+      fetch.hostname = router->bridge->userConfig["meta_bundle_identifier"];
+    }
+
+    const auto scope = router->bridge->navigator.serviceWorker.protocols.getServiceWorkerScope(fetch.scheme);
+
+    if (scope.size() > 0) {
+      fetch.pathname = scope + fetch.pathname;
+    }
 
     const auto fetched = router->bridge->navigator.serviceWorker.fetch(fetch, [=] (auto res) mutable {
       if (res.statusCode == 0) {
