@@ -23,15 +23,27 @@ export class GlobalsRegistry {
   }
 }
 
-const registry = (
-  globalThis.top?.__globals ??
-  globalThis.__globals ??
-  new GlobalsRegistry()
-)
-
+const registry = getTopRegistry()
 const RuntimeReadyPromiseResolvers = Promise.withResolvers()
+
 registry.register('RuntimeReadyPromiseResolvers', RuntimeReadyPromiseResolvers)
 registry.register('RuntimeReadyPromise', RuntimeReadyPromiseResolvers.promise)
+
+function getTopRegistry () {
+  try {
+    if (globalThis.top?.__globals) {
+      return globalThis.top?.__globals
+    }
+  } catch (err) {}
+
+  try {
+    if (globalThis.__globals) {
+      return globalThis.__globals
+    }
+  } catch (err) {}
+
+  return new GlobalsRegistry()
+}
 
 /**
  * Gets a runtime global value by name.

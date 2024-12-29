@@ -7884,6 +7884,8 @@ declare module "socket:application" {
      * @param {boolean=} [opts.headless=false] - whether the window will be headless or not (no frame)
      * @param {string=} [opts.userScript=null] - A user script that will be injected into the window (desktop only)
      * @param {string[]=} [opts.protocolHandlers] - An array of protocol handler schemes to register with the new window (requires service worker)
+     * @param {string=} [opts.resourcesDirectory]
+     * @param {boolean=} [opts.shouldPreferServiceWorker=false]
      * @return {Promise<ApplicationWindow>}
      */
     export function createWindow(opts: {
@@ -7913,6 +7915,8 @@ declare module "socket:application" {
         headless?: boolean | undefined;
         userScript?: string | undefined;
         protocolHandlers?: string[] | undefined;
+        resourcesDirectory?: string | undefined;
+        shouldPreferServiceWorker?: boolean | undefined;
     }): Promise<ApplicationWindow>;
     /**
      * Returns the current screen size.
@@ -9434,7 +9438,7 @@ declare module "socket:internal/conduit" {
      * @typedef {{ options: object, payload: Uint8Array }} ReceiveMessage
      * @typedef {function(Error?, ReceiveCallback | undefined)} ReceiveCallback
      * @typedef {{ isActive: boolean, handles: { ids: string[], count: number }}} ConduitDiagnostics
-     * @typedef {{ isActive: boolean, port: number }} ConduitStatus
+     * @typedef {{ isActive: boolean, port: number, sharedKey: string }} ConduitStatus
      * @typedef {{
      *   id?: string|BigInt|number,
      *   sharedKey?: string
@@ -9477,6 +9481,17 @@ declare module "socket:internal/conduit" {
             maxQueriesForStatus?: number;
         } | undefined): Promise<any>;
         /**
+         * Gets the current conduit shared key.
+         * @return {Promise<string>}
+         */
+        static getSharedKey(): Promise<string>;
+        /**
+         * Sets the conduit shared key.
+         * @param {string} sharedKey
+         * @return {Promise<string>}
+         */
+        static setSharedKey(sharedKey: string): Promise<string>;
+        /**
          * Creates an instance of Conduit.
          *
          * @param {ConduitOptions} options
@@ -9503,9 +9518,9 @@ declare module "socket:internal/conduit" {
          */
         port: number;
         /**
-         * @type {number?}
+         * @type {string}
          */
-        id: number | null;
+        id: string;
         /**
          * @type {string}
          */
@@ -9611,6 +9626,7 @@ declare module "socket:internal/conduit" {
     export type ConduitStatus = {
         isActive: boolean;
         port: number;
+        sharedKey: string;
     };
     export type ConduitOptions = {
         id?: string | BigInt | number;
@@ -10571,7 +10587,6 @@ declare module "socket:internal/database" {
         delete(key: string, options?: (DatabaseDeleteOptions | undefined) | null): Promise<any>;
         /**
          * Gets a "readonly" value by `key` in the `Database` object storage.
-         * @param {string} key
          * @param {?DatabaseEntriesOptions|undefined} [options]
          * @return {Promise<object|object[]|null>}
          */

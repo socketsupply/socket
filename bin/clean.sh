@@ -76,7 +76,6 @@ elif [ -n "$arch" ] || [ -n "$platform" ]; then
     "$root/build/"$arch-$platform/cli            \
     "$root/build/"$arch-$platform/runtime        \
     "$root/build/"$arch-$platform/ipc            \
-    "$root/build/"$arch-$platform/core           \
     "$root/build/"$arch-$platform/objects        \
     "$root/build/"$arch-$platform/process        \
     "$root/build/"$arch-$platform/window         \
@@ -95,7 +94,6 @@ else
     "$root"/build/*/bin            \
     "$root"/build/*/cli            \
     "$root"/build/*/runtime        \
-    "$root"/build/*/core           \
     "$root"/build/*/ipc            \
     "$root"/build/*/objects        \
     "$root"/build/*/process        \

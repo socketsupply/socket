@@ -2,7 +2,7 @@ import application from '../application.js'
 import debug from './debug.js'
 import ipc from '../ipc.js'
 
-export const channel = new BroadcastChannel('socket.runtime.serviceWorker.state')
+export const channel = new ipc.IPCBroadcastChannel('socket.runtime.serviceWorker.state')
 
 const descriptors = {
   channel: {
@@ -169,6 +169,12 @@ channel.addEventListener('message', (event) => {
 })
 
 if (globalThis.document) {
+  const timers = {
+    blur: 0,
+    focus: 0,
+    visibilitychange: 0
+  }
+
   channel.addEventListener('message', async (event) => {
     if (event.data?.client?.id === globalThis.__args.client.id) {
       if (event.data.client.focus === true) {
@@ -182,30 +188,39 @@ if (globalThis.document) {
   })
 
   globalThis.document.addEventListener('visibilitychange', (event) => {
-    channel.postMessage({
-      client: {
-        id: globalThis.__args.client.id,
-        visibilityState: globalThis.document.visibilityState
-      }
-    })
+    clearTimeout(timers.visibilityState)
+    timers.visibilityState = setTimeout(() => {
+      channel.postMessage({
+        client: {
+          id: globalThis.__args.client.id,
+          visibilityState: globalThis.document.visibilityState
+        }
+      })
+    }, 250)
   })
 
   globalThis.addEventListener('focus', (event) => {
-    channel.postMessage({
-      client: {
-        id: globalThis.__args.client.id,
-        focused: true
-      }
-    })
+    clearTimeout(timers.focus)
+    timers.focus = setTimeout(() => {
+      channel.postMessage({
+        client: {
+          id: globalThis.__args.client.id,
+          focused: true
+        }
+      })
+    }, 250)
   })
 
   globalThis.addEventListener('blur', (event) => {
-    channel.postMessage({
-      client: {
-        id: globalThis.__args.client.id,
-        focused: false
-      }
-    })
+    clearTimeout(timers.blur)
+    timers.blur = setTimeout(() => {
+      channel.postMessage({
+        client: {
+          id: globalThis.__args.client.id,
+          focused: false
+        }
+      })
+    }, 250)
   })
 }
 

@@ -1,4 +1,5 @@
 /* global MessagePort */
+import { splitBuffer } from '../util.js'
 import { Deferred } from '../async.js'
 import { Context } from './context.js'
 import application from '../application.js'
@@ -321,10 +322,24 @@ export class FetchEvent extends ExtendableEvent {
           'auto'
         )
 
-        const result = await ipc.write(
-          'serviceWorker.fetch.response',
-          params,
-          new Uint8Array(arrayBuffer)
+        const buffers = splitBuffer(new Uint8Array(arrayBuffer), 16 * 1024)
+        for (const buffer of buffers) {
+          const result = await ipc.write(
+            'serviceWorker.fetch.response.write',
+            params,
+            buffer
+          )
+
+          if (result.err) {
+            state.reportError(result.err)
+            handled.resolve()
+            return
+          }
+        }
+
+        const result = await ipc.request(
+          'serviceWorker.fetch.response.finish',
+          params
         )
 
         if (result.err) {

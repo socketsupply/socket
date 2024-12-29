@@ -24,7 +24,7 @@ class ServiceWorkerContainerInternalState {
   currentWindow = null
   controller = null
   sharedWorker = null
-  channel = new BroadcastChannel('socket.runtime.ServiceWorkerContainer')
+  channel = new ipc.IPCBroadcastChannel('socket.runtime.ServiceWorkerContainer')
   ready = new Deferred()
   init = new Deferred()
 
@@ -320,7 +320,9 @@ export class ServiceWorkerContainer extends EventTarget {
 
   async getRegistration (clientURL) {
     if (globalThis.top && globalThis.window && globalThis.top !== globalThis.window) {
-      return await globalThis.top.navigator.serviceWorker.getRegistration(clientURL)
+      try {
+        return await globalThis.top.navigator.serviceWorker.getRegistration(clientURL)
+      } catch (err) {}
     }
 
     let scope = clientURL
@@ -376,7 +378,9 @@ export class ServiceWorkerContainer extends EventTarget {
 
   async getRegistrations () {
     if (globalThis.top && globalThis.window && globalThis.top !== globalThis.window) {
-      return await globalThis.top.navigator.serviceWorker.getRegistrations()
+      try {
+        return await globalThis.top.navigator.serviceWorker.getRegistrations()
+      } catch (err) {}
     }
 
     const result = await ipc.request('serviceWorker.getRegistrations')

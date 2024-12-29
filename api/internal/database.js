@@ -895,7 +895,6 @@ export class Database extends EventTarget {
 
   /**
    * Gets a "readonly" value by `key` in the `Database` object storage.
-   * @param {string} key
    * @param {?DatabaseEntriesOptions|undefined} [options]
    * @return {Promise<object|object[]|null>}
    */

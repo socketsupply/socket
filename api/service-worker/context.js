@@ -79,9 +79,11 @@ export class Context {
    */
   async client () {
     if (this.event.clientId) {
+      console.log('REQUEST CLIENT', this.event.clientId)
       return await clients.get(this.event.clientId)
     }
 
+    console.log('NO EVENT CLIENT ID')
     return null
   }
 }

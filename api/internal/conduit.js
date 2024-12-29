@@ -22,7 +22,7 @@ let defaultConduitPort = globalThis.__args.conduit?.port || 0
  * @typedef {{ options: object, payload: Uint8Array }} ReceiveMessage
  * @typedef {function(Error?, ReceiveCallback | undefined)} ReceiveCallback
  * @typedef {{ isActive: boolean, handles: { ids: string[], count: number }}} ConduitDiagnostics
- * @typedef {{ isActive: boolean, port: number }} ConduitStatus
+ * @typedef {{ isActive: boolean, port: number, sharedKey: string }} ConduitStatus
  * @typedef {{
  *   id?: string|BigInt|number,
  *   sharedKey?: string
@@ -110,7 +110,8 @@ export class Conduit extends EventTarget {
 
     return {
       port: result.data.port || 0,
-      isActive: result.data.isActive || false
+      isActive: result.data.isActive || false,
+      sharedKey: result.data.sharedKey
     }
   }
 
@@ -131,6 +132,37 @@ export class Conduit extends EventTarget {
 
       await sleep(256)
     }
+  }
+
+  /**
+   * Gets the current conduit shared key.
+   * @return {Promise<string>}
+   */
+  static async getSharedKey () {
+    const result = await ipc.request('internal.conduit.getSharedKey')
+
+    if (result.err) {
+      throw result.err
+    }
+
+    return result.data.sharedKey
+  }
+
+  /**
+   * Sets the conduit shared key.
+   * @param {string} sharedKey
+   * @return {Promise<string>}
+   */
+  static async setSharedKey (sharedKey) {
+    const result = await ipc.request('internal.conduit.setSharedKey', {
+      sharedKey
+    })
+
+    if (result.err) {
+      throw result.err
+    }
+
+    return result.data.sharedKey
   }
 
   /**
@@ -159,9 +191,9 @@ export class Conduit extends EventTarget {
   port = 0
 
   /**
-   * @type {number?}
+   * @type {string}
    */
-  id = null
+  id = '0'
 
   /**
    * @type {string}
@@ -199,7 +231,7 @@ export class Conduit extends EventTarget {
   constructor (options) {
     super()
 
-    this.id = options.id
+    this.id = String(options.id || '0')
     this.sharedKey = options.sharedKey || this.sharedKey
     // @ts-ignore
     this.port = this.constructor.port

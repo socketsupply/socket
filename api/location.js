@@ -29,6 +29,8 @@ export class Location {
       url = new URL(globalThis.location.href)
     } else if (globalThis.__args.client.host === globalThis.location.hostname) {
       url = new URL(globalThis.location.href)
+    } else if (globalThis.top !== globalThis) {
+      return new URL(globalThis.location.href)
     }
 
     if (!url || url.hostname !== globalThis.__args?.config?.meta_bundle_identifier) {

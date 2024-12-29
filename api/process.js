@@ -129,7 +129,9 @@ class Process extends EventEmitter {
 
   get versions () {
     return {
-      socket: this.version
+      socket: this.version,
+      uv: primordials.uv.version,
+      llama: primordials.llama.version
     }
   }
 

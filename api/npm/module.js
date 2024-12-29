@@ -50,7 +50,9 @@ export async function resolve (specifier, origin = null, options = null) {
   const pathname = name.pathname.replace(name.value, '.') || '.'
 
   try {
-    pkg.load({ type })
+    if (!pkg.load({ type })) {
+      pkg.load({ prefix, type })
+    }
 
     const url = pkg.type === type
       ? pkg.resolve(pathname, { prefix, type })

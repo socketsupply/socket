@@ -20,11 +20,10 @@ bool sapi_ipc_router_map (
   }
 
   ctx->router->map(name, [ctx, data, callback](
-    auto& message,
+    auto message,
     auto router,
     auto reply
   ) mutable {
-    auto msg = SSC::IPC::Message(message);
     auto context = sapi_context_create(ctx, true);
     if (context == nullptr) {
       return;
@@ -34,7 +33,7 @@ bool sapi_ipc_router_map (
     context->internal = new SSC::IPC::Router::ReplyCallback(reply);
     callback(
       context,
-      (sapi_ipc_message_t*) &msg,
+      (sapi_ipc_message_t*) &message,
       reinterpret_cast<const sapi_ipc_router_t*>(&router)
     );
   });
@@ -73,7 +72,7 @@ uint64_t sapi_ipc_router_listen (
   }
 
   return ctx->router->listen(name, [data, callback](
-    auto& message,
+    auto message,
     auto router,
     auto reply
   ) mutable {
@@ -129,7 +128,7 @@ bool sapi_ipc_reply (const sapi_ipc_result_t* result) {
   auto fn = reinterpret_cast<SSC::IPC::Router::ReplyCallback*>(internal);
 
   if (fn != nullptr) {
-    (*fn)(*result);
+    (*fn)(*reinterpret_cast<const SSC::IPC::Result*>(result));
     success = true;
     delete fn;
   }
@@ -470,8 +469,8 @@ const char* sapi_ipc_message_get (
   const sapi_ipc_message_t* message,
   const char* key
 ) {
-  if (!message || !key || !message->args.contains(key)) return nullptr;
-  auto& value = message->args.at(key);
+  if (!message || !key || !message->contains(key)) return nullptr;
+  const auto& value = message->at(key);
   if (value.size() == 0) return nullptr;
   return value.c_str();
 }

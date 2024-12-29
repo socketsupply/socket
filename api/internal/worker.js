@@ -66,14 +66,14 @@ export const self = globalThis.self || globalThis
 if (isWorkerScope) {
   // handle worker messages that are eventually propgated to `workerGlobalScopeEventTarget`
   globalThis.addEventListener('message', onWorkerMessage)
-  globalThis.addEventListener('runtime-xhr-post-queue', function onXHRPostQueue (event) {
+  globalThis.addEventListener('runtime-queued-response', function onRuntimeQueuedResponse (event) {
     if (isClosed) {
-      globalThis.removeEventListener('runtime-xhr-post-queue', onXHRPostQueue)
+      globalThis.removeEventListener('runtime-queued-response', onRuntimeQueuedResponse)
       return false
     }
 
     const { id, seq, params } = event.detail || {}
-    globals.get('RuntimeXHRPostQueue').dispatch(
+    globals.get('RuntimeQueuedResponses').dispatch(
       id,
       seq,
       params

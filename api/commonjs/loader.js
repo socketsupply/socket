@@ -13,7 +13,8 @@ import URL from '../url.js'
 import fs from '../fs.js'
 import os from '../os.js'
 
-const RUNTIME_SERVICE_WORKER_FETCH_MODE = 'Runtime-ServiceWorker-Fetch-Mode'
+// TODO(@jwerle): investigate if we really need this header back
+// const RUNTIME_SERVICE_WORKER_FETCH_MODE = 'Runtime-ServiceWorker-Fetch-Mode'
 const RUNTIME_REQUEST_SOURCE_HEADER = 'Runtime-Request-Source'
 const textDecoder = new TextDecoder()
 
@@ -209,7 +210,9 @@ export class RequestStatus {
     }
 
     if (
+      application.config.commonjs_fscheck !== false &&
       os.platform() !== 'android' &&
+      /^(socket:|https:)/.test(this.id) &&
       this.#request.id.includes(`://${application.config.meta_bundle_identifier}`)
     ) {
       try {
@@ -226,10 +229,6 @@ export class RequestStatus {
     const request = new XMLHttpRequest()
     request.open('HEAD', this.#request.id, false)
     request.setRequestHeader(RUNTIME_REQUEST_SOURCE_HEADER, 'module')
-
-    if (globalThis.isServiceWorkerScope) {
-      request.setRequestHeader(RUNTIME_SERVICE_WORKER_FETCH_MODE, 'ignore')
-    }
 
     if (this.#request?.loader) {
       const entries = this.#request.loader.headers.entries()
@@ -442,6 +441,7 @@ export class Request {
     }
 
     if (
+      application.config.commonjs_fscheck !== false &&
       os.platform() !== 'android' &&
       /^(socket:|https:)/.test(this.id) &&
       this.id.includes(`//${application.config.meta_bundle_identifier}/`)
@@ -459,10 +459,6 @@ export class Request {
     const request = new XMLHttpRequest()
     request.open('GET', this.id, false)
     request.setRequestHeader(RUNTIME_REQUEST_SOURCE_HEADER, 'module')
-
-    if (globalThis.isServiceWorkerScope) {
-      request.setRequestHeader(RUNTIME_SERVICE_WORKER_FETCH_MODE, 'ignore')
-    }
 
     if (typeof options?.responseType === 'string') {
       request.responseType = options.responseType

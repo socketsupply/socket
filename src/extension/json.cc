@@ -138,7 +138,7 @@ sapi_json_any_t* sapi_json_object_get (
   const char* key
 ) {
   if (json->has(key)) {
-    auto pointer = json->data.at(key).pointer.get();
+    auto pointer = json->data.at(key).data.get();
     return reinterpret_cast<sapi_json_any_t*>(pointer);
   }
 
@@ -213,7 +213,7 @@ sapi_json_any_t* sapi_json_array_get (
   unsigned int index
 ) {
   if (json->has(index)) {
-    auto pointer = json->data.at(index).pointer.get();
+    auto pointer = json->data.at(index).data.get();
     return reinterpret_cast<sapi_json_any_t*>(pointer);
   }
 
@@ -223,6 +223,6 @@ sapi_json_any_t* sapi_json_array_get (
 sapi_json_any_t* sapi_json_array_pop (
   sapi_json_array_t* json
 ) {
-  auto pointer = json->pop().pointer.get();
+  auto pointer = json->pop().data.get();
   return reinterpret_cast<sapi_json_any_t*>(pointer);
 }

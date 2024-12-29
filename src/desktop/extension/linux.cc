@@ -1,9 +1,9 @@
 #define SOCKET_RUNTIME_DESKTOP_EXTENSION 1
 #include "../../platform/platform.hh"
-#include "../../core/resource.hh"
-#include "../../core/debug.hh"
-#include "../../core/trace.hh"
-#include "../../core/url.hh"
+#include "../../runtime/resource.hh"
+#include "../../runtime/debug.hh"
+#include "../../runtime/trace.hh"
+#include "../../runtime/url.hh"
 #include "../../app/app.hh"
 
 #include "../extension.hh"
@@ -26,7 +26,7 @@ extern "C" {
     if (sharedBridge == nullptr) {
       g_object_ref(context);
       auto options = IPC::Bridge::Options(-1, app->userConfig);
-      sharedBridge = std::make_shared<IPC::Bridge>(app->core, options);
+      sharedBridge = std::make_shared<IPC::Bridge>(app->runtime, options);
       sharedBridge->dispatchFunction = [](auto callback) {
         callback();
       };
@@ -129,11 +129,11 @@ extern "C" {
     if (message->get("__sync__") == "true") {
       auto bridge = getSharedBridge(context);
       auto app = App::sharedApplication();
-      auto semaphore = new std::binary_semaphore{0};
+      auto semaphore = new BinarySemaphore(0);
 
       IPC::Result returnResult;
 
-      auto routed = bridge->route(
+      const auto routed = bridge->route(
         message->str(),
         message->buffer.bytes,
         message->buffer.size,
@@ -266,8 +266,22 @@ extern "C" {
       }
     }
 
-    Core::Options options;
+    Runtime::Options options;
     options.dedicatedLoopThread = true;
+
+    options.features.usePlatform = true;
+    options.features.useTimers = true;
+    options.features.useFS = true;
+
+    options.features.useNotifications = false;
+    options.features.useNetworkStatus = false;
+    options.features.usePermissions = false;
+    options.features.useGeolocation = false;
+    options.features.useConduit = false;
+    options.features.useUDP = false;
+    options.features.useDNS = false;
+    options.features.useAI = false;
+
     auto userConfig = getUserConfig();
     auto cwd = userConfig["web-process-extension_cwd"];
 
@@ -278,7 +292,7 @@ extern "C" {
 
     static App app(
       App::DEFAULT_INSTANCE_ID,
-      std::move(std::make_shared<Core>(options))
+      std::move(std::make_shared<Runtime>(options))
     );
   }
 

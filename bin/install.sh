@@ -1067,7 +1067,7 @@ function _check_compiler_features {
   cflags+=("-I$root")
 
   $CXX "${cflags[@]}" "${ldflags[@]}" - -o /dev/null >/dev/null << EOF_CC
-    #include "src/core/core.hh"
+    #include "src/runtime/runtime.hh"
     int main () { return 0; }
 EOF_CC
 

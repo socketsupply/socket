@@ -33,7 +33,7 @@
  * ```
  */
 
-/* global webkit, chrome, external, reportError */
+/* global webkit, chrome, external, reportError, ErrorEvent */
 import {
   AbortError,
   InternalError,
@@ -1479,10 +1479,10 @@ export async function write (command, value, buffer, options) {
  * with buffered bytes.
  * @param {string} command
  * @param {any=} value
- * @param {object=} options
+ * @param {{ timeout?: number, responseType?: string, signal?: AbortSignal, cache?: boolean}=} [options]
  * @ignore
  */
-export async function request (command, value, options) {
+export async function request (command, value, options = null) {
   if (!globalThis.XMLHttpRequest) {
     const err = new Error('XMLHttpRequest is not supported in environment')
     return Result.from(err)
@@ -1746,6 +1746,8 @@ export function inflateIPCMessageTransfers (object, types = new Map()) {
 
     if (object.__type__ === 'IPCMessagePort' && object.id) {
       return IPCMessagePort.create(object)
+    } else if (object.__type__ === 'Buffer' && object.data) {
+      return Buffer.from(object.data, 'base64')
     } else {
       for (const key in object) {
         const value = object[key]
@@ -1760,8 +1762,10 @@ export function inflateIPCMessageTransfers (object, types = new Map()) {
 export function findIPCMessageTransfers (transfers, object) {
   if (ArrayBuffer.isView(object)) {
     add(object.buffer)
+    return { __type__: 'Buffer', data: Buffer.from(object).toString('base64') }
   } else if (object instanceof ArrayBuffer) {
     add(object)
+    return { __type__: 'Buffer', data: Buffer.from(object).toString('base64') }
   } else if (Array.isArray(object)) {
     for (let i = 0; i < object.length; ++i) {
       object[i] = findIPCMessageTransfers(transfers, object[i])
@@ -1774,17 +1778,6 @@ export function findIPCMessageTransfers (transfers, object) {
       )
     ) {
       const port = IPCMessagePort.create(object)
-      object.addEventListener('message', function onMessage (event) {
-        if (port.closed === true) {
-          port.onmessage = null
-          event.preventDefault()
-          event.stopImmediatePropagation()
-          object.removeEventListener('message', onMessage)
-          return false
-        }
-
-        port.dispatchEvent(new MessageEvent('message', event))
-      })
 
       port.onmessage = (event) => {
         if (port.closed === true) {
@@ -1804,7 +1797,10 @@ export function findIPCMessageTransfers (transfers, object) {
       return port
     } else {
       for (const key in object) {
-        object[key] = findIPCMessageTransfers(transfers, object[key])
+        object[key] = findIPCMessageTransfers(
+          transfers,
+          object[key]
+        )
       }
     }
   }
@@ -1836,7 +1832,7 @@ export class IPCMessagePort extends MessagePort {
     const channel = typeof options?.channel === 'string'
       ? new BroadcastChannel(options.channel)
       : (
-          (options?.channel && new BroadcastChannel(options.channel.name)) ??
+          (options?.channel && new BroadcastChannel(options.channel.name, options.channel)) ??
           new BroadcastChannel(id)
         )
 
@@ -2042,9 +2038,10 @@ export class IPCMessagePort extends MessagePort {
   }
 
   [Symbol.for('socket.runtime.serialize')] () {
+    const channel = ports.get(this.id)?.channel
     return {
       __type__: 'IPCMessagePort',
-      channel: ports.get(this.id)?.channel?.name ?? null,
+      channel: channel ? { name: channel.name, origin: channel.origin || location.origin } : null,
       id: this.id
     }
   }
@@ -2070,20 +2067,19 @@ export class IPCMessageChannel extends MessageChannel {
   constructor (options = null) {
     super()
     this.#id = String(options?.id ?? rand64())
-    this.#channel = options?.channel ?? new BroadcastChannel(this.#id)
+    this.#channel = options?.channel ?? new IPCBroadcastChannel(this.#id)
 
     this.#port1 = IPCMessagePort.create(options?.port1)
     this.#port2 = IPCMessagePort.create(options?.port2)
 
     this.port1[Symbol.for('socket.runtime.ipc.MessagePort.handlePostMessage')] = (message, options) => {
-      this.port2.channel.postMessage(message, options)
+      this.port2.postMessage(message, options)
       return false
     }
 
-    this.port2[Symbol.for('socket.runtime.ipc.MessagePort.handlePostMessage')] = (message, options) => {
-      this.port2.channel.postMessage(message, options)
-      return false
-    }
+    this.port2.addEventListener('message', (e) => {
+      this.port1.postMessage(e.data)
+    })
   }
 
   get id () {
@@ -2100,6 +2096,250 @@ export class IPCMessageChannel extends MessageChannel {
 
   get channel () {
     return this.#channel
+  }
+}
+
+export class IPCBroadcastChannel extends EventTarget {
+  static subscriptions = new Map()
+
+  /**
+   * @type {string}
+   */
+  #name
+  #token = Math.random().toString(16).slice(2)
+  #pending = Promise.resolve()
+
+  /**
+   * @type {string}
+   */
+  #targetOrigin = location.origin
+
+  /**
+   * @type {(function(CustomEvent):any)|null}
+   */
+  #listener = null
+
+  /**
+   * @type {{ id: string }|null}
+   */
+  #subscription = null
+
+  /**
+   * @type {function(ErrorEvent):any|null}
+   */
+  #onerror
+
+  /**
+   * @type {function(MessageEvent):any|null}
+   */
+  #onmessage
+
+  /**
+   * @type {function(ErrorEvent):any|null}
+   */
+  #onmessageerror
+
+  /**
+   * @param {string} name
+   * @param {{ origin?: string }=} [options]
+   */
+  constructor (name, options = null) {
+    super()
+    this.#name = name
+    this.#targetOrigin = options?.origin || this.#targetOrigin
+  }
+
+  get name () {
+    return this.#name
+  }
+
+  get origin () {
+    return this.#subscription?.origin ?? (this.#targetOrigin || location.origin)
+  }
+
+  get key () {
+    return new URL(this.name, this.origin).href
+  }
+
+  get token () {
+    return this.#token
+  }
+
+  /**
+   * @type {function(MessageEvent):any|null}
+   */
+  get onmessage () { return this.#onmessage ?? null }
+  set onmessage (onmessage) {
+    if (typeof this.#onmessage === 'function') {
+      this.removeEventListener('message', this.#onmessage)
+    }
+
+    this.#onmessage = null
+
+    if (typeof onmessage === 'function') {
+      this.#onmessage = onmessage
+      this.addEventListener('message', this.#onmessage)
+    }
+  }
+
+  /**
+   * @type {function(ErrorEvent):any|null}
+   */
+  get onmessageerror () { return this.#onmessageerror ?? null }
+  set onmessageerror (onmessageerror) {
+    if (typeof this.#onmessageerror === 'function') {
+      this.removeEventListener('messageerror', this.#onmessageerror)
+    }
+
+    this.#onmessageerror = null
+
+    if (typeof onmessageerror === 'function') {
+      this.#onmessageerror = onmessageerror
+      this.addEventListener('messageerror', this.#onmessageerror)
+    }
+  }
+
+  /**
+   * @type {function(ErrorEvent):any|null}
+   */
+  get onerror () { return this.#onerror ?? null }
+  set onerror (onerror) {
+    if (typeof this.#onerror === 'function') {
+      this.removeEventListener('error', this.#onerror)
+    }
+
+    this.#onerror = null
+
+    if (typeof onerror === 'function') {
+      this.#onerror = onerror
+      this.addEventListener('error', this.#onerror)
+    }
+  }
+
+  async startMessages () {
+    if (this.#subscription) {
+      return
+    }
+
+    if (IPCBroadcastChannel.subscriptions.has(this.key)) {
+      this.#subscription = await IPCBroadcastChannel.subscriptions.get(this.key)
+      if (this.#subscription) {
+        this.#subscription.refs++
+      }
+    }
+
+    if (!this.#subscription) {
+      const promise = request('broadcast_channel.subscribe', {
+        origin: this.#targetOrigin,
+        name: this.name
+      })
+
+      IPCBroadcastChannel.subscriptions.set(
+        this.key,
+        promise.then((result) => {
+          if (result.err) {
+            return Promise.reject(result.err)
+          }
+
+          return result.data
+        })
+      )
+
+      this.#subscription = await IPCBroadcastChannel.subscriptions.get(this.key)
+      this.#subscription.refs = 1
+    }
+
+    if (this.#subscription) {
+      this.#listener = async (/** @type {CustomEvent} */ event) => {
+        if (
+          event.detail?.data?.token !== this.#token &&
+          event.detail?.data?.subscription?.name === this.name &&
+          event.detail?.source === 'broadcast_channel.subscribe' &&
+          (
+            event.detail?.data?.origin === '*' ||
+            event.detail?.data?.origin === this.origin
+          )
+        ) {
+          this.dispatchEvent(new MessageEvent('message', {
+            data: inflateIPCMessageTransfers(event.detail.data.message.data)
+          }))
+        }
+      }
+
+      globalThis.addEventListener('broadcastchannelmessage', this.#listener)
+    }
+
+    gc.ref(this)
+  }
+
+  /**
+   * @overload
+   * @param {'message'} type
+   * @param {function(MessageEvent):any} callback
+   * @param {{ once?: boolean }=} [options]
+   *
+   * @overload
+   * @param {'messageerror'} type
+   * @param {function(ErrorEvent):any} callback
+   * @param {{ once?: boolean }=} [options]
+   */
+  addEventListener (type, callback, options = undefined) {
+    super.addEventListener(type, callback, options)
+    if (type === 'message') {
+      this.startMessages().catch((error) => {
+        this.dispatchEvent(new ErrorEvent('error', { error }))
+      })
+    }
+  }
+
+  postMessage (message, optionsOrTransferList) {
+    const options = { origin: globalThis.origin, transfer: [] }
+
+    if (Array.isArray(optionsOrTransferList)) {
+      options.transfer.push(...optionsOrTransferList)
+    } else if (Array.isArray(optionsOrTransferList?.transfer)) {
+      options.transfer.push(...optionsOrTransferList.transfer)
+    }
+
+    if (typeof optionsOrTransferList?.origin === 'string') {
+      options.origin = optionsOrTransferList.origin
+    }
+
+    const transfers = new Set(options.transfer)
+    const serializedMessage = serialize(findIPCMessageTransfers(transfers, message))
+    this.#pending = this.#pending.then(async () => {
+      const result = await request('broadcast_channel.postMessage', {
+        origin: options.origin,
+        token: this.#token,
+        name: this.name,
+        data: JSON.stringify(serializedMessage)
+      })
+
+      if (result.err) {
+        this.dispatchEvent(new ErrorEvent('messageerror', {
+          error: result.err
+        }))
+      }
+
+      return result.data
+    })
+
+    return this.#pending
+  }
+
+  [Symbol.for('socket.runtime.gc.finalizer')] () {
+    return {
+      args: [this.#subscription, this.#listener],
+      async handle (subscription, listener) {
+        if (subscription?.id && --subscription.refs === 0) {
+          await request('broadcast_channel.unsubscribe', { id: subscription.id })
+        }
+
+        if (listener) {
+          globalThis.removeEventListener('broadcastchannelmessage', listener)
+        }
+      }
+    }
   }
 }
 

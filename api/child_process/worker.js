@@ -19,7 +19,7 @@ const propagateWorkerError = err => parentPort.postMessage({
 if (process.stdin) {
   process.stdin.on('data', async (data) => {
     const { id } = state
-    const result = await ipc.write('child_process.spawn', { id }, data)
+    const result = await ipc.write('childProcess.spawn', { id }, data)
 
     if (result.err) {
       propagateWorkerError(result.err)
@@ -42,7 +42,7 @@ parentPort.onmessage = async ({ data: { id, method, args } }) => {
       stderr: opts?.stderr !== false
     }
 
-    const result = await ipc.send('child_process.spawn', params)
+    const result = await ipc.send('childProcess.spawn', params)
 
     if (result.err) {
       return propagateWorkerError(result.err)
@@ -66,25 +66,25 @@ parentPort.onmessage = async ({ data: { id, method, args } }) => {
 
       if (!data || BigInt(data.id) !== state.id) return
 
-      if (source === 'child_process.spawn' && data.source === 'stdout') {
+      if (source === 'childProcess.spawn' && data.source === 'stdout') {
         if (process.stdout) {
           process.stdout.write(buffer)
         }
       }
 
-      if (source === 'child_process.spawn' && data.source === 'stderr') {
+      if (source === 'childProcess.spawn' && data.source === 'stderr') {
         if (process.stderr) {
           process.stderr.write(buffer)
         }
       }
 
-      if (source === 'child_process.spawn' && data.status === 'close') {
+      if (source === 'childProcess.spawn' && data.status === 'close') {
         state.exitCode = data.code
         state.lifecycle = 'close'
         parentPort.postMessage({ method: 'state', args: [state] })
       }
 
-      if (source === 'child_process.spawn' && data.status === 'exit') {
+      if (source === 'childProcess.spawn' && data.status === 'exit') {
         state.exitCode = data.code
         state.lifecycle = 'exit'
         parentPort.postMessage({ method: 'state', args: [state] })
@@ -93,7 +93,7 @@ parentPort.onmessage = async ({ data: { id, method, args } }) => {
   }
 
   if (method === 'kill') {
-    const result = await ipc.send('child_process.kill', {
+    const result = await ipc.send('childProcess.kill', {
       id: state.id,
       signal: signal.getCode(args[0])
     })

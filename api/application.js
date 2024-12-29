@@ -238,6 +238,8 @@ export function getCurrentWindowIndex () {
  * @param {boolean=} [opts.headless=false] - whether the window will be headless or not (no frame)
  * @param {string=} [opts.userScript=null] - A user script that will be injected into the window (desktop only)
  * @param {string[]=} [opts.protocolHandlers] - An array of protocol handler schemes to register with the new window (requires service worker)
+ * @param {string=} [opts.resourcesDirectory]
+ * @param {boolean=} [opts.shouldPreferServiceWorker=false]
  * @return {Promise<ApplicationWindow>}
  */
 export async function createWindow (opts) {
@@ -262,7 +264,9 @@ export async function createWindow (opts) {
     backgroundColorDark: opts.backgroundColorDark ?? '',
     backgroundColorLight: opts.backgroundColorLight ?? '',
     utility: opts.utility ?? false,
+    resourcesDirectory: opts.resourcesDirectory ?? '',
     shouldExitApplicationOnClose: opts.shouldExitApplicationOnClose ?? false,
+    shouldPreferServiceWorker: Boolean(opts.shouldPreferServiceWorker ?? false),
     /**
      * @private
      * @type {number}

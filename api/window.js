@@ -35,7 +35,7 @@ export function formatURL (url) {
 export class ApplicationWindow {
   #id = null
   #index
-  #options
+  #state
   #channel = null
   #senderWindowIndex = globalThis.__args.index
   #listeners = {}
@@ -44,21 +44,21 @@ export class ApplicationWindow {
   static constants = statuses
   static hotkey = hotkey
 
-  constructor ({ index, ...options }) {
-    this.#id = options?.id
+  constructor ({ index, ...state }) {
+    this.#id = state?.id
     this.#index = index
-    this.#options = options
+    this.#state = state
     this.#channel = new BroadcastChannel(`socket.runtime.window.${this.#index}`)
   }
 
-  #updateOptions (response) {
+  #updateState (response) {
     const { data, err } = response
     if (err) {
       throw new Error(err)
     }
-    const { id, index, ...options } = data
+    const { id, index, ...state } = data
     this.#id = id ?? null
-    this.#options = options
+    this.#state = state
     return data
   }
 
@@ -85,6 +85,10 @@ export class ApplicationWindow {
     return hotkey
   }
 
+  get state () {
+    return this.#state
+  }
+
   /**
    * The broadcast channel for this window.
    * @type {BroadcastChannel}
@@ -97,10 +101,52 @@ export class ApplicationWindow {
    * Get the size of the window
    * @return {{ width: number, height: number }} - the size of the window
    */
+  get size () {
+    return {
+      width: this.#state.width,
+      height: this.#state.height
+    }
+  }
+
+  get location () {
+    return this.#state.location ?? null
+  }
+
+  /**
+   * get  the position of the window
+   * @return {{ x: number, y: number }} - the position of the window
+   */
+  get position () {
+    return {
+      x: this.#state.x,
+      y: this.#state.y
+    }
+  }
+
+  /**
+   * get  the title of the window
+   * @return {string} - the title of the window
+   */
+  get title () {
+    return this.#state.title
+  }
+
+  /**
+   * get  the status of the window
+   * @return {string} - the status of the window
+   */
+  get status () {
+    return this.#state.status
+  }
+
+  /**
+   * Get the size of the window
+   * @return {{ width: number, height: number }} - the size of the window
+   */
   getSize () {
     return {
-      width: this.#options.width,
-      height: this.#options.height
+      width: this.#state.width,
+      height: this.#state.height
     }
   }
 
@@ -110,8 +156,8 @@ export class ApplicationWindow {
    */
   getPosition () {
     return {
-      x: this.#options.x,
-      y: this.#options.y
+      x: this.#state.x,
+      y: this.#state.y
     }
   }
 
@@ -120,7 +166,7 @@ export class ApplicationWindow {
    * @return {string} - the title of the window
    */
   getTitle () {
-    return this.#options.title
+    return this.#state.title
   }
 
   /**
@@ -128,7 +174,7 @@ export class ApplicationWindow {
    * @return {string} - the status of the window
    */
   getStatus () {
-    return this.#options.status
+    return this.#state.status
   }
 
   /**
@@ -152,7 +198,7 @@ export class ApplicationWindow {
    */
   async show () {
     const response = await ipc.request('window.show', { index: this.#senderWindowIndex, targetWindowIndex: this.#index })
-    return this.#updateOptions(response)
+    return this.#updateState(response)
   }
 
   /**
@@ -161,7 +207,7 @@ export class ApplicationWindow {
    */
   async hide () {
     const response = await ipc.request('window.hide', { index: this.#senderWindowIndex, targetWindowIndex: this.#index })
-    return this.#updateOptions(response)
+    return this.#updateState(response)
   }
 
   /**
@@ -170,7 +216,7 @@ export class ApplicationWindow {
    */
   async maximize () {
     const response = await ipc.request('window.maximize', { index: this.#senderWindowIndex, targetWindowIndex: this.#index })
-    return this.#updateOptions(response)
+    return this.#updateState(response)
   }
 
   /**
@@ -179,7 +225,7 @@ export class ApplicationWindow {
    */
   async minimize () {
     const response = await ipc.request('window.minimize', { index: this.#senderWindowIndex, targetWindowIndex: this.#index })
-    return this.#updateOptions(response)
+    return this.#updateState(response)
   }
 
   /**
@@ -188,7 +234,7 @@ export class ApplicationWindow {
    */
   async restore () {
     const response = await ipc.request('window.restore', { index: this.#senderWindowIndex, targetWindowIndex: this.#index })
-    return this.#updateOptions(response)
+    return this.#updateState(response)
   }
 
   /**
@@ -198,7 +244,7 @@ export class ApplicationWindow {
    */
   async setTitle (title) {
     const response = await ipc.request('window.setTitle', { index: this.#senderWindowIndex, targetWindowIndex: this.#index, value: title })
-    return this.#updateOptions(response)
+    return this.#updateState(response)
   }
 
   /**
@@ -241,7 +287,7 @@ export class ApplicationWindow {
     }
 
     const response = await ipc.request('window.setSize', options)
-    return this.#updateOptions(response)
+    return this.#updateState(response)
   }
 
   /**
@@ -288,7 +334,7 @@ export class ApplicationWindow {
     }
 
     const response = await ipc.request('window.setPosition', options)
-    return this.#updateOptions(response)
+    return this.#updateState(response)
   }
 
   /**
@@ -298,7 +344,7 @@ export class ApplicationWindow {
    */
   async navigate (path) {
     const response = await ipc.request('window.navigate', { index: this.#senderWindowIndex, targetWindowIndex: this.#index, url: formatURL(path) })
-    return this.#updateOptions(response)
+    return this.#updateState(response)
   }
 
   /**
@@ -324,7 +370,7 @@ export class ApplicationWindow {
    */
   async setBackgroundColor (opts) {
     const response = await ipc.request('window.setBackgroundColor', { index: this.#senderWindowIndex, targetWindowIndex: this.#index, ...opts })
-    return this.#updateOptions(response)
+    return this.#updateState(response)
   }
 
   /**
@@ -491,6 +537,16 @@ export class ApplicationWindow {
     if (result.err) {
       throw result.err
     }
+  }
+
+  /**
+   * Updates wnidow state
+   * @param {string} title - the title of the window
+   * @return {Promise<ipc.Result>}
+   */
+  async update () {
+    const response = await ipc.request('window', { index: this.#index })
+    return this.#updateState(response)
   }
 
   // public EventEmitter methods

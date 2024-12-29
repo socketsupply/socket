@@ -1,5 +1,6 @@
 /* global XMLHttpRequest, ErrorEvent */
 import application from '../application.js'
+import serialize from '../internal/serialize.js'
 import location from '../location.js'
 import process from '../process.js'
 import crypto from '../crypto.js'
@@ -12,7 +13,7 @@ export const SHARED_WORKER_WINDOW_INDEX = 46
 export const SHARED_WORKER_WINDOW_TITLE = 'socket:shared-worker'
 export const SHARED_WORKER_WINDOW_PATH = '/socket/shared-worker/index.html'
 
-export const channel = new BroadcastChannel('socket.runtime.sharedWorker')
+export const channel = new ipc.IPCBroadcastChannel('socket.runtime.sharedWorker')
 export const workers = new Map()
 
 channel.addEventListener('message', (event) => {
@@ -32,14 +33,19 @@ channel.addEventListener('message', (event) => {
 })
 
 export async function init (sharedWorker, options) {
-  await getContextWindow()
-  channel.postMessage({
-    connect: {
-      scriptURL: options.scriptURL,
-      client: client.toJSON(),
-      name: options.name,
-      port: sharedWorker.port,
-      id: sharedWorker.id
+  const currentWindow = await application.getCurrentWindow()
+  const window = await getContextWindow()
+  await currentWindow.send({
+    event: 'connect',
+    window: window.index,
+    value: {
+      connect: {
+        scriptURL: options.scriptURL,
+        client: client.toJSON(),
+        name: options.name,
+        port: serialize(ipc.findIPCMessageTransfers(new Set(), sharedWorker.port)),
+        id: sharedWorker.id
+      }
     }
   })
 
@@ -74,7 +80,12 @@ export class SharedWorker extends EventTarget {
       const request = new XMLHttpRequest()
       request.open('GET', String(aURL), false)
       request.send()
-      const blob = new Blob([request.responseText || request.response], { type: 'application/javascript' })
+
+      const blob = new Blob(
+        [request.responseText || request.response],
+        { type: 'application/javascript' }
+      )
+
       aURL = URL.createObjectURL(blob)
     }
 
@@ -151,6 +162,8 @@ export async function getContextWindow () {
       index: SHARED_WORKER_WINDOW_INDEX,
       title: SHARED_WORKER_WINDOW_TITLE,
       path: SHARED_WORKER_WINDOW_PATH,
+      width: '80%',
+      height: '80%',
       config: {
         webview_watch_reload: false
       }
@@ -183,8 +196,9 @@ export async function getContextWindow () {
   await ready
   contextWindow = await pendingContextWindow
   contextWindow.ready = ready
-
-  await contextWindow.hide()
+  if (!process.env.SOCKET_RUNTIME_SHARED_WORKER_DEBUG) {
+    await contextWindow.hide()
+  }
 
   return contextWindow
 }

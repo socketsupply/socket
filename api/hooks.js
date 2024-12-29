@@ -115,37 +115,39 @@ function dispatchReadyEvent (target) {
 
 function proxyGlobalEvents (global, target) {
   for (const type of GLOBAL_EVENTS) {
-    const globalObject = GLOBAL_TOP_LEVEL_EVENTS.includes(type)
-      ? global.top ?? global
-      : global
+    try {
+      const globalObject = GLOBAL_TOP_LEVEL_EVENTS.includes(type)
+        ? global.top ?? global
+        : global
 
-    addEventListener(globalObject, type, (event) => {
-      const { type, data, detail = null, error } = event
-      const { origin } = location
+      addEventListener(globalObject, type, (event) => {
+        const { type, data, detail = null, error } = event
+        const { origin } = location
 
-      if (type === 'applicationurl') {
-        dispatchEvent(target, new ApplicationURLEvent(type, {
-          origin,
-          data: event.data,
-          url: event.url.toString()
-        }))
-      } else if (type === 'error' || error) {
-        const { message, filename = import.meta.url || globalThis.location.href } = error || {}
-        dispatchEvent(target, new ErrorEvent(type, {
-          message,
-          filename,
-          error,
-          detail,
-          origin
-        }))
-      } else if (data || type === 'message') {
-        dispatchEvent(target, new MessageEvent(type, event))
-      } else if (detail) {
-        dispatchEvent(target, new CustomEvent(type, event))
-      } else {
-        dispatchEvent(target, new Event(type, event))
-      }
-    })
+        if (type === 'applicationurl') {
+          dispatchEvent(target, new ApplicationURLEvent(type, {
+            origin,
+            data: event.data,
+            url: event.url.toString()
+          }))
+        } else if (type === 'error' || error) {
+          const { message, filename = import.meta.url || globalThis.location.href } = error || {}
+          dispatchEvent(target, new ErrorEvent(type, {
+            message,
+            filename,
+            error,
+            detail,
+            origin
+          }))
+        } else if (data || type === 'message') {
+          dispatchEvent(target, new MessageEvent(type, event))
+        } else if (detail) {
+          dispatchEvent(target, new CustomEvent(type, event))
+        } else {
+          dispatchEvent(target, new Event(type, event))
+        }
+      })
+    } catch (err) {}
   }
 }
 

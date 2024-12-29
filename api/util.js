@@ -1,8 +1,9 @@
 import { IllegalConstructorError } from './errors.js'
+import { MIMEParams } from './mime/params.js'
+import { MIMEType } from './mime/type.js'
 import { Buffer } from './buffer.js'
 import { URL } from './url.js'
 import types from './util/types.js'
-import mime from './mime.js'
 
 import * as exports from './util.js'
 
@@ -1008,7 +1009,5 @@ export function deprecate (...args) {
   // noop
 }
 
-export const MIMEType = mime.MIMEType
-export const MIMEParams = mime.MIMEParams
-
+export { MIMEType, MIMEParams }
 export default exports

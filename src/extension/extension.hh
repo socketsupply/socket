@@ -69,7 +69,7 @@ namespace SSC {
           }
         };
 
-        using PolicyMap = std::map<String, Policy>;
+        using PolicyMap = Map<String, Policy>;
 
         const Extension* extension = nullptr;
         IPC::Router* router = nullptr;
@@ -82,7 +82,7 @@ namespace SSC {
         Error error;
         std::atomic<unsigned int> retain_count = 0;
         PolicyMap policies;
-        Map config;
+        Map<String, String> config;
 
         Context () = default;
         Context (const Extension* extension);
@@ -100,11 +100,11 @@ namespace SSC {
         bool isAllowed (const String& name) const;
       };
 
-      using Map = std::map<String, std::shared_ptr<Extension>>;
+      using Map = SSC::Map<String, std::shared_ptr<Extension>>;
       using Entry = std::shared_ptr<const Extension>;
       using Initializer = std::function<bool(Context*, const void*)>;
       using Deinitializer = std::function<bool(Context*, const void*)>;
-      using RouterContexts = std::map<IPC::Router*, Context*>;
+      using RouterContexts = SSC::Map<IPC::Router*, Context*>;
 
       RouterContexts contexts;
       Context context;
@@ -266,13 +266,13 @@ extern "C" {
     sapi_context_t* context = nullptr;
     sapi_json_raw (
       const char* source
-    ) : SSC::JSON::Raw(source)
+    ) : SSC::JSON::Raw(SSC::String(source))
     {}
 
     sapi_json_raw (
       sapi_context_t* ctx,
       const char* source
-    ) : context(ctx), SSC::JSON::Raw(source)
+    ) : context(ctx), SSC::JSON::Raw(SSC::String(source))
     {}
   };
 };

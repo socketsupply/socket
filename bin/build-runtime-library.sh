@@ -95,22 +95,23 @@ done
 declare objects=()
 declare sources=(
   $(find "$root"/src/app/*.cc)
-  $(find "$root"/src/core/*.cc)
-  $(find "$root"/src/core/modules/*.cc)
-  $(find "$root"/src/core/json/*.cc)
+  $(find "$root"/src/runtime/*.cc)
+  $(find "$root"/src/runtime/debug/*.cc)
+  $(find "$root"/src/runtime/http/*.cc)
+  $(find "$root"/src/runtime/ipc/*.cc)
+  $(find "$root"/src/runtime/json/*.cc)
+  $(find "$root"/src/runtime/modules/*.cc)
+  $(find "$root"/src/runtime/platform/*.cc)
+  $(find "$root"/src/runtime/serviceworker/*.cc)
   $(find "$root"/src/extension/*.cc)
-  $(find "$root"/src/ipc/*.cc)
-  $(find "$root"/src/platform/*.cc)
-  $(find "$root"/src/serviceworker/*.cc)
-  #$(find "$root"/src/sharedworker/*.cc)
+  "$root/src/runtime/window/manager.cc"
+  "$root/src/runtime/window/dialog.cc"
+  "$root/src/runtime/window/hotkey.cc"
   "$root/build/llama/common/common.cpp"
   "$root/build/llama/common/sampling.cpp"
   "$root/build/llama/common/json-schema-to-grammar.cpp"
   "$root/build/llama/common/grammar-parser.cpp"
   "$root/build/llama/llama.cpp"
-  "$root/src/window/manager.cc"
-  "$root/src/window/dialog.cc"
-  "$root/src/window/hotkey.cc"
 )
 
 declare cflags
@@ -126,7 +127,7 @@ if [[ "$platform" = "android" ]]; then
 
   clang="$(android_clang "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch" "++")"
   clang_target="$(android_clang_target "$arch")"
-  sources+=("$root/src/core/process/unix.cc")
+  sources+=("$root/src/runtime/process/unix.cc")
   sources+=($(find "$root/src/platform/android"/*.cc))
   sources+=("$root/src/window/android.cc")
 elif [[ "$host" = "Darwin" ]]; then
@@ -137,14 +138,14 @@ elif [[ "$host" = "Darwin" ]]; then
   elif (( TARGET_IPHONE_SIMULATOR )); then
     clang="xcrun -sdk iphonesimulator "$clang""
   else
-    sources+=("$root/src/core/process/unix.cc")
+    sources+=("$root/src/runtime/process/unix.cc")
   fi
 elif [[ "$host" = "Linux" ]]; then
   sources+=("$root/src/window/linux.cc")
-  sources+=("$root/src/core/process/unix.cc")
+  sources+=("$root/src/runtime/process/unix.cc")
 elif [[ "$host" = "Win32" ]]; then
   sources+=("$root/src/window/win.cc")
-  sources+=("$root/src/core/process/win.cc")
+  sources+=("$root/src/runtime/process/win.cc")
 fi
 
 cflags+=($(ARCH="$arch" "$root/bin/cflags.sh"))

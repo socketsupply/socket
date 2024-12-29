@@ -186,12 +186,13 @@ export async function onMessage (event) {
       })
     }
 
-    channel.postMessage({ installed: { id: state.id } })
     debug(
       '[%s]: SharedWorker (%s) installed',
       new URL(scriptURL).pathname.replace(/^\/socket\//, 'socket:'),
       state.id
     )
+
+    channel.postMessage({ installed: { id: state.id } })
     return
   }
 
@@ -217,8 +218,6 @@ export async function onMessage (event) {
       value: Object.seal(Object.freeze([connection.port]))
     })
 
-    globalThis.dispatchEvent(connectEvent)
-
     debug(
       '[%s]: SharedWorker (%s) connection from client (%s/%s) at %s',
       new URL(state.sharedWorker.scriptURL).pathname.replace(/^\/socket\//, 'socket:'),
@@ -230,6 +229,7 @@ export async function onMessage (event) {
       ].filter(Boolean).join('-'),
       connection.client.location
     )
+    globalThis.dispatchEvent(connectEvent)
     // eslint-disable-next-line
     return
   }

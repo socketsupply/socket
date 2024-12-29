@@ -32,7 +32,7 @@ export function createServiceWorker (
     }
   }
 
-  const channel = new BroadcastChannel('socket.runtime.serviceWorker.state')
+  const channel = new ipc.IPCBroadcastChannel('socket.runtime.serviceWorker.state')
 
   // events
   const eventTarget = new EventTarget()

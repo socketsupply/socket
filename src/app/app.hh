@@ -1,6 +1,8 @@
 #ifndef SOCKET_RUNTIME_APP_APP_H
 #define SOCKET_RUNTIME_APP_APP_H
 
+#include "../runtime.hh"
+
 #include "../core/core.hh"
 #include "../serviceworker/container.hh"
 #include "../window/window.hh"
@@ -92,7 +94,7 @@ namespace SSC {
       WindowManager windowManager;
       ServiceWorkerContainer serviceWorkerContainer;
       SharedPointer<Core> core = nullptr;
-      Map userConfig;
+      Map<String, String> userConfig;
 
     #if SOCKET_RUNTIME_PLATFORM_ANDROID
       /**
@@ -104,7 +106,7 @@ namespace SSC {
       App (
         JNIEnv* env,
         jobject self,
-        SharedPointer<Core> core = SharedPointer<Core>(new Core())
+        SharedPointer<Core> core = std::make_shared<Core>()
       );
     #else
       /**
@@ -118,7 +120,7 @@ namespace SSC {
       #else
         int instanceId = 0,
       #endif
-        SharedPointer<Core> core = SharedPointer<Core>(new Core())
+        SharedPointer<Core> core = std::make_shared<Core>()
       );
     #endif
 

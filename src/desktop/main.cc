@@ -241,6 +241,9 @@ BOOL registerWindowsURISchemeInRegistry () {
 }
 #endif
 
+static const String OK_STATE = "0";
+static const String ERROR_STATE = "1";
+
 //
 // the MAIN macro provides a cross-platform program entry point.
 // it makes argc and argv uniformly available. It provides "instanceId"
@@ -261,9 +264,6 @@ MAIN {
 
   const String devHost = getDevHost();
   const auto devPort = getDevPort();
-
-  const String OK_STATE = "0";
-  const String ERROR_STATE = "1";
 
   auto cwd = app.getcwd();
   app.userConfig = userConfig;
@@ -794,7 +794,7 @@ MAIN {
   // callback doesnt need to dispatch because it's already in the
   // main thread.
   //
-  const auto onMessage = [&](const auto& output) {
+  const auto onMessage = [cmd, &killProcess](const auto& output) {
     const auto message = IPC::Message(output, true);
 
     auto window = app.windowManager.getWindow(message.index);

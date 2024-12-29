@@ -301,7 +301,7 @@ class RuntimeWorker extends GlobalWorker {
    * Internal worker pool
    * @ignore
    */
-  static pool = globalThis.top?.Worker?.pool ?? new Map()
+  static pool = null
 
   /**
    * Handles `Symbol.species`
@@ -314,6 +314,7 @@ class RuntimeWorker extends GlobalWorker {
   #id = null
   #objectURL = null
   #onglobaldata = null
+  #onbroadcastchannelmessage = null
 
   /**
    * `RuntimeWorker` class worker.
@@ -345,9 +346,12 @@ class RuntimeWorker extends GlobalWorker {
     const url = encodeURIComponent(new URL(filename, location.href).toString())
     const id = String(rand64())
 
-    const topClient = globalThis.__args.client.top || globalThis.__args.client
+    let topClient = globalThis.__args.client
+    try {
+      topClient = globalThis.__args.client.top || globalThis.__args.client
+    } catch (err) {}
 
-    const __args = { ...globalThis.__args, client: {} }
+    const __args = { ...globalThis.__args, ...options?.args, client: {} }
     const preload = `
     Object.defineProperty(globalThis, '__args', {
       configurable: false,
@@ -466,7 +470,17 @@ class RuntimeWorker extends GlobalWorker {
       }, [data])
     }
 
+    this.#onbroadcastchannelmessage = (event) => {
+      this.postMessage({
+        __runtime_worker_event: {
+          type: 'broadcastchannelmessage',
+          detail: event.detail
+        }
+      })
+    }
+
     globalThis.addEventListener('data', this.#onglobaldata)
+    globalThis.addEventListener('broadcastchannelmessage', this.#onbroadcastchannelmessage)
 
     const postMessage = this.postMessage.bind(this)
     const addEventListener = this.addEventListener.bind(this)
@@ -575,8 +589,15 @@ class RuntimeWorker extends GlobalWorker {
 
   terminate () {
     globalThis.removeEventListener('data', this.#onglobaldata)
+    globalThis.removeEventListener('broadcastchannelmessage', this.#onbroadcastchannelmessage)
     return super.terminate()
   }
+}
+
+try {
+  RuntimeWorker.pool = globalThis.top?.Worker?.pool || new Map()
+} catch (err) {
+  RuntimeWorker.pool = new Map()
 }
 
 // patch `globalThis.Worker`
@@ -817,7 +838,7 @@ class ConcurrentQueue extends EventTarget {
   }
 }
 
-class RuntimeXHRPostQueue extends ConcurrentQueue {
+class RuntimeQueuedResponses extends ConcurrentQueue {
   async dispatch (id, seq, params, headers, options = null) {
     if (options?.workerId) {
       if (RuntimeWorker.pool.has(options.workerId)) {
@@ -825,7 +846,7 @@ class RuntimeXHRPostQueue extends ConcurrentQueue {
         if (worker) {
           worker.postMessage({
             __runtime_worker_event: {
-              type: 'runtime-xhr-post-queue',
+              type: 'runtime-queued-response',
               detail: {
                 id, seq, params, headers
               }
@@ -978,14 +999,60 @@ hooks.onReady(async () => {
   } catch (err) {
     console.error(err.stack || err)
   }
+
+  if (globalThis.window && globalThis.window !== globalThis.top) {
+    globalThis.addEventListener('message', (e) => {
+      if (e.data?.__runtime_frame_data) {
+        globalThis.dispatchEvent(new CustomEvent('data', {
+          detail: e.data?.__runtime_frame_data
+        }))
+      } else if (e.data?.__runtime_frame_broadcast_channel_message) {
+        globalThis.dispatchEvent(new CustomEvent('broadcastchannelmessage', {
+          detail: e.data?.__runtime_frame_broadcast_channel_message
+        }))
+      }
+    })
+  }
+
+  if (globalThis.window && globalThis.__RUNTIME_SHOULD_NOT_PROXY_DATA_TO_FRAMES__ !== true) {
+    globalThis.addEventListener('data', (e) => {
+      if (globalThis.frames.length) {
+        for (let i = 0; i < globalThis.frames.length; ++i) {
+          try {
+            globalThis.frames[i].postMessage({
+              __runtime_frame_data: e.detail
+            }, '*')
+          } catch (err) {
+            console.error(err)
+          }
+        }
+      }
+    })
+  }
+
+  if (globalThis.window && globalThis.__RUNTIME_SHOULD_NOT_PROXY_BROADCAST_CHANNEL_MESSAGES_TO_FRAMES__ !== true) {
+    globalThis.addEventListener('broadcastchannelmessage', (e) => {
+      if (globalThis.frames.length) {
+        for (let i = 0; i < globalThis.frames.length; ++i) {
+          try {
+            globalThis.frames[i].postMessage({
+              __runtime_frame_broadcast_channel_message: e.detail
+            }, '*')
+          } catch (err) {
+            console.error(err)
+          }
+        }
+      }
+    })
+  }
 })
 
 // symbolic globals
-globals.register('RuntimeXHRPostQueue', new RuntimeXHRPostQueue())
+globals.register('RuntimeQueuedResponses', new RuntimeQueuedResponses())
 globals.register('RuntimeExecution', new asyncHooks.CoreAsyncResource('RuntimeExecution'))
 
 // prevent further construction if this class is indirectly referenced
-RuntimeXHRPostQueue.prototype.constructor = IllegalConstructor
+RuntimeQueuedResponses.prototype.constructor = IllegalConstructor
 Object.defineProperty(globalThis, '__globals', {
   enumerable: false,
   configurable: false,

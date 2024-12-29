@@ -26,7 +26,7 @@
 
 /* eslint-disable no-new-func */
 /* global ErrorEvent, EventTarget, MessagePort */
-import { maybeMakeError } from './ipc.js'
+import ipc, { maybeMakeError } from './ipc.js'
 import { SharedWorker } from './shared-worker/index.js'
 import { isESMSource } from './util.js'
 import application from './application.js'
@@ -110,7 +110,7 @@ function convertSourceToString (source) {
  * Shared broadcast for virtual machaines
  * @type {BroadcastChannel}
  */
-export const channel = new BroadcastChannel('socket.runtime.vm')
+export const channel = new ipc.IPCBroadcastChannel('socket.runtime.vm')
 
 /**
  * @ignore

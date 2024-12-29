@@ -1,19 +1,15 @@
 #ifndef SOCKET_RUNTIME_CLI_H
 #define SOCKET_RUNTIME_CLI_H
 
-#include "../platform/platform.hh"
-#include "../core/env.hh"
+#include "../runtime/platform.hh"
+#include "../runtime/env.hh"
 
 #include <signal.h>
 
-#ifndef SOCKET_CLI
-#define SOCKET_CLI 1
-#endif
-
-namespace SSC::CLI {
+namespace ssc::cli {
   inline void notify (int signal) {
   #if !defined(_WIN32)
-    static auto ppid = Env::get("SSC_CLI_PID");
+    static auto ppid = runtime::env::get("SSC_CLI_PID");
     static auto pid = ppid.size() > 0 ? std::stoi(ppid) : 0;
     if (pid > 0) {
       kill(pid, signal);

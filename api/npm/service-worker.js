@@ -23,10 +23,12 @@ export async function onRequest (request, env, ctx) {
   }
 
   const url = new URL(request.url)
-  const origin = url.origin.replace('npm://', 'socket://')
+  const origin = (request.headers.get('origin') || url.origin).replace('npm://', 'socket://')
   const referer = request.headers.get('referer')
   let specifier = url.pathname.replace('/socket/npm/', '')
-  const importOrigins = url.searchParams.getAll('origin').concat(url.searchParams.getAll('origin[]'))
+  const importOrigins = new Set(url.searchParams.getAll('origin').concat(url.searchParams.getAll('origin[]')))
+
+  importOrigins.add(url.origin.replace('npm://', 'socket://'))
 
   if (typeof specifier === 'string') {
     try {
@@ -44,7 +46,7 @@ export async function onRequest (request, env, ctx) {
     if (URL.canParse(referer, origin)) {
       const refererURL = new URL(referer, origin)
       if (refererURL.href.endsWith('/')) {
-        importOrigins.push(refererURL.href)
+        importOrigins.add(refererURL.href)
       } else {
         importOrigins.push(new URL('./', refererURL).href)
       }
@@ -153,7 +155,7 @@ export async function onRequest (request, env, ctx) {
   if (resolved.type === 'commonjs') {
     const proxy = `
       import { createRequire } from 'socket:module'
-      const headers = { 'Runtime-ServiceWorker-Fetch-Mode': 'ignore' }
+      const headers = {}
       const require = createRequire('${resolved.origin}', { headers })
       const exports = require('${resolved.url}')
       export default exports?.default ?? exports ?? null

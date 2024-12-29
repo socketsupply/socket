@@ -3,6 +3,7 @@
  */
 import { signal as constants } from '../os/constants.js'
 import { SignalEvent } from '../internal/events.js'
+import ipc from '../ipc.js'
 import os from '../os.js'
 
 /**
@@ -11,7 +12,7 @@ import os from '../os.js'
 
 export { constants }
 
-export const channel = new BroadcastChannel('socket.runtime.signal')
+export const channel = new ipc.IPCBroadcastChannel('socket.runtime.signal')
 
 export const SIGHUP = constants.SIGHUP
 export const SIGINT = constants.SIGINT
