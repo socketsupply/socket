@@ -1,27 +1,31 @@
 #include "../debug.hh"
 #include "../loop.hh"
 
+#if SOCKET_RUNTIME_PLATFORM_LINUX
+struct UVSource {
+  GSource base; // should ALWAYS be first member
+  gpointer tag;
+  ssc::runtime::loop::Loop* loop = nullptr;
+};
+#endif
+
 namespace ssc::runtime::loop {
   // in milliseconds
   constexpr int EVENT_LOOP_POLL_TIMEOUT = 32;
 
-#if SOCKET_RUNTIME_PLATFORM_LINUX
-  struct UVSource {
-    GSource base; // should ALWAYS be first member
-    gpointer tag;
-    Loop* loop = nullptr;
-  };
-#endif
-
-  static void onAsync (uv_async_t* async) {
+  // async work is dispatched here which will cause the loop state
+  // to transitions to `State::Polling` while in a dequeue loop and
+  // then finally back to `State::Idle`
+  static void onAsyncThread (uv_async_t* async) {
     auto loop = reinterpret_cast<Loop*>(async->data);
+    Loop::DispatchCallback callback = nullptr;
+    // transition to `State::Polling` while waiting
+    loop->state = Loop::State::Polling;
 
     while (true) {
-      Loop::DispatchCallback callback = nullptr;
-
       do {
         Lock lock(loop->mutex);
-
+        // dequeue dispatched callback
         if (loop->queue.size() > 0) {
           callback = std::move(loop->queue.front());
           loop->queue.pop();
@@ -33,46 +37,67 @@ namespace ssc::runtime::loop {
       }
 
       callback();
+      callback = nullptr;
+    }
+
+    if (loop->state == Loop::State::Polling) {
+      // transition back to `State::Idle` if was just polling
+      loop->state = Loop::State::Idle;
     }
   }
 
+  // `onLoopThread` is used by android/darwin/win32 while linux uses a gsoure
   static void onLoopThread (Loop* loop) {
-    loop->state = Loop::State::Polling;
-
     while (loop->started() && loop->alive()) {
+      // transition to `State::Polling` while waiting
+      loop->state = Loop::State::Polling;
       if (!loop->uv.run(UV_RUN_DEFAULT)) {
         break;
       }
     }
 
-    loop->state = Loop::State::Idle;
+    // if the loop was in an `Idle` or `Polling` state, then transition
+    // back to the `Init` state so `kick()` can kick of the thread again
+    if (loop->state == Loop::State::Idle || loop->state == Loop::State::Polling) {
+      // transition back to `State::Init` so `kick()` will dispatch
+      // this loop thread again
+      loop->state = Loop::State::Init;
+    }
   }
 
   void Loop::UV::open (Loop* loop) {
+    // deinit/close if already opened
     this->close();
+    // init uv loop
     uv_loop_init(&this->loop);
+    // set internal pointer to `Loop`
     uv_loop_set_data(&this->loop, reinterpret_cast<void*>(loop));
-    uv_async_init(&this->loop, &this->async, onAsync);
+    // init async thread
+    uv_async_init(&this->loop, &this->async, onAsyncThread);
+    // set internal pointer to `Loop`
     this->async.data = reinterpret_cast<void*>(loop);
-
     this->isInitialized = true;
   }
 
   void Loop::UV::close () {
+    // we want to make sure the loop is entirely stopped, drained, and closed
     if (this->isInitialized) {
+      // stop and drain the loop
       uv_stop(&this->loop);
       uv_run(&this->loop, UV_RUN_NOWAIT);
+      // close async handle
       auto handle = reinterpret_cast<uv_handle_t*>(&async);
       uv_close(handle, nullptr);
+      // drain the loop one more, and then close
       uv_run(&this->loop, UV_RUN_NOWAIT);
       uv_loop_close(&this->loop);
     }
-
     this->isInitialized = false;
   }
 
   void Loop::UV::stop () {
     if (this->isInitialized) {
+      // signal stop
       uv_stop(&this->loop);
       uv_run(&this->loop, UV_RUN_NOWAIT);
     }
@@ -90,12 +115,12 @@ namespace ssc::runtime::loop {
   bool Loop::UV::run (uv_run_mode mode) {
     if (mode == UV_RUN_DEFAULT) {
       if (uv_run(&this->loop, mode) != 0) {
-        return uv_run(&this->loop, UV_RUN_NOWAIT);
+        return uv_run(&this->loop, UV_RUN_NOWAIT) > 0;
       }
     }
 
     if (mode == UV_RUN_NOWAIT || mode == UV_RUN_ONCE) {
-      return uv_run(&this->loop, mode) != -1;
+      return uv_run(&this->loop, mode) > 0;
     }
 
     return false;
@@ -106,8 +131,8 @@ namespace ssc::runtime::loop {
   {}
 
   bool Loop::init () {
-    if (this->state < State::Idle) {
-      this->state = State::Idle;
+    if (this->state == State::None) {
+      this->state = State::Init;
       this->uv.open(this);
 
     #if SOCKET_RUNTIME_PLATFORM_LINUX
@@ -159,90 +184,128 @@ namespace ssc::runtime::loop {
         gpointer user_data
       ) -> gboolean {
         const auto loop = reinterpret_cast<UVSource*>(source)->loop;
-        loop->run();
+        loop->state = Loop::State::Polling;
+        loop->uv.run(UV_RUN_NOWAIT);
+        loop->state = Loop::State::Idle;
         return G_SOURCE_CONTINUE;
       };
+
+      this->gtk.source = g_source_new(&this->gtk.functions, sizeof(UVSource));
+      auto uvsource = reinterpret_cast<UVSource*>(this->gtk.source);
+      uvsource->loop = this;
+      uvsource->tag = g_source_add_unix_fd(
+        this->gtk.source,
+        uv_backend_fd(this->get()),
+        (GIOCondition) (G_IO_IN | G_IO_OUT | G_IO_ERR)
+      );
+
+      g_source_set_priority(this->gtk.source, G_PRIORITY_HIGH);
+      g_source_attach(this->gtk.source, nullptr);
+
     #endif
+    }
+
+    return this->state >= State::Init && this->state < State::Shutdown;
+  }
+
+  bool Loop::kick () {
+    if (this->state >= State::Idle) {
       return true;
     }
 
-    return false;
-  }
-
-  bool Loop::shutdown () {
-    if (this->state > State::None && this->state < State::Shutdown) {
-      if (this->stop()) {
-        this->uv.close();
-        this->state = State::Shutdown;
-        return true;
+    if (this->state == State::None) {
+      if (!this->init()) {
+        return false;
       }
-
-      debug("Loop::start(): '* -> Shutdown' failed");
     }
 
-    return false;
+    this->state = State::Idle;
+    Lock lock(this->mutex);
+
+  #if SOCKET_RUNTIME_PLATFORM_APPLE
+    dispatch_async(this->dispatchQueue, ^{
+      onLoopThread(this);
+    });
+  #else
+    if (this->options.dedicatedThread) {
+      // clean up old thread if still running
+      if (this->thread.joinable()) {
+        this->uv.stop();
+        this->thread.join();
+      }
+
+      this->thread = Thread(&onLoopThread, this);
+    }
+  #endif
+
+    return this->state >= State::Idle;
   }
 
   bool Loop::start () {
-    if (this->state == State::Idle) {
-      this->state = State::Starting;
-      if (this->run()) {
-        this->state = State::Started;
-        return true;
-      }
-
-      debug("Loop::start(): 'Starting -> Started' failed");
-    }
-
-    return false;
+    return this->init() && this->kick();
   }
 
   bool Loop::stop () {
-    if (this->state > State::Stopped && this->state < State::Shutdown) {
-      Lock lock(this->mutex);
-      this->state = State::Stoping;
-      this->uv.stop();
+    if (this->state == State::Stopped) {
+      return true;
+    } else if (this->state < State::Idle || this->state == State::Shutdown) {
+      return false;
+    }
+
+    this->state = State::Stopped;
+    this->uv.stop();
+
+    Lock lock(this->mutex);
+    if (this->options.dedicatedThread) {
       if (this->thread.joinable()) {
         this->thread.join();
       }
-      this->state = State::Stopped;
-      return true;
     }
 
-    return false;
+    return this->state == State::Stopped;
   }
 
   bool Loop::resume () {
-    if (this->state < State::Resuming && this->state > State::None) {
-      this->state = State::Resuming;
-      if (this->run()) {
-        this->state = State::Resumed;
-        return true;
-      }
-
-      debug("Loop::resume(): 'Resuming -> Resumed' failed");
+    if (this->state == State::Idle || this->state == State::Polling) {
+      return true;
+    } else if (this->state < State::Idle) {
+      return this->start();
+    } else if (this->state == State::Paused) {
+      this->state = State::Init;
+      return this->start();
     }
 
+    debug("Loop::resume(): 'Resuming -> Resumed' failed");
     return false;
   }
 
   bool Loop::pause () {
-    Lock lock(this->mutex);
-    this->state = State::Pausing;
-    this->uv.stop();
-
-    // clean up old thread if still running
-    if (this->thread.joinable()) {
-      this->thread.join();
+    if (this->state == State::Paused) {
+      return true;
+    } else if (this->state != State::Idle && this->state != State::Polling) {
+      return false;
     }
 
     this->state = State::Paused;
+    this->uv.stop();
 
-    return false;
+    Lock lock(this->mutex);
+    if (this->options.dedicatedThread) {
+      // clean up old thread if still running
+      if (this->thread.joinable()) {
+        this->thread.join();
+      }
+    }
+
+    return this->state == State::Paused;
   }
 
   bool Loop::dispatch (const DispatchCallback& callback) {
-    if (this->state < State::Starting) {
+    if (callback == nullptr) {
+      return false;
+    } else if (this->state > State::Polling) {
+      return false;
+    } else if (this->state < State::Idle && !this->kick()) {
       return false;
     }
 
@@ -252,33 +315,21 @@ namespace ssc::runtime::loop {
     } while (0);
 
     uv_async_send(&this->uv.async);
-    return true;
+    return this->state == State::Idle || this->state == State::Polling;
   }
 
-  bool Loop::run () {
-    if (this->state > State::Idle) {
-      return false;
+  bool Loop::shutdown () {
+    if (this->state > State::None && this->state < State::Shutdown) {
+      if (this->stop()) {
+        this->state = State::Shutdown;
+        this->uv.close();
+        return true;
+      }
+
+      debug("Loop::start(): '* -> Shutdown' failed");
     }
 
-    Lock lock(this->mutex);
-
-    this->init();
-
-  #if SOCKET_RUNTIME_PLATFORM_APPLE
-    dispatch_async(this->dispatchQueue, ^{
-      onLoopThread(this);
-    });
-  #else
-    // clean up old thread if still running
-    if (this->thread.joinable()) {
-      this->uv.stop();
-      this->thread.join();
-    }
-
-    this->thread = Thread(&onLoopThread, this);
-  #endif
-
-    return true;
+    return false;
   }
 
   uv_loop_t* Loop::get () {
@@ -286,19 +337,25 @@ namespace ssc::runtime::loop {
   }
 
   bool Loop::alive () const {
+    if (this->state == State::Shutdown) {
+      return false;
+    } else if (this->state < State::Idle) {
+      return false;
+    }
+
     return uv_loop_alive(&this->uv.loop);
   }
 
   bool Loop::started () const {
-    return this->state > State::Paused && this->state < State::Shutdown;
+    return this->state > State::Init && this->state < State::Shutdown;
   }
 
   bool Loop::stopped () const {
-    return this->state <= State::Stopped && this->state > State::None;
+    return this->state == State::Stopped;
   }
 
   bool Loop::paused () const {
-    return this->state == State::Pausing && this->state == State::Paused;
+    return this->state == State::Paused;
   }
 
   int Loop::timeout () {

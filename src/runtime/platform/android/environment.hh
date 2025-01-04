@@ -1,7 +1,7 @@
 #ifndef SOCKET_RUNTIME_PLATFORM_ANDROID_ENVIRONMENT_H
 #define SOCKET_RUNTIME_PLATFORM_ANDROID_ENVIRONMENT_H
 
-#include "../types.hh"
+#include "types.hh"
 #include "native.hh"
 
 /**
@@ -100,7 +100,7 @@
   env->CallVoidMethod(object, ID, ##__VA_ARGS__);                              \
 })
 
-namespace ssc::android {
+namespace ssc::runtime::android {
   /**
    * A `JVMEnvironment` constainer holders a poitner the current `JavaVM`
    * instance for the current `JNIEnv`.
@@ -111,8 +111,17 @@ namespace ssc::android {
     int jniVersion = 0;
 
     JVMEnvironment () = default;
+    JVMEnvironment (const JVMEnvironment&);
+    JVMEnvironment (JVMEnvironment&&);
     JVMEnvironment (JNIEnv* env);
     JVMEnvironment (JavaVM* jvm);
+
+    JVMEnvironment& operator = (std::nullptr_t);
+    JVMEnvironment& operator = (const JVMEnvironment&);
+    JVMEnvironment& operator = (JVMEnvironment&&);
+    JVMEnvironment& operator = (JNIEnv*);
+    operator bool () const;
+
     int version () const;
     JavaVM* get () const;
   };

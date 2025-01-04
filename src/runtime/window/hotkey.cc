@@ -1,4 +1,5 @@
 #include "../ipc.hh"
+#include "../url.hh"
 #include "../json.hh"
 #include "../config.hh"
 #include "../string.hh"
@@ -6,6 +7,7 @@
 
 #include "hotkey.hh"
 
+using ssc::runtime::url::decodeURIComponent;
 using ssc::runtime::config::getUserConfig;
 using ssc::runtime::string::toLowerCase;
 using ssc::runtime::string::replace;
@@ -595,7 +597,7 @@ namespace ssc::runtime::window {
   }
 
   void HotKeyContext::init () {
-    auto userConfig = this->window->bridge.userConfig;
+    auto userConfig = this->window->bridge->userConfig;
 
   #if SOCKET_RUNTIME_PLATFORM_MACOS
     // Carbon API event type spec
@@ -615,7 +617,7 @@ namespace ssc::runtime::window {
     );
   #endif
 
-    this->window->bridge.router.map("window.hotkey.bind", [=, this](auto message, auto router, auto reply) mutable {
+    this->window->bridge->router.map("window.hotkey.bind", [=, this](auto message, auto router, auto reply) mutable {
       HotKeyBinding::Options options;
       options.passive = true; // default
 
@@ -724,7 +726,7 @@ namespace ssc::runtime::window {
       reply(ipc::Result::Data { message, data });
     });
 
-    this->window->bridge.router.map("window.hotkey.unbind", [this](auto message, auto router, auto reply) mutable {
+    this->window->bridge->router.map("window.hotkey.unbind", [this](auto message, auto router, auto reply) mutable {
       static auto userConfig = getUserConfig();
       HotKeyBinding::ID id;
     #if SOCKET_RUNTIME_PLATFORM_LINUX
@@ -814,7 +816,7 @@ namespace ssc::runtime::window {
       return reply(ipc::Result::Data { message, data });
     });
 
-    this->window->bridge.router.map("window.hotkey.reset", [=, this](auto message, auto router, auto reply) mutable {
+    this->window->bridge->router.map("window.hotkey.reset", [=, this](auto message, auto router, auto reply) mutable {
       if (userConfig["permissions_allow_hotkeys"] == "false") {
         const auto err = JSON::Object::Entries {
           {"type", "SecurityError"},
@@ -826,7 +828,7 @@ namespace ssc::runtime::window {
       return reply(ipc::Result { message.seq, message });
     });
 
-    this->window->bridge.router.map("window.hotkey.bindings", [=, this](auto message, auto router, auto reply) mutable {
+    this->window->bridge->router.map("window.hotkey.bindings", [=, this](auto message, auto router, auto reply) mutable {
       auto data = JSON::Array::Entries {};
 
       if (userConfig["permissions_allow_hotkeys"] == "false") {
@@ -858,7 +860,7 @@ namespace ssc::runtime::window {
       return reply(ipc::Result::Data { message, data });
     });
 
-    this->window->bridge.router.map("window.hotkey.mappings", [=, this](auto message, auto router, auto reply) mutable {
+    this->window->bridge->router.map("window.hotkey.mappings", [=, this](auto message, auto router, auto reply) mutable {
       static const HotKeyCodeMap map;
 
       auto modifiers = JSON::Object::Entries {};
@@ -1071,7 +1073,7 @@ namespace ssc::runtime::window {
       };
 
       const auto json = JSON::Object{ data };
-      return this->window->bridge.emit("hotkey", json.str());
+      return this->window->bridge->emit("hotkey", json.str());
     }
 
     return false;

@@ -52,30 +52,30 @@ sapi_json_any_t* sapi_json_raw_from (
 }
 
 const char * sapi_json_stringify_value (const sapi_json_any_t* json) {
-  SSC::String string;
+  ssc::runtime::String string;
   switch (sapi_json_typeof(json)) {
     case SAPI_JSON_TYPE_NULL:
       string = "null";
       break;
 
     case SAPI_JSON_TYPE_OBJECT:
-      string = reinterpret_cast<const SSC::JSON::Object*>(json)->str();
+      string = reinterpret_cast<const ssc::runtime::JSON::Object*>(json)->str();
       break;
 
     case SAPI_JSON_TYPE_ARRAY:
-      string = reinterpret_cast<const SSC::JSON::Array*>(json)->str();
+      string = reinterpret_cast<const ssc::runtime::JSON::Array*>(json)->str();
       break;
     case SAPI_JSON_TYPE_BOOLEAN:
-      string = reinterpret_cast<const SSC::JSON::Boolean*>(json)->str();
+      string = reinterpret_cast<const ssc::runtime::JSON::Boolean*>(json)->str();
       break;
     case SAPI_JSON_TYPE_NUMBER:
-      string = reinterpret_cast<const SSC::JSON::Number*>(json)->str();
+      string = reinterpret_cast<const ssc::runtime::JSON::Number*>(json)->str();
       break;
     case SAPI_JSON_TYPE_STRING:
-      string = reinterpret_cast<const SSC::JSON::String*>(json)->str();
+      string = reinterpret_cast<const ssc::runtime::JSON::String*>(json)->str();
       break;
     case SAPI_JSON_TYPE_RAW:
-      string = reinterpret_cast<const SSC::JSON::Raw*>(json)->str();
+      string = reinterpret_cast<const ssc::runtime::JSON::Raw*>(json)->str();
       break;
 
     case SAPI_JSON_TYPE_EMPTY:
@@ -109,26 +109,26 @@ void sapi_json_object_set_value (
   if (json == nullptr || key == nullptr) return;
 
   if (any == nullptr) {
-    json->set(key, SSC::JSON::Null());
-  } else if (any->type > SSC::JSON::Type::Any) {
+    json->set(key, ssc::runtime::JSON::Null());
+  } else if (any->type > ssc::runtime::JSON::Type::Any) {
     if (any->isObject()) {
-      auto object = reinterpret_cast<SSC::JSON::Object*>(any);
-      json->set(key, SSC::JSON::Object(object->data));
+      auto object = reinterpret_cast<ssc::runtime::JSON::Object*>(any);
+      json->set(key, ssc::runtime::JSON::Object(object->data));
     } else if (any->isArray()) {
-      auto array = reinterpret_cast<SSC::JSON::Array*>(any);
-      json->set(key, SSC::JSON::Array(array->data));
+      auto array = reinterpret_cast<ssc::runtime::JSON::Array*>(any);
+      json->set(key, ssc::runtime::JSON::Array(array->data));
     } else if (any->isString()) {
-      auto string = reinterpret_cast<SSC::JSON::String*>(any);
-      json->set(key, SSC::JSON::String(string->data));
+      auto string = reinterpret_cast<ssc::runtime::JSON::String*>(any);
+      json->set(key, ssc::runtime::JSON::String(string->data));
     } else if (any->isBoolean()) {
-      auto boolean = reinterpret_cast<SSC::JSON::Boolean*>(any);
-      json->set(key, SSC::JSON::Boolean(boolean->data));
+      auto boolean = reinterpret_cast<ssc::runtime::JSON::Boolean*>(any);
+      json->set(key, ssc::runtime::JSON::Boolean(boolean->data));
     } else if (any->isNumber()) {
-      auto number = reinterpret_cast<SSC::JSON::Number*>(any);
-      json->set(key, SSC::JSON::Number(number->data));
+      auto number = reinterpret_cast<ssc::runtime::JSON::Number*>(any);
+      json->set(key, ssc::runtime::JSON::Number(number->data));
     } else if (any->isRaw()) {
-      auto raw= reinterpret_cast<SSC::JSON::Raw*>(any);
-      json->set(key, SSC::JSON::Raw(raw->data));
+      auto raw= reinterpret_cast<ssc::runtime::JSON::Raw*>(any);
+      json->set(key, ssc::runtime::JSON::Raw(raw->data));
     }
   }
 }
@@ -153,26 +153,26 @@ void sapi_json_array_set_value (
   if (json == nullptr || any == nullptr) return;
 
   if (any == nullptr) {
-    json->set(index, SSC::JSON::Null());
-  } else if (any->type > SSC::JSON::Type::Any) {
+    json->set(index, ssc::runtime::JSON::Null());
+  } else if (any->type > ssc::runtime::JSON::Type::Any) {
     if (any->isObject()) {
-      auto object = reinterpret_cast<SSC::JSON::Object*>(any);
-      json->set(index, SSC::JSON::Object(object->data));
+      auto object = reinterpret_cast<ssc::runtime::JSON::Object*>(any);
+      json->set(index, ssc::runtime::JSON::Object(object->data));
     } else if (any->isArray()) {
-      auto array = reinterpret_cast<SSC::JSON::Array*>(any);
-      json->set(index, SSC::JSON::Array(array->data));
+      auto array = reinterpret_cast<ssc::runtime::JSON::Array*>(any);
+      json->set(index, ssc::runtime::JSON::Array(array->data));
     } else if (any->isString()) {
-      auto string = reinterpret_cast<SSC::JSON::String*>(any);
-      json->set(index, SSC::JSON::String(string->data));
+      auto string = reinterpret_cast<ssc::runtime::JSON::String*>(any);
+      json->set(index, ssc::runtime::JSON::String(string->data));
     } else if (any->isBoolean()) {
-      auto boolean = reinterpret_cast<SSC::JSON::Boolean*>(any);
-      json->set(index, SSC::JSON::Boolean(boolean->data));
+      auto boolean = reinterpret_cast<ssc::runtime::JSON::Boolean*>(any);
+      json->set(index, ssc::runtime::JSON::Boolean(boolean->data));
     } else if (any->isNumber()) {
-      auto number = reinterpret_cast<SSC::JSON::Number*>(any);
-      json->set(index, SSC::JSON::Number(number->data));
+      auto number = reinterpret_cast<ssc::runtime::JSON::Number*>(any);
+      json->set(index, ssc::runtime::JSON::Number(number->data));
     } else if (any->isRaw()) {
-      auto raw= reinterpret_cast<SSC::JSON::Raw*>(any);
-      json->set(index, SSC::JSON::Raw(raw->data));
+      auto raw= reinterpret_cast<ssc::runtime::JSON::Raw*>(any);
+      json->set(index, ssc::runtime::JSON::Raw(raw->data));
     }
   }
 }
@@ -184,26 +184,26 @@ void sapi_json_array_push_value (
   if (json == nullptr || any == nullptr) return;
 
   if (any == nullptr) {
-    json->push(SSC::JSON::Null());
-  } else if (any->type > SSC::JSON::Type::Any) {
+    json->push(ssc::runtime::JSON::Null());
+  } else if (any->type > ssc::runtime::JSON::Type::Any) {
     if (any->isObject()) {
-      auto object = reinterpret_cast<SSC::JSON::Object*>(any);
-      json->push(SSC::JSON::Object(object->data));
+      auto object = reinterpret_cast<ssc::runtime::JSON::Object*>(any);
+      json->push(ssc::runtime::JSON::Object(object->data));
     } else if (any->isArray()) {
-      auto array = reinterpret_cast<SSC::JSON::Array*>(any);
-      json->push(SSC::JSON::Array(array->data));
+      auto array = reinterpret_cast<ssc::runtime::JSON::Array*>(any);
+      json->push(ssc::runtime::JSON::Array(array->data));
     } else if (any->isString()) {
-      auto string = reinterpret_cast<SSC::JSON::String*>(any);
-      json->push(SSC::JSON::String(string->data));
+      auto string = reinterpret_cast<ssc::runtime::JSON::String*>(any);
+      json->push(ssc::runtime::JSON::String(string->data));
     } else if (any->isBoolean()) {
-      auto boolean = reinterpret_cast<SSC::JSON::Boolean*>(any);
-      json->push(SSC::JSON::Boolean(boolean->data));
+      auto boolean = reinterpret_cast<ssc::runtime::JSON::Boolean*>(any);
+      json->push(ssc::runtime::JSON::Boolean(boolean->data));
     } else if (any->isNumber()) {
-      auto number = reinterpret_cast<SSC::JSON::Number*>(any);
-      json->push(SSC::JSON::Number(number->data));
+      auto number = reinterpret_cast<ssc::runtime::JSON::Number*>(any);
+      json->push(ssc::runtime::JSON::Number(number->data));
     } else if (any->isRaw()) {
-      auto raw= reinterpret_cast<SSC::JSON::Raw*>(any);
-      json->push(SSC::JSON::Raw(raw->data));
+      auto raw= reinterpret_cast<ssc::runtime::JSON::Raw*>(any);
+      json->push(ssc::runtime::JSON::Raw(raw->data));
     }
   }
 }

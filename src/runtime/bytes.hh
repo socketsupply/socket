@@ -4,6 +4,11 @@
 #include "platform.hh"
 
 namespace ssc::runtime::bytes {
+  // forward
+  class Buffer;
+  class BufferQueue;
+  class ArrayBuffer;
+
   template <size_t size>
   using ByteArray = Array<uint8_t, size>;
 
@@ -78,15 +83,31 @@ namespace ssc::runtime::bytes {
       size_t size () const;
       const unsigned char* data () const;
       unsigned char* data ();
+      const ArrayBuffer slice (size_t, size_t = -1) const;
+      void resize (size_t);
       const Pointer pointer () const;
       Pointer pointer ();
-      ArrayBuffer slice (size_t, size_t = -1) const;
-      void resize (size_t);
+
+      template <typename T>
+      SharedPointer<T[]> as () {
+        return SharedPointer<T[]>(
+          this->bytes,
+          reinterpret_cast<T*>(this->bytes.get())
+        );
+      }
   };
 
   class Buffer {
     public:
       static Buffer empty ();
+      template <size_t size>
+      static Buffer from (const ByteArray<size>&);
+      static Buffer from (const Vector<uint8_t>&);;
+      static Buffer from (const String&);
+      static Buffer from (const Buffer&);
+      static Buffer from (const ArrayBuffer&);
+      static Buffer from (const unsigned char*, size_t);
+      static Buffer from (const char*, size_t);
 
       enum class Encoding {
         UTF8,
@@ -107,8 +128,12 @@ namespace ssc::runtime::bytes {
       Buffer (size_t);
       virtual ~Buffer ();
 
+      Buffer& operator = (const ArrayBuffer&);
+      Buffer& operator = (const BufferQueue&);
+      Buffer& operator = (BufferQueue&&);
       Buffer& operator = (const Buffer&);
       Buffer& operator = (Buffer&&);
+      Buffer& operator = (const String&);
 
       size_t size () const;
 
@@ -124,12 +149,25 @@ namespace ssc::runtime::bytes {
       unsigned char at (size_t) const;
       const unsigned char* data () const;
       unsigned char* data ();
-      Buffer slice (size_t, size_t = -1, bool = false) const;
+      const Buffer slice (size_t, size_t = -1, bool = false) const;
       String str (const Encoding = Encoding::UTF8) const;
+
+      const ArrayBuffer::Pointer pointer () const;
+      ArrayBuffer::Pointer pointer ();
   };
 
   class BufferQueue : public Buffer {
     public:
+      using Buffer::Buffer;
+      BufferQueue (const BufferQueue&);
+      BufferQueue (BufferQueue&&);
+
+      BufferQueue& operator = (const ArrayBuffer&);
+      BufferQueue& operator = (const BufferQueue&);
+      BufferQueue& operator = (BufferQueue&&);
+      BufferQueue& operator = (const Buffer&);
+      BufferQueue& operator = (Buffer&&);
+
       template <size_t size>
       bool push (const ByteArray<size>&);
       bool push (const Vector<uint8_t>&);

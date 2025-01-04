@@ -325,7 +325,7 @@ namespace ssc::runtime::process {
         pollfds.back().events = POLLIN;
       }
 
-      auto buffer = UniquePointer<char[]>(new char[config.bufferSize]);
+      auto buffer = UniquePointer<unsigned char[]>(new unsigned char[config.bufferSize]);
       bool any_open = !pollfds.empty();
       StringStream ss;
 
@@ -341,7 +341,7 @@ namespace ssc::runtime::process {
             if (n > 0) {
               if (fd_is_stdout[i]) {
                 Lock lock(stdoutMutex);
-                auto b = String(buffer.get());
+                auto b = String(reinterpret_cast<char*>(buffer.get()));
                 auto parts = splitc(b, '\n');
 
                 if (parts.size() > 1) {
@@ -361,7 +361,7 @@ namespace ssc::runtime::process {
                 }
               } else {
                 Lock lock(stderrMutex);
-                readStderr(String(buffer.get()));
+                readStderr(String(reinterpret_cast<char*>(buffer.get())));
               }
             } else if (n < 0 && errno != EINTR && errno != EAGAIN && errno != EWOULDBLOCK) {
               pollfds[i].fd = -1;

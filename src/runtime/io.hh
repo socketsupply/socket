@@ -3,12 +3,12 @@
 
 #include <iostream>
 
-#include "../cli/cli.hh"
+#include "../cli.hh"
 #include "platform.hh"
 #include "env.hh"
 
 namespace ssc::runtime::io {
-  inline void write (const String& input, bool isErrorOutput) {
+  inline void write (const String& input, bool isErrorOutput = false) {
     static const auto GITHUB_ACTIONS_CI = env::get("GITHUB_ACTIONS_CI");
     static const auto isGitHubActionsCI = GITHUB_ACTIONS_CI.size() > 0;
     auto& stream = isErrorOutput ? std::cerr : std::cout;

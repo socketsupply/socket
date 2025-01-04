@@ -16,15 +16,16 @@
 
 using ssc::runtime::config::getUserConfig;
 using ssc::runtime::string::toUpperCase;
+using ssc::runtime::crypto::rand64;
 using ssc::runtime::crypto::sha1;
 
 namespace ssc::runtime::core::services {
   static constexpr char WS_GUID[] = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 
-  static SharedPointer<char[]> vectorToSharedPointer (const Vector<uint8_t>& vector) {
+  static SharedPointer<unsigned char[]> vectorToSharedPointer (const Vector<uint8_t>& vector) {
     const auto size = vector.size();
     const auto data = vector.data();
-    const auto pointer = std::make_shared<char[]>(size);
+    const auto pointer = std::make_shared<unsigned char[]>(size);
     memcpy(pointer.get(), data, size);
     return std::move(pointer);
   }
@@ -316,7 +317,7 @@ namespace ssc::runtime::core::services {
       .setHeader("connection", "upgrade")
       .setHeader(
         "sec-websocket-accept",
-        bytes::base64::encode(crypto::sha1(webSocketKey + WS_GUID))
+        bytes::base64::encode(sha1(webSocketKey + WS_GUID))
       );
 
     const auto output = response.str();
@@ -432,7 +433,7 @@ namespace ssc::runtime::core::services {
             }
 
             const auto bytes = vectorToSharedPointer(buffer);
-            const auto payload = std::make_shared<char[]>(size);
+            const auto payload = std::make_shared<unsigned char[]>(size);
 
             memcpy(payload.get(), bytes.get(), size);
             this->dispatch([this, options, size, payload, from, to] () {
@@ -502,7 +503,7 @@ namespace ssc::runtime::core::services {
       });
       const auto data = result.json().str();
       const auto size = data.size();
-      const auto payload = std::make_shared<char[]>(size);
+      const auto payload = std::make_shared<unsigned char[]>(size);
       memcpy(payload.get(), data.c_str(), size);
       client->send({}, payload, size);
       return;
@@ -524,7 +525,7 @@ namespace ssc::runtime::core::services {
           } else {
             const auto data = result.json().str();
             const auto size = data.size();
-            const auto payload = std::make_shared<char[]>(size);
+            const auto payload = std::make_shared<unsigned char[]>(size);
             memcpy(payload.get(), data.c_str(), size);
             client->send({{"token", token}}, payload, size);
           }
@@ -542,7 +543,7 @@ namespace ssc::runtime::core::services {
       });
       const auto data = result.json().str();
       const auto size = data.size();
-      const auto payload = std::make_shared<char[]>(size);
+      const auto payload = std::make_shared<unsigned char[]>(size);
       memcpy(payload.get(), data.c_str(), size);
       client->send({}, payload, size);
       return;
@@ -556,7 +557,7 @@ namespace ssc::runtime::core::services {
 
   bool Conduit::Client::send (
     const Conduit::Message::Options& options,
-    SharedPointer<char[]> bytes,
+    SharedPointer<unsigned char[]> bytes,
     size_t length,
     int opcode,
     const Function<void()> callback

@@ -5,7 +5,7 @@
 #include "environment.hh"
 #include "native.hh"
 
-namespace ssc::android {
+namespace ssc::runtime::android {
   struct Looper {
     using LoopCallback = Function<void()>;
     using DispatchCallback = Function<void()>;
@@ -39,23 +39,25 @@ namespace ssc::android {
       virtual ~DispatchCallbackContext() {}
     };
 
-    ALooper* looper;
+    ALooper* looper = nullptr;
     Atomic<bool> isReady = false;
+    Atomic<bool> isUnique = true;
     int fds[2];
     JVMEnvironment jvm;
     SharedPointer<LoopCallbackContext> context;
 
+    Looper () = default;
     Looper (JVMEnvironment jvm);
-    Looper () = delete;
-    Looper (const Looper&) = delete;
-    Looper (Looper&&) = delete;
-    Looper operator= (const Looper&) = delete;
-    Looper operator= (Looper&&) = delete;
+    Looper (const Looper&);
+    Looper (Looper&&);
+    virtual ~Looper ();
+    Looper operator= (const Looper&);
+    Looper operator= (Looper&&);
 
     bool acquire (const LoopCallback callback = nullptr);
     void release ();
     void dispatch (const DispatchCallback callback);
-    bool isAcquired () const;
+    bool acquired () const;
   };
 }
 #endif

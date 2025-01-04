@@ -1,7 +1,9 @@
 #include "../string.hh"
+#include "../crypto.hh"
 #include "../ipc.hh"
 
 using ssc::runtime::string::toLowerCase;
+using ssc::runtime::crypto::rand64;
 
 namespace ssc::runtime::ipc {
   Router::Router (IBridge& bridge)
@@ -76,7 +78,7 @@ namespace ssc::runtime::ipc {
 
   bool Router::invoke (
     const String& uri,
-    SharedPointer<char[]> bytes,
+    SharedPointer<unsigned char[]> bytes,
     size_t size
   ) {
     return this->invoke(uri, bytes, size, [this](auto result) {
@@ -92,7 +94,7 @@ namespace ssc::runtime::ipc {
 
   bool Router::invoke (
     const String& uri,
-    SharedPointer<char[]> bytes,
+    SharedPointer<unsigned char[]> bytes,
     size_t size,
     const ResultCallback callback
   ) {
@@ -106,7 +108,7 @@ namespace ssc::runtime::ipc {
 
   bool Router::invoke (
     const Message& message,
-    SharedPointer<char[]> bytes,
+    SharedPointer<unsigned char[]> bytes,
     size_t size,
     const ResultCallback callback
   ) {
@@ -134,7 +136,7 @@ namespace ssc::runtime::ipc {
     auto incomingMessage = Message(message);
 
     if (bytes != nullptr && size > 0) {
-      incomingMessage.buffer.reset(bytes, size);
+      incomingMessage.buffer = bytes::ArrayBuffer(size, bytes);
     }
 
     // named listeners
@@ -160,7 +162,7 @@ namespace ssc::runtime::ipc {
         callback = std::move(callback),
         incomingMessage = std::move(incomingMessage)
       ]() mutable {
-        context.callback(incomingMessage, this, [this, callback](const auto result) mutable {
+        context.callback(incomingMessage, this, [this, incomingMessage, callback](const auto result) mutable {
           if (result.seq == "-1") {
             this->bridge.send(result.seq, result.str(), result.queuedResponse);
           } else {

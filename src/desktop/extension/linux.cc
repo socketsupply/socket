@@ -1,36 +1,43 @@
 #define SOCKET_RUNTIME_DESKTOP_EXTENSION 1
-#include "../../platform/platform.hh"
-#include "../../runtime/resource.hh"
-#include "../../runtime/debug.hh"
-#include "../../runtime/trace.hh"
-#include "../../runtime/url.hh"
-#include "../../app/app.hh"
+
+#include "../../runtime.hh"
+#include "../../app.hh"
 
 #include "../extension.hh"
 
-using namespace SSC;
+using namespace ssc;
+using namespace ssc::desktop;
+using namespace ssc::runtime::types;
+
+namespace JSON = ssc::runtime::JSON;
+namespace ipc = ssc::runtime::ipc;
+
+using ssc::runtime::config::getUserConfig;
+using ssc::runtime::bridge::Bridge;
+using ssc::runtime::Runtime;
+using ssc::runtime::setcwd;
+using ssc::app::App;
 
 #if SOCKET_RUNTIME_PLATFORM_LINUX
 #if defined(__cplusplus)
 extern "C" {
 #endif
-  static SharedPointer<IPC::Bridge> sharedBridge = nullptr;
-  static bool isMainApplicationDebugEnabled = false;
-  static WebExtensionContext context;
+  static bool isMainApplicationDebugEnabled = false; // TODO(@jwerle): handle how this value is configured
+
+  static SharedPointer<Bridge> sharedBridge = nullptr;
+  static WebExtensionContext sharedContext;
   static Mutex sharedMutex;
 
-  static SharedPointer<IPC::Bridge> getSharedBridge (JSCContext* context) {
+  static SharedPointer<Bridge> getSharedBridge (JSCContext* context) {
     static auto app = App::sharedApplication();
     Lock lock(sharedMutex);
 
     if (sharedBridge == nullptr) {
       g_object_ref(context);
-      auto options = IPC::Bridge::Options(-1, app->userConfig);
-      sharedBridge = std::make_shared<IPC::Bridge>(app->runtime, options);
-      sharedBridge->dispatchFunction = [](auto callback) {
-        callback();
-      };
-      sharedBridge->evaluateJavaScriptFunction = [context] (const auto source) {
+      sharedBridge = app->runtime.bridgeManager.get(0, {});
+      sharedBridge->userConfig = getUserConfig();
+      sharedBridge->dispatchHandler = [](auto callback) { callback(); };
+      sharedBridge->evaluateJavaScriptHandler = [context] (const auto source) {
         app->dispatch([=] () {
           auto _ = jsc_context_evaluate(context, source.c_str(), source.size());
         });
@@ -44,24 +51,24 @@ extern "C" {
   static void onMessageResolver (
     JSCValue* resolve,
     JSCValue* reject,
-    IPC::Message* message
+    runtime::ipc::Message* message
   ) {
     auto context = jsc_value_get_context(resolve);
     auto bridge = getSharedBridge(context);
     auto app = App::sharedApplication();
 
-    auto routed = bridge->route(message->str(), message->buffer.bytes, message->buffer.size, [=](auto result) {
+    auto routed = bridge->route(message->str(), message->buffer, [=](auto result) {
       app->dispatch([=] () {
-        if (result.post.body != nullptr) {
+        if (result.queuedResponse.body != nullptr) {
           auto array = jsc_value_new_typed_array(
             context,
             JSC_TYPED_ARRAY_UINT8,
-            result.post.length
+            result.queuedResponse.length
           );
 
           gsize size = 0;
           auto bytes = jsc_value_typed_array_get_data(array, &size);
-          memcpy(bytes, result.post.body.get(), size);
+          memcpy(bytes, result.queuedResponse.body.get(), size);
 
           const auto _ = jsc_value_function_call(
             resolve,
@@ -114,16 +121,12 @@ extern "C" {
   static JSCValue* onMessage (const char* source, JSCValue* value, gpointer userData) {
     auto context = reinterpret_cast<JSCContext*>(userData);
     auto Promise = jsc_context_get_value(context, "Promise");
-    auto message = new IPC::Message(source);
+    auto message = new ipc::Message(source);
 
     if (jsc_value_is_typed_array(value)) {
-      auto bytes = jsc_value_typed_array_get_data(value, &message->buffer.size);
-      message->buffer.bytes = std::make_shared<char[]>(message->buffer.size);
-      memcpy(
-        message->buffer.bytes.get(),
-        bytes,
-        message->buffer.size
-      );
+      size_t size = 0;
+      auto bytes = jsc_value_typed_array_get_data(value, &size);
+      message->buffer.set(reinterpret_cast<const char*>(bytes), 0, size);
     }
 
     if (message->get("__sync__") == "true") {
@@ -131,12 +134,11 @@ extern "C" {
       auto app = App::sharedApplication();
       auto semaphore = new BinarySemaphore(0);
 
-      IPC::Result returnResult;
+      ipc::Result returnResult;
 
       const auto routed = bridge->route(
         message->str(),
-        message->buffer.bytes,
-        message->buffer.size,
+        message->buffer,
         [&returnResult, &semaphore] (auto result) mutable {
           returnResult = std::move(result);
           semaphore->release();
@@ -149,16 +151,16 @@ extern "C" {
       delete message;
 
       if (routed) {
-        if (returnResult.post.body != nullptr) {
+        if (returnResult.queuedResponse.body != nullptr) {
           auto array = jsc_value_new_typed_array(
             context,
             JSC_TYPED_ARRAY_UINT8,
-            returnResult.post.length
+            returnResult.queuedResponse.length
           );
 
           gsize size = 0;
           auto bytes = jsc_value_typed_array_get_data(array, &size);
-          memcpy(bytes, returnResult.post.body.get(), size);
+          memcpy(bytes, returnResult.queuedResponse.body.get(), size);
           return array;
         } else {
           auto json = returnResult.json().str();
@@ -253,34 +255,32 @@ extern "C" {
       nullptr
     );
 
-    if (!context.config.bytes) {
-      context.config.size = g_variant_get_size(const_cast<GVariant*>(userData));
-      if (context.config.size) {
-        context.config.bytes = reinterpret_cast<char*>(new unsigned char[context.config.size]{0});
+    if (!sharedContext.config.bytes) {
+      sharedContext.config.size = g_variant_get_size(const_cast<GVariant*>(userData));
+      if (sharedContext.config.size) {
+        sharedContext.config.bytes = reinterpret_cast<char*>(new unsigned char[sharedContext.config.size]{0});
 
         memcpy(
-          context.config.bytes,
+          sharedContext.config.bytes,
           g_variant_get_data(const_cast<GVariant*>(userData)),
-          context.config.size
+          sharedContext.config.size
         );
       }
     }
 
-    Runtime::Options options;
-    options.dedicatedLoopThread = true;
+    Runtime::Features features;
+    features.usePlatform = true;
+    features.useTimers = true;
+    features.useFS = true;
 
-    options.features.usePlatform = true;
-    options.features.useTimers = true;
-    options.features.useFS = true;
-
-    options.features.useNotifications = false;
-    options.features.useNetworkStatus = false;
-    options.features.usePermissions = false;
-    options.features.useGeolocation = false;
-    options.features.useConduit = false;
-    options.features.useUDP = false;
-    options.features.useDNS = false;
-    options.features.useAI = false;
+    features.useNotifications = false;
+    features.useNetworkStatus = false;
+    features.usePermissions = false;
+    features.useGeolocation = false;
+    features.useConduit = false;
+    features.useUDP = false;
+    features.useDNS = false;
+    features.useAI = false;
 
     auto userConfig = getUserConfig();
     auto cwd = userConfig["web-process-extension_cwd"];
@@ -290,18 +290,21 @@ extern "C" {
       uv_chdir(cwd.c_str());
     }
 
-    static App app(
-      App::DEFAULT_INSTANCE_ID,
-      std::move(std::make_shared<Runtime>(options))
-    );
+    static App app(App::Options {
+      .userConfig = userConfig,
+      .loop = { .dedicatedThread = true },
+      .features = features
+    });
+
+    app.run();
   }
 
   const unsigned char* socket_runtime_init_get_user_config_bytes () {
-    return reinterpret_cast<const unsigned char*>(context.config.bytes);
+    return reinterpret_cast<const unsigned char*>(sharedContext.config.bytes);
   }
 
   unsigned int socket_runtime_init_get_user_config_bytes_size () {
-    return context.config.size;
+    return sharedContext.config.size;
   }
 
   bool socket_runtime_init_is_debug_enabled () {

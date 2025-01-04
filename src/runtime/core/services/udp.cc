@@ -2,6 +2,8 @@
 #include "../../core.hh"
 #include "udp.hh"
 
+using ssc::runtime::crypto::rand64;
+
 namespace ssc::runtime::core::services {
   static JSON::Object::Entries ERR_SOCKET_ALREADY_BOUND (
     const String& source,
@@ -402,7 +404,7 @@ namespace ssc::runtime::core::services {
       auto port = options.port;
       auto bytes = options.bytes;
       auto address = options.address;
-      socket->send(bytes, size, port, address, [=](auto status, auto post) {
+      socket->send(bytes, size, port, address, [=](auto status, auto queuedResponse) {
         if (status < 0) {
           auto json = JSON::Object::Entries {
             {"source", "udp.send"},
@@ -482,8 +484,8 @@ namespace ssc::runtime::core::services {
         callback("-1", json, QueuedResponse{});
       } else if (nread > 0 && buf && buf->base) {
         char address[17] = {0};
-        QueuedResponse post;
-        int port;
+        QueuedResponse queuedResponse {0};
+        int port = 0;
 
         udp::ip::parseAddress((struct sockaddr *) addr, &port, address);
 
@@ -492,22 +494,22 @@ namespace ssc::runtime::core::services {
           {"content-length", nread}
         }};
 
-        post.id = rand64();
-        post.body.reset(buf->base);
-        post.length = (int) nread;
-        post.headers = headers.str();
+        queuedResponse.id = rand64();
+        queuedResponse.body.reset(reinterpret_cast<unsigned char*>(buf->base));
+        queuedResponse.length = (int) nread;
+        queuedResponse.headers = headers.str();
 
         const auto json = JSON::Object::Entries {
           {"source", "udp.readStart"},
           {"data", JSON::Object::Entries {
             {"id", std::to_string(id)},
             {"port", port},
-            {"bytes", std::to_string(post.length)},
+            {"bytes", std::to_string(queuedResponse.length)},
             {"address", address}
           }}
         };
 
-        callback("-1", json, post);
+        callback("-1", json, queuedResponse);
       }
     });
 

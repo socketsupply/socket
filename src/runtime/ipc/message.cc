@@ -1,9 +1,9 @@
 #include "../bytes.hh"
 #include "../url.hh"
+
 #include "../ipc.hh"
 
 using ssc::runtime::url::decodeURIComponent;
-using ssc::runtime::bytes::BufferQueue;
 
 namespace ssc::runtime::ipc {
   Message::Message (const Message& message)
@@ -38,7 +38,7 @@ namespace ssc::runtime::ipc {
       } catch (const Exception& e) {
         debug(
           "ssc::runtime::ipc::Message: Warning: received non-integer index: %s: %s",
-          this->uri.c_str(),
+          this->uri.str().c_str(),
           e.what()
         );
       }
@@ -133,10 +133,6 @@ namespace ssc::runtime::ipc {
 
   const String Message::str () const {
     return this->uri.str();
-  }
-
-  const char* Message::c_str () const {
-    return this->uri.c_str();
   }
 
   const Map<String, String> Message::map () const {

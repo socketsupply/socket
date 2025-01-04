@@ -1,14 +1,21 @@
 #include "runtime.hh"
+#include "bridge.hh"
+#include "config.hh"
+#include "string.hh"
 
 using namespace ssc::runtime::core;
 using namespace ssc::runtime::config;
+using ssc::runtime::string::replace;
 
 namespace ssc::runtime {
   Runtime::Runtime (const Options& options)
-    : windowManager()
+    : userConfig(options.userConfig),
+      serviceWorkerManager(*this, { .windowManager = this->windowManager }),
+      bridgeManager(*this),
+      windowManager(*this),
       dispatcher(*this),
       options(options),
-      services(*this, { dispatcher, options.features })
+      services(*this, { this->dispatcher, options.features })
   {
     this->init();
   }
@@ -23,7 +30,8 @@ namespace ssc::runtime {
 
   bool Runtime::start () {
     if (!this->loop.start()) return false;
-    return this->resume();
+    if (!this->resume()) return false;
+    return true;
   }
 
   bool Runtime::stop () {
@@ -76,5 +84,15 @@ namespace ssc::runtime {
 
   bool Runtime::paused () const {
     return this->loop.paused();
+  }
+
+  bool Runtime::hasPermission (const String& permission) const {
+    const auto key = String("permissions_allow_") + replace(permission, "-", "_");
+
+    if (!this->userConfig.contains(key)) {
+      return true;
+    }
+
+    return this->userConfig.at(key) != "false";
   }
 }

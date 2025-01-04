@@ -2,6 +2,7 @@
 #define SOCKET_RUNTIME_RUNTIME_DEBUG_H
 
 #include "platform.hh"
+#include "crypto.hh"
 #include "config.hh"
 #include "json.hh"
 
@@ -147,7 +148,7 @@ namespace ssc::runtime::debug {
           /**
            * A unique ID for this `Span`.
            */
-          ID id = rand64();
+          ID id = crypto::rand64();
 
           /**
            * The name of this span
@@ -244,7 +245,7 @@ namespace ssc::runtime::debug {
       /**
        * A unique ID for this `Tracer`.
        */
-      ID id = rand64();
+      ID id = crypto::rand64();
 
       /**
        * Initializes a new Tracer instance with an empty collection of spans.

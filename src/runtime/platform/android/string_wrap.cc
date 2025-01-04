@@ -1,6 +1,6 @@
 #include "string_wrap.hh"
 
-namespace ssc::android {
+namespace ssc::runtime::android {
   StringWrap::StringWrap (JNIEnv *env) {
     this->env = env;
     this->ref = nullptr;

@@ -49,7 +49,7 @@ namespace ssc::runtime::http {
     return (
       this->method.size() > 0 &&
       this->version.size() > 0 &&
-      this->url.href.size() > 0
+      this->url.size() > 0
     );
   }
 

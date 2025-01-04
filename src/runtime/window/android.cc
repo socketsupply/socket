@@ -1,56 +1,54 @@
-#include "../app/app.hh"
+#include "../app.hh"
+#include "../color.hh"
+#include "../crypto.hh"
+#include "../runtime.hh"
+#include "../javascript.hh"
 
-#include "window.hh"
+#include "../window.hh"
 
-using namespace SSC;
+using namespace ssc::runtime;
+using ssc::runtime::javascript::getEmitToRenderProcessJavaScript;
+using ssc::runtime::crypto::rand64;
+using ssc::runtime::color::Color;
+using ssc::runtime::app::App;
 
-namespace SSC {
-  Window::Window (SharedPointer<Core> core, const Window::Options& options)
+namespace ssc::runtime::window {
+  Window::Window (SharedPointer<IBridge> bridge, const Window::Options& options)
     : options(options),
-      core(core),
-      bridge(core, IPC::Bridge::Options {
-        options.index,
-        options.userConfig,
-        options.as<IPC::Preload::Options>()
-      }),
+      bridge(bridge),
       hotkey(this),
       dialog(this)
   {
     auto userConfig = options.userConfig;
-    const auto app = App::sharedApplication();
-    const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
+    const auto attachment = android::JNIEnvironmentAttachment(this->bridge->context.getRuntime()->android.jvm);
 
     this->index = this->options.index;
-    this->bridge.userConfig = options.userConfig;
-    this->bridge.configureNavigatorMounts();
+    this->bridge->configureNavigatorMounts();
 
-    this->bridge.navigateFunction = [this] (const auto url) {
+    this->bridge->navigateHandler  = [this] (const auto url) {
       this->navigate(url);
     };
 
-    this->bridge.evaluateJavaScriptFunction = [this] (const auto source) {
+    this->bridge->evaluateJavaScriptHandler = [this] (const auto source) {
       this->eval(source);
     };
 
-    this->bridge.client.preload = IPC::Preload::compile({
-      .client = UniqueClient {
-        .id = this->bridge.client.id,
-        .index = this->bridge.client.index
-      },
+    this->bridge->client.preload = webview::Preload::compile({
+      .client = this->bridge->client,
       .index = options.index,
       .userScript = options.userScript,
       .userConfig = options.userConfig,
       .conduit = {
-        {"port", this->core->conduit.port},
-        {"hostname", this->core->conduit.hostname},
-        {"sharedKey", this->core->conduit.sharedKey}
+        {"port", this->bridge->context.getRuntime()->services.conduit.port},
+        {"hostname", this->bridge->context.getRuntime()->services.conduit.hostname},
+        {"sharedKey", this->bridge->context.getRuntime()->services.conduit.sharedKey}
       }
     });
 
     // `activity.createWindow(index, shouldExitApplicationOnClose): Unit`
     CallVoidClassMethodFromAndroidEnvironment(
       attachment.env,
-      app->activity,
+      this->bridge->context.android.activity,
       "createWindow",
       "(IZZ)V",
       options.index,
@@ -59,16 +57,16 @@ namespace SSC {
     );
 
     this->hotkey.init();
-    this->bridge.init();
-    this->bridge.configureSchemeHandlers({});
+    this->bridge->init();
+    this->bridge->configureSchemeHandlers({});
   }
 
   Window::~Window () {
-    if (this->androidWindowRef) {
+    if (this->self) {
       const auto app = App::sharedApplication();
-      const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
-      attachment.env->DeleteGlobalRef(this->androidWindowRef);
-      this->androidWindowRef = nullptr;
+      const auto attachment = android::JNIEnvironmentAttachment(app->runtime.android.jvm);
+      attachment.env->DeleteGlobalRef(this->self);
+      this->self = nullptr;
     }
 
     this->close();
@@ -76,12 +74,12 @@ namespace SSC {
 
   ScreenSize Window::getScreenSize () {
     const auto app = App::sharedApplication();
-    const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
+    const auto attachment = android::JNIEnvironmentAttachment(app->runtime.android.jvm);
     // `activity.getWindowWidth(index): String`
     const auto width = CallClassMethodFromAndroidEnvironment(
       attachment.env,
       Int,
-      app->activity,
+      app->runtime.android.activity,
       "getScreenSizeWidth",
       "()I"
     );
@@ -89,7 +87,7 @@ namespace SSC {
     const auto height = CallClassMethodFromAndroidEnvironment(
       attachment.env,
       Int,
-      app->activity,
+      app->runtime.android.activity,
       "getScreenSizeHeight",
       "()I"
     );
@@ -104,14 +102,14 @@ namespace SSC {
 
   void Window::eval (const String& source, const EvalCallback callback) {
     const auto app = App::sharedApplication();
-    const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
+    const auto attachment = android::JNIEnvironmentAttachment(app->runtime.android.jvm);
     const auto token = std::to_string(rand64());
 
     // `activity.evaluateJavaScript(index, source): Boolean`
     CallClassMethodFromAndroidEnvironment(
       attachment.env,
       Boolean,
-      app->activity,
+      app->runtime.android.activity,
       "evaluateJavaScript",
       "(ILjava/lang/String;Ljava/lang/String;)Z",
       this->index,
@@ -124,13 +122,13 @@ namespace SSC {
 
   void Window::show () {
     const auto app = App::sharedApplication();
-    const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
+    const auto attachment = android::JNIEnvironmentAttachment(app->runtime.android.jvm);
 
     // `activity.showWindow(index): Boolean`
     CallClassMethodFromAndroidEnvironment(
       attachment.env,
       Boolean,
-      app->activity,
+      app->runtime.android.activity,
       "showWindow",
       "(I)Z",
       this->index
@@ -139,13 +137,13 @@ namespace SSC {
 
   void Window::hide () {
     const auto app = App::sharedApplication();
-    const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
+    const auto attachment = android::JNIEnvironmentAttachment(app->runtime.android.jvm);
 
     // `activity.hideWindow(index): Boolean`
     CallClassMethodFromAndroidEnvironment(
       attachment.env,
       Boolean,
-      app->activity,
+      app->runtime.android.activity,
       "hideWindow",
       "(I)Z",
       this->index
@@ -162,7 +160,7 @@ namespace SSC {
 
   void Window::close (int code) {
     const auto app = App::sharedApplication();
-    const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
+    const auto attachment = android::JNIEnvironmentAttachment(app->runtime.android.jvm);
     JSON::Object json = JSON::Object::Entries {
       {"data", this->index}
     };
@@ -173,7 +171,7 @@ namespace SSC {
     CallClassMethodFromAndroidEnvironment(
       attachment.env,
       Boolean,
-      app->activity,
+      app->runtime.android.activity,
       "closeWindow",
       "(I)Z",
       this->index
@@ -194,13 +192,13 @@ namespace SSC {
 
   void Window::navigate (const String& url) {
     const auto app = App::sharedApplication();
-    const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
+    const auto attachment = android::JNIEnvironmentAttachment(app->runtime.android.jvm);
 
     // `activity.navigateWindow(index, url): Boolean`
     const auto result = CallClassMethodFromAndroidEnvironment(
       attachment.env,
       Boolean,
-      app->activity,
+      app->runtime.android.activity,
       "navigateWindow",
       "(ILjava/lang/String;)Z",
       this->index,
@@ -214,27 +212,27 @@ namespace SSC {
 
   const String Window::getTitle () const {
     const auto app = App::sharedApplication();
-    const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
+    const auto attachment = android::JNIEnvironmentAttachment(app->runtime.android.jvm);
     // `activity.getWindowTitle(index): String`
     const auto titleString = (jstring) CallObjectClassMethodFromAndroidEnvironment(
       attachment.env,
-      app->activity,
+      app->runtime.android.activity,
       "getWindowTitle",
       "(I)Ljava/lang/String;",
       this->index
     );
 
-    return Android::StringWrap(attachment.env, titleString).str();
+    return android::StringWrap(attachment.env, titleString).str();
   }
 
   void Window::setTitle (const String& title) {
     const auto app = App::sharedApplication();
-    const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
+    const auto attachment = android::JNIEnvironmentAttachment(app->runtime.android.jvm);
     // `activity.setWindowTitle(index, url): Boolean`
     CallClassMethodFromAndroidEnvironment(
       attachment.env,
       Boolean,
-      app->activity,
+      app->runtime.android.activity,
       "setWindowTitle",
       "(ILjava/lang/String;)Z",
       this->index,
@@ -244,12 +242,12 @@ namespace SSC {
 
   Window::Size Window::getSize () {
     const auto app = App::sharedApplication();
-    const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
+    const auto attachment = android::JNIEnvironmentAttachment(app->runtime.android.jvm);
     // `activity.getWindowWidth(index): String`
     const auto width = CallClassMethodFromAndroidEnvironment(
       attachment.env,
       Int,
-      app->activity,
+      app->runtime.android.activity,
       "getWindowWidth",
       "(I)I",
       this->index
@@ -258,7 +256,7 @@ namespace SSC {
     const auto height = CallClassMethodFromAndroidEnvironment(
       attachment.env,
       Int,
-      app->activity,
+      app->runtime.android.activity,
       "getWindowHeight",
       "(I)I",
       this->index
@@ -270,12 +268,12 @@ namespace SSC {
 
   const Window::Size Window::getSize () const {
     const auto app = App::sharedApplication();
-    const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
+    const auto attachment = android::JNIEnvironmentAttachment(app->runtime.android.jvm);
     // `activity.getWindowWidth(index): Int`
     const auto width = CallClassMethodFromAndroidEnvironment(
       attachment.env,
       Int,
-      app->activity,
+      app->runtime.android.activity,
       "getWindowWidth",
       "(I)I",
       this->index
@@ -285,7 +283,7 @@ namespace SSC {
     const auto height = CallClassMethodFromAndroidEnvironment(
       attachment.env,
       Int,
-      app->activity,
+      app->runtime.android.activity,
       "getWindowHeight",
       "(I)I",
       this->index
@@ -295,11 +293,11 @@ namespace SSC {
 
   void Window::setSize (int width, int height, int _) {
     const auto app = App::sharedApplication();
-    const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
+    const auto attachment = android::JNIEnvironmentAttachment(app->runtime.android.jvm);
     // `activity.setWindowSize(index, w): Int`
     CallVoidClassMethodFromAndroidEnvironment(
       attachment.env,
-      app->activity,
+      app->runtime.android.activity,
       "setWindowSize",
       "(III)Z",
       this->index,
@@ -310,13 +308,13 @@ namespace SSC {
 
   void Window::setPosition (float x, float y) {
     const auto app = App::sharedApplication();
-    const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
+    const auto attachment = android::JNIEnvironmentAttachment(app->runtime.android.jvm);
     this->position.x = x;
     this->position.y = y;
     // `activity.setWindowBackgroundColor(index, color)`
     CallVoidClassMethodFromAndroidEnvironment(
       attachment.env,
-      app->activity,
+      app->runtime.android.activity,
       "setWindowPosition",
       "(IFF)Z",
       this->index,
@@ -340,11 +338,11 @@ namespace SSC {
   void Window::setBackgroundColor (int r, int g, int b, float a) {
     const auto app = App::sharedApplication();
     const auto color = Color(r, g, b, a);
-    const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
+    const auto attachment = android::JNIEnvironmentAttachment(app->runtime.android.jvm);
     // `activity.setWindowBackgroundColor(index, color)`
     CallVoidClassMethodFromAndroidEnvironment(
       attachment.env,
-      app->activity,
+      app->runtime.android.activity,
       "setWindowBackgroundColor",
       "(IJ)Z",
       this->index,
@@ -355,11 +353,11 @@ namespace SSC {
   void Window::setBackgroundColor (const String& rgba) {
     const auto app = App::sharedApplication();
     const auto color = Color(rgba);
-    const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
+    const auto attachment = android::JNIEnvironmentAttachment(app->runtime.android.jvm);
     // `activity.setWindowBackgroundColor(index, color)`
     CallVoidClassMethodFromAndroidEnvironment(
       attachment.env,
-      app->activity,
+      app->runtime.android.activity,
       "setWindowBackgroundColor",
       "(IJ)Z",
       this->index,
@@ -369,11 +367,11 @@ namespace SSC {
 
   void Window::setBackgroundColor (const Color& color) {
     const auto app = App::sharedApplication();
-    const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
+    const auto attachment = android::JNIEnvironmentAttachment(app->runtime.android.jvm);
     // `activity.setWindowBackgroundColor(index, color)`
     CallVoidClassMethodFromAndroidEnvironment(
       attachment.env,
-      app->activity,
+      app->runtime.android.activity,
       "setWindowBackgroundColor",
       "(IJ)Z",
       this->index,
@@ -383,12 +381,12 @@ namespace SSC {
 
   String Window::getBackgroundColor () {
     const auto app = App::sharedApplication();
-    const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
+    const auto attachment = android::JNIEnvironmentAttachment(app->runtime.android.jvm);
     // `activity.getWindowBackgroundColor(index): Int`
     const auto color = Color(CallClassMethodFromAndroidEnvironment(
       attachment.env,
       Int,
-      app->activity,
+      app->runtime.android.activity,
       "getWindowBackgroundColor",
       "(I)I",
       this->index
@@ -422,7 +420,7 @@ namespace SSC {
       "url", url
     }};
 
-    this->bridge.emit("applicationurl", json.str());
+    this->bridge->emit("applicationurl", json.str());
   }
 }
 
@@ -440,22 +438,22 @@ extern "C" {
       return ANDROID_THROW(env, "Missing 'App' in environment");
     }
 
-    const auto window = app->windowManager.getWindow(index);
+    const auto window = app->runtime.windowManager.getWindow(index);
 
     if (!window) {
       return ANDROID_THROW(env, "Invalid window index (%d) requested", index);
     }
 
-    const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
-    const auto message = Android::StringWrap(attachment.env, messageString).str();
+    const auto attachment = android::JNIEnvironmentAttachment(app->runtime.android.jvm);
+    const auto message = android::StringWrap(attachment.env, messageString).str();
     const auto size = byteArray != nullptr ? attachment.env->GetArrayLength(byteArray) : 0;
 
     if (byteArray && size > 0) {
       auto bytes = std::make_shared<char[]>(size);
       attachment.env->GetByteArrayRegion(byteArray, 0, size, (jbyte*) bytes.get());
-      window->bridge.route(message, bytes, size);
+      window->bridge->route(message, bytes, size);
     } else {
-      window->bridge.route(message, nullptr, 0);
+      window->bridge->route(message, nullptr, 0);
     }
   }
 
@@ -470,13 +468,13 @@ extern "C" {
       return ANDROID_THROW(env, "Missing 'App' in environment");
     }
 
-    const auto window = app->windowManager.getWindow(index);
+    const auto window = app->runtime.windowManager.getWindow(index);
 
     if (!window) {
       return ANDROID_THROW(env, "Invalid window index (%d) requested", index);
     }
 
-    window->androidWindowRef = env->NewGlobalRef(self);
+    window->self = env->NewGlobalRef(self);
   }
 
   void ANDROID_EXTERNAL(window, Window, onEvaluateJavascriptResult) (
@@ -492,14 +490,14 @@ extern "C" {
       return ANDROID_THROW(env, "Missing 'App' in environment");
     }
 
-    const auto window = app->windowManager.getWindow(index);
+    const auto window = app->runtime.windowManager.getWindow(index);
 
     if (!window) {
       return ANDROID_THROW(env, "Invalid window index (%d) requested", index);
     }
 
-    const auto token = Android::StringWrap(env, tokenString).str();
-    const auto result = Android::StringWrap(env, resultString).str();
+    const auto token = android::StringWrap(env, tokenString).str();
+    const auto result = android::StringWrap(env, resultString).str();
 
     Lock lock(window->mutex);
 
@@ -543,14 +541,14 @@ extern "C" {
       return nullptr;
     }
 
-    const auto window = app->windowManager.getWindow(index);
+    const auto window = app->runtime.windowManager.getWindow(index);
 
     if (!window) {
       ANDROID_THROW(env, "Invalid window index (%d) requested", index);
       return nullptr;
     }
 
-    const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
+    const auto attachment = android::JNIEnvironmentAttachment(app->runtime.android.jvm);
     const auto pendingNavigationLocation = window->pendingNavigationLocation;
     window->pendingNavigationLocation = "";
     return attachment.env->NewStringUTF(pendingNavigationLocation.c_str());
@@ -568,7 +566,7 @@ extern "C" {
       return nullptr;
     }
 
-    const auto window = app->windowManager.getWindow(index);
+    const auto window = app->runtime.windowManager.getWindow(index);
 
     if (!window) {
       ANDROID_THROW(env, "Invalid window index (%d) requested", index);
@@ -591,7 +589,7 @@ extern "C" {
       return nullptr;
     }
 
-    const auto window = app->windowManager.getWindow(index);
+    const auto window = app->runtime.windowManager.getWindow(index);
 
     if (!window) {
       ANDROID_THROW(env, "Invalid window index (%d) requested", index);
@@ -599,8 +597,8 @@ extern "C" {
     }
 
     auto userConfig = window->options.userConfig;
-    auto preloadUserScriptSource = IPC::Preload::compile({
-      .features = IPC::Preload::Options::Features {
+    auto preloadUserScriptSource = webview::Preload::compile({
+      .features = webview::Preload::Options::Features {
         .useGlobalCommonJS = false,
         .useGlobalNodeJS = false,
         .useTestScript = false,
@@ -608,17 +606,14 @@ extern "C" {
         .useESM = false,
         .useGlobalArgs = true
       },
-      .client = UniqueClient {
-        .id = window->bridge.client.id,
-        .index = window->bridge.client.index
-      },
+      .client = window->bridge->client,
       .index = window->options.index,
       .userScript = window->options.userScript,
       .userConfig = window->options.userConfig,
       .conduit = {
-        {"port", window->core->conduit.port},
-        {"hostname", window->core->conduit.hostname},
-        {"sharedKey", window->core->conduit.sharedKey}
+        {"port", window->bridge->context.getRuntime()->services.conduit.port},
+        {"hostname", window->bridge->context.getRuntime()->services.conduit.hostname},
+        {"sharedKey", window->bridge->context.getRuntime()->services.conduit.sharedKey}
       }
     });
 
@@ -637,13 +632,13 @@ extern "C" {
       return ANDROID_THROW(env, "Missing 'App' in environment");
     }
 
-    const auto window = app->windowManager.getWindow(index);
+    const auto window = app->runtime.windowManager.getWindow(index);
 
     if (!window) {
       return ANDROID_THROW(env, "Invalid window index (%d) requested", index);
     }
 
-    const auto url = Android::StringWrap(env, urlString).str();
+    const auto url = android::StringWrap(env, urlString).str();
     window->handleApplicationURL(url);
   }
 }

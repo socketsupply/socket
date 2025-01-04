@@ -2,6 +2,7 @@
 #define SOCKET_RUNTIME_RUNTIME_JSON_H
 
 #include "platform.hh"
+#include "crypto.hh"
 
 namespace ssc::runtime::JSON {
   // forward
@@ -34,7 +35,7 @@ namespace ssc::runtime::JSON {
     public:
       using ID = uint64_t;
 
-      ID id = rand64();
+      ID id = crypto::rand64();
 
       virtual ~Entity() = 0;
 

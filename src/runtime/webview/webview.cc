@@ -1,8 +1,10 @@
 #include "../webview.hh"
 #include "../window.hh"
 #include "../string.hh"
+#include "../crypto.hh"
 
 using ssc::runtime::window::Window;
+using ssc::runtime::crypto::rand64;
 using ssc::runtime::string::trim;
 
 #if SOCKET_RUNTIME_PLATFORM_APPLE

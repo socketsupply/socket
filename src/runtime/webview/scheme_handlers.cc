@@ -1,11 +1,25 @@
+#include "../platform.hh"
+#include "../window.hh"
 #include "../bridge.hh"
 #include "../config.hh"
-#include "../platform.hh"
+#include "../debug.hh"
+#include "../http.hh"
+#include "../app.hh"
 
-#include "scheme_handlers.hh"
+#include "../webview.hh"
 
 using namespace ssc::runtime;
+using namespace ssc::runtime::webview;
+using ssc::runtime::url::decodeURIComponent;
+using ssc::runtime::config::isDebugEnabled;
 using ssc::runtime::config::getUserConfig;
+using ssc::runtime::config::getDevHost;
+using ssc::runtime::http::toHeaderCase;
+using ssc::runtime::string::toLowerCase;
+using ssc::runtime::string::split;
+using ssc::runtime::string::trim;
+using ssc::runtime::string::tmpl;
+using ssc::runtime::app::App;
 
 #if SOCKET_RUNTIME_PLATFORM_APPLE
 using Task = id<WKURLSchemeTask>;
@@ -77,12 +91,12 @@ using Task = id<WKURLSchemeTask>;
     [task didFailWithError: [NSError
          errorWithDomain: @(bundleIdentifier.c_str())
                     code: 1
-                userInfo: @{NSLocalizedDescriptionKey: @("IPC::SchemeHandlers::Response: Request is in an invalid state")}
+                userInfo: @{NSLocalizedDescriptionKey: @("SchemeHandlers::Response: Request is in an invalid state")}
     ]];
     return;
   }
 
-  auto request = IPC::SchemeHandlers::Request::Builder(self.handlers, task)
+  auto request = SchemeHandlers::Request::Builder(self.handlers, task)
     .setMethod(toUpperCase(task.request.HTTPMethod.UTF8String))
     // copies all headers
     .setHeaders(task.request.allHTTPHeaderFields)
@@ -96,7 +110,7 @@ using Task = id<WKURLSchemeTask>;
   });
 
   if (!handled) {
-    auto response = IPC::SchemeHandlers::Response(request, 404);
+    auto response = SchemeHandlers::Response(request, 404);
     response.finish();
     [self finalizeTask: task];
   }
@@ -110,22 +124,22 @@ static void onURISchemeRequest (WebKitURISchemeRequest* schemeRequest, gpointer 
 
   if (!app) {
     const auto quark = g_quark_from_string(globalUserConfig["meta_bundle_identifier"].c_str());
-    const auto error = g_error_new(quark, 1, "IPC::SchemeHandlers::Request: Missing WindowManager in request");
+    const auto error = g_error_new(quark, 1, "SchemeHandlers::Request: Missing WindowManager in request");
     webkit_uri_scheme_request_finish_error(schemeRequest, error);
     return;
   }
 
   auto webview = webkit_uri_scheme_request_get_web_view(schemeRequest);
-  auto window = app->windowManager.getWindowForWebView(webview);
+  auto window = app->runtime.windowManager.getWindowForWebView(webview);
 
   if (!window) {
     const auto quark = g_quark_from_string(globalUserConfig["meta_bundle_identifier"].c_str());
-    const auto error = g_error_new(quark, 1, "IPC::SchemeHandlers::Request: Missing Window in request");
+    const auto error = g_error_new(quark, 1, "SchemeHandlers::Request: Missing Window in request");
     webkit_uri_scheme_request_finish_error(schemeRequest, error);
     return;
   }
 
-  auto bridge = &window->bridge;
+  auto bridge = window->bridge;
   auto request = ssc::runtime::webview::SchemeHandlers::Request::Builder(&bridge->schemeHandlers, schemeRequest)
     .setMethod(String(webkit_uri_scheme_request_get_http_method(schemeRequest)))
     // copies all request soup headers
@@ -138,7 +152,7 @@ static void onURISchemeRequest (WebKitURISchemeRequest* schemeRequest, gpointer 
   });
 
   if (!handled) {
-    auto response = IPC::SchemeHandlers::Response(request, 404);
+    auto response = SchemeHandlers::Response(request, 404);
     response.finish();
   }
 }
@@ -150,21 +164,21 @@ extern "C" {
     jint index,
     jobject requestObject
   ) {
-    auto app = App::sharedApplication();
+    auto app = app::App::sharedApplication();
 
     if (!app) {
       ANDROID_THROW(env, "Missing 'App' in environment");
       return false;
     }
 
-    const auto window = app->windowManager.getWindow(index);
+    const auto window = app->runtime.windowManager.getWindow(index);
 
     if (!window) {
       ANDROID_THROW(env, "Invalid window requested");
       return false;
     }
 
-    const auto method = Android::StringWrap(env, (jstring) CallClassMethodFromAndroidEnvironment(
+    const auto method = android::StringWrap(env, (jstring) CallClassMethodFromAndroidEnvironment(
       env,
       Object,
       requestObject,
@@ -172,7 +186,7 @@ extern "C" {
       "()Ljava/lang/String;"
     )).str();
 
-    const auto headers = Android::StringWrap(env, (jstring) CallClassMethodFromAndroidEnvironment(
+    const auto headers = android::StringWrap(env, (jstring) CallClassMethodFromAndroidEnvironment(
       env,
       Object,
       requestObject,
@@ -206,8 +220,8 @@ extern "C" {
     }
 
     const auto requestObjectRef = env->NewGlobalRef(requestObject);
-    const auto request = IPC::SchemeHandlers::Request::Builder(
-      &window->bridge.schemeHandlers,
+    const auto request = webview::SchemeHandlers::Request::Builder(
+      &window->bridge->schemeHandlers,
       requestObjectRef
     )
       .setMethod(method)
@@ -217,12 +231,12 @@ extern "C" {
       .setBody(requestBodySize, bytes)
       .build();
 
-    const auto handled = window->bridge.schemeHandlers.handleRequest(request, [=](const auto& response) {
+    const auto handled = window->bridge->schemeHandlers.handleRequest(request, [=](const auto& response) {
       if (bytes) {
         delete [] bytes;
       }
 
-      const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
+      const auto attachment = android::JNIEnvironmentAttachment(app->runtime.android.jvm);
       attachment.env->DeleteGlobalRef(requestObjectRef);
     });
 
@@ -239,22 +253,22 @@ extern "C" {
     jint index,
     jstring schemeString
   ) {
-    auto app = App::sharedApplication();
+    auto app = app::App::sharedApplication();
 
     if (!app) {
       ANDROID_THROW(env, "Missing 'App' in environment");
       return false;
     }
 
-    const auto window = app->windowManager.getWindow(index);
+    const auto window = app->runtime.windowManager.getWindow(index);
 
     if (!window) {
       ANDROID_THROW(env, "Invalid window requested");
       return false;
     }
 
-    const auto scheme = Android::StringWrap(env, schemeString).str();
-    return window->bridge.schemeHandlers.hasHandlerForScheme(scheme);
+    const auto scheme = android::StringWrap(env, schemeString).str();
+    return window->bridge->schemeHandlers.hasHandlerForScheme(scheme);
   }
 }
 #endif
@@ -317,18 +331,8 @@ namespace ssc::runtime::webview {
   void SchemeHandlers::init () {}
 
   void SchemeHandlers::configure (const Configuration& configuration) {
-    static const auto devHost = SSC::getDevHost();
+    static const auto devHost = getDevHost();
     this->configuration = configuration;
-    /* XXX(@jwerle): this now causes app store rejection
-  #if SOCKET_RUNTIME_PLATFORM_APPLE
-    if (SSC::isDebugEnabled() && devHost.starts_with("http:")) {
-      [configuration.webview.processPool
-        performSelector: @selector(_registerURLSchemeAsSecure:)
-        withObject: @"http"
-      ];
-    }
-  #endif
-  */
   }
 
   bool SchemeHandlers::hasHandlerForScheme (const String& scheme) {
@@ -420,7 +424,8 @@ namespace ssc::runtime::webview {
     // request scheme we do not know about, we do not need to call
     // `request.finalize()` as we'll just respond to the request right away
     if (!this->hasHandlerForScheme(request->scheme)) {
-      auto response = IPC::SchemeHandlers::Response(request, 404);
+      debug("NO HANDLER FOR REQUEST: %s", request->str().c_str());
+      auto response = webview::SchemeHandlers::Response(request, 404);
       // make sure the response was finished first
       response.finish();
 
@@ -447,7 +452,7 @@ namespace ssc::runtime::webview {
     this->activeRequests.emplace(request->id, request);
 
     if (request->error != nullptr) {
-      auto response = IPC::SchemeHandlers::Response(request, 500);
+      auto response = webview::SchemeHandlers::Response(request, 500);
       response.fail(request->error);
       this->activeRequests.erase(id);
       return true;
@@ -456,7 +461,6 @@ namespace ssc::runtime::webview {
     auto span = request->tracer.span("handler");
 
     this->bridge->dispatch([this, id, span, handler, callback, request] () mutable {
-      Lock lock(this->mutex);
       if (request != nullptr && request->isActive() && !request->isCancelled()) {
         handler(request, this->bridge, &request->callbacks, [this, id, span, callback](auto& response) mutable {
           Lock lock(this->mutex);
@@ -533,9 +537,9 @@ namespace ssc::runtime::webview {
     }
     CoTaskMemFree(requestURI);
   #elif SOCKET_RUNTIME_PLATFORM_ANDROID
-    auto app = App::sharedApplication();
-    auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
-    this->absoluteURL = Android::StringWrap(attachment.env, (jstring) CallClassMethodFromAndroidEnvironment(
+    auto app = app::App::sharedApplication();
+    auto attachment = android::JNIEnvironmentAttachment(app->runtime.android.jvm);
+    this->absoluteURL = android::StringWrap(attachment.env, (jstring) CallClassMethodFromAndroidEnvironment(
       attachment.env,
       Object,
       platformRequest,
@@ -642,7 +646,7 @@ namespace ssc::runtime::webview {
 
   SchemeHandlers::Request::Builder& SchemeHandlers::Request::Builder::setBody (const NSData* data) {
     if (data != nullptr && data.length > 0 && data.bytes != nullptr) {
-      return this->setBody(data.length, reinterpret_cast<const char*>(data.bytes));
+      return this->setBody(data.length, reinterpret_cast<const unsigned char*>(data.bytes));
     }
     return *this;
   }
@@ -677,21 +681,23 @@ namespace ssc::runtime::webview {
       this->request->method == "PATCH"
     ) {
       GError* error = nullptr;
-      this->request->body.bytes = std::make_shared<char[]>(MAX_URI_SCHEME_REQUEST_BODY_BYTES);
+      unsigned char tmp[MAX_URI_SCHEME_REQUEST_BODY_BYTES] = {0};
+      size_t size = 0;
       const auto success = g_input_stream_read_all(
         stream,
-        this->request->body.bytes.get(),
+        reinterpret_cast<gchar*>(tmp),
         MAX_URI_SCHEME_REQUEST_BODY_BYTES,
-        &this->request->body.size,
+        &size,
         nullptr,
         &this->error
       );
+      this->request->body = bytes::Buffer::from(tmp, size);
     }
     return *this;
   }
 #endif
 
-  SchemeHandlers::Request::Builder& SchemeHandlers::Request::Builder::setBody (const Body& body) {
+  SchemeHandlers::Request::Builder& SchemeHandlers::Request::Builder::setBody (const bytes::Buffer& body) {
     if (
       this->request->method == "POST" ||
       this->request->method == "PUT" ||
@@ -702,16 +708,10 @@ namespace ssc::runtime::webview {
     return *this;
   }
 
-  SchemeHandlers::Request::Builder& SchemeHandlers::Request::Builder::setBody (size_t size, const char* bytes) {
+  SchemeHandlers::Request::Builder& SchemeHandlers::Request::Builder::setBody (size_t size, const unsigned char* bytes) {
     if (this->request->method == "POST" || this->request->method == "PUT" || this->request->method == "PATCH") {
       if (size > 0 && bytes != nullptr) {
-        this->request->body.size = size;
-        this->request->body.bytes = std::make_shared<char[]>(size);
-        memcpy(
-          this->request->body.bytes.get(),
-          bytes,
-          this->request->body.size
-        );
+        this->request->body.set(bytes, 0, size);
       }
     }
     return *this;
@@ -742,7 +742,7 @@ namespace ssc::runtime::webview {
       query(options.query),
       fragment(options.fragment),
       headers(options.headers),
-      tracer("IPC::SchemeHandlers::Request")
+      tracer("webview::SchemeHandlers::Request")
   {
     this->platformRequest = platformRequest;
   }
@@ -789,7 +789,7 @@ namespace ssc::runtime::webview {
   }
 
   SchemeHandlers::Request::Request (const Request& request) noexcept
-    : tracer("IPC::SchemeHandlers::Request")
+    : tracer("webview::SchemeHandlers::Request")
   {
     copyRequest(this, request);
   }
@@ -873,8 +873,10 @@ namespace ssc::runtime::webview {
   }
 
   bool SchemeHandlers::Request::isActive () const {
-    auto app = App::sharedApplication();
-    auto window = app->windowManager.getWindowForBridge(this->bridge);
+    auto app = app::App::sharedApplication();
+    auto window = app->runtime.windowManager.getWindowForBridge(
+      dynamic_cast<window::IBridge*>(this->bridge)
+    );
 
     // only a scheme handler owned by this bridge and attached to a
     // window should be considered "active"
@@ -887,8 +889,10 @@ namespace ssc::runtime::webview {
   }
 
   bool SchemeHandlers::Request::isCancelled () const {
-    auto app = App::sharedApplication();
-    auto window = app->windowManager.getWindowForBridge(this->bridge);
+    auto app = app::App::sharedApplication();
+    auto window = app->runtime.windowManager.getWindowForBridge(
+      dynamic_cast<window::IBridge*>(this->bridge)
+    );
 
     if (window != nullptr && this->handlers != nullptr) {
       return this->handlers->isRequestCancelled(this->id);
@@ -920,7 +924,7 @@ namespace ssc::runtime::webview {
       handlers(request->handlers),
       client(request->client),
       id(request->id),
-      tracer("IPC::SchemeHandlers::Response")
+      tracer("webview::SchemeHandlers::Response")
   {
     const auto defaultHeaders = split(
       this->request->bridge->userConfig.contains("webview_headers")
@@ -929,7 +933,7 @@ namespace ssc::runtime::webview {
       '\n'
     );
 
-    if (SSC::isDebugEnabled()) {
+    if (isDebugEnabled()) {
       this->setHeader("cache-control", "no-cache");
     }
 
@@ -965,14 +969,14 @@ namespace ssc::runtime::webview {
 
   SchemeHandlers::Response::Response (const Response& response) noexcept
     : request(response.request),
-      tracer("IPC::SchemeHandlers::Response")
+      tracer("SchemeHandlers::Response")
   {
     copyResponse(this, response);
   }
 
   SchemeHandlers::Response::Response (Response&& response) noexcept
     : request(response.request),
-      tracer("IPC::SchemeHandlers::Response")
+      tracer("SchemeHandlers::Response")
   {
     copyResponse(this, response);
   }
@@ -992,7 +996,7 @@ namespace ssc::runtime::webview {
   bool SchemeHandlers::Response::writeHead (int statusCode, const Headers headers) {
     // fail if already finished
     if (this->finished) {
-      debug("IPC::SchemeHandlers::Response: Failed to write head. Already finished");
+      debug("SchemeHandlers::Response: Failed to write head. Already finished");
       return false;
     }
 
@@ -1005,12 +1009,12 @@ namespace ssc::runtime::webview {
 
     // fail if head of response is already created
     if (this->platformResponse != nullptr) {
-      debug("IPC::SchemeHandlers::Response: Failed to write head as it was already written");
+      debug("SchemeHandlers::Response: Failed to write head as it was already written");
       return false;
     }
 
     if (this->request->platformRequest == nullptr) {
-      debug("IPC::SchemeHandlers::Response: Failed to write head. Request is in an invalid state");
+      debug("SchemeHandlers::Response: Failed to write head. Request is in an invalid state");
       return false;
     }
 
@@ -1106,8 +1110,8 @@ namespace ssc::runtime::webview {
 
     return result == S_OK;
   #elif SOCKET_RUNTIME_PLATFORM_ANDROID
-    const auto app = App::sharedApplication();
-    const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
+    const auto app = app::App::sharedApplication();
+    const auto attachment = android::JNIEnvironmentAttachment(app->runtime.android.jvm);
 
     this->platformResponse = attachment.env->NewGlobalRef(
       CallClassMethodFromAndroidEnvironment(
@@ -1154,15 +1158,19 @@ namespace ssc::runtime::webview {
     return false;
   }
 
+  bool SchemeHandlers::Response::write (const bytes::Buffer& buffer) {
+    return this->write(buffer.size(), buffer.pointer());
+  }
+
   bool SchemeHandlers::Response::write (
     size_t size,
-    SharedPointer<char[]> bytes
+    SharedPointer<unsigned char[]> bytes
   ) {
     if (
       !this->handlers->isRequestActive(this->id) ||
       this->handlers->isRequestCancelled(this->id)
     ) {
-      debug("IPC::SchemeHandlers::Response: Write attemped for request that is no longer active or cancelled");
+      debug("SchemeHandlers::Response: Write attemped for request that is no longer active or cancelled");
       return false;
     }
 
@@ -1175,7 +1183,7 @@ namespace ssc::runtime::webview {
       this->setHeader("content-length", size);
       if (!this->writeHead()) {
         debug(
-          "IPC::SchemeHandlers::Response: Failed to write head for %s",
+          "SchemeHandlers::Response: Failed to write head for %s",
           this->request->str().c_str()
         );
         return false;
@@ -1192,13 +1200,17 @@ namespace ssc::runtime::webview {
       }
       return true;
     #elif SOCKET_RUNTIME_PLATFORM_LINUX
+      const auto tmp = new unsigned char[size]{0};
+      memcpy(tmp, bytes.get(), size);
       g_memory_input_stream_add_data(
         reinterpret_cast<GMemoryInputStream*>(this->platformResponseStream),
-        reinterpret_cast<const void*>(bytes.get()),
+        reinterpret_cast<const void*>(tmp),
         (gssize) size,
-        nullptr
+        [](auto p) {
+          const auto tmp = reinterpret_cast<unsigned char*>(p);
+          delete [] tmp;
+        }
       );
-      this->request->bridge->core->retainSharedPointerBuffer(bytes, 256);
       return true;
     #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
       return S_OK == this->platformResponseStream->Write(
@@ -1207,8 +1219,8 @@ namespace ssc::runtime::webview {
         nullptr
       );
     #elif SOCKET_RUNTIME_PLATFORM_ANDROID
-      const auto app = App::sharedApplication();
-      const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
+      const auto app = app::App::sharedApplication();
+      const auto attachment = android::JNIEnvironmentAttachment(app->runtime.android.jvm);
       const auto byteArray = attachment.env->NewByteArray(size);
 
       attachment.env->SetByteArrayRegion(
@@ -1244,13 +1256,20 @@ namespace ssc::runtime::webview {
       return false;
     }
 
-    auto bytes = std::make_shared<char[]>(size);
-    memcpy(bytes.get(), source.c_str(), size);
+    auto bytes = std::make_shared<unsigned char[]>(size);
+    memset(bytes.get(), 0, size);
+    memcpy(bytes.get(), source.data(), size);
     return this->write(size, bytes);
   }
 
-  bool SchemeHandlers::Response::write (size_t size, const char* bytes) {
-    return size > 0 && bytes != nullptr && this->write(String(bytes, size));
+  bool SchemeHandlers::Response::write (size_t size, const unsigned char* input) {
+    if (size == 0) {
+      return false;
+    }
+
+    auto bytes = std::make_shared<unsigned char[]>(size);
+    memcpy(bytes.get(), input, size);
+    return this->write(size, bytes);
   }
 
   bool SchemeHandlers::Response::write (const JSON::Any& json) {
@@ -1258,9 +1277,9 @@ namespace ssc::runtime::webview {
     return this->write(json.str());
   }
 
-  bool SchemeHandlers::Response::write (const FileResource& resource) {
-    auto responseResource = FileResource(resource);
-    auto app = App::sharedApplication();
+  bool SchemeHandlers::Response::write (const filesystem::Resource& resource) {
+    auto responseResource = filesystem::Resource(resource);
+    auto app = app::App::sharedApplication();
 
     const auto contentLength = responseResource.size();
     const auto contentType = responseResource.mimeType();
@@ -1282,7 +1301,7 @@ namespace ssc::runtime::webview {
   }
 
   bool SchemeHandlers::Response::write (
-    const FileResource::ReadStream::Buffer& buffer
+    const filesystem::Resource::ReadStream::Buffer& buffer
   ) {
     return this->write(buffer.size, buffer.bytes);
   }
@@ -1295,7 +1314,7 @@ namespace ssc::runtime::webview {
     return this->write(json) && this->finish();
   }
 
-  bool SchemeHandlers::Response::send (const FileResource& resource) {
+  bool SchemeHandlers::Response::send (const filesystem::Resource& resource) {
     return this->write(resource) && this->finish();
   }
 
@@ -1345,7 +1364,9 @@ namespace ssc::runtime::webview {
         platformResponseStream,
         G_PRIORITY_DEFAULT,
         nullptr,
-        nullptr,
+        [](auto stream, auto res, auto _) {
+          g_object_unref(stream);
+        },
         nullptr
       );
     }
@@ -1354,8 +1375,8 @@ namespace ssc::runtime::webview {
     // TODO(@jwerle): move more `WebResourceRequested` logic to here
   #elif SOCKET_RUNTIME_PLATFORM_ANDROID
     if (this->platformResponse != nullptr) {
-      auto app = App::sharedApplication();
-      auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
+      auto app = app::App::sharedApplication();
+      auto attachment = android::JNIEnvironmentAttachment(app->runtime.android.jvm);
 
       CallVoidClassMethodFromAndroidEnvironment(
         attachment.env,
@@ -1376,16 +1397,21 @@ namespace ssc::runtime::webview {
   }
 
   void SchemeHandlers::Response::setHeader (const String& name, const Headers::Value& value) {
+    auto app = App::sharedApplication();
     const auto bridge = this->request->handlers->bridge;
     if (toLowerCase(name) == "referer") {
       if (bridge->navigator.location.workers.contains(value.string)) {
         const auto workerLocation = bridge->navigator.location.workers[value.string];
         this->headers[name] = workerLocation;
         return;
-      } else if (bridge->navigator.serviceWorker.bridge->navigator.location.workers.contains(value.string)) {
-        const auto workerLocation = bridge->navigator.serviceWorker.bridge->navigator.location.workers[value.string];
-        this->headers[name] = workerLocation;
-        return;
+      } else {
+        for (const auto& entry : app->runtime.serviceWorkerManager.servers) {
+          if (entry.second->bridge->navigator.location.workers.contains(value.string)) {
+            const auto workerLocation = entry.second->bridge->navigator.location.workers[value.string];
+            this->headers[name] = workerLocation;
+            return;
+          }
+        }
       }
     }
 

@@ -1,9 +1,7 @@
 /* global Worker */
 import { channel } from './index.js'
-import serialize from '../internal/serialize.js'
 import globals from '../internal/globals.js'
 import crypto from '../crypto.js'
-import ipc from '../ipc.js'
 
 export const workers = new Map()
 export { channel }
@@ -93,10 +91,6 @@ export class SharedWorkerInfo {
     const url = new URL(this.scriptURL)
     this.url = url.toString()
     this.hash = crypto.murmur3(url.toString())
-
-    if (this.port) {
-      this.port = serialize(ipc.findIPCMessageTransfers(new Set(), this.port))
-    }
   }
 
   get pathname () {
@@ -118,20 +112,6 @@ export async function onInstall (event) {
   workers.set(info.hash, worker)
   globals.get('SharedWorkerContext.info').set(info.hash, info)
   worker.postMessage({ install: info })
-
-  try {
-    await new Promise((resolve, reject) => {
-      channel.addEventListener('message', (event) => {
-        if (event.data?.error?.id === info.id) {
-          reject(new Error(event.data.error.message))
-        } else if (event.data?.installed?.id === info.id) {
-          resolve(undefined)
-        }
-      })
-    })
-  } catch (err) {
-    console.error(err)
-  }
 }
 
 export async function onUninstall (event) {
@@ -155,11 +135,25 @@ export async function onConnect (event) {
   }
 
   if (!workers.has(info.hash)) {
-    await onInstall(new MessageEvent('message', {
+    onInstall(new MessageEvent('message', {
       data: {
         install: event.data.connect
       }
     }))
+
+    try {
+      await new Promise((resolve, reject) => {
+        channel.addEventListener('message', (event) => {
+          if (event.data?.error?.id === info.id) {
+            reject(new Error(event.data.error.message))
+          } else if (event.data?.installed?.id === info.id) {
+            resolve()
+          }
+        })
+      })
+    } catch (err) {
+      console.error(err)
+    }
   }
 
   const worker = workers.get(info.hash)

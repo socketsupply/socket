@@ -4,7 +4,9 @@
 #include "../types.hh"
 #include "native.hh"
 
-namespace ssc::android {
+namespace ssc::runtime::android {
+  using namespace ssc::runtime::types;
+
   /**
    * An Android AssetManager NDK type.
    */

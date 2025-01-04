@@ -32,7 +32,7 @@ namespace ssc::runtime::core::services {
     const String& seq,
     const String& value,
     const Callback callback
-  ) const {
+  ) {
     String errorMessage = "Failed to open external file";
     String pathToFile = decodeURIComponent(value);
     bool success = false;
@@ -70,7 +70,7 @@ namespace ssc::runtime::core::services {
     const String& seq,
     const String& value,
     const Callback callback
-  ) const {
+  ) {
   #if SOCKET_RUNTIME_PLATFORM_APPLE
     this->loop.dispatch([=]() {
       __block const auto url = [NSURL URLWithString: @(value.c_str())];
@@ -184,12 +184,12 @@ namespace ssc::runtime::core::services {
     callback(seq, JSON::Object{}, QueuedResponse{});
   #elif SOCKET_RUNTIME_PLATFORM_ANDROID
     JSON::Object json;
-    const auto attachment = Android::JNIEnvironmentAttachment(this->getRuntimeContext()->jvm);
+    const auto attachment = android::JNIEnvironmentAttachment(this->getRuntimeContext()->android.jvm);
     // `activity.openExternal(url)`
     CallClassMethodFromAndroidEnvironment(
       attachment.env,
       Boolean,
-      this->getRuntimeContext()->activity,
+      this->getRuntimeContext()->android.activity,
       "openExternal",
       "(Ljava/lang/String;)Z",
       attachment.env->NewStringUTF(value.c_str())

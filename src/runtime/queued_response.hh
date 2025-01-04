@@ -26,7 +26,7 @@ namespace ssc::runtime {
      *  - data: event data
      *  - finished: whether this is the final event
      */
-    using EventStreamCallback = Function<bool(const char*, const char*, bool)>;
+    using EventStreamCallback = Function<bool(const char*, const unsigned char*, bool)>;
 
     /**
      * A callback used for chunked transfer encoding.
@@ -37,7 +37,7 @@ namespace ssc::runtime {
      *  - size: size of this chunk
      *  - finished: whether this is the final chunk
      */
-    using ChunkStreamCallback = Function<bool(const char*, size_t, bool)>;
+    using ChunkStreamCallback = Function<bool(const unsigned char*, size_t, bool)>;
 
     /**
      * Identifies this queued response uniquely.
@@ -53,7 +53,7 @@ namespace ssc::runtime {
     /**
      * Pointer to the raw response body (if not streaming).
      */
-    SharedPointer<char[]> body = nullptr;
+    SharedPointer<unsigned char[]> body = nullptr;
 
     /**
      * Length of the response body in bytes.

@@ -1,8 +1,7 @@
-#ifndef SOCKET_RUNTIME_CLI_H
-#define SOCKET_RUNTIME_CLI_H
+#ifndef SOCKET_CLI_H
+#define SOCKET_CLI_H
 
-#include "../runtime/platform.hh"
-#include "../runtime/env.hh"
+#include "runtime.hh"
 
 #include <signal.h>
 

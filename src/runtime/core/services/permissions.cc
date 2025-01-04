@@ -1,7 +1,9 @@
 #include "../../debug.hh"
 #include "../../config.hh"
 #include "../../string.hh"
+#include "../../runtime.hh"
 
+#include "../services.hh"
 #include "permissions.hh"
 
 using ssc::runtime::config::getUserConfig;
@@ -9,14 +11,7 @@ using ssc::runtime::string::replace;
 
 namespace ssc::runtime::core::services {
   bool Permissions::hasRuntimePermission (const String& permission) const {
-    static const auto userConfig = getUserConfig();
-    const auto key = String("permissions_allow_") + replace(permission, "-", "_");
-
-    if (!userConfig.contains(key)) {
-      return true;
-    }
-
-    return userConfig.at(key) != "false";
+    return this->context.getRuntime()->hasPermission(permission);
   }
 
   void Permissions::query (
@@ -40,15 +35,15 @@ namespace ssc::runtime::core::services {
         JSON::Object json;
 
       #if SOCKET_RUNTIME_PLATFORM_APPLE
-        if (this->core->geolocation.locationObserver.isAuthorized) {
+        if (this->services.geolocation.locationObserver.isAuthorized) {
           json = JSON::Object::Entries {
             {"data", JSON::Object::Entries {
               {"state", "granted"}}
             }
           };
-        } else if (this->core->geolocation.locationObserver.locationManager) {
+        } else if (this->services.geolocation.locationObserver.locationManager) {
           const auto authorizationStatus = (
-            this->core->geolocation.locationObserver.locationManager.authorizationStatus
+            this->services.geolocation.locationObserver.locationManager.authorizationStatus
           );
 
           if (authorizationStatus == kCLAuthorizationStatusDenied) {
@@ -66,12 +61,12 @@ namespace ssc::runtime::core::services {
           }
         }
       #elif SOCKET_RUNTIME_PLATFORM_ANDROID
-        const auto attachment = Android::JNIEnvironmentAttachment(this->core->platform.jvm);
+        const auto attachment = android::JNIEnvironmentAttachment(this->context.getRuntime()->android.jvm);
         // `activity.checkPermission(permission)`
         const auto hasCoarseLocation = CallClassMethodFromAndroidEnvironment(
           attachment.env,
           Boolean,
-          this->core->platform.activity,
+          this->context.getRuntime()->android.activity,
           "checkPermission",
           "(Ljava/lang/String;)Z",
           attachment.env->NewStringUTF("android.permission.ACCESS_COARSE_LOCATION")
@@ -81,7 +76,7 @@ namespace ssc::runtime::core::services {
         const auto hasFineLocation = CallClassMethodFromAndroidEnvironment(
           attachment.env,
           Boolean,
-          this->core->platform.activity,
+          this->context.getRuntime()->android.activity,
           "checkPermission",
           "(Ljava/lang/String;)Z",
           attachment.env->NewStringUTF("android.permission.ACCESS_FINE_LOCATION")
@@ -130,7 +125,7 @@ namespace ssc::runtime::core::services {
           callback(seq, json, QueuedResponse{});
         }];
       #elif SOCKET_RUNTIME_PLATFORM_ANDROID
-        const auto attachment = Android::JNIEnvironmentAttachment(this->core->platform.jvm);
+        const auto attachment = android::JNIEnvironmentAttachment(this->core->platform.jvm);
         // `activity.checkPermission(permission)`
         const auto hasQueuedResponseNotifications = CallClassMethodFromAndroidEnvironment(
           attachment.env,
@@ -173,7 +168,7 @@ namespace ssc::runtime::core::services {
       if (name == "camera")  {
         JSON::Object json;
       #if SOCKET_RUNTIME_PLATFORM_ANDROID
-        const auto attachment = Android::JNIEnvironmentAttachment(this->core->platform.jvm);
+        const auto attachment = android::JNIEnvironmentAttachment(this->core->platform.jvm);
         // `activity.checkPermission(permission)`
         const auto hasCameraPermission = CallClassMethodFromAndroidEnvironment(
           attachment.env,
@@ -212,7 +207,7 @@ namespace ssc::runtime::core::services {
       if (name == "microphone")  {
         JSON::Object json;
       #if SOCKET_RUNTIME_PLATFORM_ANDROID
-        const auto attachment = Android::JNIEnvironmentAttachment(this->core->platform.jvm);
+        const auto attachment = android::JNIEnvironmentAttachment(this->core->platform.jvm);
         // `activity.checkPermission(permission)`
         const auto hasRecordAudioPermission = CallClassMethodFromAndroidEnvironment(
           attachment.env,
@@ -302,12 +297,12 @@ namespace ssc::runtime::core::services {
           return callback(seq, json, QueuedResponse{});
         }
       #elif SOCKET_RUNTIME_PLATFORM_ANDROID
-        const auto attachment = Android::JNIEnvironmentAttachment(this->core->platform.jvm);
+        const auto attachment = android::JNIEnvironmentAttachment(this->context.getRuntime()->android.jvm);
         // `activity.checkPermission(permission)`
         const auto hasCoarseLocation = CallClassMethodFromAndroidEnvironment(
           attachment.env,
           Boolean,
-          this->core->platform.activity,
+          this->context.getRuntime()->android.activity,
           "checkPermission",
           "(Ljava/lang/String;)Z",
           attachment.env->NewStringUTF("android.permission.ACCESS_COARSE_LOCATION")
@@ -317,14 +312,14 @@ namespace ssc::runtime::core::services {
         const auto hasFineLocation = CallClassMethodFromAndroidEnvironment(
           attachment.env,
           Boolean,
-          this->core->platform.activity,
+          this->context.getRuntime()->android.activity,
           "checkPermission",
           "(Ljava/lang/String;)Z",
           attachment.env->NewStringUTF("android.permission.ACCESS_FINE_LOCATION")
         );
 
         if (!hasCoarseLocation || !hasFineLocation) {
-          CoreGeolocation::PermissionChangeObserver observer;
+          Geolocation::PermissionChangeObserver observer;
           auto permissions = attachment.env->NewObjectArray(
             2,
             attachment.env->FindClass("java/lang/String"),
@@ -343,19 +338,19 @@ namespace ssc::runtime::core::services {
             attachment.env->NewStringUTF("android.permission.ACCESS_FINE_LOCATION")
           );
 
-          this->core->geolocation.addPermissionChangeObserver(observer, [this, observer, callback, seq](auto result) mutable {
+          this->services.geolocation.addPermissionChangeObserver(observer, [this, observer, callback, seq](auto result) mutable {
             JSON::Object json = JSON::Object::Entries {
               {"data", result}
             };
             callback(seq, json, QueuedResponse{});
             this->loop.dispatch([this, observer] () {
-              this->core->geolocation.removePermissionChangeObserver(observer);
+              this->services.geolocation.removePermissionChangeObserver(observer);
             });
           });
 
           CallVoidClassMethodFromAndroidEnvironment(
             attachment.env,
-            this->core->platform.activity,
+            this->context.getRuntime()->android.activity,
             "requestPermissions",
             "([Ljava/lang/String;)V",
             permissions
@@ -434,12 +429,12 @@ namespace ssc::runtime::core::services {
           }];
         }];
       #elif SOCKET_RUNTIME_PLATFORM_ANDROID
-        const auto attachment = Android::JNIEnvironmentAttachment(this->core->platform.jvm);
+        const auto attachment = android::JNIEnvironmentAttachment(this->context.getRuntime()->android.jvm);
         // `activity.checkPermission(permission)`
         const auto hasQueuedResponseNotifications = CallClassMethodFromAndroidEnvironment(
           attachment.env,
           Boolean,
-          this->core->platform.activity,
+          this->context.getRuntime()->android.activity,
           "checkPermission",
           "(Ljava/lang/String;)Z",
           attachment.env->NewStringUTF("android.permission.POST_NOTIFICATIONS")
@@ -449,7 +444,7 @@ namespace ssc::runtime::core::services {
         const auto isNotificationManagerEnabled = CallClassMethodFromAndroidEnvironment(
           attachment.env,
           Boolean,
-          this->core->platform.activity,
+          this->context.getRuntime()->android.activity,
           "isNotificationManagerEnabled",
           "()Z"
         );
@@ -469,7 +464,7 @@ namespace ssc::runtime::core::services {
         }
 
         if (!hasQueuedResponseNotifications || !isNotificationManagerEnabled) {
-          CoreNotifications::PermissionChangeObserver observer;
+          Notifications::PermissionChangeObserver observer;
           auto permissions = attachment.env->NewObjectArray(
             1,
             attachment.env->FindClass("java/lang/String"),
@@ -482,19 +477,19 @@ namespace ssc::runtime::core::services {
             attachment.env->NewStringUTF("android.permission.POST_NOTIFICATIONS")
           );
 
-          this->core->notifications.addPermissionChangeObserver(observer, [this, observer, callback, seq](auto result) mutable {
+          this->services.notifications.addPermissionChangeObserver(observer, [this, observer, callback, seq](auto result) mutable {
             JSON::Object json = JSON::Object::Entries {
               {"data", result}
             };
             callback(seq, json, QueuedResponse{});
             this->loop.dispatch([this, observer]() {
-              this->core->notifications.removePermissionChangeObserver(observer);
+              this->services.notifications.removePermissionChangeObserver(observer);
             });
           });
 
           CallVoidClassMethodFromAndroidEnvironment(
             attachment.env,
-            this->core->platform.activity,
+            this->context.getRuntime()->android.activity,
             "requestPermissions",
             "([Ljava/lang/String;)V",
             permissions
@@ -519,19 +514,19 @@ namespace ssc::runtime::core::services {
           }}
         };
       #if SOCKET_RUNTIME_PLATFORM_ANDROID
-        const auto attachment = Android::JNIEnvironmentAttachment(this->core->platform.jvm);
+        const auto attachment = android::JNIEnvironmentAttachment(this->context.getRuntime()->android.jvm);
         // `activity.checkPermission(permission)`
         const auto hasCameraPermission = CallClassMethodFromAndroidEnvironment(
           attachment.env,
           Boolean,
-          this->core->platform.activity,
+          this->context.getRuntime()->android.activity,
           "checkPermission",
           "(Ljava/lang/String;)Z",
           attachment.env->NewStringUTF("android.permission.CAMERA")
         );
 
         if (!hasCameraPermission) {
-          CoreMediaDevices::PermissionChangeObserver observer;
+          MediaDevices::PermissionChangeObserver observer;
           auto permissions = attachment.env->NewObjectArray(
             1,
             attachment.env->FindClass("java/lang/String"),
@@ -544,21 +539,21 @@ namespace ssc::runtime::core::services {
             attachment.env->NewStringUTF("android.permission.CAMERA")
           );
 
-          this->core->mediaDevices.addPermissionChangeObserver(observer, [this, observer, callback, seq](JSON::Object result) mutable {
+          this->services.mediaDevices.addPermissionChangeObserver(observer, [this, observer, callback, seq](JSON::Object result) mutable {
             if (result.get("name").str() == "camera") {
               JSON::Object json = JSON::Object::Entries {
                 {"data", result}
               };
               callback(seq, json, QueuedResponse{});
               this->loop.dispatch([this, observer]() {
-                this->core->mediaDevices.removePermissionChangeObserver(observer);
+                this->services.mediaDevices.removePermissionChangeObserver(observer);
               });
             }
           });
 
           CallVoidClassMethodFromAndroidEnvironment(
             attachment.env,
-            this->core->platform.activity,
+            this->context.getRuntime()->android.activity,
             "requestPermissions",
             "([Ljava/lang/String;)V",
             permissions
@@ -583,19 +578,19 @@ namespace ssc::runtime::core::services {
           }}
         };
       #if SOCKET_RUNTIME_PLATFORM_ANDROID
-        const auto attachment = Android::JNIEnvironmentAttachment(this->core->platform.jvm);
+        const auto attachment = android::JNIEnvironmentAttachment(this->context.getRuntime()->android.jvm);
         // `activity.checkPermission(permission)`
         const auto hasRecordAudioPermission = CallClassMethodFromAndroidEnvironment(
           attachment.env,
           Boolean,
-          this->core->platform.activity,
+          this->context.getRuntime()->android.activity,
           "checkPermission",
           "(Ljava/lang/String;)Z",
           attachment.env->NewStringUTF("android.permission.RECORD_AUDIO")
         );
 
         if (!hasRecordAudioPermission) {
-          CoreMediaDevices::PermissionChangeObserver observer;
+          MediaDevices::PermissionChangeObserver observer;
           auto permissions = attachment.env->NewObjectArray(
             1,
             attachment.env->FindClass("java/lang/String"),
@@ -608,21 +603,21 @@ namespace ssc::runtime::core::services {
             attachment.env->NewStringUTF("android.permission.RECORD_AUDIO")
           );
 
-          this->core->mediaDevices.addPermissionChangeObserver(observer, [this, observer, callback, seq](JSON::Object result) mutable {
+          this->services.mediaDevices.addPermissionChangeObserver(observer, [this, observer, callback, seq](JSON::Object result) mutable {
             if (result.get("name").str() == "microphone") {
               JSON::Object json = JSON::Object::Entries {
                 {"data", result}
               };
               callback(seq, json, QueuedResponse{});
               this->loop.dispatch([this, observer]() {
-                this->core->mediaDevices.removePermissionChangeObserver(observer);
+                this->services.mediaDevices.removePermissionChangeObserver(observer);
               });
             }
           });
 
           CallVoidClassMethodFromAndroidEnvironment(
             attachment.env,
-            this->core->platform.activity,
+            this->context.getRuntime()->android.activity,
             "requestPermissions",
             "([Ljava/lang/String;)V",
             permissions

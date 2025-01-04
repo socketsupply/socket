@@ -1,188 +1,37 @@
-#include "../app/app.hh"
-#include "../ipc/ipc.hh"
-#include "../core/debug.hh"
+#include "../runtime.hh"
+#include "../config.hh"
+#include "../crypto.hh"
+#include "../string.hh"
+#include "../env.hh"
 
-#include "container.hh"
+#include "../serviceworker.hh"
 
-namespace SSC {
-  static ServiceWorkerContainer* sharedServiceWorkerContainer = nullptr;
+using ssc::runtime::url::encodeURIComponent;
+using ssc::runtime::crypto::rand64;
+using ssc::runtime::config::isDebugEnabled;
+using ssc::runtime::config::getUserConfig;
+using ssc::runtime::string::parseStringList;
+using ssc::runtime::string::replace;
+using ssc::runtime::string::split;
+using ssc::runtime::string::trim;
+using ssc::runtime::string::join;
 
-  static const String normalizeScope (const String& scope) {
-    auto normalized = trim(scope);
-
-    if (normalized.size() == 0) {
-      return "/";
-    }
-
-    if (normalized.ends_with("/") && normalized.size() > 1) {
-      normalized = normalized.substr(0, normalized.size() - 1);
-    }
-
-    return normalized;
-  }
-
-  const String ServiceWorkerContainer::FetchRequest::str () const {
-    auto string = this->scheme + "://" + this->hostname + this->pathname;
-
-    if (this->query.size() > 0) {
-      string += String("?") + this->query;
-    }
-
-    return string;
-  }
-
-  ServiceWorkerContainer::Registration::Registration (
-    const ID id,
-    const String& scriptURL,
-    const State state,
-    const RegistrationOptions& options
-  ) : id(id),
-      scriptURL(scriptURL),
-      state(state),
-      options(options)
+namespace ssc::runtime::serviceworker {
+  Container::Container ()
+    : protocols(*this)
   {}
 
-  ServiceWorkerContainer::Registration::Registration (const Registration& registration) {
-    this->id = registration.id;
-    this->state = registration.state.load();
-    this->options = registration.options;
-    this->scriptURL = registration.scriptURL;
-  }
-
-  ServiceWorkerContainer::Registration::Registration (Registration&& registration) {
-    this->id = registration.id;
-    this->state = registration.state.load();
-    this->options = registration.options;
-    this->scriptURL = registration.scriptURL;
-
-    registration.id = 0;
-    registration.state = State::None;
-    registration.options = RegistrationOptions {};
-    registration.scriptURL = "";
-  }
-
-  ServiceWorkerContainer::Registration& ServiceWorkerContainer::Registration::operator= (const Registration& registration) {
-    this->id = registration.id;
-    this->state = registration.state.load();
-    this->options = registration.options;
-    this->scriptURL = registration.scriptURL;
-    return *this;
-  }
-
-  ServiceWorkerContainer::Registration& ServiceWorkerContainer::Registration::operator= (Registration&& registration) {
-    this->id = registration.id;
-    this->state = registration.state.load();
-    this->options = registration.options;
-    this->scriptURL = registration.scriptURL;
-
-    registration.id = 0;
-    registration.state = State::None;
-    registration.options = RegistrationOptions {};
-    registration.scriptURL = "";
-    return *this;
-  }
-
-  const JSON::Object ServiceWorkerContainer::Registration::json (
-    bool includeSerializedWorkerArgs
-  ) const {
-    return JSON::Object::Entries {
-      {"id", std::to_string(this->id)},
-      {"scriptURL", this->scriptURL},
-      {"scope", this->options.scope},
-      {"state", this->getStateString()},
-      {"scheme", this->options.scheme},
-      {"serializedWorkerArgs", includeSerializedWorkerArgs ? encodeURIComponent(this->options.serializedWorkerArgs) : ""}
-    };
-  }
-
-  bool ServiceWorkerContainer::Registration::isActive () const {
-    return (
-      this->state == Registration::State::Activating ||
-      this->state == Registration::State::Activated
-    );
-  }
-
-  bool ServiceWorkerContainer::Registration::isWaiting () const {
-    return this->state == Registration::State::Installed;
-  }
-
-  bool ServiceWorkerContainer::Registration::isInstalling () const {
-    return this->state == Registration::State::Installing;
-  }
-
-  const String ServiceWorkerContainer::Registration::getStateString () const {
-    String stateString = "none";
-
-    if (this->state == Registration::State::Error) {
-      stateString = "error";
-    } else if (this->state == Registration::State::Registering) {
-      stateString = "registering";
-    } else if (this->state == Registration::State::Registered) {
-      stateString = "registered";
-    } else if (this->state == Registration::State::Installing) {
-      stateString = "installing";
-    } else if (this->state == Registration::State::Installed) {
-      stateString = "installed";
-    } else if (this->state == Registration::State::Activating) {
-      stateString = "activating";
-    } else if (this->state == Registration::State::Activated) {
-      stateString = "activated";
-    }
-
-    return stateString;
-  };
-
-  const JSON::Object ServiceWorkerContainer::Registration::Storage::json () const {
-    return JSON::Object { this->data };
-  }
-
-  void ServiceWorkerContainer::Registration::Storage::set (const String& key, const String& value) {
-    this->data.insert_or_assign(key, value);
-  }
-
-  const String ServiceWorkerContainer::Registration::Storage::get (const String& key) const {
-    if (this->data.contains(key)) {
-      return this->data.at(key);
-    }
-
-    return key;
-  }
-
-  void ServiceWorkerContainer::Registration::Storage::remove (const String& key) {
-    if (this->data.contains(key)) {
-      this->data.erase(key);
-    }
-  }
-
-  void ServiceWorkerContainer::Registration::Storage::clear () {
-    this->data.clear();
-  }
-
-  ServiceWorkerContainer* ServiceWorkerContainer::sharedContainer () {
-    return SSC::sharedServiceWorkerContainer;
-  }
-
-  ServiceWorkerContainer::ServiceWorkerContainer (SharedPointer<Core> core)
-    : core(core),
-      protocols(this)
-  {
-    if (SSC::sharedServiceWorkerContainer == nullptr) {
-      SSC::sharedServiceWorkerContainer = this;
-    }
-  }
-
-  ServiceWorkerContainer::~ServiceWorkerContainer () {
+  Container::~Container () {
     if (this->bridge != nullptr) {
       this->bridge->emit("serviceWorker.destroy", JSON::Object {});
     }
-
-    this->bridge = nullptr;
-    this->registrations.clear();
-    this->fetchRequests.clear();
-    this->fetchCallbacks.clear();
   }
 
-  void ServiceWorkerContainer::reset () {
+  bool Container::ready () {
+    return this->isReady.load(std::memory_order_relaxed);
+  }
+
+  void Container::reset () {
     Lock lock(this->mutex);
 
     for (auto& entry : this->registrations) {
@@ -191,7 +40,7 @@ namespace SSC {
     }
   }
 
-  void ServiceWorkerContainer::init (IPC::Bridge* bridge) {
+  void Container::init (SharedPointer<ipc::IBridge> bridge) {
     Lock lock(this->mutex);
 
     this->reset();
@@ -205,7 +54,7 @@ namespace SSC {
       } else if (entry.first == "build_env") {
         const auto keys = parseStringList(entry.second, { ',', ' ' });
         for (const auto& key : keys) {
-          env[key] = Env::get(key);
+          env[key] = env::get(key);
         }
       }
     }
@@ -231,14 +80,14 @@ namespace SSC {
 
         const auto scope = normalizeScope(join(parts, "/"));
         const auto id = rand64();
-        this->registrations.insert_or_assign(scope, Registration {
+        this->registrations.insert_or_assign(scope, Registration(
           id,
-          scriptURL,
           Registration::State::Registered,
-          RegistrationOptions {
-          RegistrationOptions::Type::Module,
-            scope,
+          this->origin,
+          Registration::Options {
+            Registration::Options::Type::Module,
             scriptURL,
+            scope,
             "*",
             encodeURIComponent(JSON::Object(JSON::Object::Entries {
               {"index", bridge->index},
@@ -247,14 +96,14 @@ namespace SSC {
               {"config", bridge->userConfig},
               {"headless", bridge->userConfig["build_headless"] == "true"},
               {"conduit", JSON::Object::Entries {
-                {"port", bridge->core->conduit.port},
-                {"hostname", bridge->core->conduit.hostname},
-                {"sharedKey", bridge->core->conduit.sharedKey}
+                {"port", this->bridge->getRuntime()->services.conduit.port},
+                {"hostname", this->bridge->getRuntime()->services.conduit.hostname},
+                {"sharedKey", this->bridge->getRuntime()->services.conduit.sharedKey}
               }}
             }).str()),
             id
           }
-        });
+        ));
       }
     }
 
@@ -279,14 +128,14 @@ namespace SSC {
 
         scriptURL += trim(value);
 
-        this->registrations.insert_or_assign(scope, Registration {
+        this->registrations.insert_or_assign(scope, Registration(
           id,
-          scriptURL,
           Registration::State::Registered,
-          RegistrationOptions {
-            RegistrationOptions::Type::Module,
-            scope,
+          this->origin,
+          Registration::Options {
+            Registration::Options::Type::Module,
             scriptURL,
+            scope,
             "*",
             encodeURIComponent(JSON::Object(JSON::Object::Entries {
               {"index", bridge->index},
@@ -295,14 +144,14 @@ namespace SSC {
               {"headless", bridge->userConfig["build_headless"] == "true"},
               {"config", bridge->userConfig},
               {"conduit", JSON::Object::Entries {
-                {"port", bridge->core->conduit.port},
-                {"hostname", bridge->core->conduit.hostname},
-                {"sharedKey", bridge->core->conduit.sharedKey}
+                {"port", this->bridge->getRuntime()->services.conduit.port},
+                {"hostname", this->bridge->getRuntime()->services.conduit.hostname},
+                {"sharedKey", this->bridge->getRuntime()->services.conduit.sharedKey}
               }}
             }).str()),
             id
           }
-        });
+        ));
       }
     }
 
@@ -335,14 +184,14 @@ namespace SSC {
 
           scriptURL += trim(value);
 
-          this->registrations.insert_or_assign(scope, Registration {
+          this->registrations.insert_or_assign(scope, Registration(
             id,
-            scriptURL,
             Registration::State::Registered,
-            RegistrationOptions {
-              RegistrationOptions::Type::Module,
-              scope,
+            this->origin,
+            Registration::Options {
+              Registration::Options::Type::Module,
               scriptURL,
+              scope,
               scheme,
               encodeURIComponent(JSON::Object(JSON::Object::Entries {
                 {"index", bridge->index},
@@ -351,26 +200,26 @@ namespace SSC {
                 {"config", bridge->userConfig},
                 {"headless", bridge->userConfig["build_headless"] == "true"},
                 {"conduit", JSON::Object::Entries {
-                  {"port", bridge->core->conduit.port},
-                  {"hostname", bridge->core->conduit.hostname},
-                  {"sharedKey", bridge->core->conduit.sharedKey}
+                  {"port", this->bridge->getRuntime()->services.conduit.port},
+                  {"hostname", this->bridge->getRuntime()->services.conduit.hostname},
+                  {"sharedKey", this->bridge->getRuntime()->services.conduit.sharedKey}
                 }}
               }).str()),
               id
             }
-          });
+          ));
         }
       }
     }
 
     this->bridge->router.map("serviceWorker.fetch.request.body", [this](auto message, auto router, auto reply) mutable {
-      FetchRequest request;
+      SharedPointer<Fetch> fetch = nullptr;
       ID id = 0;
 
       try {
         id = std::stoull(message.get("id"));
       } catch (...) {
-        return reply(IPC::Result::Err { message, JSON::Object::Entries {
+        return reply(ipc::Result::Err { message, JSON::Object::Entries {
           {"message", "Invalid 'id' given in parameters"}
         }});
       }
@@ -378,30 +227,28 @@ namespace SSC {
       do {
         Lock lock(this->mutex);
 
-        if (!this->fetchRequests.contains(id)) {
-          return reply(IPC::Result::Err { message, JSON::Object::Entries {
+        if (!this->fetches.contains(id)) {
+          return reply(ipc::Result::Err { message, JSON::Object::Entries {
             {"type", "NotFoundError"},
-            {"message", "Callback 'id' given in parameters does not have a 'FetchRequest'"}
+            {"message", "Callback 'id' given in parameters does not have a 'Request'"}
           }});
         }
 
-        request = this->fetchRequests.at(id);
+        fetch = this->fetches.at(id);
       } while (0);
 
-      const auto post = Post {
+      const auto queuedResponse = QueuedResponse {
         0,
         0,
-        request.body.bytes,
-        request.body.size
+        fetch->request.body.buffer.as<unsigned char>(),
+        fetch->request.body.size()
       };
 
-      reply(IPC::Result { message.seq, message, JSON::Object {}, post });
+      reply(ipc::Result { message.seq, message, JSON::Object {}, queuedResponse });
     });
 
     this->bridge->router.map("serviceWorker.fetch.response.write", [this](auto message, auto router, auto reply) mutable {
-      FetchCallback callback;
-      FetchResponse response;
-      FetchRequest request;
+      SharedPointer<Fetch> fetch = nullptr;
       ID clientId = 0;
       ID id = 0;
 
@@ -410,7 +257,7 @@ namespace SSC {
       try {
         id = std::stoull(message.get("id"));
       } catch (...) {
-        return reply(IPC::Result::Err { message, JSON::Object::Entries {
+        return reply(ipc::Result::Err { message, JSON::Object::Entries {
           {"message", "Invalid 'id' given in parameters"}
         }});
       }
@@ -418,133 +265,112 @@ namespace SSC {
       try {
         clientId = std::stoull(message.get("clientId"));
       } catch (...) {
-        return reply(IPC::Result::Err { message, JSON::Object::Entries {
+        return reply(ipc::Result::Err { message, JSON::Object::Entries {
           {"message", "Invalid 'clientId' given in parameters"}
         }});
       }
 
       do {
         Lock lock(this->mutex);
-        if (!this->fetchCallbacks.contains(id)) {
-          return reply(IPC::Result::Err { message, JSON::Object::Entries {
+        if (!this->fetches.contains(id)) {
+          return reply(ipc::Result::Err { message, JSON::Object::Entries {
             {"type", "NotFoundError"},
-            {"message", "Callback 'id' given in parameters does not have a 'FetchCallback'"}
+            {"message", "Callback 'id' given in parameters does not have a 'Request'"}
           }});
         }
 
-        if (!this->fetchRequests.contains(id)) {
-          return reply(IPC::Result::Err { message, JSON::Object::Entries {
-            {"type", "NotFoundError"},
-            {"message", "Callback 'id' given in parameters does not have a 'FetchRequest'"}
-          }});
-        }
-
-        callback = this->fetchCallbacks.at(id);
-        request = this->fetchRequests.at(id);
+        fetch = this->fetches.at(id);
       } while (0);
 
       try {
         statusCode = std::stoi(message.get("statusCode"));
       } catch (...) {
-        return reply(IPC::Result::Err { message, JSON::Object::Entries {
+        return reply(ipc::Result::Err { message, JSON::Object::Entries {
           {"message", "Invalid 'statusCode' given in parameters"}
         }});
       }
 
       do {
-        Lock lock(this->mutex);
-        if (this->fetchResponses.contains(id)) {
-          response = this->fetchResponses.at(id);
-        } else {
-          const auto headers = Headers(message.get("headers"));
-          response = FetchResponse {
-            id,
-            statusCode,
-            headers,
-            {},
-            { clientId }
-          };
+        Lock lock(fetch->mutex);
+        if (fetch->response.headers.size() == 0 && message.has("headers")) {
+          fetch->response.headers = http::Headers(message.get("headers"));
+          fetch->response.client.id = clientId;
+          fetch->response.status = statusCode;
         }
 
-        response.body.push(message.buffer.bytes, message.buffer.size);
-        this->fetchResponses.insert_or_assign(id, response);
+        if (message.buffer.size() > 0) {
+          fetch->write(message.buffer);
+        }
       } while (0);
 
-      reply(IPC::Result { message.seq, message });
+      reply(ipc::Result { message.seq, message });
     });
 
     this->bridge->router.map("serviceWorker.fetch.response.finish", [this](auto message, auto router, auto reply) mutable {
-      FetchCallback callback;
-      FetchResponse response;
-      FetchRequest request;
+      SharedPointer<Fetch> fetch = nullptr;
       ID clientId = 0;
       ID id = 0;
 
       int statusCode = 200;
-      const auto headers = Headers(message.get("headers"));
 
       try {
         id = std::stoull(message.get("id"));
       } catch (...) {
-        return reply(IPC::Result::Err { message, JSON::Object::Entries {
+        return reply(ipc::Result::Err { message, JSON::Object::Entries {
           {"message", "Invalid 'id' given in parameters"}
         }});
+      }
+
+      if (message.has("statusCode")) {
+        try {
+          statusCode = std::stoi(message.get("statusCode"));
+        } catch (...) {
+          return reply(ipc::Result::Err { message, JSON::Object::Entries {
+            {"message", "Invalid 'statusCode' given in parameters"}
+          }});
+        }
       }
 
       try {
         clientId = std::stoull(message.get("clientId"));
       } catch (...) {
-        return reply(IPC::Result::Err { message, JSON::Object::Entries {
+        return reply(ipc::Result::Err { message, JSON::Object::Entries {
           {"message", "Invalid 'clientId' given in parameters"}
         }});
       }
 
       do {
         Lock lock(this->mutex);
-        if (!this->fetchCallbacks.contains(id)) {
-          return reply(IPC::Result::Err { message, JSON::Object::Entries {
+        if (!this->fetches.contains(id)) {
+          return reply(ipc::Result::Err { message, JSON::Object::Entries {
             {"type", "NotFoundError"},
-            {"message", "Callback 'id' given in parameters does not have a 'FetchCallback'"}
+            {"message", "Callback 'id' given in parameters does not have a 'Request'"}
           }});
         }
 
-        if (!this->fetchRequests.contains(id)) {
-          return reply(IPC::Result::Err { message, JSON::Object::Entries {
-            {"type", "NotFoundError"},
-            {"message", "Callback 'id' given in parameters does not have a 'FetchRequest'"}
-          }});
-        }
-
-        if (this->fetchResponses.contains(id)) {
-          response = this->fetchResponses.at(id);
-        } else {
-          response = FetchResponse {
-            id,
-            statusCode,
-            headers,
-            {},
-            { clientId }
-          };
-        }
-
-        response.body.push(message.buffer.bytes, message.buffer.size);
-
-        callback = this->fetchCallbacks.at(id);
-        request = this->fetchRequests.at(id);
+        fetch = this->fetches.at(id);
       } while (0);
 
-      try {
-        statusCode = std::stoi(message.get("statusCode"));
-      } catch (...) {
-        return reply(IPC::Result::Err { message, JSON::Object::Entries {
-          {"message", "Invalid 'statusCode' given in parameters"}
-        }});
-      }
+      do {
+        Lock lock(fetch->mutex);
+
+        if (fetch->response.headers.size() == 0 && message.has("headers")) {
+          fetch->response.headers = http::Headers(message.get("headers"));
+          fetch->response.client.id = clientId;
+          fetch->response.status = statusCode;
+        }
+
+        if (message.buffer.size() > 0) {
+          fetch->write(message.buffer);
+        }
+      } while (0);
+
+      fetch->finish();
 
       // XXX(@jwerle): we handle this in the android runtime
-      const auto extname = Path(request.pathname).extension().string();
-      auto html = (response.body.bytes != nullptr && response.body.size > 0)
-        ? String(response.body.bytes.get(), response.body.size)
+      const auto extname = Path(fetch->request.url.pathname).extension().string();
+      auto html = (fetch->response.body.data() != nullptr && fetch->response.body.size() > 0)
+        ? String(reinterpret_cast<char*>(fetch->response.body.data()), fetch->response.body.size())
         : String("");
 
       if (
@@ -552,7 +378,7 @@ namespace SSC {
         message.get("runtime-preload-injection") != "disabled" &&
         (
           message.get("runtime-preload-injection") == "always" ||
-          (extname.ends_with("html") || headers.get("content-type").value.string == "text/html") ||
+          (extname.ends_with("html") || fetch->response.headers.get("content-type").value.string == "text/html") ||
           (html.find("<!doctype html") != String::npos || html.find("<!DOCTYPE HTML") != String::npos) ||
           (html.find("<html") != String::npos || html.find("<HTML") != String::npos) ||
           (html.find("<body") != String::npos || html.find("<BODY") != String::npos) ||
@@ -560,10 +386,10 @@ namespace SSC {
           (html.find("<script") != String::npos || html.find("<SCRIPT") != String::npos)
         )
       ) {
-        auto preloadOptions = request.client.preload.options;
+        auto preloadOptions = fetch->request.client.preload.options;
         preloadOptions.metadata["runtime-frame-source"] = "serviceworker";
 
-        auto preload = IPC::Preload::compile(preloadOptions);
+        auto preload = webview::Preload::compile(preloadOptions);
         auto begin = String("<meta name=\"begin-runtime-preload\">");
         auto end = String("<meta name=\"end-runtime-preload\">");
         auto x = html.find(begin);
@@ -577,35 +403,25 @@ namespace SSC {
           .protocolHandlerSchemes = this->protocols.getSchemes()
         });
 
-        response.body.bytes = std::make_shared<char[]>(html.size());
-        response.body.size = html.size();
-
-        memcpy(response.body.bytes.get(), html.c_str(), html.size());
+        fetch->response.body = bytes::Buffer::from(html);
       }
 
-      callback(response);
-      reply(IPC::Result { message.seq, message });
+      fetch->callback(fetch->response);
+      reply(ipc::Result { message.seq, message });
 
       Lock lock(this->mutex);
-      this->fetchCallbacks.erase(id);
-      if (this->fetchRequests.contains(id)) {
-        this->fetchRequests.erase(id);
-      }
-
-      if (this->fetchResponses.contains(id)) {
-        this->fetchResponses.erase(id);
-      }
+      this->fetches.erase(id);
     });
   }
 
-  const ServiceWorkerContainer::Registration& ServiceWorkerContainer::registerServiceWorker (
-    const RegistrationOptions& options
+  const Registration& Container::registerServiceWorker (
+    const Registration::Options& options
   ) {
     Lock lock(this->mutex);
     auto scope = options.scope;
     auto scriptURL = options.scriptURL;
     auto userConfig = this->bridge != nullptr
-      ? this->bridge->userConfig
+      ? this->bridge->getRuntime()->userConfig
       : getUserConfig();
 
     if (scope.size() == 0) {
@@ -642,19 +458,19 @@ namespace SSC {
     }
 
     const auto id = options.id > 0 ? options.id : rand64();
-    this->registrations.insert_or_assign(scope, Registration {
+    this->registrations.insert_or_assign(scope, Registration(
       id,
-      options.scriptURL,
       Registration::State::Registered,
-      RegistrationOptions {
+      this->origin,
+      Registration::Options {
         options.type,
-        scope,
         options.scriptURL,
+        scope,
         options.scheme,
         options.serializedWorkerArgs,
         id
       }
-    });
+    ));
 
     const auto& registration = this->registrations.at(scope);
 
@@ -665,7 +481,7 @@ namespace SSC {
     return registration;
   }
 
-  bool ServiceWorkerContainer::unregisterServiceWorker (String scopeOrScriptURL) {
+  bool Container::unregisterServiceWorker (String scopeOrScriptURL) {
     Lock lock(this->mutex);
 
     const auto& scope = normalizeScope(scopeOrScriptURL);
@@ -682,7 +498,7 @@ namespace SSC {
     }
 
     for (const auto& entry : this->registrations) {
-      if (entry.second.scriptURL == scriptURL) {
+      if (entry.second.options.scriptURL == scriptURL) {
         const auto& registration = this->registrations.at(entry.first);
 
         if (this->bridge != nullptr) {
@@ -696,7 +512,7 @@ namespace SSC {
     return false;
   }
 
-  bool ServiceWorkerContainer::unregisterServiceWorker (ID id) {
+  bool Container::unregisterServiceWorker (ID id) {
     Lock lock(this->mutex);
 
     for (const auto& entry : this->registrations) {
@@ -708,7 +524,7 @@ namespace SSC {
     return false;
   }
 
-  void ServiceWorkerContainer::skipWaiting (ID id) {
+  void Container::skipWaiting (ID id) {
     Lock lock(this->mutex);
 
     for (auto& entry : this->registrations) {
@@ -729,7 +545,7 @@ namespace SSC {
     }
   }
 
-  void ServiceWorkerContainer::updateState (ID id, const String& stateString) {
+  void Container::updateState (ID id, const String& stateString) {
     Lock lock(this->mutex);
 
     for (auto& entry : this->registrations) {
@@ -760,120 +576,14 @@ namespace SSC {
     }
   }
 
-  bool ServiceWorkerContainer::fetch (const FetchRequest& request, FetchCallback callback) {
-    return this->fetch(request, {}, callback);
-  }
-
-  bool ServiceWorkerContainer::fetch (
-    const FetchRequest& request,
-    const FetchOptions& options,
-    FetchCallback callback
+  bool Container::fetch (
+    const Request& request,
+    const Fetch::Options& options,
+    const Fetch::Callback callback
   ) {
     Lock lock(this->mutex);
-    String pathname = request.pathname;
-    String scope;
-
-    if (this->bridge == nullptr || !this->isReady) {
-      return false;
-    }
-
-    if (request.headers.get("runtime-serviceworker-fetch-mode") == "ignore") {
-      return false;
-    }
-
-    for (const auto& entry : this->registrations) {
-      const auto& registration = entry.second;
-
-      if (
-        (registration.options.scheme == "*" || registration.options.scheme == request.scheme) &&
-        request.pathname.starts_with(registration.options.scope)
-      ) {
-        if (entry.first.size() > scope.size()) {
-          scope = entry.first;
-        }
-      }
-    }
-
-    if (scope.size() == 0) {
-      return false;
-    }
-
-    scope = normalizeScope(scope);
-
-    if (scope.size() > 0 && this->registrations.contains(scope)) {
-      auto& registration = this->registrations.at(scope);
-      if (
-        options.waitForRegistrationToFinish &&
-        !registration.isActive() &&
-        (
-          registration.options.scheme == "*" ||
-          registration.options.scheme == request.scheme
-        ) &&
-        (
-          registration.state == Registration::State::Registering ||
-          registration.state == Registration::State::Registered
-        )
-      ) {
-        const auto app = App::sharedApplication();
-        this->core->dispatchEventLoop([this, app, request, callback, &registration]() {
-          const auto interval = this->core->setInterval(8, [this, app, request, callback, &registration] (auto cancel) {
-            if (registration.state == Registration::State::Activated) {
-              if (!this->fetch(request, callback)) {
-                debug(
-                #if SOCKET_RUNTIME_PLATFORM_APPLE
-                  "ServiceWorkerContainer: Failed to dispatch fetch request '%s %s%s' for client '%llu'",
-                #else
-                  "ServiceWorkerContainer: Failed to dispatch fetch request '%s %s%s' for client '%lu'",
-                #endif
-                  request.method.c_str(),
-                  request.pathname.c_str(),
-                  (request.query.size() > 0 ? String("?") + request.query : String("")).c_str(),
-                  request.client.id
-                );
-              }
-
-              cancel();
-            }
-          });
-
-          this->core->setTimeout(32000, [this, interval] {
-            this->core->clearInterval(interval);
-          });
-        });
-
-        return true;
-      }
-
-      // the ID of the fetch request
-      const auto id = rand64();
-      const auto client = JSON::Object::Entries {
-        {"id", std::to_string(request.client.id)}
-      };
-
-      if (this->protocols.hasHandler(request.scheme)) {
-        pathname = replace(pathname, scope, "");
-      }
-
-      const auto fetch = JSON::Object::Entries {
-        {"id", std::to_string(id)},
-        {"method", request.method},
-        {"host", request.hostname},
-        {"scheme", request.scheme},
-        {"pathname", pathname},
-        {"query", request.query},
-        {"headers", request.headers.json()},
-        {"client", client}
-      };
-
-      auto json = registration.json();
-      json.set("fetch", fetch);
-
-      this->fetchCallbacks.insert_or_assign(id, callback);
-      this->fetchRequests.insert_or_assign(id, request);
-
-      return this->bridge->emit("serviceWorker.fetch", json.str());
-    }
-
-    return false;
+    auto fetch = std::make_shared<Fetch>(*this, request, options);
+    this->fetches.insert_or_assign(fetch->id, fetch);
+    return fetch->init(callback);
   }
 }

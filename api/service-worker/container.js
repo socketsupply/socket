@@ -24,7 +24,7 @@ class ServiceWorkerContainerInternalState {
   currentWindow = null
   controller = null
   sharedWorker = null
-  channel = new ipc.IPCBroadcastChannel('socket.runtime.ServiceWorkerContainer')
+  channel = new BroadcastChannel('socket.runtime.ServiceWorkerContainer')
   ready = new Deferred()
   init = new Deferred()
 

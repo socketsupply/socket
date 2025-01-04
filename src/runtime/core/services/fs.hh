@@ -23,10 +23,10 @@ namespace ssc::runtime::core::services {
 
       #if SOCKET_RUNTIME_PLATFORM_ANDROID
         // asset state
-        Android::Asset* androidAsset = nullptr;
+        android::Asset* androidAsset = nullptr;
         Queue<String> androidAssetDirectoryEntries;
         Queue<String> androidContentDirectoryEntries;
-        Android::ContentResolver::FileDescriptor androidContent = nullptr;
+        android::ContentResolver::FileDescriptor androidContent = nullptr;
         // type predicates
         bool isAndroidAssetDirectory = false;
         bool isAndroidContentDirectory = false;
@@ -48,7 +48,7 @@ namespace ssc::runtime::core::services {
       struct RequestContext : core::Service::RequestContext {
         ID id;
         SharedPointer<Descriptor> descriptor = nullptr;
-        SharedPointer<char[]> buffer = nullptr;
+        SharedPointer<unsigned char[]> buffer = nullptr;
         debug::Tracer tracer;
         uv_fs_t req;
         uv_buf_t buf;
@@ -69,11 +69,11 @@ namespace ssc::runtime::core::services {
 
         RequestContext (
           SharedPointer<Descriptor> descriptor,
-          const ipc::Message::Seq&,
-          const Callback
+          const ipc::Message::Seq& seq,
+          const Callback callback
         ) : tracer("FS::RequestContext")
         {
-          this->id = rand64();
+          this->id = crypto::rand64();
           this->seq = seq;
           this->req.data = (void*) this;
           this->callback = callback;
@@ -88,7 +88,7 @@ namespace ssc::runtime::core::services {
           }
         }
 
-        void setBuffer (SharedPointer<char[]> base, uint32_t size);
+        void setBuffer (SharedPointer<unsigned char[]> base, uint32_t size);
       };
 
       Map<ID, SharedPointer<filesystem::Watcher>> watchers;
@@ -138,7 +138,7 @@ namespace ssc::runtime::core::services {
       void stopWatch (const ipc::Message::Seq&, ID, const Callback);
       void unlink (const ipc::Message::Seq&, const String&, const Callback) const;
       void watch (const ipc::Message::Seq&, ID, const String&, const Callback);
-      void write (const ipc::Message::Seq&, ID, SharedPointer<char[]>, size_t, size_t, const Callback) const;
+      void write (const ipc::Message::Seq&, ID, SharedPointer<unsigned char[]>, size_t, size_t, const Callback) const;
   };
 }
 #endif

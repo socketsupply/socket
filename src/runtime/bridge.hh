@@ -3,6 +3,7 @@
 
 #include "ipc.hh"
 #include "json.hh"
+#include "bytes.hh"
 #include "window.hh"
 #include "context.hh"
 #include "webview.hh"
@@ -20,6 +21,7 @@ namespace ssc::runtime::bridge {
   class Bridge : public window::IBridge {
     public:
       using ID = uint64_t;
+      using DispatchHandler = Function<void(const context::DispatchCallback)>;
 
       struct Options {
         Client client;
@@ -35,6 +37,8 @@ namespace ssc::runtime::bridge {
       const core::services::Notifications::NotificationResponseObserver notificationResponseObserver;
       const core::services::Notifications::NotificationPresentedObserver notificationPresentedObserver;
 
+      DispatchHandler dispatchHandler = nullptr;
+
       using window::IBridge::IBridge;
       Bridge (const Options&);
       ~Bridge ();
@@ -47,8 +51,13 @@ namespace ssc::runtime::bridge {
       bool emit (const String&, const JSON::Any& = {}) override;
       bool send (const ipc::Message::Seq&, const String&, const QueuedResponse& = {}) override;
       bool send (const ipc::Message::Seq&, const JSON::Any&, const QueuedResponse& = {}) override;
-      bool route (const String&, SharedPointer<char[]>, size_t) override;
-      bool route (const String&, SharedPointer<char[]>, size_t, const ipc::Router::ResultCallback) override;
+      bool route (const String&, SharedPointer<unsigned char[]>, size_t) override;
+      bool route (const String&, SharedPointer<unsigned char[]>, size_t, const ipc::Router::ResultCallback) override;
+      Runtime* getRuntime () override;
+      const Runtime* getRuntime () const override;
+
+      bool route (const String&, const bytes::Buffer&);
+      bool route (const String&, const bytes::Buffer&, const ipc::Router::ResultCallback);
 
       // `window::IBridge`
       void configureWebView (webview::WebView* webview) override;
@@ -62,6 +71,10 @@ namespace ssc::runtime::bridge {
 
   class Manager {
     public:
+      struct BridgeOptions {
+        Map<String, String> userConfig;
+      };
+
       Vector<SharedPointer<Bridge>> entries;
       context::RuntimeContext& context;
       Mutex mutex;
@@ -75,104 +88,9 @@ namespace ssc::runtime::bridge {
       Manager& operator = (const Manager&) = delete;
       Manager& operator = (Manager&&) = delete;
 
-      SharedPointer<Bridge> get (int);
+      SharedPointer<Bridge> get (int, const BridgeOptions&);
       bool has (int) const;
       bool remove (int);
   };
-
-  /*
-  class Bridge {
-    public:
-      using EvaluateJavaScriptFunction = Function<void(const String)>;
-      using NavigateFunction = Function<void(const String&)>;
-      using DispatchCallback = Function<void()>;
-      using DispatchFunction = Function<void(DispatchCallback)>;
-
-      struct Options : public SSC::Options {
-        Map<String, String> userConfig = {};
-        Preload::Options preload;
-        uint64_t id = 0;
-        int index = 0;
-        Options (
-          int index,
-          const Map<String, String> userConfig = {},
-          const Preload::Options preload = {},
-          uint64_t id = 0
-        );
-      };
-
-      static Vector<Bridge*> getInstances();
-
-      const CoreNetworkStatus::Observer networkStatusObserver;
-      const CoreGeolocation::PermissionChangeObserver geolocationPermissionChangeObserver;
-      const CoreNotifications::PermissionChangeObserver notificationsPermissionChangeObserver;
-      const CoreNotifications::NotificationResponseObserver notificationResponseObserver;
-      const CoreNotifications::NotificationPresentedObserver notificationPresentedObserver;
-
-      EvaluateJavaScriptFunction evaluateJavaScriptFunction = nullptr;
-      NavigateFunction navigateFunction = nullptr;
-      DispatchFunction dispatchFunction = nullptr;
-
-      Client client = {};
-      Map<String, String> userConfig;
-      Navigator navigator;
-      Router router;
-      SchemeHandlers schemeHandlers;
-
-      uint64_t id = 0;
-      int index = 0;
-
-    #if SOCKET_RUNTIME_PLATFORM_ANDROID
-      bool isAndroidEmulator = false;
-    #elif SOCKET_RUNTIME_PLATFORM_LINUX && !SOCKET_RUNTIME_DESKTOP_EXTENSION
-      WebKitWebContext* webContext = nullptr;
-    #endif
-
-      Bridge (SharedPointer<Core>core, const Options& options);
-      Bridge () = delete;
-      Bridge (const Bridge&) = delete;
-      Bridge (Bridge&&) = delete;
-      virtual ~Bridge ();
-
-      Bridge& operator = (const Bridge&) = delete;
-      Bridge& operator = (Bridge&&) = delete;
-
-      void init ();
-      void configureWebView (WebView* webview);
-      void configureSchemeHandlers (
-        const SchemeHandlers::Configuration& configuration
-      );
-      void configureNavigatorMounts ();
-
-      bool route (
-        const String& uri,
-        SharedPointer<char[]> bytes,
-        size_t size
-      );
-
-      bool route (
-        const String& uri,
-        SharedPointer<char[]> bytes,
-        size_t size,
-        Router::ResultCallback
-      );
-
-      bool evaluateJavaScript (const String& source);
-      bool dispatch (const DispatchCallback callback);
-      bool navigate (const String& url);
-      bool emit (const String& name, const String& data = "");
-      bool emit (const String& name, const JSON::Any& json = {});
-      bool send (
-        const Message::Seq& seq,
-        const String& data,
-        const QueuedResponse& post = {}
-      );
-      bool send (
-        const Message::Seq& seq,
-        const JSON::Any& json,
-        const QueuedResponse& post = {}
-      );
-  };
-  */
 }
 #endif

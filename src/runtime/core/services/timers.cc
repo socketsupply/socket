@@ -1,5 +1,7 @@
 #include "timers.hh"
 
+using ssc::runtime::crypto::rand64;
+
 namespace ssc::runtime::core::services {
   struct TimerToken {
     Timers* timers = nullptr;

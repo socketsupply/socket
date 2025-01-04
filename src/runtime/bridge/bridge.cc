@@ -1,3 +1,4 @@
+#include "../serviceworker.hh"
 #include "../filesystem.hh"
 #include "../javascript.hh"
 #include "../platform.hh"
@@ -10,11 +11,9 @@
 #include "../env.hh"
 #include "../ipc.hh"
 #include "../url.hh"
+#include "../app.hh"
 
 #include "../bridge.hh"
-
-//extern const SSC::Map<SSC::String, SSC::String> SSC::getUserConfig ();
-//extern bool SSC::isDebugEnabled ();
 
 using ssc::runtime::javascript::getResolveToRenderProcessJavaScript;
 using ssc::runtime::javascript::getEmitToRenderProcessJavaScript;
@@ -31,6 +30,10 @@ using ssc::runtime::string::split;
 using ssc::runtime::string::tmpl;
 using ssc::runtime::string::trim;
 using ssc::runtime::string::join;
+
+using ssc::runtime::crypto::rand64;
+
+using ssc::runtime::app::App;
 
 namespace ssc::runtime::bridge {
   // The `ESM_IMPORT_PROXY_TEMPLATE` is used to provide an ESM module as
@@ -111,7 +114,7 @@ export * from '{{url}}'
       if (this->userConfig[windowClientConfigKey + ".id"].size() > 0) {
         try {
           this->client.id = std::stoull(this->userConfig[windowClientConfigKey + ".id"]);
-        } catch (const Exception& e) {
+        } catch (...) {
           debug("Invalid window client ID given in '[window.%d.client] id'", options.client.index);
         }
       }
@@ -131,7 +134,19 @@ export * from '{{url}}'
     ) {
       this->emit(seq, value.str());
     };
+  }
 
+  Bridge::~Bridge () {
+    auto& runtime = static_cast<runtime::Runtime&>(this->context);
+    // remove observers
+    runtime.services.geolocation.removePermissionChangeObserver(this->geolocationPermissionChangeObserver);
+    runtime.services.networkStatus.removeObserver(this->networkStatusObserver);
+    runtime.services.notifications.removePermissionChangeObserver(this->notificationsPermissionChangeObserver);
+    runtime.services.notifications.removeNotificationResponseObserver(this->notificationResponseObserver);
+    runtime.services.notifications.removeNotificationPresentedObserver(this->notificationPresentedObserver);
+  }
+
+  void Bridge::init () {
     auto& runtime = static_cast<runtime::Runtime&>(this->context);
 
     runtime.services.networkStatus.addObserver(this->networkStatusObserver, [this](auto json) {
@@ -162,7 +177,7 @@ export * from '{{url}}'
       this->emit("permissionchange", event.str());
     });
 
-    if (userConfig["permissions_allow_notifications"] != "false") {
+    if (this->userConfig["permissions_allow_notifications"] != "false") {
       runtime.services.notifications.addNotificationResponseObserver(this->notificationResponseObserver, [this](auto json) {
         this->emit("notificationresponse", json.str());
       });
@@ -172,19 +187,6 @@ export * from '{{url}}'
       });
     }
   #endif
-  }
-
-  Bridge::~Bridge () {
-    auto& runtime = static_cast<runtime::Runtime&>(this->context);
-    // remove observers
-    runtime.services.geolocation.removePermissionChangeObserver(this->geolocationPermissionChangeObserver);
-    runtime.services.networkStatus.removeObserver(this->networkStatusObserver);
-    runtime.services.notifications.removePermissionChangeObserver(this->notificationsPermissionChangeObserver);
-    runtime.services.notifications.removeNotificationResponseObserver(this->notificationResponseObserver);
-    runtime.services.notifications.removeNotificationPresentedObserver(this->notificationPresentedObserver);
-  }
-
-  void Bridge::init () {
     this->router.init();
     this->navigator.init();
     this->schemeHandlers.init();
@@ -204,14 +206,11 @@ export * from '{{url}}'
   }
 
   bool Bridge::dispatch (const context::DispatchCallback callback) {
-    #if SOCKET_RUNTIME_PLATFORM_ANDROID
-      callback();
+    if (this->dispatchHandler != nullptr) {
+      this->dispatchHandler(callback);
       return true;
-    #else
-      return static_cast<Runtime&>(this->context).dispatch(callback);
-    #endif
-
-    return false;
+    }
+    return static_cast<Runtime&>(this->context).dispatch(callback);
   }
 
   bool Bridge::navigate (const String& url) {
@@ -223,13 +222,13 @@ export * from '{{url}}'
     return false;
   }
 
-  bool Bridge::route (const String& uri, SharedPointer<char[]> bytes, size_t size) {
+  bool Bridge::route (const String& uri, SharedPointer<unsigned char[]> bytes, size_t size) {
     return this->route(uri, bytes, size, nullptr);
   }
 
   bool Bridge::route (
     const String& uri,
-    SharedPointer<char[]> bytes,
+    SharedPointer<unsigned char[]> bytes,
     size_t size,
     ipc::Router::ResultCallback callback
   ) {
@@ -238,6 +237,19 @@ export * from '{{url}}'
     } else {
       return this->router.invoke(uri, bytes, size);
     }
+  }
+
+  bool Bridge::route (const String& uri, const bytes::Buffer& buffer) {
+    return this->route(uri, buffer, nullptr);
+  }
+
+  bool Bridge::route (const String& uri, const bytes::Buffer& buffer, const ipc::Router::ResultCallback callback) {
+    return this->route(
+      uri,
+      buffer.pointer(),
+      buffer.size(),
+      callback
+    );
   }
 
   bool Bridge::send (
@@ -300,9 +312,8 @@ export * from '{{url}}'
         }
       };
 
-      const auto size = request->body.size;
-      const auto bytes = request->body.bytes;
-      const auto invoked = this->router.invoke(message.str(), request->body.bytes, size, [=](ipc::Result result) {
+      const auto size = request->body.size();
+      const auto invoked = this->router.invoke(message, request->body.pointer(), size, [=](ipc::Result result) {
         if (!request->isActive()) {
           return;
         }
@@ -317,7 +328,7 @@ export * from '{{url}}'
           response.setHeader("cache-control", "no-store");
           *result.queuedResponse.eventStreamCallback = [request, response, message, callback](
             const char* name,
-            const char* data,
+            const unsigned char* data,
             bool finished
           ) mutable {
             if (request->isCancelled()) {
@@ -329,7 +340,7 @@ export * from '{{url}}'
 
             response.writeHead(200);
 
-            const auto event = SchemeHandlers::Response::Event { name, data };
+            const auto event = SchemeHandlers::Response::Event { name, reinterpret_cast<const char*>(data) };
 
             if (event.count() > 0) {
               response.write(event.str());
@@ -348,7 +359,7 @@ export * from '{{url}}'
         if (result.queuedResponse.chunkStreamCallback != nullptr) {
           response.setHeader("transfer-encoding", "chunked");
           *result.queuedResponse.chunkStreamCallback = [request, response, message, callback](
-            const char* chunk,
+            const unsigned char* chunk,
             size_t size,
             bool finished
           ) mutable {
@@ -400,11 +411,12 @@ export * from '{{url}}'
       auto callbacks,
       auto callback
     ) {
+      auto app = App::sharedApplication();
       auto globalConfig = getUserConfig();
       auto userConfig = this->userConfig;
       auto bundleIdentifier = userConfig["meta_bundle_identifier"];
       auto globalBundleIdentifier = globalConfig["meta_bundle_identifier"];
-      auto window = this->context.getRuntime()->windowManager.getWindowForBridge(
+      auto window = app->runtime.windowManager.getWindowForBridge(
         reinterpret_cast<const window::IBridge*>(bridge)
       );
 
@@ -440,30 +452,36 @@ export * from '{{url}}'
 
       // application resource or service worker request at `socket://<bundle_identifier>/*`
       if (request->hostname.size() > 0) {
+        auto origin = webview::Origin(request->scheme + "://" + request->hostname);
+        auto serviceWorker = app->runtime.serviceWorkerManager.get(origin.name());
         if (
+          serviceWorker != nullptr &&
           request->hostname != globalBundleIdentifier &&
           window->options.shouldPreferServiceWorker &&
-          this->navigator.serviceWorker.registrations.size() > 0
+          serviceWorker->container.registrations.size() > 0
         ) {
-          auto fetch = ServiceWorkerContainer::FetchRequest {
-            request->method,
-            request->scheme,
-            request->hostname,
-            request->pathname,
-            request->query,
-            request->headers,
-            ServiceWorkerContainer::FetchBody { request->body.size, request->body.bytes },
-            request->client
-          };
+          auto fetch = serviceworker::Request();
+          fetch.method = request->method;
+          fetch.scheme = request->scheme;
+          fetch.url.hostname = request->hostname;
+          fetch.url.pathname = request->pathname;
+          fetch.url.searchParams.set(request->query);
+          fetch.url.search = request->query;
+          fetch.headers = request->headers;
+          fetch.body = request->body;
+          fetch.client = request->client;
 
           if (!fetch.headers.has("origin")) {
             fetch.headers.set("origin", this->navigator.location.origin);
           }
 
-          const auto fetched = this->navigator.serviceWorker.fetch(fetch, [
+          const auto app = App::sharedApplication();
+          const auto options = serviceworker::Fetch::Options { request->client };
+          const auto fetched = serviceWorker->fetch(fetch, options, [
             this,
             applicationResources,
             contentLocation,
+            serviceWorker,
             resourcePath,
             userConfig,
             callback,
@@ -478,7 +496,7 @@ export * from '{{url}}'
               response.fail("ServiceWorker request failed");
             } else if (res.statusCode != 404) {
               response.writeHead(res.statusCode, res.headers);
-              response.write(res.body.size, res.body.bytes);
+              response.write(res.body.buffer);
             } else {
               const auto resolved = this->navigator.location.resolve(request->pathname, applicationResources);
 
@@ -559,7 +577,7 @@ export * from '{{url}}'
                       const auto html = request->headers["runtime-preload-injection"] == "disabled"
                         ? resource.str()
                         : this->client.preload.insertIntoHTML(resource.str(), {
-                            .protocolHandlerSchemes = this->navigator.serviceWorker.protocols.getSchemes()
+                            .protocolHandlerSchemes = serviceWorker->container.protocols.getSchemes()
                           });
 
                       response.setHeader("content-type", "text/html");
@@ -590,117 +608,122 @@ export * from '{{url}}'
           }
         }
 
-        const auto resolved = this->navigator.location.resolve(request->pathname, applicationResources);
+        if (request->hostname == userConfig["meta_bundle_identifier"]) {
+          const auto resolved = this->navigator.location.resolve(request->pathname, applicationResources);
 
-        if (resolved.redirect) {
-          if (request->method == "GET") {
-            auto location = resolved.pathname;
-            if (request->query.size() > 0) {
-              location += "?" + request->query;
+          if (resolved.redirect) {
+            if (request->method == "GET") {
+              auto location = resolved.pathname;
+              if (request->query.size() > 0) {
+                location += "?" + request->query;
+              }
+
+              if (request->fragment.size() > 0) {
+                location += "#" + request->fragment;
+              }
+
+              response.redirect(location);
+              return callback(response);
+            }
+          } else if (resolved.isResource()) {
+            resourcePath = applicationResources + resolved.pathname;
+          } else if (resolved.isMount()) {
+            resourcePath = resolved.mount.filename;
+          } else if (request->pathname == "" || request->pathname == "/") {
+            if (userConfig.contains("webview_default_index")) {
+              resourcePath = userConfig["webview_default_index"];
+              if (resourcePath.starts_with("./")) {
+                resourcePath = applicationResources + resourcePath.substr(1);
+              } else if (resourcePath.starts_with("/")) {
+                resourcePath = applicationResources + resourcePath;
+              } else {
+                resourcePath = applicationResources + + "/" + resourcePath;
+              }
+            }
+          }
+
+          if (resourcePath.size() == 0 && resolved.pathname.size() > 0) {
+            resourcePath = applicationResources + resolved.pathname;
+          }
+
+          // handle HEAD and GET requests for a file resource
+          if (resourcePath.size() > 0) {
+            if (resourcePath.starts_with(applicationResources)) {
+              contentLocation = resourcePath.substr(applicationResources.size(), resourcePath.size());
             }
 
-            if (request->fragment.size() > 0) {
-              location += "#" + request->fragment;
+            auto resource = filesystem::Resource(resourcePath);
+
+            if (!resource.exists()) {
+              response.writeHead(404);
+            } else {
+              if (contentLocation.size() > 0) {
+                response.setHeader("content-location", contentLocation);
+              }
+
+              if (request->method == "OPTIONS") {
+                response.writeHead(204);
+              }
+
+              if (request->method == "HEAD") {
+                const auto contentType = resource.mimeType();
+                const auto contentLength = resource.size();
+
+                if (contentType.size() > 0) {
+                  response.setHeader("content-type", contentType);
+                }
+
+                if (contentLength > 0) {
+                  response.setHeader("content-length", contentLength);
+                }
+
+                response.writeHead(200);
+              }
+
+              if (request->method == "GET") {
+                if (resource.mimeType() != "text/html") {
+                  response.setHeader("cache-control", "public");
+                  response.send(resource);
+                } else {
+                  const auto html = request->headers["runtime-preload-injection"] == "disabled"
+                    ? resource.str()
+                    : this->client.preload.insertIntoHTML(resource.str(), {
+                        .protocolHandlerSchemes = serviceWorker
+                          ? serviceWorker->container.protocols.getSchemes()
+                          : Vector<String>()
+                        });
+
+                  response.setHeader("content-type", "text/html");
+                  response.setHeader("content-length", html.size());
+                  response.setHeader("cache-control", "public");
+                  response.writeHead(200);
+                  response.write(html);
+                }
+              }
             }
 
-            response.redirect(location);
             return callback(response);
           }
-        } else if (resolved.isResource()) {
-          resourcePath = applicationResources + resolved.pathname;
-        } else if (resolved.isMount()) {
-          resourcePath = resolved.mount.filename;
-        } else if (request->pathname == "" || request->pathname == "/") {
-          if (userConfig.contains("webview_default_index")) {
-            resourcePath = userConfig["webview_default_index"];
-            if (resourcePath.starts_with("./")) {
-              resourcePath = applicationResources + resourcePath.substr(1);
-            } else if (resourcePath.starts_with("/")) {
-              resourcePath = applicationResources + resourcePath;
-            } else {
-              resourcePath = applicationResources + + "/" + resourcePath;
-            }
-          }
         }
 
-        if (resourcePath.size() == 0 && resolved.pathname.size() > 0) {
-          resourcePath = applicationResources + resolved.pathname;
-        }
-
-        // handle HEAD and GET requests for a file resource
-        if (resourcePath.size() > 0) {
-          if (resourcePath.starts_with(applicationResources)) {
-            contentLocation = resourcePath.substr(applicationResources.size(), resourcePath.size());
-          }
-
-          auto resource = filesystem::Resource(resourcePath);
-
-          if (!resource.exists()) {
-            response.writeHead(404);
-          } else {
-            if (contentLocation.size() > 0) {
-              response.setHeader("content-location", contentLocation);
-            }
-
-            if (request->method == "OPTIONS") {
-              response.writeHead(204);
-            }
-
-            if (request->method == "HEAD") {
-              const auto contentType = resource.mimeType();
-              const auto contentLength = resource.size();
-
-              if (contentType.size() > 0) {
-                response.setHeader("content-type", contentType);
-              }
-
-              if (contentLength > 0) {
-                response.setHeader("content-length", contentLength);
-              }
-
-              response.writeHead(200);
-            }
-
-            if (request->method == "GET") {
-              if (resource.mimeType() != "text/html") {
-                response.setHeader("cache-control", "public");
-                response.send(resource);
-              } else {
-                const auto html = request->headers["runtime-preload-injection"] == "disabled"
-                  ? resource.str()
-                  : this->client.preload.insertIntoHTML(resource.str(), {
-                      .protocolHandlerSchemes = this->navigator.serviceWorker.protocols.getSchemes()
-                    });
-
-                response.setHeader("content-type", "text/html");
-                response.setHeader("content-length", html.size());
-                response.setHeader("cache-control", "public");
-                response.writeHead(200);
-                response.write(html);
-              }
-            }
-          }
-
-          return callback(response);
-        }
-
-        if (this->navigator.serviceWorker.registrations.size() > 0) {
-          auto fetch = ServiceWorkerContainer::FetchRequest {
-            request->method,
-            request->scheme,
-            request->hostname,
-            request->pathname,
-            request->query,
-            request->headers,
-            ServiceWorkerContainer::FetchBody { request->body.size, request->body.bytes },
-            request->client
-          };
+        if (serviceWorker && serviceWorker->container.registrations.size() > 0) {
+          auto fetch = serviceworker::Request();
+          fetch.method = request->method;
+          fetch.scheme = request->scheme;
+          fetch.url.hostname = request->hostname;
+          fetch.url.pathname = request->pathname;
+          fetch.url.searchParams.set(request->query);
+          fetch.url.search = request->query;
+          fetch.headers = request->headers;
+          fetch.body = request->body;
+          fetch.client = request->client;
 
           if (!fetch.headers.has("origin")) {
             fetch.headers.set("origin", this->navigator.location.origin);
           }
 
-          const auto fetched = this->navigator.serviceWorker.fetch(fetch, [request, callback, response] (auto res) mutable {
+          const auto options = serviceworker::Fetch::Options { request->client };
+          const auto fetched = serviceWorker->fetch(fetch, options, [request, callback, response] (auto res) mutable {
             if (!request->isActive()) {
               return;
             }
@@ -709,7 +732,7 @@ export * from '{{url}}'
               response.fail("ServiceWorker request failed");
             } else {
               response.writeHead(res.statusCode, res.headers);
-              response.write(res.body.size, res.body.bytes);
+              response.write(res.body.buffer);
             }
 
             callback(response);
@@ -762,13 +785,13 @@ export * from '{{url}}'
             #else
             "socket://" +
             #endif
-            toLowerCase(globalBundleIdentifier) +
+            toLowerCase(bundleIdentifier) +
             contentLocation +
             (request->query.size() > 0 ? "?" + request->query : "")
           );
 
           const auto moduleImportProxy = tmpl(
-            String(resource.read()).find("export default") != String::npos
+            String(reinterpret_cast<const char*>(resource.read())).find("export default") != String::npos
               ? ESM_IMPORT_PROXY_TEMPLATE_WITH_DEFAULT_EXPORT
               : ESM_IMPORT_PROXY_TEMPLATE_WITHOUT_DEFAULT_EXPORT,
             Map<String, String> {
@@ -777,7 +800,7 @@ export * from '{{url}}'
               {"protocol", "socket"},
               {"pathname", pathname},
               {"specifier", specifier},
-              {"bundle_identifier", toLowerCase(globalBundleIdentifier)}
+              {"bundle_identifier", toLowerCase(bundleIdentifier)}
             }
           );
 
@@ -817,8 +840,8 @@ export * from '{{url}}'
         return;
       }
 
-      auto userConfig = getUserConfig();
-      const auto bundleIdentifier = userConfig["meta_bundle_identifier"];
+      auto globalUserConfig = getUserConfig();
+      const auto bundleIdentifier = this->userConfig["meta_bundle_identifier"];
       // the location of static application resources
       const auto applicationResources = filesystem::Resource::getResourcesPath().string();
       // default response is 404
@@ -890,7 +913,7 @@ export * from '{{url}}'
             pathname
           );
           const auto moduleImportProxy = tmpl(
-            String(resource.read()).find("export default") != String::npos
+            String(reinterpret_cast<const char*>(resource.read())).find("export default") != String::npos
               ? ESM_IMPORT_PROXY_TEMPLATE_WITH_DEFAULT_EXPORT
               : ESM_IMPORT_PROXY_TEMPLATE_WITHOUT_DEFAULT_EXPORT,
             Map<String, String> {
@@ -926,13 +949,15 @@ export * from '{{url}}'
       callback(response);
     });
 
-    Map<String, String> protocolHandlers = {
-      {"npm", "/socket/npm/service-worker.js"}
-    };
+    Map<String, String> protocolHandlers = {};
+    auto globalUserConfig = getUserConfig();
+    if (globalUserConfig["meta_bundle_identifier"] == this->userConfig["meta_bundle_identifier"]) {
+      protocolHandlers.insert({"npm", "/socket/npm/service-worker.js"});
+    }
 
     for (const auto& entry : split(this->userConfig["webview_protocol-handlers"], " ")) {
       const auto scheme = replace(trim(entry), ":", "");
-      if (this->navigator.serviceWorker.protocols.registerHandler(scheme)) {
+      if (this->navigator.serviceWorkerServer->container.protocols.registerHandler(scheme)) {
         protocolHandlers.insert_or_assign(scheme, "");
       }
     }
@@ -942,7 +967,8 @@ export * from '{{url}}'
       if (key.starts_with("webview_protocol-handlers_")) {
         const auto scheme = replace(replace(trim(key), "webview_protocol-handlers_", ""), ":", "");;
         const auto data = entry.second;
-        if (this->navigator.serviceWorker.protocols.registerHandler(scheme, { data })) {
+        if (this->navigator.serviceWorkerServer->container.protocols.registerHandler(scheme, { data })) {
+          debug("protocol: %s %s", scheme.c_str(), data.c_str());
           protocolHandlers.insert_or_assign(scheme, data);
         }
       }
@@ -997,19 +1023,19 @@ export * from '{{url}}'
       }
 
       if (scheme == "npm") {
-        this->navigator.serviceWorker.registerServiceWorker({
-          .type = ServiceWorkerContainer::RegistrationOptions::Type::Module,
-          .scope = scope,
+        this->navigator.serviceWorkerServer->container.registerServiceWorker({
+          .type = serviceworker::Registration::Options::Type::Module,
           .scriptURL = scriptURL,
+          .scope = scope,
           .scheme = scheme,
           .serializedWorkerArgs = "",
           .id = id
         });
       } else {
-        this->navigator.serviceWorker.registerServiceWorker({
-          .type = ServiceWorkerContainer::RegistrationOptions::Type::Module,
-          .scope = scope,
+        this->navigator.serviceWorkerServer->container.registerServiceWorker({
+          .type = serviceworker::Registration::Options::Type::Module,
           .scriptURL = scriptURL,
+          .scope = scope,
           .scheme = scheme,
           .serializedWorkerArgs = encodeURIComponent(JSON::Object(JSON::Object::Entries {
             {"index", this->client.index},
@@ -1034,9 +1060,15 @@ export * from '{{url}}'
         auto callbacks,
         auto callback
       ) {
-        auto window = this->context.getRuntime()->windowManager.getWindowForBridge(
+        auto app = App::sharedApplication();
+        auto window = app->runtime.windowManager.getWindowForBridge(
           reinterpret_cast<const window::IBridge*>(bridge)
         );
+
+        auto fetch = serviceworker::Request();
+        SharedPointer<serviceworker::Server> serviceWorkerServer = nullptr;
+
+        debug("request: %s", request->str().c_str());
 
         if (window == nullptr) {
           auto response = SchemeHandlers::Response(request);
@@ -1052,71 +1084,80 @@ export * from '{{url}}'
           return;
         }
 
-        if (this->navigator.serviceWorker.registrations.size() > 0) {
-          auto hostname = request->hostname;
+        fetch.method = request->method;
+        fetch.scheme = request->scheme;
+        fetch.url.scheme = request->scheme;
+        fetch.url.hostname = request->hostname;
+        fetch.url.pathname = request->pathname;
+        fetch.url.search = "?" + request->query;
+        fetch.headers = request->headers;
+        fetch.body = request->body;
+        fetch.client = request->client;
+
+        if (request->scheme == "npm") {
+          auto app = App::sharedApplication();
+          static auto userConfig = getUserConfig();
+          const auto bundleIdentifier = userConfig["meta_bundle_identifier"];
+
           auto pathname = request->pathname;
+          auto hostname = request->hostname;
 
-          if (request->scheme == "npm") {
-            auto userConfig = getUserConfig();
-            const auto bundleIdentifier = userConfig["meta_bundle_identifier"];
-            if (hostname.size() > 0) {
-              pathname = "/" + hostname;
-            }
-            hostname = bundleIdentifier;
+          if (hostname.size() > 0) {
+            fetch.url.pathname = "/" + fetch.url.hostname;
           }
 
-          const auto scope = this->navigator.serviceWorker.protocols.getServiceWorkerScope(request->scheme);
+          fetch.url.hostname = bundleIdentifier;
+        }
 
-          if (scope.size() > 0) {
-            pathname = scope + pathname;
-          }
+        if (!fetch.headers.has("origin")) {
+          fetch.headers.set("origin", this->navigator.location.origin);
+        }
 
-          auto fetch = ServiceWorkerContainer::FetchRequest {
-            request->method,
-            request->scheme,
-            hostname,
-            pathname,
-            request->query,
-            request->headers,
-            ServiceWorkerContainer::FetchBody { request->body.size, request->body.bytes },
-            request->client
-          };
+        const auto options = serviceworker::Fetch::Options {
+          .client = request->client,
+          .waitForRegistrationToFinish = request->scheme != "npm"
+        };
 
-          if (!fetch.headers.has("origin")) {
-            fetch.headers.set("origin", this->navigator.location.origin);
-          }
+        debug("fetch: %s", fetch.str().c_str());
+        const auto origin = webview::Origin(request->str());
+        debug("origin: %s", origin.name().c_str());
+        serviceWorkerServer = app->runtime.serviceWorkerManager.get(origin.name());
+        if (!serviceWorkerServer) {
+          debug("fall back to navigator serviceWorkerServer");
+          serviceWorkerServer = this->navigator.serviceWorkerServer;
+        }
 
-          auto options = ServiceWorkerContainer::FetchOptions {
-            .waitForRegistrationToFinish = request->scheme != "npm"
-          };
+        const auto scope = serviceWorkerServer->container.protocols.getServiceWorkerScope(request->scheme);
 
-          const auto fetched = this->navigator.serviceWorker.fetch(fetch, options, [request, callback] (auto res) mutable {
-            if (!request->isActive()) {
-              return;
-            }
+        if (scope.size() > 0) {
+          fetch.url.pathname = scope + fetch.url.pathname;
+        }
 
-            auto response = SchemeHandlers::Response(request);
-
-            if (res.statusCode == 0) {
-              response.fail("ServiceWorker request failed");
-            } else {
-              response.writeHead(res.statusCode, res.headers);
-              response.write(res.body.size, res.body.bytes);
-            }
-
-            callback(response);
-          });
-
-          if (fetched) {
-            // FIXME(@jwerle): revisit timeout
-            //this->core->setTimeout(32000, [request] () mutable {
-              //if (request->isActive()) {
-                //auto response = SchemeHandlers::Response(request, 408);
-                //response.fail("Protocol handler ServiceWorker request timed out.");
-              //}
-            //});
+        const auto fetched = serviceWorkerServer->fetch(fetch, options, [request, callback] (auto res) mutable {
+          if (!request->isActive()) {
             return;
           }
+
+          auto response = SchemeHandlers::Response(request);
+          if (res.statusCode == 0) {
+            response.fail("ServiceWorker request failed");
+          } else {
+            response.writeHead(res.statusCode, res.headers);
+            response.write(res.body.buffer);
+          }
+
+          callback(response);
+        });
+
+        if (fetched) {
+          // FIXME(@jwerle): revisit timeout
+          //this->core->setTimeout(32000, [request] () mutable {
+          //if (request->isActive()) {
+          //auto response = SchemeHandlers::Response(request, 408);
+          //response.fail("Protocol handler ServiceWorker request timed out.");
+          //}
+          //});
+          return;
         }
 
         auto response = SchemeHandlers::Response(request);
@@ -1175,6 +1216,18 @@ export * from '{{url}}'
 
   void Bridge::configureNavigatorMounts () {
     this->navigator.configureMounts();
+  }
+
+  Runtime* Bridge::getRuntime () {
+    return this->context.getRuntime();
+  }
+
+  const Runtime* Bridge::getRuntime () const {
+    return this->context.getRuntime();
+  }
+
+  bool Bridge::active () const {
+    return this->getRuntime()->loop.alive();
   }
 }
 

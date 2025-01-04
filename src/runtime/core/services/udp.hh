@@ -24,7 +24,7 @@ namespace ssc::runtime::core::services {
       struct SendOptions {
         String address = "";
         int port = 0;
-        SharedPointer<char[]> bytes = nullptr;
+        SharedPointer<unsigned char[]> bytes = nullptr;
         size_t size = 0;
         bool ephemeral = false;
       };

@@ -31,7 +31,7 @@ namespace ssc::runtime::filesystem {
   #endif
 
 #if SOCKET_RUNTIME_PLATFORM_ANDROID
-  static Android::AssetManager* sharedAndroidAssetManager = nullptr;
+  static android::AssetManager* sharedAndroidAssetManager = nullptr;
   static Path externalAndroidStorageDirectory;
   static Path externalAndroidFilesDirectory;
   static Path externalAndroidCacheDirectory;
@@ -78,12 +78,12 @@ namespace ssc::runtime::filesystem {
 #endif
 
 #if SOCKET_RUNTIME_PLATFORM_ANDROID
-  void Resource::setSharedAndroidAssetManager (Android::AssetManager* assetManager) {
+  void Resource::setSharedAndroidAssetManager (android::AssetManager* assetManager) {
     Lock lock(mutex);
     sharedAndroidAssetManager = assetManager;
   }
 
-  Android::AssetManager* Resource::getSharedAndroidAssetManager () {
+  android::AssetManager* Resource::getSharedAndroidAssetManager () {
     return sharedAndroidAssetManager;
   }
 
@@ -825,7 +825,7 @@ namespace ssc::runtime::filesystem {
       }
     #elif SOCKET_RUNTIME_PLATFORM_ANDROID
       if (extension.size() > 1) {
-        const auto value = Android::MimeTypeMap::sharedMimeTypeMap()->getMimeTypeFromExtension(
+        const auto value = android::MimeTypeMap::sharedMimeTypeMap()->getMimeTypeFromExtension(
           extension.starts_with(".") ? extension.substr(1) : extension
         );
 
@@ -835,7 +835,7 @@ namespace ssc::runtime::filesystem {
       }
 
       if (this->options.contentResolver && this->url.scheme == "content") {
-        return this->options.contentResolver.getContentMimeType(this->url.str());
+        return this->options.contentResolver->getContentMimeType(this->url.str());
       }
     #endif
 
@@ -934,12 +934,12 @@ namespace ssc::runtime::filesystem {
     return this->cache.size;
   }
 
-  const char* Resource::read () const {
+  const unsigned char* Resource::read () const {
     return this->cache.bytes.get();
   }
 
   // caller takes ownership of returned pointer
-  const char* Resource::read (bool cached) {
+  const unsigned char* Resource::read (bool cached) {
     if (!this->accessing || !this->exists()) {
       return nullptr;
     }
@@ -959,7 +959,7 @@ namespace ssc::runtime::filesystem {
 
     const auto data = [NSData dataWithContentsOfURL: this->nsURL];
     if (data.length > 0) {
-      this->bytes.reset(new char[data.length]{0});
+      this->bytes.reset(new unsigned char[data.length]{0});
       memcpy(this->bytes.get(), data.bytes, data.length);
     }
   #elif SOCKET_RUNTIME_PLATFORM_LINUX
@@ -969,7 +969,7 @@ namespace ssc::runtime::filesystem {
     gsize size = 0;
     if (g_file_get_contents(this->path.string().c_str(), &contents, &size, &error)) {
       if (size > 0) {
-        this->bytes.reset(new char[size]{0});
+        this->bytes.reset(new unsigned char[size]{0});
         memcpy(this->bytes.get(), contents, size);
       }
     }
@@ -991,7 +991,7 @@ namespace ssc::runtime::filesystem {
 
     if (handle) {
       const auto size = this->size();
-      auto bytes = new char[size]{0};
+      auto bytes = new unsigned char[size]{0};
       auto result = ReadFile(
         handle, // File handle
         reinterpret_cast<void*>(bytes),
@@ -1023,7 +1023,7 @@ namespace ssc::runtime::filesystem {
         if (size) {
           const auto buffer = AAsset_getBuffer(asset);
           if (buffer) {
-            auto bytes = new char[size]{0};
+            auto bytes = new unsigned char[size]{0};
             memcpy(bytes, buffer, size);
             this->bytes.reset(bytes);
             this->cache.size = size;
@@ -1041,7 +1041,7 @@ namespace ssc::runtime::filesystem {
       auto size = fs::file_size(this->path);
       auto end = std::istreambuf_iterator<char>();
 
-      auto bytes = new char[size]{0};
+      auto bytes = new unsigned char[size]{0};
       String content;
 
       content.assign(buffer, end);
@@ -1068,7 +1068,7 @@ namespace ssc::runtime::filesystem {
     const auto bytes = this->read(cached);
 
     if (bytes != nullptr && size > 0) {
-      return String(bytes, size);
+      return String(reinterpret_cast<const char*>(bytes), size);
     }
 
     return "";
@@ -1308,14 +1308,14 @@ namespace ssc::runtime::filesystem {
   }
 
   Resource::ReadStream::Buffer::Buffer (size_t size)
-    : bytes(std::make_shared<char[]>(size)),
+    : bytes(std::make_shared<unsigned char[]>(size)),
       size(size)
   {
     memset(this->bytes.get(), 0, size);
   }
 
   Resource::ReadStream::Buffer::Buffer (const Options& options)
-    : bytes(std::make_shared<char[]>(options.highWaterMark)),
+    : bytes(std::make_shared<unsigned char[]>(options.highWaterMark)),
       size(0)
   {
     memset(this->bytes.get(), 0, options.highWaterMark);

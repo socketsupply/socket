@@ -268,7 +268,7 @@ void Process::read() noexcept {
     stdoutThread = Thread([this]() {
       DWORD n;
 
-      UniquePointer<char[]> buffer(new char[config.bufferSize]);
+      UniquePointer<unsigned char[]> buffer(new unsigned char[config.bufferSize]);
       StringStream ss;
 
       for (;;) {
@@ -304,7 +304,7 @@ void Process::read() noexcept {
   if (stderrFD) {
     stderrThread = Thread([this]() {
       DWORD n;
-      auto buffer = std::make_unique<char[]>(config.bufferSize);
+      auto buffer = std::make_unique<unsigned char[]>(config.bufferSize);
 
       for (;;) {
         BOOL bSuccess = ReadFile(*stderrFD, static_cast<CHAR *>(buffer.get()), static_cast<DWORD>(config.bufferSize), &n, nullptr);

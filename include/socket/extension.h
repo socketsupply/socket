@@ -1182,7 +1182,7 @@ SOCKET_RUNTIME_EXTENSION_EXTERN_BEGIN
   SOCKET_RUNTIME_EXTENSION_EXPORT
   bool sapi_ipc_send_chunk (
     sapi_ipc_result_t* result,
-    const char* chunk,
+    const unsigned char* chunk,
     size_t chunk_size,
     bool finished
   );
@@ -1211,7 +1211,7 @@ SOCKET_RUNTIME_EXTENSION_EXTERN_BEGIN
   bool sapi_ipc_send_event (
     sapi_ipc_result_t* result,
     const char* name,
-    const char* data,
+    const unsigned char* data,
     bool finished
   );
 

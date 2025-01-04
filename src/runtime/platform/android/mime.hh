@@ -4,7 +4,7 @@
 #include "../types.hh"
 #include "environment.hh"
 
-namespace ssc::android {
+namespace ssc::runtime::android {
   using MimeTypeMapRef = jobject;
 
   struct MimeTypeMap {

@@ -52,23 +52,29 @@
 #endif
 
 #include "../extension/extension.hh"
-#include "../core/core.hh"
+// #include "../extension/.hh"
+#include "../runtime.hh"
+#include "../cli.hh"
 
 #include "templates.hh"
-#include "cli.hh"
 
 #ifndef SOCKET_RUNTIME_BUILD_TIME
 #define SOCKET_RUNTIME_BUILD_TIME 0
 #endif
 
-using namespace SSC;
+using namespace ssc;
+using namespace ssc::cli;
+using namespace ssc::runtime;
+using namespace ssc::runtime::crypto;
+using namespace ssc::runtime::process;
+using namespace ssc::runtime::string;
 using namespace std::chrono;
 
 const auto DEFAULT_SSC_RC_FILENAME = String(".sscrc");
 const auto DEFAULT_SSC_ENV_FILENAME = String(".ssc.env");
 
 Process* buildAfterScriptProcess = nullptr;
-FileSystemWatcher* sourcesWatcher = nullptr;
+filesystem::Watcher* sourcesWatcher = nullptr;
 Thread* sourcesWatcherSupportThread = nullptr;
 
 Path targetPath;
@@ -193,13 +199,13 @@ void printHelp (const String& command) {
 }
 
 String getSocketHome (bool verbose) {
-  static String XDG_DATA_HOME = Env::get("XDG_DATA_HOME");
-  static String LOCALAPPDATA = Env::get("LOCALAPPDATA");
-  static String SOCKET_HOME = Env::get("SOCKET_HOME");
-  static String HOME = Env::get("HOME");
+  static String XDG_DATA_HOME = env::get("XDG_DATA_HOME");
+  static String LOCALAPPDATA = env::get("LOCALAPPDATA");
+  static String SOCKET_HOME = env::get("SOCKET_HOME");
+  static String HOME = env::get("HOME");
   static const bool SSC_DEBUG = (
-    Env::get("SSC_DEBUG").size() > 0 ||
-    Env::get("DEBUG").size() > 0
+    env::get("SSC_DEBUG").size() > 0 ||
+    env::get("DEBUG").size() > 0
   );
 
   static String socketHome = "";
@@ -229,7 +235,7 @@ String getSocketHome (bool verbose) {
 
   if (socketHome.size() > 0) {
     #ifdef _WIN32
-    Env::set((String("SOCKET_HOME=") + socketHome).c_str());
+    env::set((String("SOCKET_HOME=") + socketHome).c_str());
     #else
     setenv("SOCKET_HOME", socketHome.c_str(), 1);
     #endif
@@ -247,7 +253,7 @@ String getSocketHome () {
 }
 
 String getAndroidHome () {
-  static auto androidHome = Env::get("ANDROID_HOME");
+  static auto androidHome = env::get("ANDROID_HOME");
   if (androidHome.size() > 0) {
     return androidHome;
   }
@@ -266,9 +272,9 @@ String getAndroidHome () {
 
   if (androidHome.size() == 0) {
     if (platform.mac) {
-      androidHome = Env::get("HOME") + "/Library/Android/sdk";
+      androidHome = env::get("HOME") + "/Library/Android/sdk";
     } else if (platform.unix) {
-      androidHome = Env::get("HOME") + "/android";
+      androidHome = env::get("HOME") + "/android";
     } else if (platform.win) {
       // TODO
     }
@@ -276,14 +282,14 @@ String getAndroidHome () {
 
   if (androidHome.size() > 0) {
     #ifdef _WIN32
-    Env::set((String("ANDROID_HOME=") + androidHome).c_str());
+    env::set((String("ANDROID_HOME=") + androidHome).c_str());
     #else
     setenv("ANDROID_HOME", androidHome.c_str(), 1);
     #endif
 
     static const bool SSC_DEBUG = (
-      Env::get("SSC_DEBUG").size() > 0 ||
-      Env::get("DEBUG").size() > 0
+      env::get("SSC_DEBUG").size() > 0 ||
+      env::get("DEBUG").size() > 0
     );
 
     if (SSC_DEBUG) {
@@ -424,11 +430,11 @@ void handleBuildPhaseForUser (
       pathResourcesRelativeToUserBuild.string().size()
     );
 
-    // @TODO(jwerle): use `Env::set()` if #148 is closed
+    // @TODO(jwerle): use `env::set()` if #148 is closed
 #if _WIN32
     String prefix_ = "PREFIX=";
     prefix_ += prefix;
-    Env::set(prefix_.c_str());
+    env::set(prefix_.c_str());
 #else
     setenv("PREFIX", prefix, 1);
 #endif
@@ -450,12 +456,12 @@ void handleBuildPhaseForUser (
     auto scriptPath = (cwd / targetPath).string();
     log("running build script (cmd='" + buildScript + "', args='" + scriptArgs + "', pwd='" + scriptPath + "')");
 
-    auto process = new SSC::Process(
+    auto process = new Process(
       buildScript,
       scriptArgs,
       scriptPath,
-      [](SSC::String const &out) { IO::write(out, false); },
-      [](SSC::String const &out) { IO::write(out, true); }
+      [](String const &out) { io::write(out, false); },
+      [](String const &out) { io::write(out, true); }
     );
 
     process->open();
@@ -488,12 +494,12 @@ void handleBuildPhaseForUser (
       buildAfterScriptProcess = nullptr;
     }
 
-    buildAfterScriptProcess = new SSC::Process(
+    buildAfterScriptProcess = new Process(
       buildScript,
       scriptArgs,
       (cwd / targetPath).string(),
-      [](SSC::String const &out) { IO::write(out, false); },
-      [](SSC::String const &out) { IO::write(out, true); },
+      [](String const &out) { io::write(out, false); },
+      [](String const &out) { io::write(out, true); },
       [](const auto status) {
         const auto exitCode = std::atoi(status.c_str());
         if (exitCode != 0) {
@@ -913,7 +919,7 @@ int runApp (const Path& path, const String& args, bool headless) {
         cleanKey.erase(0, cleanKey.find_first_not_of(","));
         cleanKey.erase(cleanKey.find_last_not_of(",") + 1);
 
-        auto envValue = Env::get(cleanKey.c_str());
+        auto envValue = env::get(cleanKey.c_str());
         auto key = [NSString stringWithUTF8String: cleanKey.c_str()];
         auto value = [NSString stringWithUTF8String: envValue.c_str()];
 
@@ -940,7 +946,7 @@ int runApp (const Path& path, const String& args, bool headless) {
       auto port = std::to_string(createLogSocket());
       env[@"SSC_LOG_SOCKET"] = @(port.c_str());
 
-      auto parentLogSocket = Env::get("SSC_PARENT_LOG_SOCKET");
+      auto parentLogSocket = env::get("SSC_PARENT_LOG_SOCKET");
       if (parentLogSocket.size() > 0) {
         env[@"SSC_PARENT_LOG_SOCKET"] = @(parentLogSocket.c_str());
       }
@@ -995,7 +1001,7 @@ int runApp (const Path& path, const String& args, bool headless) {
   #if defined(__linux__)
     // unlink lock file that may existk
     static const auto bundleIdentifier = settings["meta_bundle_identifier"];
-    static const auto TMPDIR = Env::get("TMPDIR", "/tmp");
+    static const auto TMPDIR = env::get("TMPDIR", "/tmp");
     static const auto appInstanceLock = fs::path(TMPDIR) / (bundleIdentifier + ".lock");
     unlink(appInstanceLock.c_str());
   #endif
@@ -1218,7 +1224,7 @@ void runIOSSimulator (const Path& path, Map<>& settings) {
     << " simctl launch --console --terminate-running-process booted"
     << " " + settings["meta_bundle_identifier"];
 
-  Env::set("SIMCTL_CHILD_SSC_CLI_PID", std::to_string(getpid()));
+  env::set("SIMCTL_CHILD_SSC_CLI_PID", std::to_string(getpid()));
   log("launching the app in simulator");
 
   exit(std::system(launchAppCommand.str().c_str()));
@@ -1227,16 +1233,16 @@ void runIOSSimulator (const Path& path, Map<>& settings) {
 
 struct AndroidCliState {
   StringStream adb;
-  SSC::String androidHome;
+  String androidHome;
   // android, android-emulator
-  SSC::String targetPlatform;
+  String targetPlatform;
   // android-34 or current platform number
-  SSC::String platform;
+  String platform;
   StringStream avdmanager;
   bool sscAvdExists = false;
   bool emulatorRunning = false;
   StringStream emulator;
-  SSC::Process* androidEmulatorProcess;
+  Process* androidEmulatorProcess;
   StringStream adbShellStart;
   StringStream adbInstall;
   Path appPath;
@@ -1245,10 +1251,10 @@ struct AndroidCliState {
   int androidTaskTimeout = 120000;
 
   // should be moved to a general state struct
-  SSC::String devNull;
+  String devNull;
   bool verbose = false;
-  SSC::String quote = "";
-  SSC::String slash = "";
+  String quote = "";
+  String slash = "";
 };
 
 struct Paths {
@@ -1288,12 +1294,12 @@ bool getAdbPath (AndroidCliState &state) {
   auto cwd = fs::current_path();
   fs::current_path(state.androidHome);
   auto deviceQuery = exec(state.adb.str() + " devices");
-  state.emulatorRunning = (deviceQuery.output.find("emulator") != SSC::String::npos);
+  state.emulatorRunning = (deviceQuery.output.find("emulator") != String::npos);
   fs::current_path(cwd);
 
-  if (Env::get("SSC_ANDROID_TIMEOUT").size() > 0) {
-    state.androidTaskTimeout = std::stoi(Env::get("SSC_ANDROID_TIMEOUT"));
-    log("Using SSC_ANDROID_TIMEOUT=" + Env::get("SSC_ANDROID_TIMEOUT"));
+  if (env::get("SSC_ANDROID_TIMEOUT").size() > 0) {
+    state.androidTaskTimeout = std::stoi(env::get("SSC_ANDROID_TIMEOUT"));
+    log("Using SSC_ANDROID_TIMEOUT=" + env::get("SSC_ANDROID_TIMEOUT"));
   }
 
   return true;
@@ -1303,8 +1309,8 @@ bool setupAndroidAvd (AndroidCliState& state) {
   String package = state.quote + "system-images;" + state.platform + ";google_apis;" + replace(platform.arch, "arm64", "arm64-v8a") + state.quote;
 
   state.avdmanager << state.androidHome;
-  if (Env::get("ANDROID_SDK_MANAGER").size() > 0) {
-    state.avdmanager << "/" << replace(Env::get("ANDROID_SDK_MANAGER"), "sdkmanager", "avdmanager");
+  if (env::get("ANDROID_SDK_MANAGER").size() > 0) {
+    state.avdmanager << "/" << replace(env::get("ANDROID_SDK_MANAGER"), "sdkmanager", "avdmanager");
   } else {
     if (!platform.win) {
       if (std::system(("avdmanager list " + state.devNull).c_str()) != 0) {
@@ -1326,7 +1332,7 @@ bool setupAndroidAvd (AndroidCliState& state) {
     log("ERROR: failed to run Android Virtual Device (avdmanager)");
     return false;
   }
-  state.sscAvdExists = avdListResult.output.find("SSCAVD") != SSC::String::npos;
+  state.sscAvdExists = avdListResult.output.find("SSCAVD") != String::npos;
 
   state.avdmanager
     << " create avd "
@@ -1367,7 +1373,7 @@ void setupAndroidStartCommands (AndroidCliState& state, bool flagDebugMode) {
   state.adbInstall << "install ";
   state.adbShellStart << state.adb.str() << " ";
 
-  state.apkPath = state.appPath / "build" / "outputs" / "apk" / (flagDebugMode ? "dev" : "live") / "debug" / (SSC::String("app-") + (flagDebugMode ? "dev" : "live") + SSC::String("-debug.apk"));
+  state.apkPath = state.appPath / "build" / "outputs" / "apk" / (flagDebugMode ? "dev" : "live") / "debug" / (String("app-") + (flagDebugMode ? "dev" : "live") + String("-debug.apk"));
   state.adbInstall << state.apkPath.string();
 }
 
@@ -1378,18 +1384,18 @@ bool startAndroidEmulator (AndroidCliState& state) {
   bool emulatorStartFailed = false;
 
   log("Starting emulator...");
-  state.androidEmulatorProcess = new SSC::Process(
+  state.androidEmulatorProcess = new Process(
     state.emulator.str(),
     " @SSCAVD -gpu swiftshader_indirect", // platform-33: swiftshader not supported below platform-32
     state.androidHome,
-    [&state, &emulatorOutput](SSC::String const& out) {
+    [&state, &emulatorOutput](String const& out) {
       if (state.verbose) {
         std::cout << out << std::endl;
       } else {
         emulatorOutput << out << std::endl;
       }
     },
-    [&state, &emulatorOutput](SSC::String const& out) {
+    [&state, &emulatorOutput](String const& out) {
       if (state.verbose) {
         std::cerr << out << std::endl;
       } else {
@@ -1500,7 +1506,7 @@ bool startAndroidApp (AndroidCliState& state) {
   ExecOutput adbShellStartOutput;
   while (true) {
     adbShellStartOutput = exec(state.adbShellStart.str());
-    if (adbShellStartOutput.output.find("Error type 3") != SSC::String::npos) {
+    if (adbShellStartOutput.output.find("Error type 3") != String::npos) {
       // ignore this timing related startup error
       std::this_thread::sleep_for(std::chrono::milliseconds(state.androidTaskSleepTime));
       adbStartWaited += state.androidTaskSleepTime;
@@ -1560,7 +1566,7 @@ bool initAndStartAndroidApp (AndroidCliState& state, bool flagDebugMode) {
 }
 
 static String getCxxFlags () {
-  auto flags = Env::get("CXXFLAGS");
+  auto flags = env::get("CXXFLAGS");
   return flags.size() > 0 ? " " + flags : "";
 }
 
@@ -1579,7 +1585,7 @@ inline String getCfgUtilPath () {
 }
 
 void initializeEnv (Path targetPath) {
-  static auto SSC_ENV_FILENAME = Env::get("SSC_ENV_FILENAME");
+  static auto SSC_ENV_FILENAME = env::get("SSC_ENV_FILENAME");
   static auto filename = SSC_ENV_FILENAME.size() > 0
     ? SSC_ENV_FILENAME
     : DEFAULT_SSC_ENV_FILENAME;
@@ -1603,16 +1609,16 @@ void initializeEnv (Path targetPath) {
         value = valueAsPath.string();
       }
 
-      if (!Env::has(key)) {
-        Env::set(key, value);
+      if (!env::has(key)) {
+        env::set(key, value);
       }
     }
   }
 }
 
 void initializeRC (Path targetPath) {
-  static auto SSC_RC_FILENAME = Env::get("SSC_RC_FILENAME");
-  static auto SSC_RC = Env::get("SSC_RC");
+  static auto SSC_RC_FILENAME = env::get("SSC_RC_FILENAME");
+  static auto SSC_RC = env::get("SSC_RC");
   static auto filename = SSC_RC_FILENAME.size() > 0
     ? SSC_RC_FILENAME
     : DEFAULT_SSC_RC_FILENAME;
@@ -1653,7 +1659,7 @@ void initializeRC (Path targetPath) {
       if (key.starts_with("env_")) {
         settings[key] = value;
         key = key.substr(4, key.size() - 4);
-        Env::set(key, value);
+        env::set(key, value);
       }
     }
   }
@@ -1669,13 +1675,13 @@ bool isSetupCompleteAndroid () {
     return false;
   }
 
-  Path sdkManager = androidHome + "/" + Env::get("ANDROID_SDK_MANAGER");
+  Path sdkManager = androidHome + "/" + env::get("ANDROID_SDK_MANAGER");
 
   if (!fs::exists(sdkManager)) {
     return false;
   }
 
-  if (!fs::exists(Env::get("JAVA_HOME"))) {
+  if (!fs::exists(env::get("JAVA_HOME"))) {
     return false;
   }
 
@@ -1683,15 +1689,15 @@ bool isSetupCompleteAndroid () {
 }
 
 bool isSetupCompleteWindows () {
-  if (Env::get("CXX").size() == 0) {
+  if (env::get("CXX").size() == 0) {
     return false;
   }
 
-  return fs::exists(Env::get("CXX"));
+  return fs::exists(env::get("CXX"));
 }
 
-bool isSetupComplete (SSC::String platform) {
-  std::map<SSC::String, bool(*)()> funcs;
+bool isSetupComplete (String platform) {
+  std::map<String, bool(*)()> funcs;
 
   funcs["android"] = isSetupCompleteAndroid;
   funcs["windows"] = isSetupCompleteWindows;
@@ -1771,12 +1777,12 @@ optionsAndEnv parseCommandLineOptions (
 
     if (equal(arg, "--verbose")) {
       flagVerboseMode = true;
-      Env::set("SSC_VERBOSE", "1");
+      env::set("SSC_VERBOSE", "1");
       continue;
     }
 
     if (equal(arg, "--debug")) {
-      Env::set("SSC_DEBUG", "1");
+      env::set("SSC_DEBUG", "1");
       continue;
     }
 
@@ -1892,7 +1898,7 @@ optionsAndEnv parseCommandLineOptions (
 
 int main (int argc, char* argv[]) {
   defaultTemplateAttrs = {
-    { "ssc_version", SSC::VERSION_FULL_STRING },
+    { "ssc_version", VERSION_FULL_STRING },
     { "project_name", "beepboop" }
   };
   if (argc < 2) {
@@ -1912,7 +1918,7 @@ int main (int argc, char* argv[]) {
   signal(SIGTERM, signalHandler);
 
   if (equal(subcommand, "-v") || equal(subcommand, "--version")) {
-    std::cout << SSC::VERSION_FULL_STRING << std::endl;
+    std::cout << VERSION_FULL_STRING << std::endl;
     std::cerr << "Installation path: " << getSocketHome() << std::endl;
     exit(0);
   }
@@ -1941,9 +1947,9 @@ int main (int argc, char* argv[]) {
   const int numberOfOptions = argc - 2;
 
 #if defined(_WIN32)
-  static String HOME = Env::get("HOMEPATH");
+  static String HOME = env::get("HOMEPATH");
 #else
-  static String HOME = Env::get("HOME");
+  static String HOME = env::get("HOME");
 #endif
 
   // `/etc/sscrc` (global)
@@ -1996,7 +2002,7 @@ int main (int argc, char* argv[]) {
         settings["build_name"] + "_" +
         "v" + settings["meta_version"] + "-" +
         settings["meta_revision"] + "_" +
-        replace(SSC::platform.arch, "x86_64", "amd64")
+        replace(runtime::platform.arch, "x86_64", "amd64")
       );
       paths.pathPackage = { paths.platformSpecificOutputPath  / packageName };
       paths.pathBin = {
@@ -2067,8 +2073,8 @@ int main (int argc, char* argv[]) {
             auto parts = split(value, '=');
             if (parts.size() == 2) {
               stream << parts[0] << " = " << parts[1] << "\n";
-            } else if (parts.size() == 1 && Env::has(parts[0])) {
-              stream << parts[0] << " = " << Env::get(parts[0]) << "\n";
+            } else if (parts.size() == 1 && env::has(parts[0])) {
+              stream << parts[0] << " = " << env::get(parts[0]) << "\n";
             }
           }
 
@@ -2107,7 +2113,7 @@ int main (int argc, char* argv[]) {
         ini += "\n";
 
         if (configExists) {
-          auto hex = encodeHexString(ini);
+          auto hex = bytes::encodeHexString(ini);
           auto bytes = StringStream();
           auto length = hex.size() - 1;
           int size = 0;
@@ -2242,7 +2248,7 @@ int main (int argc, char* argv[]) {
         }
 
 
-        settings["arch"] = replace(SSC::platform.arch, "x86_64", "amd64");
+        settings["arch"] = replace(platform.arch, "x86_64", "amd64");
       }
 
       subcommandHandler(optionsAndEnv.optionsWithValue, optionsAndEnv.optionsWithoutValue);
@@ -2606,7 +2612,7 @@ int main (int argc, char* argv[]) {
       Path pathPackage = paths.platformSpecificOutputPath / toLowerCase(
         settings["build_name"] + "_" +
         settings["meta_version"] + "_" +
-        replace(SSC::platform.arch, "x86_64", "amd64")
+        replace(platform.arch, "x86_64", "amd64")
       );
 
       auto debArchive = pathPackage.string() + ".deb";
@@ -2809,18 +2815,18 @@ int main (int argc, char* argv[]) {
     androidState.targetPlatform = targetPlatform;
 
     const bool debugEnv = (
-      Env::get("SSC_DEBUG").size() > 0 ||
-      Env::get("DEBUG").size() > 0
+      env::get("SSC_DEBUG").size() > 0 ||
+      env::get("DEBUG").size() > 0
     );
     auto debugBuild = debugEnv;
 
     const bool verboseEnv = (
-      Env::get("SSC_VERBOSE").size() > 0 ||
-      Env::get("VERBOSE").size() > 0
+      env::get("SSC_VERBOSE").size() > 0 ||
+      env::get("VERBOSE").size() > 0
     );
 
     auto oldCwd = fs::current_path();
-    auto devNull = ">" + SSC::String((!platform.win) ? "/dev/null" : "NUL") + (" 2>&1");
+    auto devNull = ">" + String((!platform.win) ? "/dev/null" : "NUL") + (" 2>&1");
 
     String localDirPrefix = !platform.win ? "./" : "";
     String quote = !platform.win ? "'" : "\"";
@@ -2837,17 +2843,17 @@ int main (int argc, char* argv[]) {
     // set it automatically, hide it from the user
     settings["meta_revision"] = "1";
 
-    if (Env::get("CXX").size() == 0) {
+    if (env::get("CXX").size() == 0) {
       log("WARNING: $CXX env var not set, assuming defaults");
 
       if (platform.win) {
-        Env::set("CXX=clang++");
+        env::set("CXX=clang++");
       } else {
-        Env::set("CXX=/usr/bin/clang++");
+        env::set("CXX=/usr/bin/clang++");
       }
     }
 
-    if (Env::get("CI").size() == 0 && !isSetupComplete(platformFriendlyName)) {
+    if (env::get("CI").size() == 0 && !isSetupComplete(platformFriendlyName)) {
       log("Build dependency setup is incomplete for " + platformFriendlyName + ", Use 'setup' to resolve: ");
       std::cout << "ssc setup --platform=" << platformFriendlyName << std::endl;
       exit(1);
@@ -2973,7 +2979,7 @@ int main (int argc, char* argv[]) {
       };
 
       writeFile(iconsPath / "Contents.json", json.str());
-      if (Env::get("DEBUG") == "1" || Env::get("VERBOSE") == "1") {
+      if (env::get("DEBUG") == "1" || env::get("VERBOSE") == "1") {
         log(json.str());
       }
 
@@ -2993,7 +2999,7 @@ int main (int argc, char* argv[]) {
           << " " << src
           << " --out " << destFilePath;
 
-        if (Env::get("DEBUG") == "1" || Env::get("VERBOSE") == "1") {
+        if (env::get("DEBUG") == "1" || env::get("VERBOSE") == "1") {
           log(sipsCommand.str());
         }
 
@@ -3024,7 +3030,7 @@ int main (int argc, char* argv[]) {
           << "\""
       ;
 
-      if (Env::get("DEBUG") == "1" || Env::get("VERBOSE") == "1") {
+      if (env::get("DEBUG") == "1" || env::get("VERBOSE") == "1") {
         log(compileAssetsCommand.str());
       }
 
@@ -3036,7 +3042,7 @@ int main (int argc, char* argv[]) {
         exit(1);
       }
 
-      // if (Env::get("DEBUG") != "1") fs::remove_all(assetsPath);
+      // if (env::get("DEBUG") != "1") fs::remove_all(assetsPath);
       log("generated icons");
     };
 
@@ -3246,8 +3252,8 @@ int main (int argc, char* argv[]) {
       if (debugEnv || verboseEnv) log("sdkmanager --version 2>&1 >/dev/null");
 
       sdkmanager << androidHome;
-      if (Env::get("ANDROID_SDK_MANAGER").size() > 0) {
-        sdkmanager << "/" << Env::get("ANDROID_SDK_MANAGER");
+      if (env::get("ANDROID_SDK_MANAGER").size() > 0) {
+        sdkmanager << "/" << env::get("ANDROID_SDK_MANAGER");
       } else if (std::system("  sdkmanager --version 2>&1 >/dev/null") != 0) {
         if (!platform.win) {
           sdkmanager << "/cmdline-tools/latest/bin/sdkmanager";
@@ -3267,7 +3273,7 @@ int main (int argc, char* argv[]) {
       auto cmdQuote = platform.win ? "\"" : "";
       // redirect yes stderr to stdout, this hides "broken pipe" / "no space left on device" errors that are caused by sdkmanager terminating normally
       String licenseAccept =
-      cmdQuote + quote + (Env::get("ANDROID_SDK_MANAGER_ACCEPT_LICENSES").size() > 0 ? (Env::get("ANDROID_SDK_MANAGER_ACCEPT_LICENSES")) : "echo") + quote  +
+      cmdQuote + quote + (env::get("ANDROID_SDK_MANAGER_ACCEPT_LICENSES").size() > 0 ? (env::get("ANDROID_SDK_MANAGER_ACCEPT_LICENSES")) : "echo") + quote  +
       (platform.win ? " 2>&1" : "") + " | " +
       quote + sdkmanager.str() + quote + " --licenses" + cmdQuote;
 
@@ -3280,7 +3286,7 @@ int main (int argc, char* argv[]) {
       // TODO: internal, no need to save to settings
       settings["android_sdk_manager_path"] = sdkmanager.str();
 
-      String gradlePath = Env::get("GRADLE_HOME").size() > 0 ? Env::get("GRADLE_HOME") + slash + "bin" + slash : "";
+      String gradlePath = env::get("GRADLE_HOME").size() > 0 ? env::get("GRADLE_HOME") + slash + "bin" + slash : "";
 
       StringStream gradleInitCommand;
       gradleInitCommand
@@ -3301,7 +3307,7 @@ int main (int argc, char* argv[]) {
         log(
           String("Check licenses and run again: \n") +
           (platform.win ? "set" : "export") +
-          (" JAVA_HOME=\"" + Env::get("JAVA_HOME") + "\" && ") +
+          (" JAVA_HOME=\"" + env::get("JAVA_HOME") + "\" && ") +
           licenseAccept +
           "\n"
          );
@@ -3363,7 +3369,7 @@ int main (int argc, char* argv[]) {
       }
 
       if (settings["android_native_abis"].size() == 0) {
-        settings["android_native_abis"] = Env::get("ANDROID_SUPPORTED_ABIS");
+        settings["android_native_abis"] = env::get("ANDROID_SUPPORTED_ABIS");
       }
 
       if (settings["android_ndk_abi_filters"].size() == 0) {
@@ -3570,8 +3576,8 @@ int main (int argc, char* argv[]) {
       pp
         << "-DDEBUG=" << (flagDebugMode ? 1 : 0) << " "
         << "-DANDROID=1" << " "
-        << "-DSOCKET_RUNTIME_VERSION=" << SSC::VERSION_STRING << " "
-        << "-DSOCKET_RUNTIME_VERSION_HASH=" << SSC::VERSION_HASH_STRING << " ";
+        << "-DSOCKET_RUNTIME_VERSION=" << VERSION_STRING << " "
+        << "-DSOCKET_RUNTIME_VERSION_HASH=" << VERSION_HASH_STRING << " ";
 
       Map<> makefileContext;
 
@@ -3769,8 +3775,8 @@ int main (int argc, char* argv[]) {
             }
           }
 
-          auto CXX = Env::get("CXX");
-          auto CC = Env::get("CC");
+          auto CXX = env::get("CXX");
+          auto CC = env::get("CC");
 
           for (
             auto source : parseStringList(
@@ -3802,7 +3808,7 @@ int main (int argc, char* argv[]) {
               Path(source).filename().string()
             ).string();
 
-            if (Env::get("DEBUG") == "1" || Env::get("VERBOSE") == "1") {
+            if (env::get("DEBUG") == "1" || env::get("VERBOSE") == "1") {
               log("extension source: " + source);
             }
 
@@ -3926,14 +3932,14 @@ int main (int argc, char* argv[]) {
               << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
               << " -DHOST=" << "\\\"" << devHost << "\\\""
               << " -DPORT=" << devPort
-              << " -DSOCKET_RUNTIME_VERSION=" << SSC::VERSION_STRING
-              << " -DSOCKET_RUNTIME_VERSION_HASH=" << SSC::VERSION_HASH_STRING
+              << " -DSOCKET_RUNTIME_VERSION=" << VERSION_STRING
+              << " -DSOCKET_RUNTIME_VERSION_HASH=" << VERSION_HASH_STRING
               << " " << trim(compilerFlags + " " + (flagDebugMode ? compilerDebugFlags : ""))
               << " " << sources.str()
               << " -o " << lib.string()
               ;
 
-            if (Env::get("DEBUG") == "1" || Env::get("VERBOSE") == "1") {
+            if (env::get("DEBUG") == "1" || env::get("VERBOSE") == "1") {
               log(compileExtensionWASMCommand.str());
             }
 
@@ -3973,8 +3979,8 @@ int main (int argc, char* argv[]) {
           make << "LOCAL_CFLAGS += \\" << std::endl;
           make << "  -DDEBUG=" << (flagDebugMode ? 1 : 0) << " \\" << std::endl;
           make << "  -DANDROID=1" << " \\" << std::endl;
-          make << "  -DSOCKET_RUNTIME_VERSION=" << SSC::VERSION_STRING << " \\" << std::endl;
-          make << "  -DSOCKET_RUNTIME_VERSION_HASH=" << SSC::VERSION_HASH_STRING << std::endl;
+          make << "  -DSOCKET_RUNTIME_VERSION=" << VERSION_STRING << " \\" << std::endl;
+          make << "  -DSOCKET_RUNTIME_VERSION_HASH=" << VERSION_HASH_STRING << std::endl;
           make << std::endl;
 
           if (compilerFlags.size() > 0) {
@@ -4131,8 +4137,8 @@ int main (int argc, char* argv[]) {
           "security cms -D -i " + pathToProfile.string()
         );
 
-        if (Env::has("APPLE_KEYCHAIN")) {
-          command += " -k" + Env::get("APPLE_KEYCHAIN");
+        if (env::has("APPLE_KEYCHAIN")) {
+          command += " -k" + env::get("APPLE_KEYCHAIN");
         }
 
         auto r = exec(command);
@@ -4166,7 +4172,7 @@ int main (int argc, char* argv[]) {
 
         String team = matchTeamId.str(1);
 
-        auto pathToInstalledProfile = Path(Env::get("HOME")) /
+        auto pathToInstalledProfile = Path(env::get("HOME")) /
           "Library" /
           "MobileDevice" /
           "Provisioning Profiles" /
@@ -4387,11 +4393,11 @@ int main (int argc, char* argv[]) {
             }
           }
 
-          auto CXX = Env::get("CXX");
-          auto CC = Env::get("CC");
+          auto CXX = env::get("CXX");
+          auto CC = env::get("CC");
 
           for (auto source : sources) {
-            if (Env::get("DEBUG") == "1" || Env::get("VERBOSE") == "1") {
+            if (env::get("DEBUG") == "1" || env::get("VERBOSE") == "1") {
               log("extension source: " + source);
             }
 
@@ -4485,18 +4491,18 @@ int main (int argc, char* argv[]) {
               << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
               << " -DHOST=" << "\\\"" << devHost << "\\\""
               << " -DPORT=" << devPort
-              << " -DSOCKET_RUNTIME_VERSION=" << SSC::VERSION_STRING
-              << " -DSOCKET_RUNTIME_VERSION_HASH=" << SSC::VERSION_HASH_STRING
+              << " -DSOCKET_RUNTIME_VERSION=" << VERSION_STRING
+              << " -DSOCKET_RUNTIME_VERSION_HASH=" << VERSION_HASH_STRING
               << " -target " << (flagBuildForSimulator ? platform.arch + "-apple-ios-simulator": "arm64-apple-ios")
               << " -fembed-bitcode"
               << " -fPIC"
               << " " << trim(compilerFlags + " " + (flagDebugMode ? compilerDebugFlags : ""))
-              << " " << (flagBuildForSimulator ? "-mios-simulator-version-min=" : "-miphoneos-version-min=") + Env::get("IPHONEOS_VERSION_MIN", "15.0")
+              << " " << (flagBuildForSimulator ? "-mios-simulator-version-min=" : "-miphoneos-version-min=") + env::get("IPHONEOS_VERSION_MIN", "15.0")
               << " -c " << source
               << " -o " << object.string()
             ;
 
-            if (Env::get("DEBUG") == "1" || Env::get("VERBOSE") == "1") {
+            if (env::get("DEBUG") == "1" || env::get("VERBOSE") == "1") {
               log(compileExtensionObjectCommand.str());
             }
 
@@ -4575,14 +4581,14 @@ int main (int argc, char* argv[]) {
               << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
               << " -DHOST=" << "\\\"" << devHost << "\\\""
               << " -DPORT=" << devPort
-              << " -DSOCKET_RUNTIME_VERSION=" << SSC::VERSION_STRING
-              << " -DSOCKET_RUNTIME_VERSION_HASH=" << SSC::VERSION_HASH_STRING
+              << " -DSOCKET_RUNTIME_VERSION=" << VERSION_STRING
+              << " -DSOCKET_RUNTIME_VERSION_HASH=" << VERSION_HASH_STRING
               << " " << trim(compilerFlags + " " + (flagDebugMode ? compilerDebugFlags : ""))
               << " " << join(sources, " ")
               << " -o " << lib.string()
               ;
 
-            if (Env::get("DEBUG") == "1" || Env::get("VERBOSE") == "1") {
+            if (env::get("DEBUG") == "1" || env::get("VERBOSE") == "1") {
               log(compileExtensionWASMCommand.str());
             }
 
@@ -4655,12 +4661,12 @@ int main (int argc, char* argv[]) {
             << " -shared"
             << " -v"
             << " -target " << (flagBuildForSimulator ? platform.arch + "-apple-ios-simulator": "arm64-apple-ios")
-            << " " << (flagBuildForSimulator ? "-mios-simulator-version-min=" : "-miphoneos-version-min=") + Env::get("IPHONEOS_VERSION_MIN", "15.0")
+            << " " << (flagBuildForSimulator ? "-mios-simulator-version-min=" : "-miphoneos-version-min=") + env::get("IPHONEOS_VERSION_MIN", "15.0")
             << " " << trim(linkerFlags + " " + (flagDebugMode ? linkerDebugFlags : ""))
             << " -o " << lib
           ;
 
-          if (Env::get("DEBUG") == "1" || Env::get("VERBOSE") == "1") {
+          if (env::get("DEBUG") == "1" || env::get("VERBOSE") == "1") {
             log(compileExtensionLibraryCommand.str());
           }
 
@@ -4879,7 +4885,7 @@ int main (int argc, char* argv[]) {
 
       {
         auto desktopExtensionsPath = pathResources / "lib" / "extensions";
-        auto CXX = Env::get("CXX", "clang++");
+        auto CXX = env::get("CXX", "clang++");
 
         fs::create_directories(desktopExtensionsPath);
 
@@ -4975,7 +4981,7 @@ int main (int argc, char* argv[]) {
       auto missing_assets = false;
       auto debugBuild = debugEnv;
       if (debugBuild) {
-        for (String libString : split(Env::get("WIN_DEBUG_LIBS"), ',')) {
+        for (String libString : split(env::get("WIN_DEBUG_LIBS"), ',')) {
           if (libString.size() > 0) {
             if (libString[0] == '\"' && libString[libString.size()-2] == '\"')
               libString = libString.substr(1, libString.size()-2);
@@ -5095,7 +5101,7 @@ int main (int argc, char* argv[]) {
 
     log("package prepared");
 
-    auto SOCKET_HOME_API = Env::get("SOCKET_HOME_API");
+    auto SOCKET_HOME_API = env::get("SOCKET_HOME_API");
 
     if (SOCKET_HOME_API.size() == 0) {
       SOCKET_HOME_API = trim(prefixFile("api"));
@@ -5347,7 +5353,7 @@ int main (int argc, char* argv[]) {
       sdkmanager
         << packages.str();
 
-      if (Env::get("SOCKET_RUNTIME_SKIP_ANDROID_SDK_MANAGER").size() == 0) {
+      if (env::get("SOCKET_RUNTIME_SKIP_ANDROID_SDK_MANAGER").size() == 0) {
         if (debugEnv || verboseEnv) {
           log(sdkmanager.str());
         }
@@ -5474,7 +5480,7 @@ int main (int argc, char* argv[]) {
       }
 
       // just build for CI
-      if (Env::get("SOCKET_RUNTIME_CI").size() > 0) {
+      if (env::get("SOCKET_RUNTIME_CI").size() > 0) {
         StringStream gradlew;
         gradlew << localDirPrefix << "gradlew build";
 
@@ -5528,13 +5534,13 @@ int main (int argc, char* argv[]) {
       : settings.count("build_flags") ? settings["build_flags"] : "";
 
     quote = "";
-    if (platform.win && Env::get("CXX").find(" ") != SSC::String::npos) {
+    if (platform.win && env::get("CXX").find(" ") != String::npos) {
       quote = "\"";
     }
 
     // build desktop extension
     if (isForDesktop) {
-      static const auto IN_GITHUB_ACTIONS_CI = Env::get("GITHUB_ACTIONS_CI").size() > 0;
+      static const auto IN_GITHUB_ACTIONS_CI = env::get("GITHUB_ACTIONS_CI").size() > 0;
       auto oldCwd = fs::current_path();
       fs::current_path(targetPath);
 
@@ -5631,7 +5637,7 @@ int main (int argc, char* argv[]) {
                     auto match = std::smatch{};
                     while (std::regex_search(value, match, std::regex("\\$\\((.*?)\\)"))) {
                       auto subcommand = match[1].str();
-                      if (Env::get("DEBUG") == "1" || Env::get("VERBOSE") == "1") {
+                      if (env::get("DEBUG") == "1" || env::get("VERBOSE") == "1") {
                         log("Running subcommand: " + subcommand);
                       }
                       auto proc = exec(subcommand);
@@ -5649,7 +5655,7 @@ int main (int argc, char* argv[]) {
                       auto envVar = match[1].str();
                       auto envValue = envVar == "PWD"
                         ? target.string() // Use the extension root.
-                        : Env::get(envVar);
+                        : env::get(envVar);
                       if (envValue.size() == 0) {
                         log("ERROR: failed to find env var: " + envVar);
                         exit(1);
@@ -5727,7 +5733,7 @@ int main (int argc, char* argv[]) {
           }
 
           if (configure.size() > 0) {
-            SSC::ExecOutput result = exec(configure + argvForward);
+            ExecOutput result = exec(configure + argvForward);
             if (result.exitCode != 0) {
               log("ERROR: failed to configure extension: " + extension);
               log(result.output);
@@ -5770,11 +5776,11 @@ int main (int argc, char* argv[]) {
             );
           }
 
-          auto CXX = Env::get("CXX");
-          auto CC = Env::get("CC");
+          auto CXX = env::get("CXX");
+          auto CC = env::get("CC");
 
           for (auto source : sources) {
-            if (Env::get("DEBUG") == "1" || Env::get("VERBOSE") == "1") {
+            if (env::get("DEBUG") == "1" || env::get("VERBOSE") == "1") {
               log("extension source: " + source);
             }
 
@@ -5869,7 +5875,7 @@ int main (int argc, char* argv[]) {
               continue;
             }
 
-            if (Env::get("DEBUG") == "1" || Env::get("VERBOSE") == "1") {
+            if (env::get("DEBUG") == "1" || env::get("VERBOSE") == "1") {
               log("extension source: " + source);
             }
 
@@ -5915,8 +5921,8 @@ int main (int argc, char* argv[]) {
               << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
               << " -DHOST=" << "\\\"" << devHost << "\\\""
               << " -DPORT=" << devPort
-              << " -DSOCKET_RUNTIME_VERSION=" << SSC::VERSION_STRING
-              << " -DSOCKET_RUNTIME_VERSION_HASH=" << SSC::VERSION_HASH_STRING
+              << " -DSOCKET_RUNTIME_VERSION=" << VERSION_STRING
+              << " -DSOCKET_RUNTIME_VERSION_HASH=" << VERSION_HASH_STRING
             #if !defined(_WIN32)
               << " -fPIC"
             #endif
@@ -5948,7 +5954,7 @@ int main (int argc, char* argv[]) {
               }
             }
 
-            if (Env::get("DEBUG") == "1" || Env::get("VERBOSE") == "1") {
+            if (env::get("DEBUG") == "1" || env::get("VERBOSE") == "1") {
               log(compileExtensionObjectCommand.str());
             }
 
@@ -6040,14 +6046,14 @@ int main (int argc, char* argv[]) {
               << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
               << " -DHOST=" << "\\\"" << devHost << "\\\""
               << " -DPORT=" << devPort
-              << " -DSOCKET_RUNTIME_VERSION=" << SSC::VERSION_STRING
-              << " -DSOCKET_RUNTIME_VERSION_HASH=" << SSC::VERSION_HASH_STRING
+              << " -DSOCKET_RUNTIME_VERSION=" << VERSION_STRING
+              << " -DSOCKET_RUNTIME_VERSION_HASH=" << VERSION_HASH_STRING
               << " " << trim(compilerFlags + " " + (flagDebugMode ? compilerDebugFlags : ""))
               << " " << join(sources, " ")
               << " -o " << (quote + lib.string() + quote)
               ;
 
-            if (Env::get("DEBUG") == "1" || Env::get("VERBOSE") == "1") {
+            if (env::get("DEBUG") == "1" || env::get("VERBOSE") == "1") {
               log(compileExtensionWASMCommand.str());
             }
 
@@ -6082,7 +6088,7 @@ int main (int argc, char* argv[]) {
 
           if (platform.win && debugBuild) {
             linkerDebugFlags += "-D_DEBUG";
-            for (String libString : split(Env::get("WIN_DEBUG_LIBS"), ',')) {
+            for (String libString : split(env::get("WIN_DEBUG_LIBS"), ',')) {
               if (libString.size() > 0) {
                 if (libString[0] == '\"' && libString[libString.size()-2] == '\"') {
                   libString = libString.substr(1, libString.size()-2);
@@ -6115,7 +6121,7 @@ int main (int argc, char* argv[]) {
           compileExtensionLibraryCommand
             << quote // win32 - quote the entire command
             << quote // win32 - quote the binary path
-            << Env::get("CXX")
+            << env::get("CXX")
             << quote // win32 - quote the binary path
             << " " << static_runtime
             << " " << static_llama
@@ -6166,7 +6172,7 @@ int main (int argc, char* argv[]) {
             }
           }
 
-          if (Env::get("DEBUG") == "1" || Env::get("VERBOSE") == "1") {
+          if (env::get("DEBUG") == "1" || env::get("VERBOSE") == "1") {
             log(compileExtensionLibraryCommand.str());
           }
 
@@ -6199,7 +6205,7 @@ int main (int argc, char* argv[]) {
       compileCommand
         << quote // win32 - quote the entire command
         << quote // win32 - quote the binary path
-        << Env::get("CXX")
+        << env::get("CXX")
         << quote // win32 - quote the binary path
         << " " << files
         << " " << flags
@@ -6210,12 +6216,12 @@ int main (int argc, char* argv[]) {
         << " -DDEBUG=" << (flagDebugMode ? 1 : 0)
         << " -DHOST=" << "\\\"" << devHost << "\\\""
         << " -DPORT=" << devPort
-        << " -DSOCKET_RUNTIME_VERSION=" << SSC::VERSION_STRING
-        << " -DSOCKET_RUNTIME_VERSION_HASH=" << SSC::VERSION_HASH_STRING
+        << " -DSOCKET_RUNTIME_VERSION=" << VERSION_STRING
+        << " -DSOCKET_RUNTIME_VERSION_HASH=" << VERSION_HASH_STRING
         << quote // win32 - quote the entire command
       ;
 
-      if (Env::get("DEBUG") == "1" || Env::get("VERBOSE") == "1")
+      if (env::get("DEBUG") == "1" || env::get("VERBOSE") == "1")
         log(compileCommand.str());
 
       auto r = exec(compileCommand.str());
@@ -6670,8 +6676,8 @@ int main (int argc, char* argv[]) {
     //
     if (flagShouldNotarize && platform.mac && isForDesktop) {
       StringStream notarizeCommand;
-      String username = Env::get("APPLE_ID");
-      String password = Env::get("APPLE_ID_PASSWORD");
+      String username = env::get("APPLE_ID");
+      String password = env::get("APPLE_ID_PASSWORD");
 
       if (username.size() == 0) {
         username = settings["apple_identifier"];
@@ -6890,7 +6896,7 @@ int main (int argc, char* argv[]) {
         return hr;
       };
 
-      WString appx(SSC::convertStringToWString(paths.pathPackage.string()) + L".appx");
+      WString appx(convertStringToWString(paths.pathPackage.string()) + L".appx");
 
       HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
 
@@ -7018,7 +7024,7 @@ int main (int argc, char* argv[]) {
       // https://www.digicert.com/kb/code-signing/signcode-signtool-command-line.htm
       //
       auto sdkRoot = Path("C:\\Program Files (x86)\\Windows Kits\\10\\bin");
-      auto pathToSignTool = Env::get("SIGNTOOL");
+      auto pathToSignTool = env::get("SIGNTOOL");
 
       if (pathToSignTool.size() == 0) {
         // TODO assumes the last dir that contains dot. posix doesnt guarantee
@@ -7041,7 +7047,7 @@ int main (int argc, char* argv[]) {
       }
 
       StringStream signCommand;
-      String password = Env::get("CSC_KEY_PASSWORD");
+      String password = env::get("CSC_KEY_PASSWORD");
 
       if (password.size() == 0) {
         log("ERROR: Env variable 'CSC_KEY_PASSWORD' is empty!");
@@ -7099,7 +7105,7 @@ int main (int argc, char* argv[]) {
       // allow changes to 'socket.ini' to be observed
       sources.push_back((fs::current_path() / "socket.ini").string());
 
-      sourcesWatcher = new FileSystemWatcher(sources);
+      sourcesWatcher = new filesystem::Watcher(sources);
 
       if (settings["build_watch_debounce_timeout"].size() > 0) {
         const auto timeout = settings["build_watch_debounce_timeout"];
@@ -7116,8 +7122,8 @@ int main (int argc, char* argv[]) {
 
       auto watchingSources = sourcesWatcher->start([=](
         const String& path,
-        const Vector<FileSystemWatcher::Event>& events,
-        const FileSystemWatcher::Context& context
+        const Vector<filesystem::Watcher::Event>& events,
+        const filesystem::Watcher::Context& context
       ) {
         log("File '" + path + "' did change");
 
@@ -7150,7 +7156,7 @@ int main (int argc, char* argv[]) {
 
       log("Watching for changes in: " + join(sourcesWatcher->watchedPaths, ", "));
     #if defined(__linux__) && !defined(__ANDROID__)
-      // `FileSystemWatcher` will use GTK event loop on linux to pump the
+      // `filesystem::Watcher` will use GTK event loop on linux to pump the
       // libuv event loop when `sourcesWatcher->loop == nullptr` when `start()`
       // is called. We use the runtime core libuv event loop in the `bridge` APIs
       sourcesWatcherSupportThread = new Thread([] () { gtk_main(); });
@@ -7229,18 +7235,18 @@ int main (int argc, char* argv[]) {
     settings.insert(std::make_pair("port", devPort));
 
     const bool debugEnv = (
-      Env::get("SOCKET_RUNTIME_DEBUG").size() > 0 ||
-      Env::get("DEBUG").size() > 0
+      env::get("SOCKET_RUNTIME_DEBUG").size() > 0 ||
+      env::get("DEBUG").size() > 0
     );
 
     const bool verboseEnv = (
-      Env::get("SOCKET_RUNTIME_VERBOSE").size() > 0 ||
-      Env::get("VERBOSE").size() > 0
+      env::get("SOCKET_RUNTIME_VERBOSE").size() > 0 ||
+      env::get("VERBOSE").size() > 0
     );
 
     Paths paths = getPaths(targetPlatform);
 
-    auto devNull = ">" + SSC::String((!platform.win) ? "/dev/null" : "NUL") + (" 2>&1");
+    auto devNull = ">" + String((!platform.win) ? "/dev/null" : "NUL") + (" 2>&1");
     String quote = !platform.win ? "'" : "\"";
     String slash = !platform.win ? "/" : "\\";
 
@@ -7366,56 +7372,56 @@ int main (int argc, char* argv[]) {
   createSubcommand("env", {}, true, [&](Map<> optionsWithValue, std::unordered_set<String> optionsWithoutValue) -> void {
     auto envs = Map<>();
 
-    envs["DEBUG"] = Env::get("DEBUG");
-    envs["VERBOSE"] = Env::get("VERBOSE");
+    envs["DEBUG"] = env::get("DEBUG");
+    envs["VERBOSE"] = env::get("VERBOSE");
 
     // runtime variables
     envs["SOCKET_HOME"] = getSocketHome(false);
-    envs["SOCKET_HOME_API"] = Env::get("SOCKET_HOME_API");
+    envs["SOCKET_HOME_API"] = env::get("SOCKET_HOME_API");
 
     // platform OS variables
-    envs["PWD"] = Env::get("PWD");
-    envs["HOME"] = Env::get("HOME");
-    envs["LANG"] = Env::get("LANG");
-    envs["USER"] = Env::get("USER");
-    envs["SHELL"] = Env::get("SHELL");
-    envs["HOMEPATH"] = Env::get("HOMEPATH");
-    envs["LOCALAPPDATA"] = Env::get("LOCALAPPDATA");
-    envs["XDG_DATA_HOME"] = Env::get("XDG_DATA_HOME");
+    envs["PWD"] = env::get("PWD");
+    envs["HOME"] = env::get("HOME");
+    envs["LANG"] = env::get("LANG");
+    envs["USER"] = env::get("USER");
+    envs["SHELL"] = env::get("SHELL");
+    envs["HOMEPATH"] = env::get("HOMEPATH");
+    envs["LOCALAPPDATA"] = env::get("LOCALAPPDATA");
+    envs["XDG_DATA_HOME"] = env::get("XDG_DATA_HOME");
 
     // compiler variables
-    envs["CC"] = Env::get("CC");
-    envs["CXX"] = Env::get("CXX");
-    envs["CPP"] = Env::get("CPP");
-    envs["PREFIX"] = Env::get("PREFIX");
-    envs["CXXFLAGS"] = Env::get("CXXFLAGS");
+    envs["CC"] = env::get("CC");
+    envs["CXX"] = env::get("CXX");
+    envs["CPP"] = env::get("CPP");
+    envs["PREFIX"] = env::get("PREFIX");
+    envs["CXXFLAGS"] = env::get("CXXFLAGS");
 
     // locale variables
-    envs["LC_ALL"] = Env::get("LC_ALL");
-    envs["LC_CTYPE"] = Env::get("LC_CTYPE");
-    envs["LC_TERMINAL"] = Env::get("LC_TERMINAL");
-    envs["LC_TERMINAL_VERSION"] = Env::get("LC_TERMINAL_VERSION");
+    envs["LC_ALL"] = env::get("LC_ALL");
+    envs["LC_CTYPE"] = env::get("LC_CTYPE");
+    envs["LC_TERMINAL"] = env::get("LC_TERMINAL");
+    envs["LC_TERMINAL_VERSION"] = env::get("LC_TERMINAL_VERSION");
 
     // platform dependency variables
-    envs["JAVA_HOME"] = Env::get("JAVA_HOME");
-    envs["GRADLE_HOME"] = Env::get("GRADLE_HOME");
+    envs["JAVA_HOME"] = env::get("JAVA_HOME");
+    envs["GRADLE_HOME"] = env::get("GRADLE_HOME");
     envs["ANDROID_HOME"] = getAndroidHome();
-    envs["ANDROID_SUPPORTED_ABIS"] = Env::get("ANDROID_SUPPORTED_ABIS");
+    envs["ANDROID_SUPPORTED_ABIS"] = env::get("ANDROID_SUPPORTED_ABIS");
 
     // apple specific platform variables
-    envs["APPLE_ID"] = Env::get("APPLE_ID");
-    envs["APPLE_ID_PASSWORD"] = Env::get("APPLE_ID_PASSWORD");
+    envs["APPLE_ID"] = env::get("APPLE_ID");
+    envs["APPLE_ID_PASSWORD"] = env::get("APPLE_ID_PASSWORD");
 
     // windows specific platform variables
-    envs["SIGNTOOL"] = Env::get("SIGNTOOL");
-    envs["WIN_DEBUG_LIBS"] = Env::get("WIN_DEBUG_LIBS");
-    envs["CSC_KEY_PASSWORD"] = Env::get("CSC_KEY_PASSWORD");
+    envs["SIGNTOOL"] = env::get("SIGNTOOL");
+    envs["WIN_DEBUG_LIBS"] = env::get("WIN_DEBUG_LIBS");
+    envs["CSC_KEY_PASSWORD"] = env::get("CSC_KEY_PASSWORD");
 
     // ssc variables
-    envs["SSC_CI"] = Env::get("SSC_CI");
-    envs["SSC_RC"] = Env::get("SSC_RC");
-    envs["SSC_RC_FILENAME"] = Env::get("SSC_RC_FILENAME");
-    envs["SSC_ENV_FILENAME"] = Env::get("SSC_ENV_FILENAME");
+    envs["SSC_CI"] = env::get("SSC_CI");
+    envs["SSC_RC"] = env::get("SSC_RC");
+    envs["SSC_RC_FILENAME"] = env::get("SSC_RC_FILENAME");
+    envs["SSC_ENV_FILENAME"] = env::get("SSC_ENV_FILENAME");
 
     if (envs["SOCKET_HOME_API"].size() == 0) {
       envs["SOCKET_HOME_API"] = trim(prefixFile("api"));
@@ -7429,13 +7435,13 @@ int main (int argc, char* argv[]) {
         auto value = trim(entry.second);
 
         if (value.size() == 0) {
-          value = trim(Env::get(key));
+          value = trim(env::get(key));
         }
 
         envs[key] = value;
       } else if (entry.first == "env") {
         for (const auto& key : parseStringList(entry.second)) {
-          auto value = trim(Env::get(key));
+          auto value = trim(env::get(key));
           envs[key] = value;
         }
       }
@@ -7449,13 +7455,13 @@ int main (int argc, char* argv[]) {
         auto value = trim(entry.second);
 
         if (value.size() == 0) {
-          value = trim(Env::get(key));
+          value = trim(env::get(key));
         }
 
         envs[key] = value;
       } else if (entry.first == "env") {
         for (const auto& key : parseStringList(entry.second)) {
-          auto value = trim(Env::get(key));
+          auto value = trim(env::get(key));
           envs[key] = value;
         }
       }
@@ -7467,7 +7473,7 @@ int main (int argc, char* argv[]) {
       auto value = trim(entry.second);
 
       if (value.size() == 0) {
-        value = trim(Env::get(key));
+        value = trim(env::get(key));
       }
 
       if (value.size() > 0) {

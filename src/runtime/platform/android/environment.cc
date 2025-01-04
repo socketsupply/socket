@@ -1,10 +1,63 @@
-#include "environment.hh"
-#include "../../core/debug.hh"
+#include "../../debug.hh"
 
-namespace ssc::android {
+#include "environment.hh"
+
+namespace ssc::runtime::android {
   JVMEnvironment::JVMEnvironment (JNIEnv* env) {
-    this->jniVersion = env->GetVersion();
-    env->GetJavaVM(&jvm);
+    if (env != nullptr) {
+      this->jniVersion = env->GetVersion();
+      env->GetJavaVM(&this->jvm);
+    }
+  }
+
+  JVMEnvironment::JVMEnvironment (const JVMEnvironment& input)
+    : JVMEnvironment(input.env)
+  {}
+
+  JVMEnvironment::JVMEnvironment (JVMEnvironment&& input)
+    : JVMEnvironment(input.env)
+  {
+    input.env = nullptr;
+    input.jvm = nullptr;
+    input.jniVersion = 0;
+  }
+
+  JVMEnvironment& JVMEnvironment::operator = (const JVMEnvironment& input) {
+    if (input.env != nullptr) {
+      this->jniVersion = input.env->GetVersion();
+      input.env->GetJavaVM(&this->jvm);
+    }
+    return *this;
+  }
+
+  JVMEnvironment& JVMEnvironment::operator = (JVMEnvironment&& input) {
+    if (input.env != nullptr) {
+      this->jniVersion = input.env->GetVersion();
+      input.env->GetJavaVM(&this->jvm);
+    }
+    input.env = nullptr;
+    input.jvm = nullptr;
+    input.jniVersion = 0;
+    return *this;
+  }
+
+  JVMEnvironment& JVMEnvironment::operator = (std::nullptr_t) {
+    this->env = nullptr;
+    this->jvm = nullptr;
+    this->jniVersion = 0;
+    return *this;
+  }
+
+  JVMEnvironment& JVMEnvironment::operator = (JNIEnv* env) {
+    if (env != nullptr) {
+      this->jniVersion = env->GetVersion();
+      env->GetJavaVM(&this->jvm);
+    }
+    return *this;
+  }
+
+  JVMEnvironment::operator bool () const {
+    return this->env != nullptr && this->jvm != nullptr && this->jniVersion > 0;
   }
 
   int JVMEnvironment::version () const {
@@ -67,8 +120,6 @@ namespace ssc::android {
       if (this->status == JNI_EDETACHED) {
         this->attached = this->jvm->AttachCurrentThread(&this->env, 0);
       }
-
-      // debug("env: %p", this->env);
     }
   }
 

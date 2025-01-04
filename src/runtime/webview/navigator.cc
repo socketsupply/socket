@@ -2,15 +2,18 @@
 #include "../runtime.hh"
 #include "../config.hh"
 #include "../string.hh"
+#include "../app.hh"
 
 #include "../webview.hh"
 
-using ssc::runtime::config::getDevHost;
+using namespace ssc::runtime;
 
+using ssc::runtime::config::getDevHost;
 using ssc::runtime::string::parseStringList;
 using ssc::runtime::string::replace;
 using ssc::runtime::string::split;
 using ssc::runtime::string::trim;
+using ssc::runtime::app::App;
 
 #if SOCKET_RUNTIME_PLATFORM_APPLE
 @implementation SSCNavigationDelegate
@@ -430,8 +433,6 @@ namespace ssc::runtime::webview {
 
 #if SOCKET_RUNTIME_PLATFORM_ANDROID
 extern "C" {
-  using namespace SSC;
-
   jboolean ANDROID_EXTERNAL(ipc, Navigator, isNavigationRequestAllowed) (
     JNIEnv* env,
     jobject self,
@@ -446,18 +447,18 @@ extern "C" {
       return false;
     }
 
-    const auto window = app->windowManager.getWindow(index);
+    const auto window = app->runtime.windowManager.getWindow(index);
 
     if (!window) {
       ANDROID_THROW(env, "Invalid window requested");
       return false;
     }
 
-    const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
-    const auto currentURL = Android::StringWrap(attachment.env, currentURLString).str();
-    const auto requestedURL = Android::StringWrap(attachment.env, requestedURLString).str();
+    const auto attachment = android::JNIEnvironmentAttachment(app->runtime.android.jvm);
+    const auto currentURL = android::StringWrap(attachment.env, currentURLString).str();
+    const auto requestedURL = android::StringWrap(attachment.env, requestedURLString).str();
 
-    return window->bridge.navigator.isNavigationRequestAllowed(currentURL, requestedURL);
+    return window->bridge->navigator.isNavigationRequestAllowed(currentURL, requestedURL);
   }
 }
 #endif

@@ -36,7 +36,7 @@ namespace ssc::runtime::core {
           Callback callback;
 
           Observer () {
-            this->id = rand64();
+            this->id = crypto::rand64();
           }
 
           Observer (const Observer& observer) {
@@ -54,7 +54,7 @@ namespace ssc::runtime::core {
           Observer (const Callback callback)
             : callback(callback)
           {
-            this->id = rand64();
+            this->id = crypto::rand64();
           }
 
           Observer (uint64_t id, const Callback callback)

@@ -85,7 +85,6 @@ namespace ssc::runtime::url {
   }
 
   URL::URL (const URL& url) {
-    this->href = url.href;
     this->origin = url.origin;
     this->protocol = url.protocol;
     this->username = url.username;
@@ -105,7 +104,6 @@ namespace ssc::runtime::url {
   }
 
   URL::URL (URL&& url) {
-    this->href = url.href;
     this->origin = url.origin;
     this->protocol = url.protocol;
     this->username = url.username;
@@ -123,7 +121,6 @@ namespace ssc::runtime::url {
     this->searchParams = std::move(url.searchParams);
     this->pathComponents = std::move(url.pathComponents);
 
-    url.href = "";
     url.origin = "";
     url.protocol = "";
     url.username = "";
@@ -157,8 +154,91 @@ namespace ssc::runtime::url {
     }
   }
 
+  URL::URL (
+    const String& pathname,
+    const String& base,
+    bool decodeURIComponents
+  ) : searchParams(SearchParams::Options { decodeURIComponents })
+  {
+    const auto parsed = Components::parse(pathname);
+    if (base.size() > 0 && parsed.scheme.empty()) {
+      auto components = URL::Components::parse(base);
+      auto paths = split(components.pathname, '/');
+
+      StringStream stream;
+
+      if (pathname.starts_with("/")) {
+        components.pathname = pathname;
+      } else if (pathname.starts_with("./")) {
+        if (components.pathname.ends_with("/")) {
+          components.pathname = pathname.substr(2, pathname.size() - 1);
+        } else {
+          components.pathname = pathname.substr(1, pathname.size() - 1);
+        }
+      } else {
+        Vector<String> parts;
+        bool inBase = true;
+        int offset = components.pathname.ends_with("/")
+          ? paths.size()
+          : paths.size() - 1;
+
+        for (const auto& part : split(pathname, '/')) {
+          if (part == "..") {
+            if (inBase) {
+              offset--;
+            } else {
+              parts.pop_back();
+              if (parts.size() == 0) {
+                inBase = true;
+              }
+            }
+            continue;
+          } else if (part == "." || part == "") {
+            continue;
+          } else {
+            inBase = false;
+            parts.push_back(part);
+          }
+        }
+
+        if (parts.size() > 0) {
+          components.pathname = components.pathname.substr(0, offset) + "/" + join(parts, '/');
+        } else {
+          components.pathname = components.pathname.substr(0, offset);
+        }
+      }
+
+      if (components.scheme.size() > 0) {
+        stream << components.scheme << ":";
+        if (components.authority.size() > 0) {
+          stream << "//" << components.authority;
+        }
+
+        stream << components.pathname;
+
+        if (components.query.size() > 0) {
+          stream << "?" << components.query;
+        }
+
+        if (components.fragment.size() > 0) {
+          stream << "#" << components.fragment;
+        }
+
+        this->set(stream.str(), decodeURIComponents);
+      }
+    } else if (pathname.size() > 0) {
+      this->set(pathname, decodeURIComponents);
+    }
+  }
+
+  URL::URL (
+    const String& pathname,
+    const URL& base,
+    bool decodeURIComponents
+  ) : URL(pathname, base.href(), decodeURIComponents)
+  {}
+
   URL& URL::operator = (const URL& url) {
-    this->href = url.href;
     this->origin = url.origin;
     this->protocol = url.protocol;
     this->username = url.username;
@@ -179,7 +259,6 @@ namespace ssc::runtime::url {
   }
 
   URL& URL::operator = (URL&& url) {
-    this->href = url.href;
     this->origin = url.origin;
     this->protocol = url.protocol;
     this->username = url.username;
@@ -197,7 +276,6 @@ namespace ssc::runtime::url {
     this->searchParams = std::move(url.searchParams);
     this->pathComponents = std::move(url.pathComponents);
 
-    url.href = "";
     url.origin = "";
     url.protocol = "";
     url.username = "";
@@ -269,8 +347,6 @@ namespace ssc::runtime::url {
       } else {
         this->origin = this->protocol + this->pathname;
       }
-
-      this->href = this->origin + this->pathname + this->search + this->hash;
     }
 
     if (this->query.size() > 0) {
@@ -289,17 +365,49 @@ namespace ssc::runtime::url {
     }
   }
 
-  const String URL::str () const {
-    return this->href;
+  const String URL::href () const {
+    return this->str();
   }
 
-  const char* URL::c_str () const {
-    return this->href.c_str();
+  const String URL::str () const {
+    StringStream stream;
+
+    if (!this->scheme.empty() || this->scheme == "file") {
+      stream << this->scheme << ":";
+
+      if (!this->hostname.empty()) {
+        stream << "//";
+        if (!this->username.empty()) {
+          stream << this->username;
+          if (!this->password.empty()) {
+            stream << ":" << this->password;
+          }
+          stream << "@";
+        }
+        stream << this->hostname;
+        stream << this->pathname;
+      } else if (!this->pathname.empty()) {
+        if (this->pathname.starts_with("/")) {
+          stream << this->pathname.substr(1);
+        } else {
+          stream << this->pathname;
+        }
+      }
+
+      auto params = SearchParams(this->searchParams);
+      params.set(this->search);
+      if (params.size() > 0) {
+        stream << "?" << params.str();
+      }
+      stream << this->fragment;
+    }
+
+    return stream.str();
   }
 
   const JSON::Object URL::json () const {
     return JSON::Object::Entries {
-      {"href", this->href},
+      {"href", this->href()},
       {"origin", this->origin},
       {"protocol", this->protocol},
       {"username", this->username},
@@ -312,6 +420,6 @@ namespace ssc::runtime::url {
   }
 
   const size_t URL::size () const {
-    return this->href.size();
+    return this->str().size();
   }
 }

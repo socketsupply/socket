@@ -270,7 +270,32 @@ namespace ssc::runtime::window {
       windowOptions.userConfig[tuple.first] = tuple.second;
     }
 
-    auto bridge = static_cast<runtime::Runtime&>(this->context).bridgeManager.get(options.index);
+    windowOptions.origin = webview::Origin("socket://" + windowOptions.userConfig["meta_bundle_identifier"] + "/");
+    auto serviceWorker = static_cast<runtime::Runtime&>(this->context).serviceWorkerManager.get(
+      windowOptions.origin.name()
+    );
+
+    if (!serviceWorker) {
+      serviceWorker = static_cast<runtime::Runtime&>(this->context).serviceWorkerManager.init(
+        windowOptions.origin.name(),
+        serviceworker::Server::Options {
+          windowOptions.origin.name(),
+          windowOptions.userConfig
+        }
+      );
+    }
+
+    auto bridge = static_cast<runtime::Runtime&>(this->context).bridgeManager.get(options.index, {
+      .userConfig = windowOptions.userConfig
+    });
+
+    bridge->index = options.index;
+    bridge->navigator.serviceWorkerServer = serviceWorker;
+  #if SOCKET_RUNTIME_PLATFORM_ANDROID
+    bridge->dispatchHandler = [](const auto callback) {
+      callback();
+    };
+  #endif
     auto window = std::make_shared<ManagedWindow>(*this, bridge, windowOptions);
 
     window->status = WindowStatus::WINDOW_CREATED;
@@ -356,8 +381,7 @@ namespace ssc::runtime::window {
     Manager &manager,
     SharedPointer<IBridge> bridge,
     const Window::Options& options
-  ) : index(options.index),
-      Window(bridge, options),
+  ) : Window(bridge, options),
       manager(manager)
   {}
 
@@ -423,7 +447,7 @@ namespace ssc::runtime::window {
       {"id", std::to_string(id)},
       {"index", index},
       {"title", this->getTitle()},
-      {"url", this->bridge->navigator.location.href},
+      {"url", this->bridge->navigator.location.str()},
       {"location", this->bridge->navigator.location.json()},
       {"width", size.width},
       {"height", size.height},
@@ -480,5 +504,56 @@ namespace ssc::runtime::window {
 
   String Manager::ManagedWindow::getBackgroundColor () {
     return this->backgroundColor.str();
+  }
+
+  int Manager::getNextWindowIndex (bool reserved) const {
+    if (reserved) {
+      for (
+        int i = SOCKET_RUNTIME_MAX_WINDOWS;
+        i < SOCKET_RUNTIME_MAX_WINDOWS + SOCKET_RUNTIME_MAX_WINDOWS_RESERVED;
+        ++i
+      ) {
+        const auto window = this->windows[i];
+        if (window == nullptr) {
+          return i;
+        }
+      }
+      return -1;
+    }
+
+    return -1;
+  }
+
+  int Manager::getRandomWindowIndex (bool reserved) const {
+    if (reserved) {
+      size_t remaining = SOCKET_RUNTIME_MAX_WINDOWS_RESERVED;
+      while (remaining--) {
+        const auto index = crypto::randint(
+          SOCKET_RUNTIME_MAX_WINDOWS,
+          SOCKET_RUNTIME_MAX_WINDOWS + SOCKET_RUNTIME_MAX_WINDOWS_RESERVED - 1
+        );
+
+        const auto window = this->windows[index];
+        if (window == nullptr) {
+          return index;
+        }
+      }
+      return -1;
+    }
+
+    size_t remaining = SOCKET_RUNTIME_MAX_WINDOWS;
+    while (remaining--) {
+      const auto index = crypto::randint(
+        0,
+        SOCKET_RUNTIME_MAX_WINDOWS - 1
+      );
+
+      const auto window = this->windows[index];
+      if (window == nullptr) {
+        return index;
+      }
+    }
+
+    return -1;
   }
 }

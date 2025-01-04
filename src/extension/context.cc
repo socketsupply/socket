@@ -37,15 +37,13 @@ bool sapi_context_dispatch (
 ) {
   if (ctx == nullptr) return false;
   if (ctx->router == nullptr) return false;
-  if (ctx->router->bridge == nullptr) return false;
-  if (ctx->router->bridge->core == nullptr) return false;
 
   if (!ctx->isAllowed("context_dispatch")) {
     sapi_debug(ctx, "'context_dispatch' is not allowed.");
     return false;
   }
 
-  return ctx->router->bridge->dispatch([=]() {
+  return ctx->router->bridge.dispatch([=]() {
     callback(ctx, data);
   });
 }
@@ -79,14 +77,12 @@ void sapi_context_release (sapi_context_t* ctx) {
 uv_loop_t* sapi_context_get_loop (const sapi_context_t* ctx) {
   if (ctx == nullptr) return nullptr;
   if (ctx->router == nullptr) return nullptr;
-  if (ctx->router->bridge == nullptr) return nullptr;
-  if (ctx->router->bridge->core == nullptr) return nullptr;
   if (!ctx->isAllowed("context_get_loop")) {
     sapi_debug(ctx, "'context_get_loop' is not allowed.");
     return nullptr;
   }
 
-  return ctx->router->bridge->core->getEventLoop();
+  return ctx->router->bridge.context.loop.get();
 }
 
 const sapi_ipc_router_t* sapi_context_get_router (const sapi_context_t* ctx) {
@@ -121,7 +117,7 @@ void sapi_context_error_set_code (
 ) {
   if (context == nullptr) return;
   context->error.code = code;
-  context->state = SSC::Extension::Context::State::Error;
+  context->state = ssc::extension::Extension::Context::State::Error;
 }
 
 int sapi_context_error_get_code (const sapi_context_t* context) {
@@ -135,7 +131,7 @@ void sapi_context_error_set_name (
 ) {
   if (context == nullptr) return;
   context->error.name = name;
-  context->state = SSC::Extension::Context::State::Error;
+  context->state = ssc::extension::Extension::Context::State::Error;
 }
 
 const char* sapi_context_error_get_name (const sapi_context_t* context) {
@@ -149,7 +145,7 @@ void sapi_context_error_set_message (
 ) {
   if (context == nullptr) return;
   context->error.message = message;
-  context->state = SSC::Extension::Context::State::Error;
+  context->state = ssc::extension::Extension::Context::State::Error;
 }
 
 const char* sapi_context_error_get_message (const sapi_context_t* context) {
@@ -163,7 +159,7 @@ void sapi_context_error_set_location (
 ) {
   if (context == nullptr) return;
   context->error.location = location;
-  context->state = SSC::Extension::Context::State::Error;
+  context->state = ssc::extension::Extension::Context::State::Error;
 }
 
 const char* sapi_context_error_get_location (const sapi_context_t* context) {

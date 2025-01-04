@@ -9,7 +9,7 @@ bool sapi_ipc_router_map (
   if (
     ctx == nullptr ||
     ctx->router == nullptr ||
-    ctx->state > SSC::Extension::Context::State::Init
+    ctx->state > ssc::extension::Extension::Context::State::Init
   ) {
     return false;
   }
@@ -30,7 +30,7 @@ bool sapi_ipc_router_map (
     }
 
     context->data = data;
-    context->internal = new SSC::IPC::Router::ReplyCallback(reply);
+    context->internal = new ssc::runtime::ipc::Router::ReplyCallback(reply);
     callback(
       context,
       (sapi_ipc_message_t*) &message,
@@ -125,10 +125,10 @@ bool sapi_ipc_reply (const sapi_ipc_result_t* result) {
   auto success = false;
   auto context = result->context;
   auto internal = context->internal;
-  auto fn = reinterpret_cast<SSC::IPC::Router::ReplyCallback*>(internal);
+  auto fn = reinterpret_cast<ssc::runtime::ipc::Router::ReplyCallback*>(internal);
 
   if (fn != nullptr) {
-    (*fn)(*reinterpret_cast<const SSC::IPC::Result*>(result));
+    (*fn)(*reinterpret_cast<const ssc::runtime::ipc::Result*>(result));
     success = true;
     delete fn;
   }
@@ -159,7 +159,7 @@ bool sapi_ipc_set_cancellation_handler (
 
 bool sapi_ipc_send_chunk (
   sapi_ipc_result_t* result,
-  const char* chunk,
+  const unsigned char* chunk,
   size_t chunk_size,
   bool finished
 ) {
@@ -171,7 +171,7 @@ bool sapi_ipc_send_chunk (
         "IPC method '" + result->message.name + "' must be invoked with HTTP";
     return sapi_ipc_reply_with_error(result, error.c_str());
   }
-  auto send_chunk_ptr = result->post.chunkStream;
+  auto send_chunk_ptr = result->queuedResponse.chunkStreamCallback;
   if (send_chunk_ptr == nullptr) {
     debug(
         "Cannot use 'sapi_ipc_send_chunk' before setting the \"Transfer-Encoding\""
@@ -191,7 +191,7 @@ bool sapi_ipc_send_chunk (
 bool sapi_ipc_send_event (
   sapi_ipc_result_t* result,
   const char* name,
-  const char* data,
+  const unsigned char* data,
   bool finished
 ) {
   if (result == nullptr) {
@@ -202,7 +202,7 @@ bool sapi_ipc_send_event (
         "IPC method '" + result->message.name + "' must be invoked with HTTP";
     return sapi_ipc_reply_with_error(result, error.c_str());
   }
-  auto send_event_ptr = result->post.eventStream;
+  auto send_event_ptr = result->queuedResponse.eventStreamCallback;
   if (send_event_ptr == nullptr) {
     debug(
         "Cannot use 'sapi_ipc_send_event' before setting the \"Content-Type\""
@@ -230,32 +230,32 @@ bool sapi_ipc_send_bytes (
     return false;
   }
 
-  auto post = SSC::Post {
+  auto queuedResponse = ssc::runtime::QueuedResponse {
     .id = 0,
     .ttl = 0,
     .body = nullptr,
     .length = size,
-    .headers = headers ? headers : ""
+    .headers = ssc::runtime::String(headers ? headers : "")
   };
 
   if (bytes != nullptr && size > 0) {
-    post.body = std::make_shared<char[]>(size);
-    memcpy(post.body.get(), bytes, size);
+    queuedResponse.body = std::make_shared<unsigned char[]>(size);
+    memcpy(queuedResponse.body.get(), bytes, size);
   }
 
   if (message) {
-    auto result = SSC::IPC::Result(
+    auto result = ssc::runtime::ipc::Result(
       message->seq,
       *message,
-      SSC::JSON::null,
-      post
+      ssc::runtime::JSON::null,
+      queuedResponse
     );
 
-    return ctx->router->bridge->send(result.seq, result.str(), result.post);
+    return ctx->router->bridge.send(result.seq, result.str(), result.queuedResponse);
   }
 
-  auto result = SSC::IPC::Result(SSC::JSON::null);
-  return ctx->router->bridge->send(result.seq, result.str(), post);
+  auto result = ssc::runtime::ipc::Result(ssc::runtime::JSON::null);
+  return ctx->router->bridge.send(result.seq, result.str(), queuedResponse);
 }
 
 bool sapi_ipc_send_bytes_with_result (
@@ -269,20 +269,20 @@ bool sapi_ipc_send_bytes_with_result (
     return false;
   }
 
-  auto post = SSC::Post {
+  auto queuedResponse = ssc::runtime::QueuedResponse {
     .id = 0,
     .ttl = 0,
     .body = nullptr,
     .length = size,
-    .headers = headers ? headers : ""
+    .headers = ssc::runtime::String(headers ? headers : "")
   };
 
   if (bytes != nullptr && size > 0) {
-    post.body = std::make_shared<char[]>(size);
-    memcpy(post.body.get(), bytes, size);
+    queuedResponse.body = std::make_shared<unsigned char[]>(size);
+    memcpy(queuedResponse.body.get(), bytes, size);
   }
 
-  return ctx->router->bridge->send(result->seq, result->str(), post);
+  return ctx->router->bridge.send(result->seq, result->str(), queuedResponse);
 }
 
 bool sapi_ipc_send_json (
@@ -290,48 +290,48 @@ bool sapi_ipc_send_json (
   sapi_ipc_message_t* message,
   sapi_json_any_t* json
 ) {
-  SSC::JSON::Any value = nullptr;
+  ssc::runtime::JSON::Any value = nullptr;
 
   if (!ctx || !ctx->router || !json) {
     return false;
   }
 
-  if (json->type > SSC::JSON::Type::Any) {
+  if (json->type > ssc::runtime::JSON::Type::Any) {
     if (json->isObject()) {
-      auto object = reinterpret_cast<const SSC::JSON::Object*>(json);
-      value = SSC::JSON::Object(object->data);
+      auto object = reinterpret_cast<const ssc::runtime::JSON::Object*>(json);
+      value = ssc::runtime::JSON::Object(object->data);
     } else if (json->isArray()) {
-      auto array = reinterpret_cast<const SSC::JSON::Array*>(json);
-      value = SSC::JSON::Array(array->data);
+      auto array = reinterpret_cast<const ssc::runtime::JSON::Array*>(json);
+      value = ssc::runtime::JSON::Array(array->data);
     } else if (json->isString()) {
-      auto string = reinterpret_cast<const SSC::JSON::String*>(json);
-      value = SSC::JSON::String(string->data);
+      auto string = reinterpret_cast<const ssc::runtime::JSON::String*>(json);
+      value = ssc::runtime::JSON::String(string->data);
     } else if (json->isBoolean()) {
-      auto boolean = reinterpret_cast<const SSC::JSON::Boolean*>(json);
-      value = SSC::JSON::Boolean(boolean->data);
+      auto boolean = reinterpret_cast<const ssc::runtime::JSON::Boolean*>(json);
+      value = ssc::runtime::JSON::Boolean(boolean->data);
     } else if (json->isNumber()) {
-      auto number = reinterpret_cast<const SSC::JSON::Number*>(json);
-      value = SSC::JSON::Number(number->data);
+      auto number = reinterpret_cast<const ssc::runtime::JSON::Number*>(json);
+      value = ssc::runtime::JSON::Number(number->data);
     } else if (json->isRaw()) {
-      auto raw = reinterpret_cast<const SSC::JSON::Raw*>(json);
-      value = SSC::JSON::Raw(raw->data);
+      auto raw = reinterpret_cast<const ssc::runtime::JSON::Raw*>(json);
+      value = ssc::runtime::JSON::Raw(raw->data);
     }
   } else {
     value = nullptr;
   }
 
   if (message) {
-    auto result = SSC::IPC::Result(
+    auto result = ssc::runtime::ipc::Result(
       message->seq,
       *message,
       value
     );
 
-    return ctx->router->bridge->send(result.seq, result.str(), result.post);
+    return ctx->router->bridge.send(result.seq, result.str(), result.queuedResponse);
   }
 
-  auto result = SSC::IPC::Result(value);
-  return ctx->router->bridge->send(result.seq, result.str(), result.post);
+  auto result = ssc::runtime::ipc::Result(value);
+  return ctx->router->bridge.send(result.seq, result.str(), result.queuedResponse);
 }
 
 bool sapi_ipc_send_json_with_result (
@@ -339,38 +339,38 @@ bool sapi_ipc_send_json_with_result (
   sapi_ipc_result_t* result,
   sapi_json_any_t* json
 ) {
-  SSC::JSON::Any value = nullptr;
+  ssc::runtime::JSON::Any value = nullptr;
 
   if (!ctx || !ctx->router || !result || !json) {
     return false;
   }
 
-  if (json->type > SSC::JSON::Type::Any) {
+  if (json->type > ssc::runtime::JSON::Type::Any) {
     if (json->isObject()) {
-      auto object = reinterpret_cast<const SSC::JSON::Object*>(json);
-      value = SSC::JSON::Object(object->data);
+      auto object = reinterpret_cast<const ssc::runtime::JSON::Object*>(json);
+      value = ssc::runtime::JSON::Object(object->data);
     } else if (json->isArray()) {
-      auto array = reinterpret_cast<const SSC::JSON::Array*>(json);
-      value = SSC::JSON::Array(array->data);
+      auto array = reinterpret_cast<const ssc::runtime::JSON::Array*>(json);
+      value = ssc::runtime::JSON::Array(array->data);
     } else if (json->isString()) {
-      auto string = reinterpret_cast<const SSC::JSON::String*>(json);
-      value = SSC::JSON::String(string->data);
+      auto string = reinterpret_cast<const ssc::runtime::JSON::String*>(json);
+      value = ssc::runtime::JSON::String(string->data);
     } else if (json->isBoolean()) {
-      auto boolean = reinterpret_cast<const SSC::JSON::Boolean*>(json);
-      value = SSC::JSON::Boolean(boolean->data);
+      auto boolean = reinterpret_cast<const ssc::runtime::JSON::Boolean*>(json);
+      value = ssc::runtime::JSON::Boolean(boolean->data);
     } else if (json->isNumber()) {
-      auto number = reinterpret_cast<const SSC::JSON::Number*>(json);
-      value = SSC::JSON::Number(number->data);
+      auto number = reinterpret_cast<const ssc::runtime::JSON::Number*>(json);
+      value = ssc::runtime::JSON::Number(number->data);
     } else if (json->isRaw()) {
-      auto raw = reinterpret_cast<const SSC::JSON::Raw*>(json);
-      value = SSC::JSON::Raw(raw->data);
+      auto raw = reinterpret_cast<const ssc::runtime::JSON::Raw*>(json);
+      value = ssc::runtime::JSON::Raw(raw->data);
     }
   } else {
     value = nullptr;
   }
 
-  auto res = SSC::IPC::Result(result->seq, result->message, value);
-  return ctx->router->bridge->send(res.seq, res.str(), res.post);
+  auto res = ssc::runtime::ipc::Result(result->seq, result->message, value);
+  return ctx->router->bridge.send(res.seq, res.str(), res.queuedResponse);
 }
 
 bool sapi_ipc_emit (
@@ -378,27 +378,27 @@ bool sapi_ipc_emit (
   const char* name,
   const char* data
 ) {
-  return ctx && ctx->router ? ctx->router->bridge->emit(name, SSC::String(data)) : false;
+  return ctx && ctx->router ? ctx->router->bridge.emit(name, ssc::runtime::String(data)) : false;
 }
 
 bool sapi_ipc_invoke (
   sapi_context_t* ctx,
   const char* url,
   unsigned int size,
-  const char* bytes,
+  const unsigned char* bytes,
   sapi_ipc_router_result_callback_t callback
 ) {
   if (ctx == nullptr || ctx->router == nullptr) return false;
-  auto uri = SSC::String(url);
+  auto uri = ssc::runtime::String(url);
 
   if (!uri.starts_with("ipc://")) {
     uri = "ipc://" + uri;
   }
 
-  SSC::SharedPointer<char[]> data = nullptr;
+  ssc::runtime::SharedPointer<unsigned char[]> data = nullptr;
 
   if (bytes != nullptr && size > 0) {
-    data.reset(new char[size]{0});
+    data.reset(new unsigned char[size]{0});
     memcpy(data.get(), bytes, size);
   }
 
@@ -499,14 +499,14 @@ const unsigned char* sapi_ipc_message_get_bytes (
   const sapi_ipc_message_t* message
 ) {
   if (!message) return nullptr;
-  return reinterpret_cast<const unsigned char*>(message->buffer.bytes.get());
+  return message->buffer.data();
 }
 
 unsigned int sapi_ipc_message_get_bytes_size (
   const sapi_ipc_message_t* message
 ) {
-  if (!message || !message->buffer.bytes) return 0;
-  return static_cast<unsigned int>(message->buffer.size);
+  if (!message || !message->buffer.data()) return 0;
+  return static_cast<unsigned int>(message->buffer.size());
 }
 
 void sapi_ipc_result_set_seq (sapi_ipc_result_t* result, const char* seq) {
@@ -551,25 +551,25 @@ void sapi_ipc_result_set_json (
   if (result == nullptr) return;
   if (json == nullptr) {
     result->value = nullptr;
-  } else if (json->type > SSC::JSON::Type::Any) {
+  } else if (json->type > ssc::runtime::JSON::Type::Any) {
     if (json->isObject()) {
-      auto object = reinterpret_cast<const SSC::JSON::Object*>(json);
-      result->value = SSC::JSON::Object(object->data);
+      auto object = reinterpret_cast<const ssc::runtime::JSON::Object*>(json);
+      result->value = ssc::runtime::JSON::Object(object->data);
     } else if (json->isArray()) {
-      auto array = reinterpret_cast<const SSC::JSON::Array*>(json);
-      result->value = SSC::JSON::Array(array->data);
+      auto array = reinterpret_cast<const ssc::runtime::JSON::Array*>(json);
+      result->value = ssc::runtime::JSON::Array(array->data);
     } else if (json->isString()) {
-      auto string = reinterpret_cast<const SSC::JSON::String*>(json);
-      result->value = SSC::JSON::String(string->data);
+      auto string = reinterpret_cast<const ssc::runtime::JSON::String*>(json);
+      result->value = ssc::runtime::JSON::String(string->data);
     } else if (json->isBoolean()) {
-      auto boolean = reinterpret_cast<const SSC::JSON::Boolean*>(json);
-      result->value = SSC::JSON::Boolean(boolean->data);
+      auto boolean = reinterpret_cast<const ssc::runtime::JSON::Boolean*>(json);
+      result->value = ssc::runtime::JSON::Boolean(boolean->data);
     } else if (json->isNumber()) {
-      auto number = reinterpret_cast<const SSC::JSON::Number*>(json);
-      result->value = SSC::JSON::Number(number->data);
+      auto number = reinterpret_cast<const ssc::runtime::JSON::Number*>(json);
+      result->value = ssc::runtime::JSON::Number(number->data);
     } else if (json->isRaw()) {
-      auto raw = reinterpret_cast<const SSC::JSON::Raw*>(json);
-      result->value = SSC::JSON::Raw(raw->data);
+      auto raw = reinterpret_cast<const ssc::runtime::JSON::Raw*>(json);
+      result->value = ssc::runtime::JSON::Raw(raw->data);
     }
   }
 }
@@ -589,25 +589,25 @@ void sapi_ipc_result_set_json_data (
   if (result == nullptr) return;
   if (json == nullptr) {
     result->data = nullptr;
-  } else if (json->type > SSC::JSON::Type::Any) {
+  } else if (json->type > ssc::runtime::JSON::Type::Any) {
     if (json->isObject()) {
-      auto object = reinterpret_cast<const SSC::JSON::Object*>(json);
-      result->data = SSC::JSON::Object(object->data);
+      auto object = reinterpret_cast<const ssc::runtime::JSON::Object*>(json);
+      result->data = ssc::runtime::JSON::Object(object->data);
     } else if (json->isArray()) {
-      auto array = reinterpret_cast<const SSC::JSON::Array*>(json);
-      result->data = SSC::JSON::Array(array->data);
+      auto array = reinterpret_cast<const ssc::runtime::JSON::Array*>(json);
+      result->data = ssc::runtime::JSON::Array(array->data);
     } else if (json->isString()) {
-      auto string = reinterpret_cast<const SSC::JSON::String*>(json);
-      result->data = SSC::JSON::String(string->data);
+      auto string = reinterpret_cast<const ssc::runtime::JSON::String*>(json);
+      result->data = ssc::runtime::JSON::String(string->data);
     } else if (json->isBoolean()) {
-      auto boolean = reinterpret_cast<const SSC::JSON::Boolean*>(json);
-      result->data = SSC::JSON::Boolean(boolean->data);
+      auto boolean = reinterpret_cast<const ssc::runtime::JSON::Boolean*>(json);
+      result->data = ssc::runtime::JSON::Boolean(boolean->data);
     } else if (json->isNumber()) {
-      auto number = reinterpret_cast<const SSC::JSON::Number*>(json);
-      result->data = SSC::JSON::Number(number->data);
+      auto number = reinterpret_cast<const ssc::runtime::JSON::Number*>(json);
+      result->data = ssc::runtime::JSON::Number(number->data);
     } else if (json->isRaw()) {
-      auto raw = reinterpret_cast<const SSC::JSON::Raw*>(json);
-      result->data = SSC::JSON::Raw(raw->data);
+      auto raw = reinterpret_cast<const ssc::runtime::JSON::Raw*>(json);
+      result->data = ssc::runtime::JSON::Raw(raw->data);
     }
   }
 }
@@ -627,25 +627,25 @@ void sapi_ipc_result_set_json_error (
   if (result == nullptr) return;
   if (json == nullptr) {
     result->err = nullptr;
-  } else if (json->type > SSC::JSON::Type::Any) {
+  } else if (json->type > ssc::runtime::JSON::Type::Any) {
     if (json->isObject()) {
-      auto object = reinterpret_cast<const SSC::JSON::Object*>(json);
-      result->err = SSC::JSON::Object(object->data);
+      auto object = reinterpret_cast<const ssc::runtime::JSON::Object*>(json);
+      result->err = ssc::runtime::JSON::Object(object->data);
     } else if (json->isArray()) {
-      auto array = reinterpret_cast<const SSC::JSON::Array*>(json);
-      result->err = SSC::JSON::Array(array->data);
+      auto array = reinterpret_cast<const ssc::runtime::JSON::Array*>(json);
+      result->err = ssc::runtime::JSON::Array(array->data);
     } else if (json->isString()) {
-      auto string = reinterpret_cast<const SSC::JSON::String*>(json);
-      result->err = SSC::JSON::String(string->data);
+      auto string = reinterpret_cast<const ssc::runtime::JSON::String*>(json);
+      result->err = ssc::runtime::JSON::String(string->data);
     } else if (json->isBoolean()) {
-      auto boolean = reinterpret_cast<const SSC::JSON::Boolean*>(json);
-      result->err = SSC::JSON::Boolean(boolean->data);
+      auto boolean = reinterpret_cast<const ssc::runtime::JSON::Boolean*>(json);
+      result->err = ssc::runtime::JSON::Boolean(boolean->data);
     } else if (json->isNumber()) {
-      auto number = reinterpret_cast<const SSC::JSON::Number*>(json);
-      result->err = SSC::JSON::Number(number->data);
+      auto number = reinterpret_cast<const ssc::runtime::JSON::Number*>(json);
+      result->err = ssc::runtime::JSON::Number(number->data);
     } else if (json->isRaw()) {
-      auto raw = reinterpret_cast<const SSC::JSON::Raw*>(json);
-      result->err  = SSC::JSON::Raw(raw->data);
+      auto raw = reinterpret_cast<const ssc::runtime::JSON::Raw*>(json);
+      result->err  = ssc::runtime::JSON::Raw(raw->data);
     }
   }
 }
@@ -664,9 +664,9 @@ void sapi_ipc_result_set_bytes (
   unsigned char* bytes
 ) {
   if (result && size && bytes) {
-    result->post.length = size;
-    result->post.body = std::make_shared<char[]>(size);
-    memcpy(result->post.body.get(), bytes, size);
+    result->queuedResponse.length = size;
+    result->queuedResponse.body = std::make_shared<unsigned char[]>(size);
+    memcpy(result->queuedResponse.body.get(), bytes, size);
   }
 }
 
@@ -674,14 +674,14 @@ unsigned char* sapi_ipc_result_get_bytes (
   const sapi_ipc_result_t* result
 ) {
   return result
-    ? reinterpret_cast<unsigned char*>(result->post.body.get())
+    ? reinterpret_cast<unsigned char*>(result->queuedResponse.body.get())
     : nullptr;
 }
 
 size_t sapi_ipc_result_get_bytes_size (
   const sapi_ipc_result_t* result
 ) {
-  return result ? result->post.length : 0;
+  return result ? result->queuedResponse.length : 0;
 }
 
 void sapi_ipc_result_set_header (
@@ -694,17 +694,17 @@ void sapi_ipc_result_set_header (
 
     if (result->headers.get("content-type") == "text/event-stream") {
       result->context->retain();
-      result->post = SSC::Post();
-      result->post.eventStream = std::make_shared<SSC::Post::EventStreamCallback>(
-        [result](const char* name, const char* data, bool finished) {
+      result->queuedResponse = ssc::runtime::QueuedResponse();
+      result->queuedResponse.eventStreamCallback = std::make_shared<ssc::runtime::QueuedResponse::EventStreamCallback>(
+        [result](const char* name, const unsigned char* data, bool finished) {
           return false;
         }
       );
     } else if (result->headers.get("transfer-encoding") == "chunked") {
       result->context->retain();
-      result->post = SSC::Post();
-      result->post.chunkStream = std::make_shared<SSC::Post::ChunkStreamCallback>(
-        [result](const char* chunk, size_t chunk_size, bool finished) {
+      result->queuedResponse = ssc::runtime::QueuedResponse();
+      result->queuedResponse.chunkStreamCallback = std::make_shared<ssc::runtime::QueuedResponse::ChunkStreamCallback>(
+        [result](const unsigned char* chunk, size_t chunk_size, bool finished) {
           return false;
         }
       );

@@ -11,6 +11,8 @@ export class ServiceWorkerRegistration {
   constructor (info, serviceWorker) {
     this.#info = info
 
+    serviceWorker[Symbol.for('socket.runtime.serviceWorker.state')] = info.registration.state
+
     // many states here just end up being the 'installing' state to the front end
     if (/installing|parsed|registered|registering/.test(serviceWorker.state)) {
       this.#installing = serviceWorker

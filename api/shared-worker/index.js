@@ -9,11 +9,10 @@ import ipc from '../ipc.js'
 
 let contextWindow = null
 
-export const SHARED_WORKER_WINDOW_INDEX = 46
 export const SHARED_WORKER_WINDOW_TITLE = 'socket:shared-worker'
 export const SHARED_WORKER_WINDOW_PATH = '/socket/shared-worker/index.html'
 
-export const channel = new ipc.IPCBroadcastChannel('socket.runtime.sharedWorker')
+export const channel = new BroadcastChannel('socket.runtime.sharedWorker')
 export const workers = new Map()
 
 channel.addEventListener('message', (event) => {
@@ -147,59 +146,59 @@ export async function getContextWindow () {
     return contextWindow
   }
 
-  const existingContextWindow = await application.getWindow(
-    SHARED_WORKER_WINDOW_INDEX,
-    { max: false }
-  )
+  const windows = await application.getWindows([], { max: false })
+  let firstInit = true
 
-  const pendingContextWindow = (
-    existingContextWindow ??
-    application.createWindow({
+  for (const window of windows) {
+    if (window.title === SHARED_WORKER_WINDOW_TITLE) {
+      if (window.location) {
+        const url = new URL(window.location.href, globalThis.location.origin)
+        if (url.origin === globalThis.location.origin) {
+          contextWindow = window
+          firstInit = false
+        }
+      }
+    }
+  }
+
+  if (!contextWindow) {
+    contextWindow = await application.createWindow({
+      // @ts-ignore
       canExit: false,
       headless: !process.env.SOCKET_RUNTIME_SHARED_WORKER_DEBUG,
       // @ts-ignore
       debug: Boolean(process.env.SOCKET_RUNTIME_SHARED_WORKER_DEBUG),
-      index: SHARED_WORKER_WINDOW_INDEX,
+      reserved: true,
+      index: -1,
       title: SHARED_WORKER_WINDOW_TITLE,
       path: SHARED_WORKER_WINDOW_PATH,
       width: '80%',
       height: '80%',
       config: {
+        ...globalThis.__args.config,
         webview_watch_reload: false
       }
-    }).catch(() => application.getWindow(SHARED_WORKER_WINDOW_INDEX, {
-      max: false
-    }))
-  )
+    })
+  }
 
-  const promises = [
-    Promise.resolve(pendingContextWindow)
-  ]
-
-  if (!existingContextWindow) {
-    promises.push(new Promise((resolve) => {
+  if (!contextWindow.ready) {
+    contextWindow.ready = new Promise((resolve) => {
       const timeout = setTimeout(resolve, 500)
       channel.addEventListener('message', function onMessage (event) {
-        if (event.data?.ready === SHARED_WORKER_WINDOW_INDEX) {
+        if (event.data?.ready === contextWindow.index) {
           clearTimeout(timeout)
           resolve(null)
           channel.removeEventListener('message', onMessage)
         }
       })
-    }))
+    })
   }
 
-  const ready = Promise.all(promises)
-  contextWindow = pendingContextWindow
-  contextWindow.ready = ready
-
-  await ready
-  contextWindow = await pendingContextWindow
-  contextWindow.ready = ready
   if (!process.env.SOCKET_RUNTIME_SHARED_WORKER_DEBUG) {
     await contextWindow.hide()
   }
 
+  await contextWindow.ready
   return contextWindow
 }
 

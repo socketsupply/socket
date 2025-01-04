@@ -21,8 +21,8 @@ namespace ssc::runtime::core::services {
         const String&,
         const Callback
       );
-      void openExternal (const ipc::Message::Seq&, const String&, const Callback) const;
-      void revealFile ( const ipc::Message::Seq&, const String&, const Callback) const;
+      void openExternal (const ipc::Message::Seq&, const String&, const Callback);
+      void revealFile ( const ipc::Message::Seq&, const String&, const Callback);
   };
 }
 #endif

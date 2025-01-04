@@ -6,6 +6,7 @@
 #include "fs.hh"
 
 using ssc::runtime::url::encodeURIComponent;
+using ssc::runtime::crypto::rand64;
 using ssc::runtime::string::join;
 using ssc::runtime::string::split;
 
@@ -46,9 +47,9 @@ namespace ssc::runtime::core::services {
     };
   }
 
-  void FS::RequestContext::setBuffer (SharedPointer<char[]> base, uint32_t len) {
+  void FS::RequestContext::setBuffer (SharedPointer<unsigned char[]> base, uint32_t len) {
     this->buffer = base;
-    this->buf.base = base.get();
+    this->buf.base = reinterpret_cast<char*>(base.get());
     this->buf.len = len;
   }
 
@@ -1226,16 +1227,16 @@ namespace ssc::runtime::core::services {
 
       if (desc->isDirectory()) {
         queued++;
-        this->closedir(seq, id, [pending, callback](auto seq, auto json, auto post) {
+        this->closedir(seq, id, [pending, callback](auto seq, auto json, auto queuedResponse) {
           if (pending == 0) {
-            callback(seq, json, post);
+            callback(seq, json, queuedResponse);
           }
         });
       } else if (desc->isFile()) {
         queued++;
-        this->close(seq, id, [pending, callback](auto seq, auto json, auto post) {
+        this->close(seq, id, [pending, callback](auto seq, auto json, auto queuedResponse) {
           if (pending == 0) {
-            callback(seq, json, post);
+            callback(seq, json, queuedResponse);
           }
         });
       }
@@ -1280,12 +1281,12 @@ namespace ssc::runtime::core::services {
             {"content-length", 0}
           }};
 
-          QueuedResponse post {0};
-          post.id = rand64();
-          post.body = std::make_shared<char[]>(size);
-          post.length = 0;
-          post.headers = headers.str();
-          return callback(seq, JSON::Object{}, post);
+          QueuedResponse queuedResponse {0};
+          queuedResponse.id = rand64();
+          queuedResponse.body = std::make_shared<unsigned char[]>(size);
+          queuedResponse.length = 0;
+          queuedResponse.headers = headers;
+          return callback(seq, JSON::Object{}, queuedResponse);
         } else {
           if (size > length - offset) {
             size = length - offset;
@@ -1302,12 +1303,12 @@ namespace ssc::runtime::core::services {
             {"content-length", 0}
           }};
 
-          QueuedResponse post {0};
-          post.id = rand64();
-          post.body = std::make_shared<char[]>(size);
-          post.length = 0;
-          post.headers = headers.str();
-          return callback(seq, JSON::Object{}, post);
+          QueuedResponse queuedResponse {0};
+          queuedResponse.id = rand64();
+          queuedResponse.body = std::make_shared<unsigned char[]>(size);
+          queuedResponse.length = 0;
+          queuedResponse.headers = headers;
+          return callback(seq, JSON::Object{}, queuedResponse);
         } else {
           if (size > length - offset) {
             size = length - offset;
@@ -1318,7 +1319,7 @@ namespace ssc::runtime::core::services {
       }
     #endif
 
-      auto bytes = std::make_shared<char[]>(size);
+      auto bytes = std::make_shared<unsigned char[]>(size);
       auto loop = this->loop.get();
       auto ctx = new RequestContext(desc, seq, callback);
       auto req = &ctx->req;
@@ -1329,7 +1330,7 @@ namespace ssc::runtime::core::services {
         auto ctx = static_cast<RequestContext*>(req->data);
         auto desc = ctx->descriptor;
         auto json = JSON::Object {};
-        QueuedResponse post = {0};
+        QueuedResponse queuedResponse = {0};
 
         if (uv_fs_get_result(req) < 0) {
           json = JSON::Object::Entries {
@@ -1346,13 +1347,13 @@ namespace ssc::runtime::core::services {
             {"content-length", req->result}
           }};
 
-          post.id = rand64();
-          post.body = ctx->buffer;
-          post.length = (int) req->result;
-          post.headers = headers.str();
+          queuedResponse.id = rand64();
+          queuedResponse.body = ctx->buffer;
+          queuedResponse.length = (int) req->result;
+          queuedResponse.headers = headers.str();
         }
 
-        ctx->callback(ctx->seq, json, post);
+        ctx->callback(ctx->seq, json, queuedResponse);
         delete ctx;
       });
 
@@ -1460,7 +1461,7 @@ namespace ssc::runtime::core::services {
   void FS::write (
     const String& seq,
     ID id,
-    SharedPointer<char[]> bytes,
+    SharedPointer<unsigned char[]> bytes,
     size_t size,
     size_t offset,
     const Callback callback

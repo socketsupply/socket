@@ -11,6 +11,6 @@ void sapi_javascript_evaluate (
     return;
   }
 
-  auto script = SSC::createJavaScript(name, source);
-  ctx->router->bridge->evaluateJavaScript(script);
+  auto script = ssc::runtime::javascript::createJavaScript(name, source);
+  dynamic_cast<ssc::runtime::window::IBridge*>(&ctx->router->bridge)->evaluateJavaScript(script);
 }

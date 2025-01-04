@@ -11,15 +11,25 @@ namespace ssc::runtime {
 }
 
 namespace ssc::runtime::context {
-  struct Context {
-    Mutex mutex;
-
   #if SOCKET_RUNTIME_PLATFORM_ANDROID
+  struct AndroidContext {
+    android::BuildInformation buildInformation;
     android::ContentResolver contentResolver;
     android::JVMEnvironment jvm;
     android::Activity activity = nullptr;
     android::Looper looper;
-    bool isEmulator = false;
+    jobject self = nullptr;
+
+    Atomic<bool> isEmulator = false;
+    void configure (android::JVMEnvironment, android::Activity);
+  };
+
+  #endif
+  struct Context {
+    Mutex mutex;
+
+  #if SOCKET_RUNTIME_PLATFORM_ANDROID
+    AndroidContext android;
   #endif
 
     Context () = default;
@@ -28,13 +38,6 @@ namespace ssc::runtime::context {
 
     Context& operator = (const Context&) = delete;
     Context& operator = (Context&&) = delete;
-
-  #if SOCKET_RUNTIME_PLATFORM_ANDROID
-    void Platform::configureAndroid (
-      android::JVMEnvironment jvm,
-      android::Activity activity
-    );
-  #endif
   };
 
   /**
@@ -59,19 +62,14 @@ namespace ssc::runtime::context {
     RuntimeContext& operator = (RuntimeContext&&) = delete;
 
     RuntimeContext* getRuntimeContext ();
+    const RuntimeContext* getRuntimeContext () const;
     Runtime* getRuntime ();
+    const Runtime* getRuntime () const;
     String createQueuedResponse (
       const String& seq,
       const String& params,
       QueuedResponse queuedResponse
     );
-
-  #if SOCKET_RUNTIME_PLATFORM_ANDROID
-    void Platform::configureAndroid (
-      android::JVMEnvironment jvm,
-      android::Activity activity
-    );
-  #endif
   };
 
   struct DispatchContext : public Context {

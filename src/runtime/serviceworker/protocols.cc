@@ -1,24 +1,21 @@
-#include "container.hh"
-#include "protocols.hh"
-#include "../core/debug.hh"
+#include "../serviceworker.hh"
+#include "../runtime.hh"
 
-namespace SSC {
-  static Vector<String> reserved = {
+namespace ssc::runtime::serviceworker {
+  static const Vector<String> reserved = {
     "socket",
     "ipc",
     "node",
     "npm"
   };
 
-  ServiceWorkerProtocols::ServiceWorkerProtocols (
-    ServiceWorkerContainer* serviceWorkerContainer
-  )
-    : serviceWorkerContainer(serviceWorkerContainer)
+  Protocols::Protocols (Container& container)
+    : container(container)
   {}
 
-  ServiceWorkerProtocols::~ServiceWorkerProtocols () {}
+  Protocols::~Protocols () {}
 
-  bool ServiceWorkerProtocols::registerHandler (const String& scheme, const Data data) {
+  bool Protocols::registerHandler (const String& scheme, const Data data) {
     Lock lock(this->mutex);
 
     if (scheme.size() == 0) {
@@ -30,14 +27,14 @@ namespace SSC {
     }
 
     if (this->mapping.contains(scheme)) {
-      return false;
+      return true;
     }
 
     this->mapping.insert_or_assign(scheme, Protocol { scheme, data });
     return true;
   }
 
-  bool ServiceWorkerProtocols::unregisterHandler (const String& scheme) {
+  bool Protocols::unregisterHandler (const String& scheme) {
     Lock lock(this->mutex);
 
     if (!this->mapping.contains(scheme)) {
@@ -48,7 +45,7 @@ namespace SSC {
     return true;
   }
 
-  const ServiceWorkerProtocols::Data ServiceWorkerProtocols::getHandlerData (const String& scheme) {
+  const Protocols::Data Protocols::getHandlerData (const String& scheme) {
     Lock lock(this->mutex);
 
     if (!this->mapping.contains(scheme)) {
@@ -58,7 +55,7 @@ namespace SSC {
     return this->mapping.at(scheme).data;
   }
 
-  bool ServiceWorkerProtocols::setHandlerData (const String& scheme, const Data data) {
+  bool Protocols::setHandlerData (const String& scheme, const Data data) {
     Lock lock(this->mutex);
 
     if (!this->mapping.contains(scheme)) {
@@ -69,13 +66,13 @@ namespace SSC {
     return true;
   }
 
-  bool ServiceWorkerProtocols::hasHandler (const String& scheme) {
+  bool Protocols::hasHandler (const String& scheme) {
     Lock lock(this->mutex);
     return this->mapping.contains(scheme);
   }
 
-  const String ServiceWorkerProtocols::getServiceWorkerScope (const String& scheme) {
-    for (const auto& entry : this->serviceWorkerContainer->registrations) {
+  const String Protocols::getServiceWorkerScope (const String& scheme) {
+    for (const auto& entry : this->container.registrations) {
       const auto& scope = entry.first;
       const auto& registration = entry.second;
       if (registration.options.scheme == scheme) {
@@ -86,7 +83,7 @@ namespace SSC {
     return "";
   }
 
-  const Vector<String> ServiceWorkerProtocols::getSchemes () const {
+  const Vector<String> Protocols::getSchemes () const {
     Vector<String> schemes;
     for (const auto& entry : this->mapping) {
       schemes.push_back(entry.first + ":");
@@ -94,7 +91,7 @@ namespace SSC {
     return schemes;
   }
 
-  const Vector<String> ServiceWorkerProtocols::getProtocols () const {
+  const Vector<String> Protocols::getProtocols () const {
     Vector<String> protocols;
     for (const auto& entry : this->mapping) {
       protocols.push_back(entry.first);

@@ -1,6 +1,7 @@
 #include "../filesystem.hh"
 #include "../webview.hh"
 #include "../string.hh"
+#include "../crypto.hh"
 #include "../config.hh"
 #include "../http.hh"
 #include "../env.hh"
@@ -13,6 +14,7 @@ using ssc::runtime::config::getDevPort;
 using ssc::runtime::url::decodeURIComponent;
 using ssc::runtime::url::encodeURIComponent;
 using ssc::runtime::http::toHeaderCase;
+using ssc::runtime::crypto::rand64;
 using ssc::runtime::string::replace;
 using ssc::runtime::string::join;
 using ssc::runtime::string::tmpl;
@@ -765,7 +767,7 @@ namespace ssc::runtime::webview {
       auto resource = filesystem::Resource(Path(this->options.userConfig.at("webview_importmap")));
 
       if (resource.exists()) {
-        const auto bytes = resource.read();
+        const auto bytes = reinterpret_cast<const char*>(resource.read());
 
         if (bytes != nullptr) {
           preload = (

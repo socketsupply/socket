@@ -2,11 +2,13 @@
 #include "../http.hh"
 #include "../json.hh"
 #include "../debug.hh"
+#include "../crypto.hh"
 #include "../queued_response.hh"
 
 #include "../bluetooth.hh"
 
 using namespace ssc::runtime;
+using ssc::runtime::crypto::rand64;
 
 #if SOCKET_RUNTIME_PLATFORM_APPLE
 @interface SSCBluetoothController ()

@@ -237,7 +237,7 @@ namespace ssc::runtime::core::services {
     const auto hrtime = uv_hrtime();
     const auto bytes = toByteArray(hrtime);
     const auto size = bytes.size();
-    const auto body = new char[size]{0};
+    const auto body = new unsigned char[size]{0};
     const auto json = JSON::Object {};
     auto post = QueuedResponse {};
     post.body.reset(body);
@@ -253,7 +253,7 @@ namespace ssc::runtime::core::services {
     const auto memory = uv_get_available_memory();
     const auto bytes = toByteArray(memory);
     const auto size = bytes.size();
-    const auto body = new char[size]{0};
+    const auto body = new unsigned char[size]{0};
     const auto json = JSON::Object {};
     auto post = QueuedResponse {};
     post.body.reset(body);

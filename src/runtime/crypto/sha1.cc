@@ -152,7 +152,7 @@ namespace ssc::runtime::crypto {
   }
 
   SHA1::SHA1 (
-    const SharedPointer<char[]>& data,
+    const SharedPointer<unsigned char[]>& data,
     size_t size
   ) : SHA1() {
     this->update(
@@ -207,7 +207,7 @@ namespace ssc::runtime::crypto {
     return SHA1(input).str();
   }
 
-  const String sha1 (const SharedPointer<char[]>& input, size_t size) {
+  const String sha1 (const SharedPointer<unsigned char[]>& input, size_t size) {
     return SHA1(input, size).str();
   }
 

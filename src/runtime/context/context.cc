@@ -1,17 +1,19 @@
 #include "../javascript.hh"
 #include "../runtime.hh"
+#include "../crypto.hh"
 #include "../string.hh"
 
 #include "../context.hh"
 
 using ssc::runtime::javascript::createJavaScript;
 using ssc::runtime::string::trim;
+using ssc::runtime::crypto::rand64;
 
 namespace ssc::runtime::context {
 #if SOCKET_RUNTIME_PLATFORM_ANDROID
-  void Context::configureAndroid (
-    Android::JVMEnvironment jvm,
-    Android::Activity activity
+  void AndroidContext::configure (
+    android::JVMEnvironment jvm,
+    android::Activity activity
   ) {
     this->jvm = jvm;
     this->activity = activity;
@@ -24,8 +26,16 @@ namespace ssc::runtime::context {
     return this;
   }
 
+  const RuntimeContext* RuntimeContext::getRuntimeContext () const {
+    return this;
+  }
+
   Runtime* RuntimeContext::getRuntime () {
     return static_cast<Runtime*>(this);
+  }
+
+  const Runtime* RuntimeContext::getRuntime () const {
+    return static_cast<const Runtime*>(this);
   }
 
   String RuntimeContext::createQueuedResponse (

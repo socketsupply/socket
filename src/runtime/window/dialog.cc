@@ -1,10 +1,13 @@
 #include "../window.hh"
 #include "../string.hh"
+#include "../app.hh"
+
 #include "dialog.hh"
 
-using ssc::runtime::string::join;
 using ssc::runtime::string::split;
+using ssc::runtime::string::join;
 using ssc::runtime::string::trim;
+using ssc::runtime::app::App;
 
 #if SOCKET_RUNTIME_PLATFORM_IOS
 @implementation SSCUIPickerDelegate : NSObject
@@ -338,7 +341,7 @@ namespace ssc::runtime::window {
     }
 
     [pool release];
-    this->window->bridge.dispatch([=, this] () {
+    this->window->bridge->dispatch([=, this] () {
       callback(paths);
     });
     return true;
@@ -528,7 +531,7 @@ namespace ssc::runtime::window {
 
     g_slist_free(filenames);
     gtk_widget_destroy(GTK_WIDGET(dialog));
-    this->window->bridge.dispatch([=, this] () {
+    this->window->bridge->dispatch([=, this] () {
       callback(paths);
     });
     return true;
@@ -858,7 +861,7 @@ extern "C" {
       );
     }
 
-    const auto attachment = Android::JNIEnvironmentAttachment(dialog->window->bridge.jvm);
+    const auto attachment = Android::JNIEnvironmentAttachment(dialog->window->bridge->jvm);
     const auto length = attachment.env->GetArrayLength(results);
 
     Vector<String> paths;

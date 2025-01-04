@@ -339,7 +339,7 @@ namespace ssc::runtime::udp {
   }
 
   void Socket::send (
-    SharedPointer<char[]> bytes,
+    SharedPointer<unsigned char[]> bytes,
     size_t size,
     int port,
     const String& address,
@@ -411,7 +411,7 @@ namespace ssc::runtime::udp {
 
     auto allocate = [](uv_handle_t *handle, size_t size, uv_buf_t *buf) {
       if (size > 0) {
-        buf->base = (char *) new char[size]{0};
+        buf->base = (char *) new unsigned char[size]{0};
         buf->len = size;
       }
     };
@@ -538,3 +538,4 @@ namespace ssc::runtime::udp {
       });
     }
   }
+}

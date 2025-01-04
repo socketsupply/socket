@@ -1,5 +1,8 @@
 #include "extension.hh"
 
+using ssc::runtime::process::exec;
+using ssc::runtime::string::trim;
+
 const sapi_process_exec_t* sapi_process_exec (
   sapi_context_t* ctx,
   const char* command
@@ -15,8 +18,8 @@ const sapi_process_exec_t* sapi_process_exec (
     return nullptr;
   }
 
-  auto process = SSC::exec(command);
-  process.output = SSC::trim(process.output);
+  auto process = exec(command);
+  process.output = trim(process.output);
   return ctx->memory.alloc<sapi_process_exec_t>(ctx, process);
 #endif
 }
@@ -60,7 +63,7 @@ sapi_process_spawn_t* sapi_process_spawn (
     ctx,
     command,
     argv,
-    SSC::Vector<SSC::String>{},
+    ssc::runtime::Vector<ssc::runtime::String>{},
     path,
     onstdout,
     onstderr,

@@ -1,13 +1,36 @@
-#include "../extension/extension.hh"
-#include "../window/window.hh"
-#include "../core/resource.hh"
-#include "../core/headers.hh"
-#include "../core/json.hh"
-#include "../core/url.hh"
-#include "../app/app.hh"
-#include "../cli/cli.hh"
+#include "../../extension/extension.hh"
+#include "../../cli.hh"
 
-#include "ipc.hh"
+#include "../serviceworker.hh"
+#include "../filesystem.hh"
+#include "../bridge.hh"
+#include "../window.hh"
+#include "../http.hh"
+#include "../bytes.hh"
+#include "../json.hh"
+#include "../url.hh"
+#include "../app.hh"
+#include "../env.hh"
+#include "../ini.hh"
+#include "../io.hh"
+
+#include "../ipc.hh"
+
+namespace io = ssc::runtime::io;
+namespace env = ssc::runtime::env;
+namespace INI = ssc::runtime::INI;
+
+using namespace ssc::runtime;
+using namespace ssc::runtime::ipc;
+using namespace ssc::runtime::javascript;
+
+using ssc::extension::Extension;
+using ssc::runtime::app::App;
+using ssc::runtime::url::encodeURIComponent;
+using ssc::runtime::string::replace;
+using ssc::runtime::string::trim;
+using ssc::runtime::string::split;
+using ssc::runtime::crypto::rand64;
 
 extern int LLAMA_BUILD_NUMBER;
 
@@ -21,12 +44,9 @@ extern int LLAMA_BUILD_NUMBER;
   }
 
 #define RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)                     \
-  [message, reply](auto seq, auto json, auto post) {                           \
-    reply(Result { seq, message, json, post });                                \
+  [message, reply](auto seq, auto json, auto queuedResponse) {                 \
+    reply(Result { seq, message, json, queuedResponse });                      \
   }
-
-using namespace SSC;
-using namespace SSC::IPC;
 
 static JSON::Any validateMessageParameters (
   const Message& message,
@@ -44,7 +64,7 @@ static JSON::Any validateMessageParameters (
 }
 
 static void mapIPCRoutes (Router *router) {
-  auto userConfig = router->bridge->userConfig;
+  auto userConfig = router->bridge.getRuntime()->userConfig;
 
   #if SOCKET_RUNTIME_PLATFORM_APPLE
     auto bundleIdentifier = userConfig["meta_bundle_identifier"];
@@ -61,7 +81,7 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    SSC::LLMOptions options;
+    ssc::runtime::core::services::LLMOptions options;
     options.path = message.get("path");
     options.prompt = message.get("prompt");
     options.antiprompt = message.get("antiprompt");
@@ -88,21 +108,21 @@ static void mapIPCRoutes (Router *router) {
     if (message.has("chatml")) options.chatml = message.get("chatml") == "true";
     if (message.has("instruct")) options.instruct = message.get("instruct") == "true";
 
-    router->bridge->core->ai.createLLM(message.seq, modelId, options, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+    router->bridge.getRuntime()->services.ai.createLLM(message.seq, modelId, options, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   router->map("ai.llm.destroy", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
     uint64_t modelId = 0;
     REQUIRE_AND_GET_MESSAGE_VALUE(modelId, "id", std::stoull);
-    router->bridge->core->ai.destroyLLM(message.seq, modelId, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+    router->bridge.getRuntime()->services.ai.destroyLLM(message.seq, modelId, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   router->map("ai.llm.stop", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
     uint64_t modelId = 0;
     REQUIRE_AND_GET_MESSAGE_VALUE(modelId, "id", std::stoull);
-    router->bridge->core->ai.stopLLM(message.seq, modelId, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+    router->bridge.getRuntime()->services.ai.stopLLM(message.seq, modelId, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   router->map("ai.llm.chat", [](auto message, auto router, auto reply) {
@@ -112,7 +132,7 @@ static void mapIPCRoutes (Router *router) {
     REQUIRE_AND_GET_MESSAGE_VALUE(modelId, "id", std::stoull);
 
     auto value = message.get("message");
-    router->bridge->core->ai.chatLLM(message.seq, modelId, value, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+    router->bridge.getRuntime()->services.ai.chatLLM(message.seq, modelId, value, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   /**
@@ -141,7 +161,7 @@ static void mapIPCRoutes (Router *router) {
     }
   #endif
 
-    const auto window = app->windowManager.getWindow(0);
+    const auto window = app->runtime.windowManager.getWindow(0);
 
     if (window == nullptr) {
       return reply(Result::Err { message, "Application is invalid state" });
@@ -162,7 +182,7 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, "Application is invalid state" });
     }
 
-    const auto window = app->windowManager.getWindow(0);
+    const auto window = app->runtime.windowManager.getWindow(0);
 
     if (window == nullptr) {
       return reply(Result::Err { message, "Application is invalid state" });
@@ -188,7 +208,7 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, "Application is invalid state" });
     }
 
-    const auto window = app->windowManager.getWindow(0);
+    const auto window = app->runtime.windowManager.getWindow(0);
 
     if (window == nullptr) {
       return reply(Result::Err { message, "Application is invalid state" });
@@ -198,7 +218,7 @@ static void mapIPCRoutes (Router *router) {
     Vector<int> indices;
 
     if (requested.size() == 0) {
-      for (const auto& window : app->windowManager.windows) {
+      for (const auto& window : app->runtime.windowManager.windows) {
         if (window != nullptr) {
           indices.push_back(window->index);
         }
@@ -213,7 +233,7 @@ static void mapIPCRoutes (Router *router) {
       }
     }
 
-    const auto json  = app->windowManager.json(indices);
+    const auto json  = app->runtime.windowManager.json(indices);
     reply(Result::Data { message, json });
   });
 
@@ -235,7 +255,7 @@ static void mapIPCRoutes (Router *router) {
     }
 
     app->dispatch([=]() {
-      const auto window = app->windowManager.getWindow(0);
+      const auto window = app->runtime.windowManager.getWindow(0);
 
       if (window == nullptr) {
         return reply(Result::Err { message, "Application is invalid state" });
@@ -273,7 +293,7 @@ static void mapIPCRoutes (Router *router) {
     }
 
     app->dispatch([=]() {
-      const auto window = app->windowManager.getWindow(0);
+      const auto window = app->runtime.windowManager.getWindow(0);
 
       if (window == nullptr) {
         return reply(Result::Err { message, "Application is invalid state" });
@@ -314,7 +334,7 @@ static void mapIPCRoutes (Router *router) {
     }
 
     app->dispatch([=]() {
-      const auto window = app->windowManager.getWindow(0);
+      const auto window = app->runtime.windowManager.getWindow(0);
 
       if (window == nullptr) {
         return reply(Result::Err { message, "Application is invalid state" });
@@ -353,7 +373,7 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    if (router->bridge->userConfig["permissions_allow_bluetooth"] == "false") {
+    if (router->bridge.userConfig["permissions_allow_bluetooth"] == "false") {
       auto err =JSON::Object::Entries {
         {"message", "Bluetooth is not allowed"}
       };
@@ -361,7 +381,7 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    router->bridge->bluetooth.startService(
+    dynamic_cast<window::IBridge*>(&router->bridge)->bluetooth.startService(
       message.seq,
       message.get("serviceId"),
       [reply, message](auto seq, auto json) {
@@ -385,7 +405,7 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    if (router->bridge->userConfig["permissions_allow_bluetooth"] == "false") {
+    if (router->bridge.userConfig["permissions_allow_bluetooth"] == "false") {
       auto err =JSON::Object::Entries {
         {"message", "Bluetooth is not allowed"}
       };
@@ -393,7 +413,7 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    router->bridge->bluetooth.subscribeCharacteristic(
+    dynamic_cast<window::IBridge*>(&router->bridge)->bluetooth.subscribeCharacteristic(
       message.seq,
       message.get("serviceId"),
       message.get("characteristicId"),
@@ -418,7 +438,7 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    if (router->bridge->userConfig["permissions_allow_bluetooth"] == "false") {
+    if (router->bridge.userConfig["permissions_allow_bluetooth"] == "false") {
       auto err =JSON::Object::Entries {
         {"message", "Bluetooth is not allowed"}
       };
@@ -426,15 +446,15 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    auto bytes = message.buffer.bytes.get();
-    auto size = message.buffer.size;
+    auto bytes = reinterpret_cast<char*>(message.buffer.data());
+    auto size = message.buffer.size();
 
     if (bytes == nullptr) {
       bytes = message.value.data();
       size = message.value.size();
     }
 
-    router->bridge->bluetooth.publishCharacteristic(
+    dynamic_cast<window::IBridge*>(&router->bridge)->bluetooth.publishCharacteristic(
       message.seq,
       bytes,
       size,
@@ -458,21 +478,17 @@ static void mapIPCRoutes (Router *router) {
 
     const auto name = message.get("name");
     const auto origin = message.get("origin");
-    const auto bridge = router->bridge;
-    const auto subscription = router->bridge->core->broadcastChannel.subscribe({
+    const auto subscription = router->bridge.getRuntime()->services.broadcastChannel.subscribe({
       name,
       origin,
-      router->bridge->client,
-      [message, bridge](const auto event) {
+      router->bridge.client,
+      [message, router](const auto event) mutable {
         const auto app = App::sharedApplication();
-        const auto window = app->windowManager.getWindowForBridge(bridge);
-        if (window) {
-          bridge->emit("broadcastchannelmessage", JSON::Object::Entries {
-            {"source", message.name},
-            {"data", event.json()},
-            {"err", nullptr}
-          });
-        }
+        router->bridge.emit("broadcastchannelmessage", JSON::Object::Entries {
+          {"source", message.name},
+          {"data", event.json()},
+          {"err", nullptr}
+        });
       }
    });
 
@@ -489,7 +505,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    if (!router->bridge->core->broadcastChannel.unsubscribe(id)) {
+    if (!router->bridge.getRuntime()->services.broadcastChannel.unsubscribe(id)) {
       const auto err = JSON::Object::Entries {
         {"type", "NotFoundError"},
         {"message", "No subscription found" }
@@ -500,7 +516,7 @@ static void mapIPCRoutes (Router *router) {
     reply(Result { message.seq, message, JSON::Object {} });
   });
 
-  router->map("broadcast_channel.postMessage", [=](auto message, auto router, auto reply) {
+  router->map("broadcast_channel.queuedResponseMessage", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {
       "origin",
       "token",
@@ -516,20 +532,17 @@ static void mapIPCRoutes (Router *router) {
     const auto name = message.get("name");
     const auto token = message.get("token");
     const auto origin = message.get("origin");
-    const auto messageToPost = Core::BroadcastChannel::Message {
-      Core::BroadcastChannel::Client {
-        router->bridge->client.id,
-        router->bridge->client.index
-      },
+    const auto messageToqueuedResponse = core::services::BroadcastChannel::Message {
+      router->bridge.client,
       origin,
       token,
       name,
       data
     };
 
-    const auto posted = router->bridge->core->broadcastChannel.postMessage(messageToPost);
+    const auto queuedResponseed = router->bridge.getRuntime()->services.broadcastChannel.postMessage(messageToqueuedResponse);
 
-    if (!posted) {
+    if (!queuedResponseed) {
       const auto err = JSON::Object::Entries {
         {"type", "NotFoundError"},
         {"message", "No subscribers"}
@@ -538,7 +551,7 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    reply(Result::Data { message, messageToPost.json() });
+    reply(Result::Data { message, messageToqueuedResponse.json() });
   });
 
   /**
@@ -568,7 +581,7 @@ static void mapIPCRoutes (Router *router) {
     int signal;
     REQUIRE_AND_GET_MESSAGE_VALUE(signal, "signal", std::stoi);
 
-    router->bridge->core->childProcess.kill(
+    router->bridge.getRuntime()->services.process.kill(
       message.seq,
       id,
       signal,
@@ -614,13 +627,13 @@ static void mapIPCRoutes (Router *router) {
       uint64_t id;
       REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-      SSC::Vector<SSC::String> env{};
+      Vector<String> env{};
 
       if (message.has("env")) {
         env = split(message.get("env"), 0x0001);
       }
 
-      const auto options = Core::ChildProcess::SpawnOptions {
+      const auto options = ssc::runtime::core::services::Process::SpawnOptions {
         .cwd = message.get("cwd", getcwd()),
         .env = env,
         .allowStdin = message.get("stdin") != "false",
@@ -628,13 +641,13 @@ static void mapIPCRoutes (Router *router) {
         .allowStderr = message.get("stderr") != "false"
       };
 
-      router->bridge->core->childProcess.spawn(
+      router->bridge.getRuntime()->services.process.spawn(
         message.seq,
         id,
         args,
         options,
-        [message, reply](auto seq, auto json, auto post) {
-          reply(Result { seq, message, json, post });
+        [message, reply](auto seq, auto json, auto queuedResponse) {
+          reply(Result { seq, message, json, queuedResponse });
         }
       );
     #endif
@@ -682,13 +695,13 @@ static void mapIPCRoutes (Router *router) {
         REQUIRE_AND_GET_MESSAGE_VALUE(killSignal, "killSignal", std::stoi);
       }
 
-      SSC::Vector<SSC::String> env{};
+      Vector<String> env{};
 
       if (message.has("env")) {
         env = split(message.get("env"), 0x0001);
       }
 
-      const auto options = Core::ChildProcess::ExecOptions {
+      const auto options = ssc::runtime::core::services::Process::ExecOptions {
         .cwd = message.get("cwd", getcwd()),
         .env = env,
         .allowStdout = message.get("stdout") != "false",
@@ -697,13 +710,13 @@ static void mapIPCRoutes (Router *router) {
         .killSignal = killSignal
       };
 
-      router->bridge->core->childProcess.exec(
+      router->bridge.getRuntime()->services.process.exec(
         message.seq,
         id,
         args,
         options,
-        [message, reply](auto seq, auto json, auto post) {
-          reply(Result { seq, message, json, post });
+        [message, reply](auto seq, auto json, auto queuedResponse) {
+          reply(Result { seq, message, json, queuedResponse });
         }
       );
     #endif
@@ -732,11 +745,11 @@ static void mapIPCRoutes (Router *router) {
       uint64_t id;
       REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-      router->bridge->core->childProcess.write(
+      router->bridge.getRuntime()->services.process.write(
         message.seq,
         id,
-        message.buffer.bytes,
-        message.buffer.size,
+        message.buffer.pointer(),
+        message.buffer.size(),
         RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
       );
     #endif
@@ -746,7 +759,7 @@ static void mapIPCRoutes (Router *router) {
    * Query diagnostics information about the runtime core.
    */
   router->map("diagnostics.query", [=](auto message, auto router, auto reply) {
-    router->bridge->core->diagnostics.query(
+    router->bridge.getRuntime()->services.diagnostics.query(
       message.seq,
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
@@ -768,9 +781,9 @@ static void mapIPCRoutes (Router *router) {
     int family = 0;
     REQUIRE_AND_GET_MESSAGE_VALUE(family, "family", std::stoi, "0");
 
-    router->bridge->core->dns.lookup(
+    router->bridge.getRuntime()->services.dns.lookup(
       message.seq,
-      Core::DNS::LookupOptions { message.get("hostname"), family },
+      ssc::runtime::core::services::DNS::LookupOptions { message.get("hostname"), family },
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });
@@ -789,7 +802,7 @@ static void mapIPCRoutes (Router *router) {
           {"name", name},
           {"type", type},
         #if SOCKET_RUNTIME_PLATFORM_ANDROID
-          {"path", FileResource::getResourcePath(path).string()}
+          {"path", filesystem::Resource::getResourcePath(path).string()}
         #else
           // `path` is absolute to the location of the resources
           {"path", String("/") + std::filesystem::relative(path, getcwd()).string()}
@@ -832,7 +845,7 @@ static void mapIPCRoutes (Router *router) {
 
     auto name = message.get("name");
     auto type = Extension::getExtensionType(name);
-    auto json = SSC::JSON::Object::Entries {
+    auto json = JSON::Object::Entries {
       {"source", "extension.type"},
       {"data", JSON::Object::Entries {
         {"name", name},
@@ -1003,7 +1016,7 @@ static void mapIPCRoutes (Router *router) {
     int mode = 0;
     REQUIRE_AND_GET_MESSAGE_VALUE(mode, "mode", std::stoi);
 
-    router->bridge->core->fs.access(
+    router->bridge.getRuntime()->services.fs.access(
       message.seq,
       message.get("path"),
       mode,
@@ -1015,7 +1028,7 @@ static void mapIPCRoutes (Router *router) {
    * Returns a mapping of file system constants.
    */
   router->map("fs.constants", [=](auto message, auto router, auto reply) {
-    router->bridge->core->fs.constants(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+    router->bridge.getRuntime()->services.fs.constants(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   /**
@@ -1034,7 +1047,7 @@ static void mapIPCRoutes (Router *router) {
     int mode = 0;
     REQUIRE_AND_GET_MESSAGE_VALUE(mode, "mode", std::stoi);
 
-    router->bridge->core->fs.chmod(
+    router->bridge.getRuntime()->services.fs.chmod(
       message.seq,
       message.get("path"),
       mode,
@@ -1061,7 +1074,7 @@ static void mapIPCRoutes (Router *router) {
     REQUIRE_AND_GET_MESSAGE_VALUE(uid, "uid", std::stoi);
     REQUIRE_AND_GET_MESSAGE_VALUE(gid, "gid", std::stoi);
 
-    router->bridge->core->fs.chown(
+    router->bridge.getRuntime()->services.fs.chown(
       message.seq,
       message.get("path"),
       static_cast<uv_uid_t>(uid),
@@ -1089,7 +1102,7 @@ static void mapIPCRoutes (Router *router) {
     REQUIRE_AND_GET_MESSAGE_VALUE(uid, "uid", std::stoi);
     REQUIRE_AND_GET_MESSAGE_VALUE(gid, "gid", std::stoi);
 
-    router->bridge->core->fs.lchown(
+    router->bridge.getRuntime()->services.fs.lchown(
       message.seq,
       message.get("path"),
       static_cast<uv_uid_t>(uid),
@@ -1113,7 +1126,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    router->bridge->core->fs.close(message.seq, id, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+    router->bridge.getRuntime()->services.fs.close(message.seq, id, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   /**
@@ -1131,7 +1144,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    router->bridge->core->fs.closedir(message.seq, id, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+    router->bridge.getRuntime()->services.fs.closedir(message.seq, id, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   /**
@@ -1150,7 +1163,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    router->bridge->core->fs.closeOpenDescriptor(
+    router->bridge.getRuntime()->services.fs.closeOpenDescriptor(
       message.seq,
       id,
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -1165,7 +1178,7 @@ static void mapIPCRoutes (Router *router) {
    * @see closedir(3)
    */
   router->map("fs.closeOpenDescriptors", [=](auto message, auto router, auto reply) {
-    router->bridge->core->fs.closeOpenDescriptor(
+    router->bridge.getRuntime()->services.fs.closeOpenDescriptor(
       message.seq,
       message.get("preserveRetained") != "false",
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -1189,7 +1202,7 @@ static void mapIPCRoutes (Router *router) {
     int flags = 0;
     REQUIRE_AND_GET_MESSAGE_VALUE(flags, "flags", std::stoi);
 
-    router->bridge->core->fs.copyFile(
+    router->bridge.getRuntime()->services.fs.copyFile(
       message.seq,
       message.get("src"),
       message.get("dest"),
@@ -1211,7 +1224,7 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    router->bridge->core->fs.link(
+    router->bridge.getRuntime()->services.fs.link(
       message.seq,
       message.get("src"),
       message.get("dest"),
@@ -1236,7 +1249,7 @@ static void mapIPCRoutes (Router *router) {
     int flags = 0;
     REQUIRE_AND_GET_MESSAGE_VALUE(flags, "flags", std::stoi);
 
-    router->bridge->core->fs.symlink(
+    router->bridge.getRuntime()->services.fs.symlink(
       message.seq,
       message.get("src"),
       message.get("dest"),
@@ -1261,7 +1274,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    router->bridge->core->fs.fstat(message.seq, id, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+    router->bridge.getRuntime()->services.fs.fstat(message.seq, id, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   /**
@@ -1279,7 +1292,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    router->bridge->core->fs.fsync(
+    router->bridge.getRuntime()->services.fs.fsync(
       message.seq,
       id,
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -1305,7 +1318,7 @@ static void mapIPCRoutes (Router *router) {
     int64_t offset;
     REQUIRE_AND_GET_MESSAGE_VALUE(offset, "offset", std::stoll);
 
-    router->bridge->core->fs.ftruncate(
+    router->bridge.getRuntime()->services.fs.ftruncate(
       message.seq,
       id,
       offset,
@@ -1317,7 +1330,7 @@ static void mapIPCRoutes (Router *router) {
    * Returns all open file or directory descriptors.
    */
   router->map("fs.getOpenDescriptors", [=](auto message, auto router, auto reply) {
-    router->bridge->core->fs.getOpenDescriptors(
+    router->bridge.getRuntime()->services.fs.getOpenDescriptors(
       message.seq,
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
@@ -1336,7 +1349,7 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    router->bridge->core->fs.lstat(
+    router->bridge.getRuntime()->services.fs.lstat(
       message.seq,
       message.get("path"),
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -1360,7 +1373,7 @@ static void mapIPCRoutes (Router *router) {
     int mode = 0;
     REQUIRE_AND_GET_MESSAGE_VALUE(mode, "mode", std::stoi);
 
-    router->bridge->core->fs.mkdir(
+    router->bridge.getRuntime()->services.fs.mkdir(
       message.seq,
       message.get("path"),
       mode,
@@ -1397,7 +1410,7 @@ static void mapIPCRoutes (Router *router) {
     REQUIRE_AND_GET_MESSAGE_VALUE(mode, "mode", std::stoi);
     REQUIRE_AND_GET_MESSAGE_VALUE(flags, "flags", std::stoi);
 
-    router->bridge->core->fs.open(
+    router->bridge.getRuntime()->services.fs.open(
       message.seq,
       id,
       message.get("path"),
@@ -1423,7 +1436,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    router->bridge->core->fs.opendir(
+    router->bridge.getRuntime()->services.fs.opendir(
       message.seq,
       id,
       message.get("path"),
@@ -1452,7 +1465,7 @@ static void mapIPCRoutes (Router *router) {
     REQUIRE_AND_GET_MESSAGE_VALUE(size, "size", std::stoi);
     REQUIRE_AND_GET_MESSAGE_VALUE(offset, "offset", std::stoi);
 
-    router->bridge->core->fs.read(
+    router->bridge.getRuntime()->services.fs.read(
       message.seq,
       id,
       size,
@@ -1478,7 +1491,7 @@ static void mapIPCRoutes (Router *router) {
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
     REQUIRE_AND_GET_MESSAGE_VALUE(entries, "entries", std::stoi);
 
-    router->bridge->core->fs.readdir(
+    router->bridge.getRuntime()->services.fs.readdir(
       message.seq,
       id,
       entries,
@@ -1498,7 +1511,7 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    router->bridge->core->fs.readlink(
+    router->bridge.getRuntime()->services.fs.readlink(
       message.seq,
       message.get("path"),
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -1517,7 +1530,7 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    router->bridge->core->fs.realpath(
+    router->bridge.getRuntime()->services.fs.realpath(
       message.seq,
       message.get("path"),
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -1538,7 +1551,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    router->bridge->core->fs.retainOpenDescriptor(
+    router->bridge.getRuntime()->services.fs.retainOpenDescriptor(
       message.seq,
       id,
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -1558,7 +1571,7 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    router->bridge->core->fs.rename(
+    router->bridge.getRuntime()->services.fs.rename(
       message.seq,
       message.get("src"),
       message.get("dest"),
@@ -1578,7 +1591,7 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    router->bridge->core->fs.rmdir(
+    router->bridge.getRuntime()->services.fs.rmdir(
       message.seq,
       message.get("path"),
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -1597,7 +1610,7 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    router->bridge->core->fs.stat(
+    router->bridge.getRuntime()->services.fs.stat(
       message.seq,
       message.get("path"),
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -1617,7 +1630,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    router->bridge->core->fs.watch(
+    router->bridge.getRuntime()->services.fs.watch(
       message.seq,
       id,
       message.get("path"),
@@ -1637,7 +1650,7 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    router->bridge->core->fs.unlink(
+    router->bridge.getRuntime()->services.fs.unlink(
       message.seq,
       message.get("path"),
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -1657,7 +1670,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    router->bridge->core->fs.watch(
+    router->bridge.getRuntime()->services.fs.watch(
       message.seq,
       id,
       message.get("path"),
@@ -1679,29 +1692,28 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    if (message.buffer.bytes == nullptr || message.buffer.size == 0) {
+    if (message.buffer.data() == nullptr || message.buffer.size() == 0) {
       auto err = JSON::Object::Entries {{ "message", "Missing buffer in message" }};
       return reply(Result::Err { message, err });
     }
-
 
     uint64_t id;
     int offset = 0;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
     REQUIRE_AND_GET_MESSAGE_VALUE(offset, "offset", std::stoi);
 
-    router->bridge->core->fs.write(
+    router->bridge.getRuntime()->services.fs.write(
       message.seq,
       id,
-      message.buffer.bytes,
-      message.buffer.size,
+      message.buffer.pointer(),
+      message.buffer.size(),
       offset,
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });
 
   router->map("geolocation.getCurrentPosition", [=](auto message, auto router, auto reply) {
-    router->bridge->core->geolocation.getCurrentPosition(
+    router->bridge.getRuntime()->services.geolocation.getCurrentPosition(
       message.seq,
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
@@ -1717,7 +1729,7 @@ static void mapIPCRoutes (Router *router) {
     int id = 0;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoi);
 
-    router->bridge->core->geolocation.watchPosition(
+    router->bridge.getRuntime()->services.geolocation.watchPosition(
       message.seq,
       id,
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -1733,7 +1745,7 @@ static void mapIPCRoutes (Router *router) {
 
     int id = 0;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoi);
-    router->bridge->core->geolocation.clearWatch(
+    router->bridge.getRuntime()->services.geolocation.clearWatch(
       message.seq,
       id,
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -1759,16 +1771,16 @@ static void mapIPCRoutes (Router *router) {
   });
 
   /**
-   * A private API for starting the Runtime `Core::Conduit`, if it isn't running.
+   * A private API for starting the Runtime `ssc::runtime::core::services::Conduit`, if it isn't running.
    */
   router->map("internal.conduit.start", [=](auto message, auto router, auto reply) {
-    router->bridge->core->conduit.start([=]() {
-      if (router->bridge->core->conduit.isActive()) {
+    router->bridge.getRuntime()->services.conduit.start([=]() {
+      if (router->bridge.getRuntime()->services.conduit.isActive()) {
         reply(Result::Data {
           message,
           JSON::Object::Entries {
             {"isActive", true},
-            {"port", router->bridge->core->conduit.port.load()}
+            {"port", router->bridge.getRuntime()->services.conduit.port.load()}
           }
         });
       } else {
@@ -1779,29 +1791,29 @@ static void mapIPCRoutes (Router *router) {
   });
 
   /**
-   * A private API for stopping the Runtime `Core::Conduit`, if it is running.
+   * A private API for stopping the Runtime `ssc::runtime::core::services::Conduit`, if it is running.
    */
   router->map("internal.conduit.stop", [=](auto message, auto router, auto reply) {
-    router->bridge->core->conduit.stop();
+    router->bridge.getRuntime()->services.conduit.stop();
     reply(Result { message.seq, message, JSON::Object{} });
   });
 
   /**
-   * A private API for getting the status of the Runtime `Core::Conduit.
+   * A private API for getting the status of the Runtime `ssc::runtime::core::services::Conduit.
    */
   router->map("internal.conduit.status", [=](auto message, auto router, auto reply) {
     reply(Result::Data {
       message,
       JSON::Object::Entries {
-        {"sharedKey", router->bridge->core->conduit.sharedKey},
-        {"isActive", router->bridge->core->conduit.isActive()},
-        {"port", router->bridge->core->conduit.port.load()}
+        {"sharedKey", router->bridge.getRuntime()->services.conduit.sharedKey},
+        {"isActive", router->bridge.getRuntime()->services.conduit.isActive()},
+        {"port", router->bridge.getRuntime()->services.conduit.port.load()}
       }
     });
   });
 
   /**
-   * A private API for setting the shared key of the Runtime `Core::Conduit.
+   * A private API for setting the shared key of the Runtime `ssc::runtime::core::services::Conduit.
    */
   router->map("internal.conduit.setSharedKey", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"sharedKey"});
@@ -1820,7 +1832,7 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    router->bridge->core->conduit.sharedKey = sharedKey;
+    router->bridge.getRuntime()->services.conduit.sharedKey = sharedKey;
 
     reply(Result::Data {
       message,
@@ -1831,13 +1843,13 @@ static void mapIPCRoutes (Router *router) {
   });
 
   /**
-   * A private API for getting the shared key of the Runtime `Core::Conduit.
+   * A private API for getting the shared key of the Runtime `ssc::runtime::core::services::Conduit.
    */
   router->map("internal.conduit.getSharedKey", [=](auto message, auto router, auto reply) {
     reply(Result::Data {
       message,
       JSON::Object::Entries {
-        {"sharedKey", router->bridge->core->conduit.sharedKey}
+        {"sharedKey", router->bridge.getRuntime()->services.conduit.sharedKey}
       }
     });
   });
@@ -1865,9 +1877,8 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    auto resource = FileResource(message.value, FileResource::Options {
-      .cache = false,
-      .core = router->bridge->core.get()
+    auto resource = filesystem::Resource(message.value, filesystem::Resource::Options {
+      .cache = false
     });
 
     reply(Result { message.seq, message, JSON::Object::Entries {
@@ -1886,7 +1897,7 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    const auto options = Core::Notifications::ShowOptions {
+    const auto options = ssc::runtime::core::services::Notifications::ShowOptions {
       message.get("id"),
       message.get("title", "Notification"),
       message.get("tag"),
@@ -1898,13 +1909,13 @@ static void mapIPCRoutes (Router *router) {
       replace(
         message.get("channel", "default"),
         "default",
-        router->bridge->userConfig["meta_bundle_identifier"]
+        router->bridge.userConfig["meta_bundle_identifier"]
       ),
       message.get("category"),
       message.get("vibrate")
     };
 
-    router->bridge->core->notifications.show(options, [=] (const auto result) {
+    router->bridge.getRuntime()->services.notifications.show(options, [=] (const auto result) {
       if (result.error.size() > 0) {
         const auto err = JSON::Object::Entries {{ "message", result.error }};
         return reply(Result::Err { message, err });
@@ -1923,12 +1934,12 @@ static void mapIPCRoutes (Router *router) {
     }
 
 
-    const auto notification = Core::Notifications::Notification {
+    const auto notification = ssc::runtime::core::services::Notifications::Notification {
       message.get("id"),
       message.get("tag")
     };
 
-    router->bridge->core->notifications.close(notification);
+    router->bridge.getRuntime()->services.notifications.close(notification);
 
     reply(Result { message.seq, message, JSON::Object::Entries {
       {"id", notification.identifier}
@@ -1936,7 +1947,7 @@ static void mapIPCRoutes (Router *router) {
   });
 
   router->map("notification.list", [=](auto message, auto router, auto reply) {
-    router->bridge->core->notifications.list([=](const auto notifications) {
+    router->bridge.getRuntime()->services.notifications.list([=](const auto notifications) {
       JSON::Array entries;
       for (const auto& notification : notifications) {
         entries.push(notification.json());
@@ -1966,7 +1977,7 @@ static void mapIPCRoutes (Router *router) {
     REQUIRE_AND_GET_MESSAGE_VALUE(buffer, "buffer", std::stoi, "0");
     REQUIRE_AND_GET_MESSAGE_VALUE(size, "size", std::stoi, "0");
 
-    router->bridge->core->os.bufferSize(
+    router->bridge.getRuntime()->services.os.bufferSize(
       message.seq,
       id,
       size,
@@ -1979,45 +1990,45 @@ static void mapIPCRoutes (Router *router) {
    * Returns a mapping of operating  system constants.
    */
   router->map("os.constants", [=](auto message, auto router, auto reply) {
-    router->bridge->core->os.constants(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+    router->bridge.getRuntime()->services.os.constants(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   /**
    * Returns a mapping of network interfaces.
    */
   router->map("os.networkInterfaces", [=](auto message, auto router, auto reply) {
-    router->bridge->core->os.networkInterfaces(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+    router->bridge.getRuntime()->services.os.networkInterfaces(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   /**
    * Returns an array of CPUs available to the process.
    */
   router->map("os.cpus", [=](auto message, auto router, auto reply) {
-    router->bridge->core->os.cpus(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+    router->bridge.getRuntime()->services.os.cpus(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   router->map("os.rusage", [=](auto message, auto router, auto reply) {
-    router->bridge->core->os.rusage(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+    router->bridge.getRuntime()->services.os.rusage(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   router->map("os.uptime", [=](auto message, auto router, auto reply) {
-    router->bridge->core->os.uptime(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+    router->bridge.getRuntime()->services.os.uptime(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   router->map("os.uname", [=](auto message, auto router, auto reply) {
-    router->bridge->core->os.uname(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+    router->bridge.getRuntime()->services.os.uname(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   router->map("os.hrtime", [=](auto message, auto router, auto reply) {
-    router->bridge->core->os.hrtime(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+    router->bridge.getRuntime()->services.os.hrtime(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   router->map("os.availableMemory", [=](auto message, auto router, auto reply) {
-    router->bridge->core->os.availableMemory(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+    router->bridge.getRuntime()->services.os.availableMemory(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   router->map("os.paths", [=](auto message, auto router, auto reply) {
-    const auto json = FileResource::getWellKnownPaths().json();
+    const auto json = filesystem::Resource::getWellKnownPaths().json();
     return reply(Result::Data { message, json });
   });
 
@@ -2028,7 +2039,7 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    return router->bridge->core->permissions.query(
+    return router->bridge.getRuntime()->services.permissions.query(
       message.seq,
       message.get("name"),
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -2042,7 +2053,7 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    return router->bridge->core->permissions.request(
+    return router->bridge.getRuntime()->services.permissions.request(
       message.seq,
       message.get("name"),
       message.dump(),
@@ -2053,7 +2064,7 @@ static void mapIPCRoutes (Router *router) {
   /**
    * Simply returns `pong`.
    */
-  router->map("ping", [=](auto message, auto router, auto reply) {
+  router->map("ping", [=](auto message, ipc::Router* router, auto reply) {
     auto result = Result { message.seq, message };
     result.data = "pong";
     reply(result);
@@ -2067,7 +2078,7 @@ static void mapIPCRoutes (Router *router) {
   router->map("platform.event", [=](auto message, auto router, auto reply) {
     const auto err = validateMessageParameters(message, {"value"});
     const auto app = App::sharedApplication();
-    const auto window = app->windowManager.getWindowForBridge(router->bridge);
+    const auto window = app->runtime.windowManager.getWindowForBridge(dynamic_cast<window::IBridge*>(&router->bridge));
 
     if (err.type != JSON::Type::Null) {
       return reply(Result { message.seq, message, err });
@@ -2095,31 +2106,31 @@ static void mapIPCRoutes (Router *router) {
 
     const auto frameType = message.get("runtime-frame-type");
     const auto frameSource = message.get("runtime-frame-source");
-    auto userConfig = router->bridge->userConfig;
+    auto userConfig = router->bridge.userConfig;
 
     if (frameType == "top-level" && frameSource != "serviceworker") {
       if (message.value == "load") {
         const auto href = message.get("location.href");
         if (href.size() > 0) {
-          router->bridge->navigator.location.set(href);
-          router->bridge->navigator.location.workers.clear();
+          dynamic_cast<Bridge&>(router->bridge).navigator.location.set(href);
+          dynamic_cast<Bridge&>(router->bridge).navigator.location.workers.clear();
           auto tmp = href;
           tmp = replace(tmp, "socket://", "");
           tmp = replace(tmp, "https://", "");
           tmp = replace(tmp, userConfig["meta_bundle_identifier"], "");
           const auto parsed = URL::Components::parse(tmp);
-          router->bridge->navigator.location.pathname = parsed.pathname;
-          router->bridge->navigator.location.query = parsed.query;
+          dynamic_cast<Bridge&>(router->bridge).navigator.location.pathname = parsed.pathname;
+          dynamic_cast<Bridge&>(router->bridge).navigator.location.query = parsed.query;
         }
       }
 
-      if (router->bridge == router->bridge->navigator.serviceWorker.bridge) {
-        if (router->bridge->userConfig["webview_service_worker_mode"] == "hybrid") {
-          if (router->bridge->navigator.location.href.size() > 0 && message.value == "beforeruntimeinit") {
-            router->bridge->navigator.serviceWorker.reset();
-            router->bridge->navigator.serviceWorker.isReady = false;
+      if (dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer) {
+        if (router->bridge.userConfig["webview_service_worker_mode"] == "hybrid") {
+          if (dynamic_cast<Bridge&>(router->bridge).navigator.location.size() > 0 && message.value == "beforeruntimeinit") {
+            dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.reset();
+            dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.isReady = false;
           } else if (message.value == "runtimeinit") {
-            router->bridge->navigator.serviceWorker.isReady = true;
+            dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.isReady = true;
           }
         }
       }
@@ -2129,11 +2140,11 @@ static void mapIPCRoutes (Router *router) {
       const auto workerLocation = message.get("runtime-worker-location");
       const auto href = message.get("location.href");
       if (href.size() > 0 && workerLocation.size() > 0) {
-        router->bridge->navigator.location.workers[href] = workerLocation;
+        dynamic_cast<Bridge&>(router->bridge).navigator.location.workers[href] = workerLocation;
       }
     }
 
-    router->bridge->core->platform.event(
+    router->bridge.getRuntime()->services.platform.event(
       message.seq,
       message.value,
       message.get("data"),
@@ -2154,7 +2165,7 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result { message.seq, message, err });
     }
 
-    router->bridge->core->platform.revealFile(
+    router->bridge.getRuntime()->services.platform.revealFile(
       message.seq,
       message.get("value"),
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -2166,7 +2177,7 @@ static void mapIPCRoutes (Router *router) {
    * @param value
    */
   router->map("platform.openExternal", [=](auto message, auto router, auto reply) mutable {
-    const auto applicationProtocol = router->bridge->userConfig["meta_application_protocol"];
+    const auto applicationProtocol = router->bridge.userConfig["meta_application_protocol"];
     const auto app = App::sharedApplication();
     auto err = validateMessageParameters(message, {"value"});
 
@@ -2175,11 +2186,11 @@ static void mapIPCRoutes (Router *router) {
     }
 
     if (applicationProtocol.size() > 0 && message.value.starts_with(applicationProtocol + ":")) {
-      SSC::JSON::Object json = SSC::JSON::Object::Entries {
+      JSON::Object json = JSON::Object::Entries {
         { "url", message.value }
       };
 
-      const auto window = app->windowManager.getWindowForBridge(router->bridge);
+      const auto window = app->runtime.windowManager.getWindowForBridge(dynamic_cast<window::IBridge*>(&router->bridge));
 
       if (window) {
         window->handleApplicationURL(message.value);
@@ -2188,14 +2199,14 @@ static void mapIPCRoutes (Router *router) {
       reply(Result {
         message.seq,
         message,
-        SSC::JSON::Object::Entries {
+        JSON::Object::Entries {
           {"data", json}
         }
       });
       return;
     }
 
-    router->bridge->core->platform.openExternal(
+    router->bridge.getRuntime()->services.platform.openExternal(
       message.seq,
       message.value,
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -2218,9 +2229,9 @@ static void mapIPCRoutes (Router *router) {
         {"cwd", getcwd()},
         {"platform", platformRes},
         {"version", JSON::Object::Entries {
-          {"full", SSC::VERSION_FULL_STRING},
-          {"short", SSC::VERSION_STRING},
-          {"hash", SSC::VERSION_HASH_STRING}}
+          {"full", version::VERSION_FULL_STRING},
+          {"short", version::VERSION_STRING},
+          {"hash", version::VERSION_HASH_STRING}}
         },
         {"uv", JSON::Object::Entries {
           {"version", uv_version_string()}
@@ -2238,7 +2249,7 @@ static void mapIPCRoutes (Router *router) {
              "macosx"
           #endif
         #elif SOCKET_RUNTIME_PLATFORM_ANDROID
-             (router->bridge->isAndroidEmulator ? "android-emulator" : "android")
+             (router->bridge.isAndroidEmulator ? "android-emulator" : "android")
         #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
              "win32"
         #elif SOCKET_RUNTIME_PLATFORM_LINUX
@@ -2255,11 +2266,11 @@ static void mapIPCRoutes (Router *router) {
   });
 
   /**
-   * Returns pending post data typically returned in the response of an
-   * `ipc://post` IPC call intercepted by an XHR request.
-   * @param id The id of the post data.
+   * Returns pending queuedResponse data typically returned in the response of an
+   * `ipc://queuedResponse` IPC call intercepted by an XHR request.
+   * @param id The id of the queuedResponse data.
    */
-  router->map("post", false, [=](auto message, auto router, auto reply) {
+  router->map("queuedResponse", false, [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -2269,27 +2280,18 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    if (!router->bridge->core->hasPost(id)) {
+    if (!router->bridge.getRuntime()->queuedResponses.contains(id)) {
       return reply(Result::Err { message, JSON::Object::Entries {
         {"id", std::to_string(id)},
         {"type", "NotFoundError"},
-        {"message", "A 'Post' was not found for the given 'id' in parameters"}
+        {"message", "A 'QueuedResponse' was not found for the given 'id' in parameters"}
       }});
     }
 
     auto result = Result { message.seq, message };
-    result.post = router->bridge->core->getPost(id);
-    if (result.post.headers.size() > 0) {
-      const auto lines = split(trim(result.post.headers), '\n');
-      for (const auto& line : lines) {
-        const auto pair = split(trim(line), ':');
-        const auto key = trim(pair[0]);
-        const auto value = trim(pair[1]);
-        result.headers.set(key, value);
-      }
-    }
+    result.queuedResponse = router->bridge.getRuntime()->queuedResponses[id];
     reply(result);
-    router->bridge->core->removePost(id);
+    router->bridge.getRuntime()->queuedResponses.erase(id);
   });
 
   /**
@@ -2307,10 +2309,10 @@ static void mapIPCRoutes (Router *router) {
     const auto scheme = message.get("scheme");
     const auto data = message.get("data");
 
-    if (data.size() > 0 && router->bridge->navigator.serviceWorker.protocols.hasHandler(scheme)) {
-      router->bridge->navigator.serviceWorker.protocols.setHandlerData(scheme, { data });
+    if (data.size() > 0 && dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.protocols.hasHandler(scheme)) {
+      dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.protocols.setHandlerData(scheme, { data });
     } else {
-      router->bridge->navigator.serviceWorker.protocols.registerHandler(scheme, { data });
+      dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.protocols.registerHandler(scheme, { data });
     }
 
     reply(Result { message.seq, message });
@@ -2329,13 +2331,13 @@ static void mapIPCRoutes (Router *router) {
 
     const auto scheme = message.get("scheme");
 
-    if (!router->bridge->navigator.serviceWorker.protocols.hasHandler(scheme)) {
+    if (!dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.protocols.hasHandler(scheme)) {
       return reply(Result::Err { message, JSON::Object::Entries {
         {"message", "Protocol handler scheme is not registered."}
       }});
     }
 
-    router->bridge->navigator.serviceWorker.protocols.unregisterHandler(scheme);
+    dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.protocols.unregisterHandler(scheme);
 
     reply(Result { message.seq, message });
   });
@@ -2353,13 +2355,13 @@ static void mapIPCRoutes (Router *router) {
 
     const auto scheme = message.get("scheme");
 
-    if (!router->bridge->navigator.serviceWorker.protocols.hasHandler(scheme)) {
+    if (!dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.protocols.hasHandler(scheme)) {
       return reply(Result::Err { message, JSON::Object::Entries {
         {"message", "Protocol handler scheme is not registered."}
       }});
     }
 
-    const auto data = router->bridge->navigator.serviceWorker.protocols.getHandlerData(scheme);
+    const auto data = dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.protocols.getHandlerData(scheme);
 
     reply(Result { message.seq, message, JSON::Raw(data.json) });
   });
@@ -2379,13 +2381,13 @@ static void mapIPCRoutes (Router *router) {
     const auto scheme = message.get("scheme");
     const auto data = message.get("data");
 
-    if (!router->bridge->navigator.serviceWorker.protocols.hasHandler(scheme)) {
+    if (!dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.protocols.hasHandler(scheme)) {
       return reply(Result::Err { message, JSON::Object::Entries {
         {"message", "Protocol handler scheme is not registered."}
       }});
     }
 
-    router->bridge->navigator.serviceWorker.protocols.setHandlerData(scheme, { data });
+    dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.protocols.setHandlerData(scheme, { data });
 
     reply(Result { message.seq, message });
   });
@@ -2403,7 +2405,7 @@ static void mapIPCRoutes (Router *router) {
 
     const auto scheme = message.get("scheme");
 
-    for (const auto& entry : router->bridge->navigator.serviceWorker.registrations) {
+    for (const auto& entry : dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.registrations) {
       const auto& scope = entry.first;
       const auto& registration = entry.second;
       if (registration.options.scheme == scheme) {
@@ -2413,7 +2415,7 @@ static void mapIPCRoutes (Router *router) {
             {"id", registration.id},
             {"scope", scope},
             {"scheme", scheme},
-            {"scriptURL", registration.scriptURL}
+            {"scriptURL", registration.options.scriptURL}
           }}
         };
         return reply(Result { message.seq, message, json });
@@ -2437,7 +2439,7 @@ static void mapIPCRoutes (Router *router) {
 
     const auto key = message.get("key");
     const auto value = message.get("value");
-    Env::set(key, value);
+    env::set(key, value);
     reply(Result {
       message.seq,
       message,
@@ -2460,7 +2462,7 @@ static void mapIPCRoutes (Router *router) {
     }
 
     const auto key = message.get("key");
-    const auto value = Env::get(key);
+    const auto value = env::get(key);
     reply(Result {
       message.seq,
       message,
@@ -2478,23 +2480,23 @@ static void mapIPCRoutes (Router *router) {
   router->map("stdout", [=](auto message, auto router, auto reply) {
     if (message.value.size() > 0) {
       #if SOCKET_RUNTIME_PLATFORM_APPLE
-        int seq = ++router->bridge->core->logSeq;
+        int seq = ++router->bridge.core->logSeq;
         auto msg = String(std::to_string(seq) + "::::" + message.value.c_str());
         os_log_with_type(SOCKET_RUNTIME_OS_LOG_BUNDLE, OS_LOG_TYPE_INFO, "%{public}s", msg.c_str());
 
-        if (Env::get("SSC_LOG_SOCKET").size() > 0) {
-          Core::UDP::SendOptions options;
+        if (env::get("SSC_LOG_SOCKET").size() > 0) {
+          ssc::runtime::core::services::UDP::SendOptions options;
           options.size = 2;
           options.address = "0.0.0.0";
-          options.port = std::stoi(Env::get("SSC_LOG_SOCKET"));
+          options.port = std::stoi(env::get("SSC_LOG_SOCKET"));
           options.ephemeral = true;
-          options.bytes.reset(new char[3]{ '+', 'N', '\0' });
-          router->bridge->core->udp.send("-1", 0, options, [](auto seq, auto json, auto post) {});
+          options.bytes.reset(new unsigned char[3]{ '+', 'N', '\0' });
+          router->bridge.core->udp.send("-1", 0, options, [](auto seq, auto json, auto queuedResponse) {});
         }
       #endif
-      IO::write(message.value, false);
-    } else if (message.buffer.bytes != nullptr && message.buffer.size > 0) {
-      IO::write(String(message.buffer.bytes.get(), message.buffer.size), false);
+      io::write(message.value, false);
+    } else if (message.buffer.size() > 0) {
+      io::write(message.buffer.str(), false);
     }
 
     reply(Result { message.seq, message });
@@ -2511,23 +2513,23 @@ static void mapIPCRoutes (Router *router) {
       }
     } else if (message.value.size() > 0) {
       #if SOCKET_RUNTIME_PLATFORM_APPLE
-        int seq = ++router->bridge->core->logSeq;
+        int seq = ++router->bridge.core->logSeq;
         auto msg = String(std::to_string(seq) + "::::" + message.value.c_str());
         os_log_with_type(SOCKET_RUNTIME_OS_LOG_BUNDLE, OS_LOG_TYPE_ERROR, "%{public}s", msg.c_str());
 
-        if (Env::get("SSC_LOG_SOCKET").size() > 0) {
-          Core::UDP::SendOptions options;
+        if (env::get("SSC_LOG_SOCKET").size() > 0) {
+          ssc::runtime::core::services::UDP::SendOptions options;
           options.size = 2;
           options.address = "0.0.0.0";
-          options.port = std::stoi(Env::get("SSC_LOG_SOCKET"));
+          options.port = std::stoi(env::get("SSC_LOG_SOCKET"));
           options.ephemeral = true;
-          options.bytes.reset(new char[3]{ '+', 'N', '\0' });
-          router->bridge->core->udp.send("-1", 0, options, [](auto seq, auto json, auto post) {});
+          options.bytes.reset(new unsigned char[3]{ '+', 'N', '\0' });
+          router->bridge.core->udp.send("-1", 0, options, [](auto seq, auto json, auto queuedResponse) {});
         }
       #endif
-      IO::write(message.value, true);
-    } else if (message.buffer.bytes != nullptr && message.buffer.size > 0) {
-      IO::write(String(message.buffer.bytes.get(), message.buffer.size), true);
+      io::write(message.value, true);
+    } else if (message.buffer.size() > 0) {
+      io::write(message.str(), true);
     }
 
     reply(Result { message.seq, message });
@@ -2540,19 +2542,28 @@ static void mapIPCRoutes (Router *router) {
    */
   router->map("serviceWorker.register", [=](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"scriptURL", "scope"});
+    auto app = App::sharedApplication();
 
     if (err.type != JSON::Type::Null) {
       return reply(Result { message.seq, message, err });
     }
 
-    const auto options = ServiceWorkerContainer::RegistrationOptions {
-      .type = ServiceWorkerContainer::RegistrationOptions::Type::Module,
-      .scope = message.get("scope"),
+    const auto options = serviceworker::Registration::Options {
+      .type = serviceworker::Registration::Options::Type::Module,
       .scriptURL = message.get("scriptURL"),
+      .scope = message.get("scope"),
       .serializedWorkerArgs = encodeURIComponent(message.get("__runtime_worker_args"))
     };
 
-    const auto registration = router->bridge->navigator.serviceWorker.registerServiceWorker(options);
+    const auto url = URL(options.scriptURL);
+    const auto origin = webview::Origin(url.str());
+
+    auto serviceWorkerServer = app->runtime.serviceWorkerManager.get(origin.name());
+    if (!serviceWorkerServer) {
+      serviceWorkerServer = dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer;
+    }
+
+    const auto registration = serviceWorkerServer->container.registerServiceWorker(options);
     const auto json = JSON::Object {
       JSON::Object::Entries {
         {"registration", registration.json()}
@@ -2566,7 +2577,7 @@ static void mapIPCRoutes (Router *router) {
    * Resets the service worker container state.
    */
   router->map("serviceWorker.reset", [=](auto message, auto router, auto reply) {
-    router->bridge->navigator.serviceWorker.reset();
+    dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.reset();
     reply(Result::Data { message, JSON::Object {}});
   });
 
@@ -2582,7 +2593,7 @@ static void mapIPCRoutes (Router *router) {
     }
 
     const auto scope = message.get("scope");
-    router->bridge->navigator.serviceWorker.unregisterServiceWorker(scope);
+    dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.unregisterServiceWorker(scope);
 
     return reply(Result::Data { message, JSON::Object {} });
   });
@@ -2600,14 +2611,14 @@ static void mapIPCRoutes (Router *router) {
 
     const auto scope = message.get("scope");
 
-    for (const auto& entry : router->bridge->navigator.serviceWorker.registrations) {
+    for (const auto& entry : dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.registrations) {
       const auto& registration = entry.second;
       if (scope.starts_with(registration.options.scope)) {
         auto json = JSON::Object {
           JSON::Object::Entries {
             {"registration", registration.json()},
             {"client", JSON::Object::Entries {
-              {"id", std::to_string(router->bridge->id)}
+              {"id", std::to_string(router->bridge.client.id)}
             }}
           }
         };
@@ -2624,7 +2635,7 @@ static void mapIPCRoutes (Router *router) {
    */
   router->map("serviceWorker.getRegistrations", [=](auto message, auto router, auto reply) {
     auto json = JSON::Array::Entries {};
-    for (const auto& entry : router->bridge->navigator.serviceWorker.registrations) {
+    for (const auto& entry : dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.registrations) {
       const auto& registration = entry.second;
       json.push_back(registration.json());
     }
@@ -2638,53 +2649,56 @@ static void mapIPCRoutes (Router *router) {
    * @param pathname
    * @param query
    */
-  router->map("serviceWorker.fetch", [=](auto message, auto router, auto reply) {
-    auto fetch = ServiceWorkerContainer::FetchRequest {
-      message.get("method", "GET"),
-      message.get("scheme", "socket"),
-      message.get("hostname"),
-      message.get("pathname", "/"),
-      message.get("query", ""),
-      Headers(message.get("headers", "")),
-      ServiceWorkerContainer::FetchBody { message.buffer.size, message.buffer.bytes },
-      router->bridge->client
-    };
+  router->map("serviceWorker.fetch", [](auto message, auto router, auto reply) {
+    const auto app = App::sharedApplication();
+    auto fetch = serviceworker::Request();
+    fetch.method = message.get("method", "GET");
+    fetch.scheme = message.get("scheme", "socket");
+    fetch.url.hostname = message.get("hostname");
+    fetch.url.pathname = message.get("pathname", "/");
+    fetch.url.searchParams.set(message.get("query", ""));
+    fetch.headers = message.get("headers", "");
+    fetch.body = message.buffer;
 
-    if (fetch.scheme == "socket" && fetch.hostname.size() == 0) {
-      fetch.hostname = router->bridge->userConfig["meta_bundle_identifier"];
+    if (fetch.scheme == "socket" && fetch.url.hostname.size() == 0) {
+      fetch.url.hostname = router->bridge.userConfig["meta_bundle_identifier"];
     }
 
     if (fetch.method == "OPTIONS") {
-      const auto response = ServiceWorkerContainer::FetchResponse { rand64(), 204 };
+      const auto response = serviceworker::Response(204);
       return reply(Result {
         message.seq,
         message,
         JSON::Object {},
-        Post {
+        QueuedResponse {
           rand64(),
           0,
-          response.body.bytes,
-          response.body.size,
+          response.body.pointer(),
+          response.body.size(),
           response.headers.str()
         }
       });
     }
 
     if (fetch.scheme == "npm") {
-      if (fetch.hostname.size() > 0) {
-        fetch.pathname = "/" + fetch.hostname;
+      if (fetch.url.hostname.size() > 0) {
+        fetch.url.pathname = "/" + fetch.url.hostname;
       }
 
-      fetch.hostname = router->bridge->userConfig["meta_bundle_identifier"];
+      fetch.url.hostname = dynamic_cast<Bridge&>(router->bridge).userConfig["meta_bundle_identifier"];
     }
 
-    const auto scope = router->bridge->navigator.serviceWorker.protocols.getServiceWorkerScope(fetch.scheme);
+    const auto scope = dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.protocols.getServiceWorkerScope(fetch.scheme);
 
     if (scope.size() > 0) {
-      fetch.pathname = scope + fetch.pathname;
+      fetch.url.pathname = scope + fetch.url.pathname;
     }
 
-    const auto fetched = router->bridge->navigator.serviceWorker.fetch(fetch, [=] (auto res) mutable {
+    const auto options = serviceworker::Fetch::Options {
+      router->bridge.client
+    };
+
+    const auto fetched = app->runtime.serviceWorkerManager.fetch(fetch, options, [=] (auto res) mutable {
       if (res.statusCode == 0) {
         return reply(Result::Err {
           message,
@@ -2697,11 +2711,11 @@ static void mapIPCRoutes (Router *router) {
           message.seq,
           message,
           JSON::Object {},
-          Post {
+          QueuedResponse {
             rand64(),
             0,
-            res.body.bytes,
-            res.body.size,
+            res.body.buffer.pointer(),
+            res.body.buffer.size(),
             res.headers.str()
           }
         });
@@ -2733,7 +2747,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    router->bridge->navigator.serviceWorker.skipWaiting(id);
+    dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.skipWaiting(id);
 
     reply(Result::Data { message, JSON::Object {}});
   });
@@ -2757,10 +2771,10 @@ static void mapIPCRoutes (Router *router) {
     const auto scriptURL = message.get("scriptURL");
 
     if (workerURL.size() > 0 && scriptURL.size() > 0) {
-      router->bridge->navigator.location.workers[workerURL] = scriptURL;
+      dynamic_cast<Bridge&>(router->bridge).navigator.location.workers[workerURL] = scriptURL;
     }
 
-    router->bridge->navigator.serviceWorker.updateState(id, message.get("state"));
+    dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.updateState(id, message.get("state"));
     reply(Result::Data { message, JSON::Object {}});
   });
 
@@ -2780,7 +2794,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    for (auto& entry : router->bridge->navigator.serviceWorker.registrations) {
+    for (auto& entry : dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.registrations) {
       if (entry.second.id == id) {
         auto& registration = entry.second;
         registration.storage.set(message.get("key"), message.get("value"));
@@ -2812,7 +2826,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    for (auto& entry : router->bridge->navigator.serviceWorker.registrations) {
+    for (auto& entry : dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.registrations) {
       if (entry.second.id == id) {
         auto& registration = entry.second;
         return reply(Result::Data {
@@ -2848,7 +2862,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    for (auto& entry : router->bridge->navigator.serviceWorker.registrations) {
+    for (auto& entry : dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.registrations) {
       if (entry.second.id == id) {
         auto& registration = entry.second;
         registration.storage.remove(message.get("key"));
@@ -2879,7 +2893,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    for (auto& entry : router->bridge->navigator.serviceWorker.registrations) {
+    for (auto& entry : dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.registrations) {
       if (entry.second.id == id) {
         auto& registration = entry.second;
         registration.storage.clear();
@@ -2910,7 +2924,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    for (auto& entry : router->bridge->navigator.serviceWorker.registrations) {
+    for (auto& entry : dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.registrations) {
       if (entry.second.id == id) {
         auto& registration = entry.second;
         return reply(Result::Data { message, registration.storage.json() });
@@ -2936,7 +2950,7 @@ static void mapIPCRoutes (Router *router) {
     uint32_t timeout;
     REQUIRE_AND_GET_MESSAGE_VALUE(timeout, "timeout", std::stoul);
     const auto wait = message.get("wait") == "true";
-    const Core::Timers::ID id = router->bridge->core->timers.setTimeout(timeout, [=]() {
+    const ssc::runtime::core::services::Timers::ID id = router->bridge.getRuntime()->services.timers.setTimeout(timeout, [=]() {
       if (wait) {
         reply(Result::Data { message, JSON::Object::Entries {{"id", std::to_string(id) }}});
       }
@@ -2956,7 +2970,7 @@ static void mapIPCRoutes (Router *router) {
 
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
-    router->bridge->core->timers.clearTimeout(id);
+    router->bridge.getRuntime()->services.timers.clearTimeout(id);
 
     reply(Result::Data { message, JSON::Object::Entries {{"id", std::to_string(id) }}});
   });
@@ -2970,7 +2984,7 @@ static void mapIPCRoutes (Router *router) {
    * @param reuseAddr Reuse underlying UDP socket address (default: false)
    */
   router->map("udp.bind", [=](auto message, auto router, auto reply) {
-    Core::UDP::BindOptions options;
+    ssc::runtime::core::services::UDP::BindOptions options;
     auto err = validateMessageParameters(message, {"id", "port"});
 
     if (err.type != JSON::Type::Null) {
@@ -2984,7 +2998,7 @@ static void mapIPCRoutes (Router *router) {
     options.reuseAddr = message.get("reuseAddr") == "true";
     options.address = message.get("address", "0.0.0.0");
 
-    router->bridge->core->udp.bind(
+    router->bridge.getRuntime()->services.udp.bind(
       message.seq,
       id,
       options,
@@ -3006,7 +3020,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    router->bridge->core->udp.close(message.seq, id, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+    router->bridge.getRuntime()->services.udp.close(message.seq, id, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   /**
@@ -3023,14 +3037,14 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    Core::UDP::ConnectOptions options;
+    ssc::runtime::core::services::UDP::ConnectOptions options;
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
     REQUIRE_AND_GET_MESSAGE_VALUE(options.port, "port", std::stoi);
 
     options.address = message.get("address", "0.0.0.0");
 
-    router->bridge->core->udp.connect(
+    router->bridge.getRuntime()->services.udp.connect(
       message.seq,
       id,
       options,
@@ -3052,7 +3066,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    router->bridge->core->udp.disconnect(
+    router->bridge.getRuntime()->services.udp.disconnect(
       message.seq,
       id,
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -3073,7 +3087,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    router->bridge->core->udp.getPeerName(
+    router->bridge.getRuntime()->services.udp.getPeerName(
       message.seq,
       id,
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -3094,7 +3108,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    router->bridge->core->udp.getSockName(
+    router->bridge.getRuntime()->services.udp.getSockName(
       message.seq,
       id,
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -3115,7 +3129,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    router->bridge->core->udp.getState(
+    router->bridge.getRuntime()->services.udp.getState(
       message.seq,
       id,
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -3137,26 +3151,26 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    router->bridge->core->udp.readStart(
+    router->bridge.getRuntime()->services.udp.readStart(
       message.seq,
       id,
-      [id, router, message, reply](auto seq, auto json, auto post) {
-        if (seq == "-1" && router->bridge->core->conduit.has(id)) {
+      [id, router, message, reply](auto seq, auto json, auto queuedResponse) {
+        if (seq == "-1" && router->bridge.getRuntime()->services.conduit.has(id)) {
           auto data = json["data"];
 
-          CoreConduit::Options options = {
+          ssc::runtime::core::services::Conduit::Message::Options options = {
             { "port", data["port"].str() },
             { "address", data["address"].template as<JSON::String>().data }
           };
 
-          auto client = router->bridge->core->conduit.get(id);
+          auto client = router->bridge.getRuntime()->services.conduit.get(id);
           if (client) {
-            client->send(options, post.body, post.length);
+            client->send(options, queuedResponse.body, queuedResponse.length);
             return;
           }
         }
 
-        reply(Result { seq, message, json, post });
+        reply(Result { seq, message, json, queuedResponse });
       }
     );
   });
@@ -3176,7 +3190,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    router->bridge->core->udp.readStop(
+    router->bridge.getRuntime()->services.udp.readStop(
       message.seq,
       id,
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -3202,17 +3216,17 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    Core::UDP::SendOptions options;
+    ssc::runtime::core::services::UDP::SendOptions options;
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
     REQUIRE_AND_GET_MESSAGE_VALUE(options.port, "port", std::stoi);
 
-    options.size = message.buffer.size;
     options.ephemeral = message.get("ephemeral") == "true";
     options.address = message.get("address", "0.0.0.0");
-    options.bytes = message.buffer.bytes;
+    options.bytes = message.buffer.pointer();
+    options.size = message.buffer.size();
 
-    router->bridge->core->udp.send(
+    router->bridge.getRuntime()->services.udp.send(
       message.seq,
       id,
       options,
@@ -3242,18 +3256,18 @@ static void mapIPCRoutes (Router *router) {
     const auto defaultPath = message.get("defaultPath");
     const auto title = message.get("title", isSave ? "Save" : "Open");
     const auto app = App::sharedApplication();
-    const auto window = app->windowManager.getWindowForBridge(router->bridge);
+    const auto window = app->runtime.windowManager.getWindowForBridge(dynamic_cast<window::IBridge*>(&router->bridge));
 
     app->dispatch([=]() {
-      Dialog* dialog = nullptr;
+      window::Dialog* dialog = nullptr;
 
       if (window) {
         dialog = &window->dialog;
       } else {
-        dialog = new Dialog();
+        dialog = new window::Dialog();
       }
 
-      const auto options = Dialog::FileSystemPickerOptions {
+      const auto options = window::Dialog::FileSystemPickerOptions {
         .prefersDarkMode = message.get("prefersDarkMode") == "true",
         .directories = allowDirs,
         .multiple = allowMultiple,
@@ -3327,7 +3341,7 @@ static void mapIPCRoutes (Router *router) {
 
     REQUIRE_AND_GET_MESSAGE_VALUE(targetWindowIndex, "targetWindowIndex", std::stoi);
 
-    const auto window = app->windowManager.getWindow(targetWindowIndex);
+    const auto window = app->runtime.windowManager.getWindow(targetWindowIndex);
 
     if (!window) {
       return reply(Result::Err {
@@ -3341,8 +3355,8 @@ static void mapIPCRoutes (Router *router) {
 
     reply(Result::Data { message, window->json() });
 
-    app->core->setTimeout(16, [=] () {
-      app->windowManager.destroyWindow(targetWindowIndex);
+    app->runtime.services.timers.setTimeout(16, [=] () {
+      app->runtime.windowManager.destroyWindow(targetWindowIndex);
     });
   });
 
@@ -3391,6 +3405,12 @@ static void mapIPCRoutes (Router *router) {
 
     REQUIRE_AND_GET_MESSAGE_VALUE(targetWindowIndex, "targetWindowIndex", std::stoi);
 
+    if (targetWindowIndex == -1) {
+      targetWindowIndex = app->runtime.windowManager.getRandomWindowIndex(
+        message.get("reserved") == "true"
+      );
+    }
+
     if (
       targetWindowIndex >= SOCKET_RUNTIME_MAX_WINDOWS &&
       message.get("headless") != "true" &&
@@ -3405,8 +3425,8 @@ static void mapIPCRoutes (Router *router) {
 
     app->dispatch([=]() {
       if (
-        app->windowManager.getWindow(targetWindowIndex) != nullptr &&
-        app->windowManager.getWindowStatus(targetWindowIndex) != WindowManager::WindowStatus::WINDOW_NONE
+        app->runtime.windowManager.getWindow(targetWindowIndex) != nullptr &&
+        app->runtime.windowManager.getWindowStatus(targetWindowIndex) != window::Manager::WindowStatus::WINDOW_NONE
       ) {
         return reply(Result::Err {
           message,
@@ -3414,12 +3434,12 @@ static void mapIPCRoutes (Router *router) {
         });
       }
 
-      const auto window = app->windowManager.getWindow(0);
+      const auto window = app->runtime.windowManager.getWindow(0);
       const auto screen = window->getScreenSize();
       auto options = Window::Options {};
 
       options.shouldExitApplicationOnClose = message.get("shouldExitApplicationOnClose") == "true" ? true : false;
-      options.headless = app->userConfig["build_headless"] == "true";
+      options.headless = app->runtime.userConfig["build_headless"] == "true";
 
       if (message.get("headless") == "true") {
         options.headless = true;
@@ -3486,21 +3506,27 @@ static void mapIPCRoutes (Router *router) {
         options.features.useGlobalNodeJS = false;
       }
 
-      auto createdWindow = app->windowManager.createWindow(options);
+      auto createdWindow = app->runtime.windowManager.createWindow(options);
+      if (createdWindow != nullptr) {
+        if (message.has("title")) {
+          createdWindow->setTitle(message.get("title"));
+        }
 
-      if (message.has("title")) {
-        createdWindow->setTitle(message.get("title"));
+        if (message.has("url")) {
+          createdWindow->navigate(message.get("url"));
+        }
+
+        if (!options.headless) {
+          createdWindow->show();
+        }
+
+        reply(Result::Data { message, createdWindow->json() });
+      } else {
+        reply(Result::Err { message, JSON::Object::Entries {
+          {"type", "BadRequestError"},
+          {"message", "Failed to create window"}
+        }});
       }
-
-      if (message.has("url")) {
-        createdWindow->navigate(message.get("url"));
-      }
-
-      if (!options.headless) {
-        createdWindow->show();
-      }
-
-      reply(Result::Data { message, createdWindow->json() });
     });
   });
 
@@ -3525,10 +3551,10 @@ static void mapIPCRoutes (Router *router) {
     REQUIRE_AND_GET_MESSAGE_VALUE(targetWindowIndex, "targetWindowIndex", std::stoi);
 
     app->dispatch([=]() {
-      const auto window = app->windowManager.getWindow(targetWindowIndex);
-      const auto windowStatus = app->windowManager.getWindowStatus(targetWindowIndex);
+      const auto window = app->runtime.windowManager.getWindow(targetWindowIndex);
+      const auto windowStatus = app->runtime.windowManager.getWindowStatus(targetWindowIndex);
 
-      if (!window || windowStatus == WindowManager::WindowStatus::WINDOW_NONE) {
+      if (!window || windowStatus == window::Manager::WindowStatus::WINDOW_NONE) {
         return reply(Result::Err {
           message,
           JSON::Object::Entries {
@@ -3563,10 +3589,10 @@ static void mapIPCRoutes (Router *router) {
     REQUIRE_AND_GET_MESSAGE_VALUE(targetWindowIndex, "targetWindowIndex", std::stoi);
 
     app->dispatch([=]() {
-      const auto window = app->windowManager.getWindow(targetWindowIndex);
-      const auto windowStatus = app->windowManager.getWindowStatus(targetWindowIndex);
+      const auto window = app->runtime.windowManager.getWindow(targetWindowIndex);
+      const auto windowStatus = app->runtime.windowManager.getWindowStatus(targetWindowIndex);
 
-      if (!window || windowStatus == WindowManager::WindowStatus::WINDOW_NONE) {
+      if (!window || windowStatus == window::Manager::WindowStatus::WINDOW_NONE) {
         return reply(Result::Err {
           message,
           JSON::Object::Entries {
@@ -3600,10 +3626,10 @@ static void mapIPCRoutes (Router *router) {
     REQUIRE_AND_GET_MESSAGE_VALUE(index, "index", std::stoi);
 
     app->dispatch([=]() {
-      const auto window = app->windowManager.getWindow(index);
-      const auto windowStatus = app->windowManager.getWindowStatus(index);
+      const auto window = app->runtime.windowManager.getWindow(index);
+      const auto windowStatus = app->runtime.windowManager.getWindowStatus(index);
 
-      if (!window || windowStatus == WindowManager::WindowStatus::WINDOW_NONE) {
+      if (!window || windowStatus == window::Manager::WindowStatus::WINDOW_NONE) {
         return reply(Result::Err {
           message,
           JSON::Object::Entries {
@@ -3637,10 +3663,10 @@ static void mapIPCRoutes (Router *router) {
 
     REQUIRE_AND_GET_MESSAGE_VALUE(targetWindowIndex, "targetWindowIndex", std::stoi);
 
-    const auto window = app->windowManager.getWindow(targetWindowIndex);
-    const auto windowStatus = app->windowManager.getWindowStatus(targetWindowIndex);
+    const auto window = app->runtime.windowManager.getWindow(targetWindowIndex);
+    const auto windowStatus = app->runtime.windowManager.getWindowStatus(targetWindowIndex);
 
-    if (!window || windowStatus == WindowManager::WindowStatus::WINDOW_NONE) {
+    if (!window || windowStatus == window::Manager::WindowStatus::WINDOW_NONE) {
       return reply(Result::Err {
         message,
         JSON::Object::Entries {
@@ -3676,10 +3702,10 @@ static void mapIPCRoutes (Router *router) {
 
     REQUIRE_AND_GET_MESSAGE_VALUE(targetWindowIndex, "targetWindowIndex", std::stoi);
 
-    const auto window = app->windowManager.getWindow(targetWindowIndex);
-    const auto windowStatus = app->windowManager.getWindowStatus(targetWindowIndex);
+    const auto window = app->runtime.windowManager.getWindow(targetWindowIndex);
+    const auto windowStatus = app->runtime.windowManager.getWindowStatus(targetWindowIndex);
 
-    if (!window || windowStatus == WindowManager::WindowStatus::WINDOW_NONE) {
+    if (!window || windowStatus == window::Manager::WindowStatus::WINDOW_NONE) {
       return reply(Result::Err {
         message,
         JSON::Object::Entries {
@@ -3725,10 +3751,10 @@ static void mapIPCRoutes (Router *router) {
 
     REQUIRE_AND_GET_MESSAGE_VALUE(targetWindowIndex, "targetWindowIndex", std::stoi);
 
-    const auto window = app->windowManager.getWindow(targetWindowIndex);
-    const auto windowStatus = app->windowManager.getWindowStatus(targetWindowIndex);
+    const auto window = app->runtime.windowManager.getWindow(targetWindowIndex);
+    const auto windowStatus = app->runtime.windowManager.getWindowStatus(targetWindowIndex);
 
-    if (!window || windowStatus == WindowManager::WindowStatus::WINDOW_NONE) {
+    if (!window || windowStatus == window::Manager::WindowStatus::WINDOW_NONE) {
       return reply(Result::Err {
         message,
         JSON::Object::Entries {
@@ -3768,10 +3794,10 @@ static void mapIPCRoutes (Router *router) {
 
     REQUIRE_AND_GET_MESSAGE_VALUE(targetWindowIndex, "targetWindowIndex", std::stoi);
 
-    const auto window = app->windowManager.getWindow(targetWindowIndex);
-    const auto windowStatus = app->windowManager.getWindowStatus(targetWindowIndex);
+    const auto window = app->runtime.windowManager.getWindow(targetWindowIndex);
+    const auto windowStatus = app->runtime.windowManager.getWindowStatus(targetWindowIndex);
 
-    if (!window || windowStatus == WindowManager::WindowStatus::WINDOW_NONE) {
+    if (!window || windowStatus == window::Manager::WindowStatus::WINDOW_NONE) {
       return reply(Result::Err {
         message,
         JSON::Object::Entries {
@@ -3782,8 +3808,8 @@ static void mapIPCRoutes (Router *router) {
     }
 
     const auto requestedURL = message.get("url");
-    const auto allowed = window->bridge.navigator.isNavigationRequestAllowed(
-      window->bridge.navigator.location.href,
+    const auto allowed = window->bridge->navigator.isNavigationRequestAllowed(
+      window->bridge->navigator.location.str(),
       requestedURL
     );
 
@@ -3792,8 +3818,8 @@ static void mapIPCRoutes (Router *router) {
     }
 
     app->dispatch([=]() {
-      window->bridge.navigator.location.set(requestedURL);
-      window->bridge.navigate(requestedURL);
+      window->bridge->navigator.location.set(requestedURL);
+      window->bridge->navigate(requestedURL);
       reply(Result::Data { message, window->json() });
     });
   });
@@ -3818,10 +3844,10 @@ static void mapIPCRoutes (Router *router) {
 
     REQUIRE_AND_GET_MESSAGE_VALUE(targetWindowIndex, "targetWindowIndex", std::stoi);
 
-    const auto window = app->windowManager.getWindow(targetWindowIndex);
-    const auto windowStatus = app->windowManager.getWindowStatus(targetWindowIndex);
+    const auto window = app->runtime.windowManager.getWindow(targetWindowIndex);
+    const auto windowStatus = app->runtime.windowManager.getWindowStatus(targetWindowIndex);
 
-    if (!window || windowStatus == WindowManager::WindowStatus::WINDOW_NONE) {
+    if (!window || windowStatus == window::Manager::WindowStatus::WINDOW_NONE) {
       return reply(Result::Err {
         message,
         JSON::Object::Entries {
@@ -3861,7 +3887,7 @@ static void mapIPCRoutes (Router *router) {
     }
 
     const auto value = message.get("value");
-    const auto window = app->windowManager.getWindow(index);
+    const auto window = app->runtime.windowManager.getWindow(index);
 
     if (!window) {
       return reply(Result::Err {
@@ -3907,7 +3933,7 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, "Invalid target window index" });
     }
 
-    const auto targetWindow = app->windowManager.getWindow(targetWindowIndex);
+    const auto targetWindow = app->runtime.windowManager.getWindow(targetWindowIndex);
 
     if (!targetWindow) {
       return reply(Result::Err {
@@ -3980,10 +4006,10 @@ static void mapIPCRoutes (Router *router) {
       });
     }
 
-    const auto window = app->windowManager.getWindow(targetWindowIndex);
-    const auto windowStatus = app->windowManager.getWindowStatus(targetWindowIndex);
+    const auto window = app->runtime.windowManager.getWindow(targetWindowIndex);
+    const auto windowStatus = app->runtime.windowManager.getWindowStatus(targetWindowIndex);
 
-    if (!window || windowStatus == WindowManager::WindowStatus::WINDOW_NONE) {
+    if (!window || windowStatus == window::Manager::WindowStatus::WINDOW_NONE) {
       return reply(Result::Err {
         message,
         JSON::Object::Entries {
@@ -4016,10 +4042,10 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    const auto window = app->windowManager.getWindow(message.index);
-    const auto windowStatus = app->windowManager.getWindowStatus(message.index);
+    const auto window = app->runtime.windowManager.getWindow(message.index);
+    const auto windowStatus = app->runtime.windowManager.getWindowStatus(message.index);
 
-    if (!window || windowStatus == WindowManager::WindowStatus::WINDOW_NONE) {
+    if (!window || windowStatus == window::Manager::WindowStatus::WINDOW_NONE) {
       return reply(Result::Err {
         message,
         JSON::Object::Entries {
@@ -4066,10 +4092,10 @@ static void mapIPCRoutes (Router *router) {
 
     REQUIRE_AND_GET_MESSAGE_VALUE(targetWindowIndex, "targetWindowIndex", std::stoi);
 
-    const auto window = app->windowManager.getWindow(targetWindowIndex);
-    const auto windowStatus = app->windowManager.getWindowStatus(targetWindowIndex);
+    const auto window = app->runtime.windowManager.getWindow(targetWindowIndex);
+    const auto windowStatus = app->runtime.windowManager.getWindowStatus(targetWindowIndex);
 
-    if (!window || windowStatus == WindowManager::WindowStatus::WINDOW_NONE) {
+    if (!window || windowStatus == window::Manager::WindowStatus::WINDOW_NONE) {
       return reply(Result::Err {
         message,
         JSON::Object::Entries {
@@ -4111,10 +4137,10 @@ static void mapIPCRoutes (Router *router) {
 
     REQUIRE_AND_GET_MESSAGE_VALUE(targetWindowIndex, "targetWindowIndex", std::stoi);
 
-    const auto window = app->windowManager.getWindow(targetWindowIndex);
-    const auto windowStatus = app->windowManager.getWindowStatus(targetWindowIndex);
+    const auto window = app->runtime.windowManager.getWindow(targetWindowIndex);
+    const auto windowStatus = app->runtime.windowManager.getWindowStatus(targetWindowIndex);
 
-    if (!window || windowStatus == WindowManager::WindowStatus::WINDOW_NONE) {
+    if (!window || windowStatus == window::Manager::WindowStatus::WINDOW_NONE) {
       return reply(Result::Err {
         message,
         JSON::Object::Entries {
@@ -4155,10 +4181,10 @@ static void mapIPCRoutes (Router *router) {
 
     REQUIRE_AND_GET_MESSAGE_VALUE(targetWindowIndex, "targetWindowIndex", std::stoi);
 
-    const auto window = app->windowManager.getWindow(targetWindowIndex);
-    const auto windowStatus = app->windowManager.getWindowStatus(targetWindowIndex);
+    const auto window = app->runtime.windowManager.getWindow(targetWindowIndex);
+    const auto windowStatus = app->runtime.windowManager.getWindowStatus(targetWindowIndex);
 
-    if (!window || windowStatus == WindowManager::WindowStatus::WINDOW_NONE) {
+    if (!window || windowStatus == window::Manager::WindowStatus::WINDOW_NONE) {
       return reply(Result::Err {
         message,
         JSON::Object::Entries {
@@ -4194,10 +4220,10 @@ static void mapIPCRoutes (Router *router) {
 
     REQUIRE_AND_GET_MESSAGE_VALUE(targetWindowIndex, "targetWindowIndex", std::stoi);
 
-    const auto window = app->windowManager.getWindow(targetWindowIndex);
-    const auto windowStatus = app->windowManager.getWindowStatus(targetWindowIndex);
+    const auto window = app->runtime.windowManager.getWindow(targetWindowIndex);
+    const auto windowStatus = app->runtime.windowManager.getWindowStatus(targetWindowIndex);
 
-    if (!window || windowStatus == WindowManager::WindowStatus::WINDOW_NONE) {
+    if (!window || windowStatus == window::Manager::WindowStatus::WINDOW_NONE) {
       return reply(Result::Err {
         message,
         JSON::Object::Entries {
@@ -4236,10 +4262,10 @@ static void mapIPCRoutes (Router *router) {
 
     REQUIRE_AND_GET_MESSAGE_VALUE(targetWindowIndex, "targetWindowIndex", std::stoi);
 
-    const auto window = app->windowManager.getWindow(targetWindowIndex);
-    const auto windowStatus = app->windowManager.getWindowStatus(targetWindowIndex);
+    const auto window = app->runtime.windowManager.getWindow(targetWindowIndex);
+    const auto windowStatus = app->runtime.windowManager.getWindowStatus(targetWindowIndex);
 
-    if (!window || windowStatus == WindowManager::WindowStatus::WINDOW_NONE) {
+    if (!window || windowStatus == window::Manager::WindowStatus::WINDOW_NONE) {
       return reply(Result::Err {
         message,
         JSON::Object::Entries {
@@ -4256,7 +4282,7 @@ static void mapIPCRoutes (Router *router) {
   });
 }
 
-namespace SSC::IPC {
+namespace ssc::runtime::ipc {
   void Router::mapRoutes () {
     mapIPCRoutes(this);
   }

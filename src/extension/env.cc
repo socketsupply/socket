@@ -1,5 +1,8 @@
 #include "extension.hh"
 
+using ssc::runtime::config::getUserConfig;
+using ssc::runtime::string::split;
+
 const char* sapi_env_get (
   sapi_context_t* ctx,
   const char* name
@@ -10,19 +13,19 @@ const char* sapi_env_get (
     return nullptr;
   }
 
-  static const auto userConfig = SSC::getUserConfig();
+  static const auto userConfig = getUserConfig();
 
   if (!userConfig.contains("build_env")) {
     return nullptr;
   }
 
-  static const auto allowed = SSC::split(userConfig.at("build_env"), ' ');
+  static const auto allowed = split(userConfig.at("build_env"), ' ');
 
   if (std::find(allowed.begin(), allowed.end(), name) == allowed.end()) {
     return nullptr;
   }
 
-  auto value = SSC::Env::get(name);
+  auto value = ssc::runtime::env::get(name);
   if (value.size() == 0) {
     return nullptr;
   }

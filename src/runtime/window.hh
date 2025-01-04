@@ -15,8 +15,6 @@
 #define SOCKET_RUNTIME_MAX_WINDOWS 64
 #endif
 
-#define SOCKET_RUNTIME_SERVICE_WORKER_CONTAINER_DEFAULT_WINDOW_INDEX SOCKET_RUNTIME_MAX_WINDOWS + 1
-
 #ifndef SOCKET_RUNTIME_MAX_WINDOWS_RESERVED
 #define SOCKET_RUNTIME_MAX_WINDOWS_RESERVED 32
 #endif
@@ -100,7 +98,6 @@ namespace ssc::runtime::window {
       virtual void configureSchemeHandlers (const webview::SchemeHandlers::Configuration&) = 0;
       virtual void configureNavigatorMounts () = 0;
       virtual bool evaluateJavaScript (const String&) = 0;
-      virtual bool dispatch (const context::DispatchCallback) = 0;
       virtual bool navigate (const String& url) = 0;
       virtual void init () = 0;
   };
@@ -307,6 +304,11 @@ namespace ssc::runtime::window {
          * `shouldExitApplicationOnClose` option is `true`.
          */
         ExitCallback onExit = nullptr;
+
+        /**
+         * The origin for this window.
+         */
+        webview::Origin origin;
       };
 
       /**
@@ -329,7 +331,7 @@ namespace ssc::runtime::window {
        * The IPC bridge that connects the application window's WebView to
        * the runtime and various core modules and functions.
        */
-      SharedPointer<IBridge> bridge;
+      SharedPointer<IBridge> bridge = nullptr;
 
       /**
        * The (x, y) screen coordinate position of the window.
@@ -454,7 +456,7 @@ namespace ssc::runtime::window {
       void resize (HWND window);
     #elif SOCKET_RUNTIME_PLATFORM_ANDROID
       String pendingNavigationLocation;
-      jobject androidWindowRef;
+      jobject self;
       Map<String, EvalCallback> evaluateJavaScriptCallbacks;
     #endif
 
@@ -570,7 +572,6 @@ namespace ssc::runtime::window {
           Manager &manager;
           Vector<String> pendingApplicationURLs;
           Mutex mutex;
-          int index = 0;
 
           ManagedWindow (
             Manager &manager,
@@ -611,6 +612,9 @@ namespace ssc::runtime::window {
 
       void destroy ();
       void configure (const ManagerOptions& configuration);
+
+      int getNextWindowIndex (bool reserved = false) const;
+      int getRandomWindowIndex (bool reserved = false) const;
 
       SharedPointer<ManagedWindow> getWindow (int index, const WindowStatus status);
       SharedPointer<ManagedWindow> getWindow (int index);

@@ -2,8 +2,10 @@
 #define SOCKET_RUNTIME_PLATFORM_H
 
 #include "platform/system.hh"
+#include "platform/types.hh"
 
 namespace ssc::runtime {
+  using namespace ssc::runtime::types;
   struct RuntimePlatform {
     const String arch;
     const String os;
@@ -17,7 +19,5 @@ namespace ssc::runtime {
 
   extern const RuntimePlatform platform;
   void msleep (uint64_t ms);
-  uint64_t rand64 ();
 }
-
 #endif

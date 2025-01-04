@@ -5,10 +5,10 @@ import { Notification } from '../notification.js'
 import { sleep } from '../timers.js'
 import globals from '../internal/globals.js'
 import crypto from '../crypto.js'
+import hooks from '../hooks.js'
 import ipc from '../ipc.js'
 
 export const workers = new Map()
-export const channel = new ipc.IPCBroadcastChannel('socket.runtime.serviceWorker')
 
 globals.register('ServiceWorkerContext.workers', workers)
 globals.register('ServiceWorkerContext.info', new Map())
@@ -24,7 +24,7 @@ sharedWorker.port.onmessage = (event) => {
       }
     }
   } else if (event.data?.showNotification && event.data.registration?.id) {
-    onShowNotification(event, sharedWorker.port)
+    onNotificationShow(event, sharedWorker.port)
   } else if (event.data?.getNotifications && event.data.registration?.id) {
     onGetNotifications(event, sharedWorker.port)
   }
@@ -37,12 +37,17 @@ export class ServiceWorkerInstance extends Worker {
   constructor (filename, options) {
     options = { ...options }
     const info = options.info ?? null
-
     if (info.serializedWorkerArgs) {
-      options.args = JSON.parse(decodeURIComponent(info.serializedWorkerArgs))
-      options.args.index = globalThis.__args.index
+      try {
+        options.args = JSON.parse(info.serializedWorkerArgs)
+      } catch {
+        try {
+          options.args = JSON.parse(decodeURIComponent(info.serializedWorkerArgs))
+        } catch {
+          options.args = JSON.parse(decodeURIComponent(decodeURIComponent(info.serializedWorkerArgs)))
+        }
+      }
     }
-
     super(filename, {
       name: `ServiceWorker (${options?.info?.pathname ?? filename})`,
       ...options,
@@ -106,7 +111,7 @@ export class ServiceWorkerInstance extends Worker {
         log.scrollTop = log.scrollHeight
       }
     } else if (event.data?.showNotification && event.data.registration?.id) {
-      onShowNotification(event, this)
+      onNotificationShow(event, this)
     } else if (event.data?.getNotifications && event.data.registration?.id) {
       onGetNotifications(event, this)
     } else if (event.data?.notificationclose?.id) {
@@ -120,7 +125,6 @@ export class ServiceWorkerInfo {
   url = null
   hash = null
   scope = null
-  scheme = null
   scriptURL = null
   serializedWorkerArgs = null
 
@@ -134,7 +138,7 @@ export class ServiceWorkerInfo {
 
     const url = new URL(this.scriptURL)
     this.url = url.toString()
-    this.hash = crypto.murmur3(this.scheme + url.pathname + (this.scope || ''))
+    this.hash = crypto.murmur3(url.pathname + (this.scope || ''))
   }
 
   get pathname () {
@@ -205,7 +209,7 @@ export async function onFetch (event) {
       }
     })(),
     new Promise((resolve) => {
-      globalThis.addEventListener(
+      globalThis.top.addEventListener(
         'serviceWorker.activate',
         async function (event) {
           // @ts-ignore
@@ -250,7 +254,7 @@ export async function onFetch (event) {
   worker.postMessage({ fetch: { ...info, client, request } })
 }
 
-export function onShowNotification (event, target) {
+export function onNotificationShow (event, target) {
   for (const worker of workers.values()) {
     if (worker.info.id === event.data.registration.id) {
       let notification = null
@@ -353,14 +357,22 @@ export function onGetNotifications (event, target) {
 
 export default null
 
-globalThis.addEventListener('serviceWorker.register', onRegister)
-globalThis.addEventListener('serviceWorker.unregister', onUnregister)
-globalThis.addEventListener('serviceWorker.skipWaiting', onSkipWaiting)
-globalThis.addEventListener('serviceWorker.activate', onActivate)
-globalThis.addEventListener('serviceWorker.fetch', onFetch)
+globalThis.top.addEventListener('serviceWorker.register', onRegister)
+globalThis.top.addEventListener('serviceWorker.unregister', onUnregister)
+globalThis.top.addEventListener('serviceWorker.skipWaiting', onSkipWaiting)
+globalThis.top.addEventListener('serviceWorker.activate', onActivate)
+globalThis.top.addEventListener('serviceWorker.fetch', onFetch)
 
-channel.addEventListener('message', (e) => {
-  if (e.data?.type?.startsWith('serviceWorker.')) {
-    globalThis.dispatchEvent(new CustomEvent(e.data.type, e.data))
+hooks.onReady(async () => {
+  // notify top frame that the service worker init module is ready
+  globalThis.top.postMessage({
+    __service_worker_frame_init: true
+  })
+
+  const result = await ipc.request('serviceWorker.getRegistrations')
+  if (Array.isArray(result.data)) {
+    for (const info of result.data) {
+      await navigator.serviceWorker.register(info.scriptURL, info)
+    }
   }
 })

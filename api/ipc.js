@@ -1147,6 +1147,7 @@ export function sendSync (command, value = '', options = null, buffer = null) {
 
       let response = null
       try {
+        console.log({ uri })
         response = globalThis.__global_ipc_extension_handler(uri)
       } catch (err) {
         return Result.from(null, err)
@@ -1778,6 +1779,18 @@ export function findIPCMessageTransfers (transfers, object) {
       )
     ) {
       const port = IPCMessagePort.create(object)
+      object.addEventListener('message', function onMessage (event) {
+        if (port.closed === true) {
+          port.onmessage = null
+          event.preventDefault()
+          event.stopImmediatePropagation()
+          object.removeEventListener('message', onMessage)
+          return false
+        }
+
+        port.dispatchEvent(new MessageEvent('message', event))
+      })
+
 
       port.onmessage = (event) => {
         if (port.closed === true) {
@@ -2067,19 +2080,20 @@ export class IPCMessageChannel extends MessageChannel {
   constructor (options = null) {
     super()
     this.#id = String(options?.id ?? rand64())
-    this.#channel = options?.channel ?? new IPCBroadcastChannel(this.#id)
+    this.#channel = options?.channel ?? new BroadcastChannel(this.#id)
 
     this.#port1 = IPCMessagePort.create(options?.port1)
     this.#port2 = IPCMessagePort.create(options?.port2)
 
     this.port1[Symbol.for('socket.runtime.ipc.MessagePort.handlePostMessage')] = (message, options) => {
-      this.port2.postMessage(message, options)
+      this.port2.channel.postMessage(message, options)
       return false
     }
 
-    this.port2.addEventListener('message', (e) => {
-      this.port1.postMessage(e.data)
-    })
+    this.port2[Symbol.for('socket.runtime.ipc.MessagePort.handlePostMessage')] = (message, options) => {
+      this.port2.channel.postMessage(message, options)
+      return false
+    }
   }
 
   get id () {

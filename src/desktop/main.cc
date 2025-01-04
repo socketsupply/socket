@@ -1,20 +1,19 @@
-#include "../app/app.hh"
-#include "../cli/cli.hh"
-#include "../ipc/ipc.hh"
-#include "../core/core.hh"
-#include "../window/window.hh"
-
-#if SOCKET_RUNTIME_PLATFORM_LINUX
-#include <dbus/dbus.h>
-#include <fcntl.h>
-
-#include "extension.hh"
-#endif
-
 #include <iostream>
 #include <chrono>
 #include <regex>
 #include <span>
+
+#include "../app.hh"
+#include "../cli.hh"
+#include "../runtime.hh"
+
+#if SOCKET_RUNTIME_PLATFORM_APPLE
+#include <os/log.h>
+#elif SOCKET_RUNTIME_PLATFORM_LINUX
+#include <dbus/dbus.h>
+#include <fcntl.h>
+#include "extension.hh"
+#endif
 
 //
 // A cross platform MAIN macro that
@@ -36,12 +35,27 @@
   int main (int argc, char** argv)
 #endif
 
-#if SOCKET_RUNTIME_PLATFORM_APPLE
-#include <os/log.h>
-#endif
-
 #define InvalidWindowIndexError(index) \
   String("Invalid index given for window: ") + std::to_string(index)
+
+namespace window = ssc::runtime::window;
+namespace JSON = ssc::runtime::JSON;
+namespace env = ssc::runtime::env;
+namespace ipc = ssc::runtime::ipc;
+namespace io = ssc::runtime::io;
+
+using namespace ssc::runtime::javascript;
+using namespace ssc::runtime::config;
+using namespace ssc::runtime::string;
+using namespace ssc::runtime::types;
+using namespace ssc;
+
+using ssc::runtime::url::encodeURIComponent;
+using ssc::runtime::window::Window;
+using ssc::runtime::Process;
+using ssc::runtime::getcwd;
+using ssc::runtime::msleep;
+using ssc::app::App;
 
 static void installSignalHandler (int signum, void (*handler)(int)) {
 #if SOCKET_RUNTIME_PLATFORM_LINUX
@@ -54,9 +68,6 @@ static void installSignalHandler (int signum, void (*handler)(int)) {
   signal(signum, handler);
 #endif
 }
-
-
-using namespace SSC;
 
 static inline String readFile (const Path& path) {
   static String buffer;
@@ -81,11 +92,11 @@ static Function<void(int)> shutdownHandler;
 // other windows who may be subscribers
 static void defaultWindowSignalHandler (int signal) {
   auto app = App::sharedApplication();
-  if (app != nullptr && app->core->platform.wasFirstDOMContentLoadedEventDispatched) {
+  if (app != nullptr && app->runtime.services.platform.wasFirstDOMContentLoadedEventDispatched) {
     app->dispatch([=] () {
-      auto defaultWindow = app->windowManager.getWindow(0);
+      auto defaultWindow = app->runtime.windowManager.getWindow(0);
       if (defaultWindow != nullptr) {
-        if (defaultWindow->status < WindowManager::WindowStatus::WINDOW_CLOSING) {
+        if (defaultWindow->status < window::Manager::WindowStatus::WINDOW_CLOSING) {
           const auto json = JSON::Object {
             JSON::Object::Entries {
               {"signal", signal}
@@ -100,10 +111,9 @@ static void defaultWindowSignalHandler (int signal) {
 }
 
 void signalHandler (int signum) {
-  static auto app = App::sharedApplication();
-  static auto userConfig = getUserConfig();
-  static const auto signalsDisabled = userConfig["application_signals"] == "false";
-  static const auto signals = parseStringList(userConfig["application_signals"]);
+  auto app = App::sharedApplication();
+  static const auto signalsDisabled = app->runtime.userConfig["application_signals"] == "false";
+  static const auto signals = parseStringList(app->runtime.userConfig["application_signals"]);
   String name;
 
   #if SOCKET_RUNTIME_PLATFORM_APPLE
@@ -132,7 +142,7 @@ void signalHandler (int signum) {
 static void handleApplicationURLEvent (const String& url) {
   auto app = App::sharedApplication();
   if (app != nullptr && url.size() > 0) {
-    for (auto window : app->windowManager.windows) {
+    for (auto window : app->runtime.windowManager.windows) {
       if (window != nullptr) {
         window->handleApplicationURL(url);
       }
@@ -157,8 +167,8 @@ static DBusHandlerResult onDBusMessage (
   DBusMessage* message,
   void* userData
 ) {
-  static auto userConfig = getUserConfig();
-  static auto bundleIdentifier = userConfig["meta_bundle_identifier"];
+  auto app = App::sharedApplication();
+  static auto bundleIdentifier = app->runtime.userConfig["meta_bundle_identifier"];
   static auto dbusBundleIdentifier = replace(bundleIdentifier, "-", "_");
 
   // Check if the message is a method call and has the expected interface and method
@@ -176,12 +186,12 @@ static DBusHandlerResult onDBusMessage (
 }
 #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
 BOOL registerWindowsURISchemeInRegistry () {
-  static auto userConfig = getUserConfig();
+  auto app = App::sharedApplication();
   HKEY shellKey;
   HKEY key;
   LONG result;
 
-  auto protocol = userConfig["meta_application_protocol"];
+  auto protocol = app->runtime.userConfig["meta_application_protocol"];
 
   if (protocol.size() == 0) {
     return FALSE;
@@ -253,20 +263,21 @@ MAIN {
 #if SOCKET_RUNTIME_PLATFORM_LINUX
   // use 'SIGPWR' instead of the default 'SIGUSR1' handler
   // see https://github.com/WebKit/WebKit/blob/2fd8f81aac4e867ffe107c0e1b3e34b1628c0953/Source/WTF/wtf/posix/ThreadingPOSIX.cpp#L185
-  // Env::set("JSC_SIGNAL_FOR_GC", "30");
+  // env::set("JSC_SIGNAL_FOR_GC", "30");
   gtk_init(&argc, &argv);
 #endif
 
   // Singletons should be static to remove some possible race conditions in
   // their instantiation and destruction.
-  static App app(instanceId);
-  static auto userConfig = getUserConfig();
+  static App app({
+    .instanceId = instanceId,
+    .userConfig = getUserConfig()
+  });
 
   const String devHost = getDevHost();
   const auto devPort = getDevPort();
 
-  auto cwd = app.getcwd();
-  app.userConfig = userConfig;
+  auto cwd = getcwd();
 
   String suffix = "";
 
@@ -275,7 +286,7 @@ MAIN {
 
   bool isCommandMode = false;
   bool isReadingStdin = false;
-  bool isHeadless = userConfig["build_headless"] == "true" ? true : false;
+  bool isHeadless = app.runtime.userConfig["build_headless"] == "true" ? true : false;
   bool isTest = false;
 
   int exitCode = 0;
@@ -284,13 +295,13 @@ MAIN {
   bool wantsVersion = false;
   bool wantsHelp = false;
 
-  auto bundleIdentifier = userConfig["meta_bundle_identifier"];
+  auto bundleIdentifier = app.runtime.userConfig["meta_bundle_identifier"];
 
 #if SOCKET_RUNTIME_PLATFORM_LINUX
-  static const auto TMPDIR = Env::get("TMPDIR", "/tmp");
+  static const auto TMPDIR = env::get("TMPDIR", "/tmp");
   static const auto appInstanceLock = Path(TMPDIR) / (bundleIdentifier + ".lock");
   static const auto appInstancePID = Path(TMPDIR) / (bundleIdentifier + ".pid");
-  static const auto appProtocol = userConfig["meta_application_protocol"];
+  static const auto appProtocol = app.runtime.userConfig["meta_application_protocol"];
 
   const auto existingPIDValue = readFile(appInstancePID);
   if (existingPIDValue.size() > 0) {
@@ -365,9 +376,7 @@ MAIN {
     if (appProtocol.size() > 0 && argc > 1 && String(argv[1]).starts_with(appProtocol + ":")) {
       const auto uri = String(argv[1]);
       app.dispatch([uri]() {
-        app.core->dispatchEventLoop([uri]() {
-          handleApplicationURLEvent(uri);
-        });
+        handleApplicationURLEvent(uri);
       });
     }
   } else if (appProtocol.size() > 0 && argc > 1 && String(argv[1]).starts_with(appProtocol + ":")) {
@@ -420,8 +429,8 @@ MAIN {
 
   if (appProtocol.size() > 0) {
     GError* error = nullptr;
-    auto appName = userConfig["build_name"];
-    auto appDescription = userConfig["meta_description"];
+    auto appName = app.runtime.userConfig["build_name"];
+    auto appDescription = app.runtime.userConfig["meta_description"];
     auto appContentType = String("x-scheme-handler/") + appProtocol;
     auto appinfo = g_app_info_create_from_commandline(
       appName.c_str(),
@@ -446,12 +455,12 @@ MAIN {
 #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
   HANDLE hMutex = CreateMutex(NULL, TRUE, bundleIdentifier.c_str());
   auto lastWindowsError = GetLastError();
-  auto appProtocol = userConfig["meta_application_protocol"];
+  auto appProtocol = app.runtime.userConfig["meta_application_protocol"];
 
   if (appProtocol.size() > 0 && argc > 1 && String(argv[1]).starts_with(appProtocol)) {
     HWND hWnd = FindWindow(
-      userConfig["meta_bundle_identifier"].c_str(),
-      userConfig["meta_title"].c_str()
+      app.runtime.userConfig["meta_bundle_identifier"].c_str(),
+      app.runtime.userConfig["meta_title"].c_str()
     );
 
     if (hWnd != NULL) {
@@ -467,7 +476,7 @@ MAIN {
       );
     } else {
       app.dispatch([hWnd, lpCmdLine]() {
-        app.forwardWindowProcMessage(
+        ssc::app::onWindowProcMessage(
           hWnd,
           WM_HANDLE_DEEP_LINK,
           (WPARAM) strlen(lpCmdLine),
@@ -522,11 +531,13 @@ MAIN {
 
     if (s.find("--headless") == 0) {
       isHeadless = true;
-      userConfig["build_headless"] = "true";
+      app.runtime.userConfig["build_headless"] = "true";
     }
 
     // launched from the `ssc` cli
-    app.wasLaunchedFromCli = s.find("--from-ssc") == 0 ? true : false;
+    app.launchSource = s.find("--from-ssc") == 0
+      ? App::LaunchSource::Tool
+      : App::LaunchSource::Platform;
 
     if (s.find("--test") == 0) {
       suffix = "-test";
@@ -549,24 +560,24 @@ MAIN {
   }
 
   if (isDebugEnabled()) {
-    app.userConfig["build_name"] += "-dev";
+    app.runtime.userConfig["build_name"] += "-dev";
   }
 
-  app.userConfig["build_name"] += suffix;
+  app.runtime.userConfig["build_name"] += suffix;
 
-  argvForward << " --ssc-version=v" << VERSION_STRING;
-  argvForward << " --version=v" << app.userConfig["meta_version"];
-  argvForward << " --name=" << app.userConfig["build_name"];
+  argvForward << " --ssc-version=v" << runtime::VERSION_STRING;
+  argvForward << " --version=v" << app.runtime.userConfig["meta_version"];
+  argvForward << " --name=" << app.runtime.userConfig["build_name"];
 
   if (isDebugEnabled()) {
     argvForward << " --debug=1";
   }
 
   String cmd;
-  if (platform.os == "win32") {
-    cmd = app.userConfig["win_cmd"];
+  if (runtime::platform.os == "win32") {
+    cmd = app.runtime.userConfig["win_cmd"];
   } else {
-    cmd = app.userConfig[platform.os + "_cmd"];
+    cmd = app.runtime.userConfig[runtime::platform.os + "_cmd"];
   }
 
   if (cmd[0] == '.') {
@@ -609,21 +620,21 @@ MAIN {
       argvForward.str(),
       cwd,
       [&exitCode](String const &out) mutable {
-        IPC::Message message(out);
+        ipc::Message message(out);
 
         if (message.name == "exit") {
           exitCode = stoi(message.get("value"));
           exit(exitCode);
         } else {
-          IO::write(message.get("value"), false);
+          io::write(message.get("value"), false);
         }
       },
-      [](String const &out) { IO::write(out, true); },
+      [](String const &out) { io::write(out, true); },
       [](String const &code){ exit(std::stoi(code)); }
     );
 
     if (cmd.size() == 0) {
-      IO::write("No 'cmd' is provided for '" + platform.os + "' in socket.ini", true);
+      io::write("No 'cmd' is provided for '" + runtime::platform.os + "' in socket.ini", true);
       exit(1);
     }
 
@@ -664,9 +675,9 @@ MAIN {
   #endif
     std::cerr << "\033[31m" + output + "\033[0m";
 
-    for (const auto& window : app.windowManager.windows) {
+    for (const auto& window : app.runtime.windowManager.windows) {
       if (window != nullptr) {
-        window->bridge.emit("process-error", output);
+        window->bridge->emit("process-error", output);
       }
     }
   };
@@ -676,7 +687,7 @@ MAIN {
   // Launch the backend process and connect callbacks to the stdio and stderr pipes.
   //
   const auto onStdOut = [](const auto& output) {
-    const auto message = IPC::Message(output);
+    const auto message = ipc::Message(output);
 
     if (message.index > 0 && message.name.size() == 0) {
       // @TODO: print warning
@@ -696,7 +707,7 @@ MAIN {
         os_log_with_type(SOCKET_RUNTIME_OS_LOG_BUNDLE, OS_LOG_TYPE_DEFAULT, "%{public}s", value.c_str());
       });
     #endif
-      IO::write(value);
+      io::write(value);
       return;
     }
 
@@ -706,7 +717,7 @@ MAIN {
         os_log_with_type(SOCKET_RUNTIME_OS_LOG_BUNDLE, OS_LOG_TYPE_ERROR, "%{public}s", value.c_str());
       });
     #endif
-      IO::write(value, true);
+      io::write(value, true);
       return;
     }
 
@@ -720,24 +731,24 @@ MAIN {
       if (message.name == "send") {
         const auto event = message.get("event");
         if (message.index >= 0) {
-          const auto window = app.windowManager.getWindow(message.index);
+          const auto window = app.runtime.windowManager.getWindow(message.index);
           if (window) {
-            window->bridge.emit(event, value);
+            window->bridge->emit(event, value);
           }
         } else {
-          for (const auto& window : app.windowManager.windows) {
+          for (const auto& window : app.runtime.windowManager.windows) {
             if (window) {
-              window->bridge.emit(event, value);
+              window->bridge->emit(event, value);
             }
           }
         }
         return;
       }
 
-      auto window = app.windowManager.getOrCreateWindow(message.index);
+      auto window = app.runtime.windowManager.getOrCreateWindow(message.index);
 
       if (!window) {
-        auto defaultWindow = app.windowManager.getWindow(0);
+        auto defaultWindow = app.runtime.windowManager.getWindow(0);
 
         if (defaultWindow) {
           window = defaultWindow;
@@ -748,8 +759,8 @@ MAIN {
 
       if (message.name == "heartbeat") {
         if (message.seq.size() > 0) {
-          const auto result = IPC::Result(message.seq, message, "heartbeat");
-          window->bridge.send(message.seq, result.json());
+          const auto result = ipc::Result(message.seq, message, "heartbeat");
+          window->bridge->send(message.seq, result.json());
         }
         return;
       }
@@ -760,9 +771,9 @@ MAIN {
       }
 
       if (message.name == "process.exit") {
-        for (const auto& window : app.windowManager.windows) {
+        for (const auto& window : app.runtime.windowManager.windows) {
           if (window) {
-            window->bridge.emit("process-exit", message.value);
+            window->bridge->emit("process-exit", message.value);
           }
         }
         return;
@@ -777,9 +788,9 @@ MAIN {
     onStdOut,
     onStdErr,
     [&](String const &code) {
-      for (auto w : app.windowManager.windows) {
+      for (auto w : app.runtime.windowManager.windows) {
         if (w != nullptr) {
-          auto window = app.windowManager.getWindow(w->options.index);
+          auto window = app.runtime.windowManager.getWindow(w->options.index);
           window->eval(getEmitToRenderProcessJavaScript("backend-exit", code));
         }
       }
@@ -795,14 +806,14 @@ MAIN {
   // main thread.
   //
   const auto onMessage = [cmd, &killProcess](const auto& output) {
-    const auto message = IPC::Message(output, true);
+    const auto message = ipc::Message(output, true);
 
-    auto window = app.windowManager.getWindow(message.index);
+    auto window = app.runtime.windowManager.getWindow(message.index);
     auto value = message.value;
 
     // the window must exist
     if (!window && message.index >= 0) {
-      auto defaultWindow = app.windowManager.getWindow(0);
+      auto defaultWindow = app.runtime.windowManager.getWindow(0);
 
       if (defaultWindow) {
         window = defaultWindow;
@@ -869,7 +880,7 @@ MAIN {
       }}
     };
 
-    auto result = IPC::Result(message.seq, message, err);
+    auto result = ipc::Result(message.seq, message, err);
     window->resolvePromise(
       message.seq,
       ERROR_STATE,
@@ -903,7 +914,7 @@ MAIN {
     exit(code);
   };
 
-  app.onExit = shutdownHandler;
+  app.shutdownHandler = shutdownHandler;
 
   //
   // If this is being run in a terminal/multiplexer
@@ -919,8 +930,8 @@ MAIN {
   installSignalHandler(SIGINT, signalHandler);
   installSignalHandler(SIGTERM, signalHandler);
 
-  const auto signalsDisabled = userConfig["application_signals"] == "false";
-  const auto signals = parseStringList(userConfig["application_signals"]);
+  const auto signalsDisabled = app.runtime.userConfig["application_signals"] == "false";
+  const auto signals = parseStringList(app.runtime.userConfig["application_signals"]);
 
 #define SET_DEFAULT_WINDOW_SIGNAL_HANDLER(sig) {                               \
   const auto name = String(CONVERT_TO_STRING(sig));                            \
@@ -1031,27 +1042,27 @@ MAIN {
     std::regex validPattern("^\\d*\\.?\\d+%?$");
 
     for (const auto& property : properties) {
-      if (app.userConfig[property].size() > 0) {
-        auto value = app.userConfig[property];
+      if (app.runtime.userConfig[property].size() > 0) {
+        auto value = app.runtime.userConfig[property];
         if (!std::regex_match(value, validPattern)) {
-          app.userConfig[property] = setDefaultValue(property);
-          debug("Invalid value for %s: \"%s\". Setting it to \"%s\"", property.c_str(), value.c_str(), app.userConfig[property].c_str());
+          app.runtime.userConfig[property] = setDefaultValue(property);
+          debug("Invalid value for %s: \"%s\". Setting it to \"%s\"", property.c_str(), value.c_str(), app.runtime.userConfig[property].c_str());
         }
       // set default value if it's not set in socket.ini
       } else {
-        app.userConfig[property] = setDefaultValue(property);
+        app.runtime.userConfig[property] = setDefaultValue(property);
       }
     }
 
     auto getProperty = [](String property) {
-      if (userConfig.count(property) > 0) {
-        return userConfig[property];
+      if (app.runtime.userConfig.count(property) > 0) {
+        return app.runtime.userConfig[property];
       }
 
       return String("");
     };
 
-    auto windowManagerOptions = WindowManagerOptions {
+    auto windowManagerOptions = window::ManagerOptions {
       .defaultHeight = getProperty("window_height"),
       .defaultWidth = getProperty("window_width"),
       .defaultMinWidth = getProperty("window_min_width"),
@@ -1061,18 +1072,18 @@ MAIN {
     };
 
     windowManagerOptions.features.useTestScript = isTest;
-    windowManagerOptions.userConfig = app.userConfig;
+    windowManagerOptions.userConfig = app.runtime.userConfig;
     windowManagerOptions.argv = argvArray;
     windowManagerOptions.onMessage = onMessage;
     windowManagerOptions.onExit = shutdownHandler;
 
-    app.windowManager.configure(windowManagerOptions);
+    app.runtime.windowManager.configure(windowManagerOptions);
 
     auto isMaximizable = getProperty("window_maximizable");
     auto isMinimizable = getProperty("window_minimizable");
     auto isClosable = getProperty("window_closable");
 
-    auto defaultWindow = app.windowManager.createDefaultWindow(Window::Options {
+    auto defaultWindow = app.runtime.windowManager.createDefaultWindow(Window::Options {
       .minimizable = (isMinimizable == "" || isMinimizable == "true") ? true : false,
       .maximizable = (isMaximizable == "" || isMaximizable == "true") ? true : false,
       .resizable = getProperty("window_resizable") == "false" ? false : true,
@@ -1086,43 +1097,12 @@ MAIN {
       .backgroundColorDark = getProperty("window_background_color_dark")
     });
 
-    if (
-      userConfig["webview_service_worker_mode"] != "hybrid" &&
-      userConfig["permissions_allow_service_worker"] != "false"
-    ) {
-      auto serviceWorkerWindowOptions = Window::Options {};
-      auto serviceWorkerUserConfig = userConfig;
-      auto screen = defaultWindow->getScreenSize();
-
-      serviceWorkerUserConfig["webview_watch_reload"] = "false";
-      // if the service worker window dies, then the app should too
-      serviceWorkerWindowOptions.shouldExitApplicationOnClose = true;
-      serviceWorkerWindowOptions.minHeight = defaultWindow->getSizeInPixels("30%", screen.height);
-      serviceWorkerWindowOptions.height = defaultWindow->getSizeInPixels("80%", screen.height);
-      serviceWorkerWindowOptions.minWidth = defaultWindow->getSizeInPixels("40%", screen.width);
-      serviceWorkerWindowOptions.width = defaultWindow->getSizeInPixels("80%", screen.width);
-      serviceWorkerWindowOptions.index = SOCKET_RUNTIME_SERVICE_WORKER_CONTAINER_WINDOW_INDEX;
-      serviceWorkerWindowOptions.headless = Env::get("SOCKET_RUNTIME_SERVICE_WORKER_DEBUG").size() == 0;
-      serviceWorkerWindowOptions.userConfig = serviceWorkerUserConfig;
-      serviceWorkerWindowOptions.features.useGlobalCommonJS = false;
-      serviceWorkerWindowOptions.features.useGlobalNodeJS = false;
-
-      auto serviceWorkerWindow = app.windowManager.createWindow(serviceWorkerWindowOptions);
-
-      app.serviceWorkerContainer.init(&serviceWorkerWindow->bridge);
-      serviceWorkerWindow->navigate(
-        "socket://" + userConfig["meta_bundle_identifier"] + "/socket/service-worker/index.html"
-      );
-
-      if (Env::get("SOCKET_RUNTIME_SERVICE_WORKER_DEBUG").size() > 0) {
-        serviceWorkerWindow->show();
-      }
-    } else if (userConfig["webview_service_worker_mode"] == "hybrid") {
-      app.serviceWorkerContainer.init(&defaultWindow->bridge);
-    }
+    app.runtime.serviceWorkerManager.init("socket://" + app.runtime.userConfig["meta_bundle_identifier"], {
+      .userConfig = app.runtime.userConfig
+    });
 
     msleep(256);
-    if (userConfig["build_headless"] != "true") {
+    if (app.runtime.userConfig["build_headless"] != "true") {
       defaultWindow->show();
     } else {
       defaultWindow->hide();
@@ -1137,13 +1117,13 @@ MAIN {
         ";"
       ));
     } else {
-      if (app.userConfig["webview_root"].size() != 0) {
+      if (app.runtime.userConfig["webview_root"].size() != 0) {
         defaultWindow->navigate(
-          "socket://" + app.userConfig["meta_bundle_identifier"] + app.userConfig["webview_root"]
+          "socket://" + app.runtime.userConfig["meta_bundle_identifier"] + app.runtime.userConfig["webview_root"]
         );
       } else {
         defaultWindow->navigate(
-          "socket://" + app.userConfig["meta_bundle_identifier"] + "/index.html"
+          "socket://" + app.runtime.userConfig["meta_bundle_identifier"] + "/index.html"
         );
       }
     }
@@ -1154,9 +1134,9 @@ MAIN {
 
       auto t = Thread([](String value) {
         auto app = App::sharedApplication();
-        auto defaultWindow = app->windowManager.getWindow(0);
+        auto defaultWindow = app->runtime.windowManager.getWindow(0);
 
-        while (!app->core->platform.wasFirstDOMContentLoadedEventDispatched) {
+        while (!app->runtime.services.platform.wasFirstDOMContentLoadedEventDispatched) {
           msleep(128);
         }
 

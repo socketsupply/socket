@@ -1,13 +1,13 @@
-#include "../core.hh"
+#include "../context.hh"
 
 namespace ssc::runtime::context {
   DispatchContext::DispatchContext (RuntimeContext& context)
     : context(context)
-  {}
-
-  DispatchContext::DispatchContext (const DispatchContext& context)
-    : context(context.context)
-  {}
+  {
+  #if SOCKET_RUNTIME_PLATFORM_ANDROID
+    this->android = context.android;
+  #endif
+  }
 
   Dispatcher::Dispatcher (RuntimeContext& context)
     : DispatchContext(context)
@@ -66,8 +66,8 @@ namespace ssc::runtime::context {
     t.detach();
     return true;
   #elif SOCKET_RUNTIME_PLATFORM_ANDROID
-    this->looper.dispatch([this, callback = std::move(callback)] () {
-      const auto attachment = Android::JNIEnvironmentAttachment(this->jvm);
+    this->android.looper.dispatch([this, callback = std::move(callback)] () {
+      const auto attachment = android::JNIEnvironmentAttachment(this->jvm);
       callback();
     });
     return true;

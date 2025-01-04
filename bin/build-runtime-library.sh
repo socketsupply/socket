@@ -94,19 +94,44 @@ done
 
 declare objects=()
 declare sources=(
+  ## app entry
   $(find "$root"/src/app/*.cc)
+  ## extension API
+  $(find "$root"/src/extension/*.cc)
+  ## runtime
   $(find "$root"/src/runtime/*.cc)
+  $(find "$root"/src/runtime/app/app.cc)
+  $(find "$root"/src/runtime/bluetooth/*.cc)
+  $(find "$root"/src/runtime/bridge/*.cc)
+  $(find "$root"/src/runtime/bytes/*.cc)
+  $(find "$root"/src/runtime/color/*.cc)
+  $(find "$root"/src/runtime/config/*.cc)
+  $(find "$root"/src/runtime/context/*.cc)
+  $(find "$root"/src/runtime/core/*.cc)
+  $(find "$root"/src/runtime/core/*/*.cc)
+  $(find "$root"/src/runtime/crypto/*.cc)
+  $(find "$root"/src/runtime/cwd/*.cc)
   $(find "$root"/src/runtime/debug/*.cc)
+  $(find "$root"/src/runtime/env/*.cc)
+  $(find "$root"/src/runtime/filesystem/*.cc)
   $(find "$root"/src/runtime/http/*.cc)
+  $(find "$root"/src/runtime/ini/*.cc)
   $(find "$root"/src/runtime/ipc/*.cc)
+  $(find "$root"/src/runtime/javascript/*.cc)
   $(find "$root"/src/runtime/json/*.cc)
-  $(find "$root"/src/runtime/modules/*.cc)
+  $(find "$root"/src/runtime/loop/*.cc)
+  $(find "$root"/src/runtime/os/*.cc)
   $(find "$root"/src/runtime/platform/*.cc)
   $(find "$root"/src/runtime/serviceworker/*.cc)
-  $(find "$root"/src/extension/*.cc)
-  "$root/src/runtime/window/manager.cc"
-  "$root/src/runtime/window/dialog.cc"
-  "$root/src/runtime/window/hotkey.cc"
+  $(find "$root"/src/runtime/string/*.cc)
+  $(find "$root"/src/runtime/udp/*.cc)
+  $(find "$root"/src/runtime/url/*.cc)
+  $(find "$root"/src/runtime/webview/*.cc)
+  $(find "$root"/src/runtime/window/dialog.cc)
+  $(find "$root"/src/runtime/window/hotkey.cc)
+  $(find "$root"/src/runtime/window/manager.cc)
+
+  ## deps
   "$root/build/llama/common/common.cpp"
   "$root/build/llama/common/sampling.cpp"
   "$root/build/llama/common/json-schema-to-grammar.cpp"
@@ -127,11 +152,13 @@ if [[ "$platform" = "android" ]]; then
 
   clang="$(android_clang "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch" "++")"
   clang_target="$(android_clang_target "$arch")"
+  sources+=("$root/src/runtime/app/android.cc")
   sources+=("$root/src/runtime/process/unix.cc")
   sources+=($(find "$root/src/platform/android"/*.cc))
   sources+=("$root/src/window/android.cc")
 elif [[ "$host" = "Darwin" ]]; then
-  sources+=("$root/src/window/apple.mm")
+  sources+=("$root/src/runtime/app/delegate.mm")
+  sources+=("$root/src/runtime/window/apple.mm")
 
   if (( TARGET_OS_IPHONE)); then
     clang="xcrun -sdk iphoneos "$clang""
@@ -141,10 +168,11 @@ elif [[ "$host" = "Darwin" ]]; then
     sources+=("$root/src/runtime/process/unix.cc")
   fi
 elif [[ "$host" = "Linux" ]]; then
-  sources+=("$root/src/window/linux.cc")
+  sources+=("$root/src/runtime/window/linux.cc")
   sources+=("$root/src/runtime/process/unix.cc")
 elif [[ "$host" = "Win32" ]]; then
-  sources+=("$root/src/window/win.cc")
+  sources+=("$root/src/runtime/app/win.cc")
+  sources+=("$root/src/runtime/window/win.cc")
   sources+=("$root/src/runtime/process/win.cc")
 fi
 
@@ -255,7 +283,7 @@ function main () {
   fi
 
   for source in "${sources[@]}"; do
-    if (( ${#pids[@]} > max_concurrency )); then
+    if (( ${#pids[@]} > (( 2 * max_concurrency )) )); then
       wait "${pids[0]}" 2>/dev/null
       pids=("${pids[@]:1}")
     fi

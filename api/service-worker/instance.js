@@ -32,7 +32,7 @@ export function createServiceWorker (
     }
   }
 
-  const channel = new ipc.IPCBroadcastChannel('socket.runtime.serviceWorker.state')
+  const channel = new BroadcastChannel('socket.runtime.serviceWorker.state')
 
   // events
   const eventTarget = new EventTarget()
@@ -77,7 +77,14 @@ export function createServiceWorker (
     state: {
       configurable: true,
       enumerable: false,
-      get: () => currentState === null ? state.serviceWorker.state : currentState
+      get: () => currentState === null ? state.serviceWorker.state : currentState,
+    },
+
+    [Symbol.for('socket.runtime.serviceWorker.state')]: {
+      configurable: false,
+      enumerable: false,
+      get: () => currentState === null ? state.serviceWorker.state : currentState,
+      set: (state) => { currentState = state }
     },
 
     scriptURL: {

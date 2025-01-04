@@ -70,7 +70,7 @@ namespace ssc::runtime::core::services {
 
           ~Client ();
 
-          bool send ( const Message::Options&, SharedPointer<char[]>, size_t, int opcode = 2, const SendCallback = nullptr);
+          bool send ( const Message::Options&, SharedPointer<unsigned char[]>, size_t, int opcode = 2, const SendCallback = nullptr);
           void close (const CloseCallback callback = nullptr);
       };
 

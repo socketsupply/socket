@@ -26,7 +26,7 @@
 
 /* eslint-disable no-new-func */
 /* global ErrorEvent, EventTarget, MessagePort */
-import ipc, { maybeMakeError } from './ipc.js'
+import { maybeMakeError } from './ipc.js'
 import { SharedWorker } from './shared-worker/index.js'
 import { isESMSource } from './util.js'
 import application from './application.js'
@@ -110,7 +110,7 @@ function convertSourceToString (source) {
  * Shared broadcast for virtual machaines
  * @type {BroadcastChannel}
  */
-export const channel = new ipc.IPCBroadcastChannel('socket.runtime.vm')
+export const channel = new BroadcastChannel('socket.runtime.vm')
 
 /**
  * @ignore
@@ -1203,47 +1203,57 @@ export async function getContextWindow () {
     await contextWindow.ready
     return contextWindow
   }
+  const windows = await application.getWindows([], { max: false })
+  let firstInit = true
 
-  const existingContextWindow = await application.getWindow(VM_WINDOW_INDEX, { max: false })
-  const pendingContextWindow = (
-    existingContextWindow ??
-    application.createWindow({
+  for (const window of windows) {
+    if (window.title === VM_WINDOW_TITLE) {
+      if (window.location) {
+        const url = new URL(window.location.href, globalThis.location.origin)
+        if (url.origin === globalThis.location.origin) {
+          contextWindow = window
+          firstInit = false
+        }
+      }
+    }
+  }
+
+  if (!contextWindow) {
+    contextWindow = await application.createWindow({
+      // @ts-ignore
       canExit: false,
       headless: !process.env.SOCKET_RUNTIME_VM_DEBUG,
       // @ts-ignore
       debug: Boolean(process.env.SOCKET_RUNTIME_VM_DEBUG),
-      index: VM_WINDOW_INDEX,
+      index: -1,
+      reserved: true,
       title: VM_WINDOW_TITLE,
       path: VM_WINDOW_PATH,
+      width: '80%',
+      height: '80%',
       config: {
+        ...globalThis.__args.config,
         webview_watch_reload: false
       }
     })
-  )
+  }
 
-  const promises = []
-  promises.push(Promise.resolve(pendingContextWindow))
-
-  if (!existingContextWindow) {
-    promises.push(new Promise((resolve) => {
+  if (firstInit) {
+    contextWindow.ready = new Promise((resolve) => {
       const timeout = setTimeout(resolve, 500)
       channel.addEventListener('message', function onMessage (event) {
-        if (event.data?.ready === VM_WINDOW_INDEX) {
+        if (event.data?.ready === contextWindow.index) {
           clearTimeout(timeout)
           resolve(null)
           channel.removeEventListener('message', onMessage)
         }
       })
-    }))
+    })
   }
 
-  const ready = Promise.all(promises)
-  contextWindow = pendingContextWindow
-  contextWindow.ready = ready
-
-  await ready
-  contextWindow = await pendingContextWindow
-  contextWindow.ready = ready
+  if (!process.env.SOCKET_RUNTIME_VM_DEBUG) {
+    await contextWindow.hide()
+  }
 
   return contextWindow
 }
@@ -1290,7 +1300,7 @@ export async function getContextWorker () {
       }, { once: true })
 
       contextWorker.port.addEventListener('message', (event) => {
-        if (event.data === 'VM_SHARED_WORKER_ACK') {
+        if (event.data === 'VM_VM_ACK') {
           resolve(contextWorker)
         }
       }, { once: true })

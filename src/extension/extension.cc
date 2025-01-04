@@ -1,64 +1,73 @@
+#include "../runtime/crypto.hh"
+#include "../runtime/cwd.hh"
+#include "../runtime/io.hh"
+
 #include "extension.hh"
 
-namespace SSC {
+using ssc::runtime::config::getUserConfig;
+using ssc::runtime::string::replace;
+using ssc::runtime::string::split;
+using ssc::runtime::string::trim;
+
+namespace ssc::extension {
   static Extension::Map extensions = {};
   static Vector<String> initializedExtensions;
   static Mutex mutex;
 
   // explicit template instantiations
-  template char* SSC::Extension::Context::Memory::alloc<char> (size_t);
+  template char* ssc::extension::Extension::Context::Memory::alloc<char> (size_t);
   template sapi_context_t*
-  SSC::Extension::Context::Memory::alloc<sapi_context_t> ();
+  ssc::extension::Extension::Context::Memory::alloc<sapi_context_t> ();
 
-  template SSC::IPC::Router::ReplyCallback*
-  SSC::Extension::Context::Memory::alloc<SSC::IPC::Router::ReplyCallback> (
-    SSC::IPC::Router::ReplyCallback
+  template ssc::runtime::ipc::Router::ReplyCallback*
+  ssc::extension::Extension::Context::Memory::alloc<ssc::runtime::ipc::Router::ReplyCallback> (
+    ssc::runtime::ipc::Router::ReplyCallback
   );
 
   template sapi_ipc_result_t*
-  SSC::Extension::Context::Memory::alloc<sapi_ipc_result_t> (sapi_context_t*);
+  ssc::extension::Extension::Context::Memory::alloc<sapi_ipc_result_t> (sapi_context_t*);
 
   template sapi_process_exec_t*
-  SSC::Extension::Context::Memory::alloc<sapi_process_exec_t> (
-    SSC::ExecOutput&
+  ssc::extension::Extension::Context::Memory::alloc<sapi_process_exec_t> (
+    ssc::runtime::process::ExecOutput&
   );
 
   template sapi_json_object_t*
-  SSC::Extension::Context::Memory::alloc<sapi_json_object_t> (
+  ssc::extension::Extension::Context::Memory::alloc<sapi_json_object_t> (
     sapi_context_t*
   );
 
   template sapi_json_array_t*
-  SSC::Extension::Context::Memory::alloc<sapi_json_array_t> (
+  ssc::extension::Extension::Context::Memory::alloc<sapi_json_array_t> (
     sapi_context_t*
   );
 
   template sapi_json_string_t*
-  SSC::Extension::Context::Memory::alloc<sapi_json_string_t> (
+  ssc::extension::Extension::Context::Memory::alloc<sapi_json_string_t> (
     sapi_context_t*,
     const char*
   );
 
   template sapi_json_boolean_t*
-  SSC::Extension::Context::Memory::alloc<sapi_json_boolean_t> (
+  ssc::extension::Extension::Context::Memory::alloc<sapi_json_boolean_t> (
     sapi_context_t*,
     bool
   );
 
   template sapi_json_number_t*
-  SSC::Extension::Context::Memory::alloc<sapi_json_number_t> (
+  ssc::extension::Extension::Context::Memory::alloc<sapi_json_number_t> (
     sapi_context_t*,
     int64_t
   );
 
   template sapi_json_raw_t*
-  SSC::Extension::Context::Memory::alloc<sapi_json_raw_t> (
+  ssc::extension::Extension::Context::Memory::alloc<sapi_json_raw_t> (
     sapi_context_t*,
     const char*
   );
 
   template sapi_ipc_message_t*
-  SSC::Extension::Context::Memory::alloc<sapi_ipc_message_t> (
+  ssc::extension::Extension::Context::Memory::alloc<sapi_ipc_message_t> (
     sapi_ipc_message_t
   );
 
@@ -92,7 +101,7 @@ namespace SSC {
 
   Extension::Context::Context (
     const Context& context,
-    IPC::Router* router
+    ipc::Router* router
   ) : Context(router) {
       this->extension = context.extension;
       this->router = router;
@@ -102,7 +111,7 @@ namespace SSC {
       this->internal = context.internal;
     }
 
-  Extension::Context::Context (IPC::Router* router) : Context() {
+  Extension::Context::Context (ipc::Router* router) : Context() {
     this->router = router;
   }
 
@@ -149,11 +158,11 @@ namespace SSC {
 
   bool Extension::Context::isAllowed (const String& name) const {
     if (this->policies.size() == 0) return true;
-    auto names = SSC::split(name, ',');
+    auto names = split(name, ',');
 
     // parse each comma (',') separated policy
     for (const auto& value: names) {
-      auto parts = SSC::split(SSC::trim(value), '_');
+      auto parts = split(trim(value), '_');
       String current = "";
       // try each part of the policy (ipc, ipc_router, ipc_router_map)
       for (const auto& part : parts) {
@@ -185,7 +194,7 @@ namespace SSC {
   }
 
   String Extension::getExtensionsDirectory (const String& name) {
-    auto cwd = getcwd();
+    auto cwd = runtime::getcwd();
   #if SOCKET_RUNTIME_PLATFORM_WINDOWS
     return cwd + "\\socket\\extensions\\" + name + "\\";
   #else
@@ -193,7 +202,7 @@ namespace SSC {
   #endif
   }
 
-  void Extension::Context::Memory::push (std::function<void()> callback) {
+  void Extension::Context::Memory::push (Function<void()> callback) {
     Lock lock(this->mutex);
     this->pool.push_back(callback);
   }
@@ -231,18 +240,18 @@ namespace SSC {
 
   bool Extension::setHandle (const String& name, void* handle) {
     if (!extensions.contains(name)) {
-      IO::write("WARN - extensions does not contain " + name);
+      runtime::io::write("WARN - extensions does not contain " + name);
       return false;
     }
 
-    IO::write("Registering extension handle " + name);
+    runtime::io::write("Registering extension handle " + name);
     extensions.at(name)->handle = handle;
     return true;
   }
 
   void Extension::setRouterContext (
     const String& name,
-    IPC::Router* router,
+    ipc::Router* router,
     Context* context
   ) {
     if (!extensions.contains(name)) return;
@@ -252,7 +261,7 @@ namespace SSC {
 
   Extension::Context* Extension::getRouterContext (
     const String& name,
-    IPC::Router* router
+    ipc::Router* router
   ) {
     if (!extensions.contains(name)) return nullptr;
     return extensions.at(name)->contexts[router];
@@ -260,7 +269,7 @@ namespace SSC {
 
   void Extension::removeRouterContext (
     const String& name,
-    IPC::Router* router
+    ipc::Router* router
   ) {
     if (!extensions.contains(name)) return;
     extensions.at(name)->contexts.erase(router);
@@ -301,7 +310,7 @@ namespace SSC {
   bool Extension::load (const String& name) {
     Lock lock(mutex);
 
-    static auto userConfig = SSC::getUserConfig();
+    static auto userConfig = getUserConfig();
     // check if extension is already known
     if (isLoaded(name)) return true;
 
@@ -452,13 +461,13 @@ namespace SSC {
 bool sapi_extension_register (
   const sapi_extension_registration_t* registration
 ) {
-  SSC::Lock lock(SSC::mutex);
+  ssc::runtime::Lock lock(ssc::extension::mutex);
 
   if (registration == nullptr) return false;
   if (registration->abi == 0) return false;
   if (registration->initializer == nullptr) return false;
 
-  SSC::Extension::create(registration->name, [registration](
+  ssc::extension::Extension::create(registration->name, [registration](
     auto ctx,
     auto data
   ) mutable {
@@ -466,8 +475,8 @@ bool sapi_extension_register (
   });
 
   // should exist if `create()` above succeeded
-  if (SSC::Extension::isLoaded(registration->name)) {
-    auto extension = SSC::extensions.at(registration->name);
+  if (ssc::extension::Extension::isLoaded(registration->name)) {
+    auto extension = ssc::extension::extensions.at(registration->name);
 
     extension->abi = registration->abi;
     extension->deinitializer = [registration] (auto ctx, auto data) {
@@ -475,13 +484,13 @@ bool sapi_extension_register (
       if (deinitializer != nullptr) {
         debug("Unloading extension: %s", registration->name);
         auto initializedExtensionsCursor = std::find(
-          SSC::initializedExtensions.begin(),
-          SSC::initializedExtensions.end(),
-          SSC::String(registration->name)
+          ssc::extension::initializedExtensions.begin(),
+          ssc::extension::initializedExtensions.end(),
+          ssc::extension::String(registration->name)
          );
 
-        if (initializedExtensionsCursor != SSC::initializedExtensions.end()) {
-          SSC::initializedExtensions.erase(initializedExtensionsCursor);
+        if (initializedExtensionsCursor != ssc::extension::initializedExtensions.end()) {
+          ssc::extension::initializedExtensions.erase(initializedExtensionsCursor);
         }
 
         return deinitializer(reinterpret_cast<sapi_context_t*>(ctx), data);
@@ -516,11 +525,11 @@ const sapi_extension_registration_t* sapi_extension_get (
   const sapi_context_t* context,
   const char *name
 ) {
-  if (!SSC::Extension::isLoaded(name)) {
+  if (!ssc::extension::Extension::isLoaded(name)) {
     return nullptr;
   }
 
-  auto extension = SSC::Extension::get(name).get();
+  auto extension = ssc::extension::Extension::get(name).get();
   if (extension) {
     return reinterpret_cast<const sapi_extension_registration_t*>(
       extension->registration
@@ -535,11 +544,11 @@ bool sapi_extension_load (
     const char *name,
     const void* data
     ) {
-  if (!SSC::Extension::load(name)) {
+  if (!ssc::extension::Extension::load(name)) {
     return false;
   }
 
-  if (!SSC::Extension::initialize(context, name, data)) {
+  if (!ssc::extension::Extension::initialize(context, name, data)) {
     return false;
   }
 
@@ -547,11 +556,11 @@ bool sapi_extension_load (
 }
 
 bool sapi_extension_unload (sapi_context_t* context, const char *name) {
-  if (SSC::Extension::isLoaded(name)) {
+  if (ssc::extension::Extension::isLoaded(name)) {
     return false;
   }
 
-  if (!SSC::Extension::unload(context, name, true)) {
+  if (!ssc::extension::Extension::unload(context, name, true)) {
     return false;
   }
 
@@ -561,7 +570,7 @@ bool sapi_extension_unload (sapi_context_t* context, const char *name) {
 void sapi_log (const sapi_context_t* ctx, const char* message) {
   if (message == nullptr) return;
 
-  SSC::String output;
+  ssc::runtime::String output;
 
   if (ctx && ctx->extension && ctx->extension->name.size() > 0) {
     auto extension = ctx->extension;
@@ -573,11 +582,11 @@ void sapi_log (const sapi_context_t* ctx, const char* message) {
   #if SOCKET_RUNTIME_PLATFORM_ANDROID
     __android_log_print(ANDROID_LOG_INFO, "Console", "%s", message);
   #else
-    SSC::IO::write(output, false);
+    ssc::runtime::io::write(output, false);
   #endif
 
   #if SOCKET_RUNTIME_PLATFORM_APPLE
-    static auto userConfig = SSC::getUserConfig();
+    static auto userConfig = ssc::runtime::getUserConfig();
     static auto bundleIdentifier = userConfig["meta_bundle_identifier"];
     static auto SOCKET_RUNTIME_OS_LOG_INFO = os_log_create(
       bundleIdentifier.c_str(),
@@ -598,5 +607,5 @@ void sapi_debug (const sapi_context_t* ctx, const char* message) {
 }
 
 uint64_t sapi_rand64 () {
-  return SSC::rand64();
+  return ssc::runtime::crypto::rand64();
 }

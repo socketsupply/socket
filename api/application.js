@@ -59,7 +59,7 @@ function serializeConfig (config) {
 export { client, menu }
 
 // get this from constant value in runtime
-export const MAX_WINDOWS = 32
+export const MAX_WINDOWS = 64
 
 export class ApplicationWindowList {
   #list = []
@@ -88,8 +88,8 @@ export class ApplicationWindowList {
     return this.length
   }
 
-  get [Symbol.iterator] () {
-    return this.#list[Symbol.iterator]
+  [Symbol.iterator] () {
+    return this.#list[Symbol.iterator]()
   }
 
   forEach (callback, thisArg) {
@@ -267,6 +267,8 @@ export async function createWindow (opts) {
     resourcesDirectory: opts.resourcesDirectory ?? '',
     shouldExitApplicationOnClose: opts.shouldExitApplicationOnClose ?? false,
     shouldPreferServiceWorker: Boolean(opts.shouldPreferServiceWorker ?? false),
+    // @ts-ignore
+    reserved: Boolean(opts.reserved),
     /**
      * @private
      * @type {number}

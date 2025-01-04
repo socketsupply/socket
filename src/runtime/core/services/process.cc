@@ -8,6 +8,7 @@
 using namespace ssc::runtime::string;
 using ssc::runtime::http::Headers;
 using ssc::runtime::url::encodeURIComponent;
+using ssc::runtime::crypto::rand64;
 
 namespace ssc::runtime::core::services {
   void Process::shutdown () {
@@ -276,7 +277,7 @@ namespace ssc::runtime::core::services {
           return;
         }
 
-        const auto bytes = new char[output.size()]{0};
+        const auto bytes = new unsigned char[output.size()]{0};
         const auto headers = Headers {{
           {"content-type" ,"application/octet-stream"},
           {"content-length", (int) output.size()}
@@ -306,7 +307,7 @@ namespace ssc::runtime::core::services {
           return;
         }
 
-        const auto bytes = new char[output.size()]{0};
+        const auto bytes = new unsigned char[output.size()]{0};
         const auto headers = Headers {{
           {"content-type" ,"application/octet-stream"},
           {"content-length", (int) output.size()}
@@ -407,7 +408,7 @@ namespace ssc::runtime::core::services {
   void Process::write (
     const String& seq,
     ID id,
-    SharedPointer<char[]> buffer,
+    SharedPointer<unsigned char[]> buffer,
     size_t size,
     const Callback callback
   ) {

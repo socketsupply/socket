@@ -204,8 +204,8 @@ namespace ssc::runtime::process {
 
     // Write to stdin.
     bool write (const char *bytes, size_t size);
-    bool write (const SharedPointer<char[]> bytes, size_t size) {
-      return write(bytes.get(), size);
+    bool write (const SharedPointer<unsigned char[]> bytes, size_t size) {
+      return write(reinterpret_cast<const char*>(bytes.get()), size);
     }
 
     // Write to stdin. Convenience function using write(const char *, size_t).

@@ -1,8 +1,8 @@
-#include "window.hh"
-#include "../app/app.hh"
-#include "../cli/cli.hh"
-#include "../ipc/ipc.hh"
-#include "../core/webview.hh"
+#include "../app.hh"
+#include "../../cli.h"
+#include "../webview.hh"
+
+#include "../window.hh"
 
 using namespace SSC;
 

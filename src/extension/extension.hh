@@ -1,10 +1,7 @@
 #ifndef SOCKET_RUNTIME_EXTENSION_EXTENSION_H
 #define SOCKET_RUNTIME_EXTENSION_EXTENSION_H
 
-#include "../../include/socket/extension.h"
-#include "../core/process.hh"
-#include "../core/core.hh"
-#include "../ipc/ipc.hh"
+#include "../runtime.hh"
 
 #if SOCKET_RUNTIME_PLATFORM_WINDOWS
 #define SOCKET_RUNTIME_EXTENSION_FILENAME_EXTNAME ".dll"
@@ -12,7 +9,11 @@
 #define SOCKET_RUNTIME_EXTENSION_FILENAME_EXTNAME ".so"
 #endif
 
-namespace SSC {
+#undef SOCKET_RUNTIME_EXTENSION_H
+#include "../../include/socket/extension.h"
+
+namespace ssc::extension {
+  using namespace ssc::runtime;
   class Extension {
     public:
       struct Context {
@@ -72,7 +73,7 @@ namespace SSC {
         using PolicyMap = Map<String, Policy>;
 
         const Extension* extension = nullptr;
-        IPC::Router* router = nullptr;
+        ipc::Router* router = nullptr;
         Context* context = nullptr;
         void *internal = nullptr;
         const void *data = nullptr;
@@ -88,8 +89,8 @@ namespace SSC {
         Context (const Extension* extension);
         Context (const Context* context);
         Context (const Context& context);
-        Context (IPC::Router* router);
-        Context (const Context& context, IPC::Router* router);
+        Context (ipc::Router* router);
+        Context (const Context& context, ipc::Router* router);
 
         void retain ();
         bool release ();
@@ -100,11 +101,11 @@ namespace SSC {
         bool isAllowed (const String& name) const;
       };
 
-      using Map = SSC::Map<String, std::shared_ptr<Extension>>;
-      using Entry = std::shared_ptr<const Extension>;
-      using Initializer = std::function<bool(Context*, const void*)>;
-      using Deinitializer = std::function<bool(Context*, const void*)>;
-      using RouterContexts = SSC::Map<IPC::Router*, Context*>;
+      using Map = Map<String, SharedPointer<Extension>>;
+      using Entry = SharedPointer<const Extension>;
+      using Initializer = Function<bool(Context*, const void*)>;
+      using Deinitializer = Function<bool(Context*, const void*)>;
+      using RouterContexts = runtime::Map<ipc::Router*, Context*>;
 
       RouterContexts contexts;
       Context context;
@@ -134,18 +135,18 @@ namespace SSC {
 
       static void setRouterContext (
         const String& name,
-        IPC::Router* router,
+        ipc::Router* router,
         Context* context
       );
 
       static Context* getRouterContext (
         const String& name,
-        IPC::Router* router
+        ipc::Router* router
       );
 
       static void removeRouterContext (
         const String& name,
-        IPC::Router* router
+        ipc::Router* router
       );
 
       static bool initialize (
@@ -161,37 +162,38 @@ namespace SSC {
 
 extern "C" {
   typedef sapi_extension_registration_t* (*sapi_extension_registration_entry)();
-  struct sapi_context : public SSC::Extension::Context {
+  struct sapi_context : public ssc::extension::Extension::Context {
     sapi_context () = default;
     sapi_context (sapi_context* ctx)
-      : SSC::Extension::Context(reinterpret_cast<SSC::Extension::Context*>(ctx))
+      : ssc::extension::Extension::Context(reinterpret_cast<ssc::extension::Extension::Context*>(ctx))
     {}
   };
 
-  struct sapi_process_exec : public SSC::ExecOutput {
+  struct sapi_process_exec : public ssc::runtime::process::ExecOutput {
     sapi_context_t* context = nullptr;
     sapi_process_exec () = default;
-    sapi_process_exec (const SSC::ExecOutput& result)
-      : SSC::ExecOutput(result)
+    sapi_process_exec (const ssc::runtime::process::ExecOutput& result)
+      : ssc::runtime::process::ExecOutput(result)
     {}
-    sapi_process_exec (sapi_context_t* ctx, const SSC::ExecOutput& result)
-      : context(ctx), SSC::ExecOutput(result)
+    sapi_process_exec (sapi_context_t* ctx, const ssc::runtime::process::ExecOutput& result)
+      : context(ctx),
+        ssc::runtime::process::ExecOutput(result)
     {}
   };
 
-  struct sapi_process_spawn : public SSC::Process {
+  struct sapi_process_spawn : public ssc::runtime::Process {
     public:
       sapi_context_t* context = nullptr;
 
       sapi_process_spawn (
         const char* command,
         const char* argv,
-        SSC::Vector<SSC::String> env,
+        ssc::runtime::Vector<ssc::runtime::String> env,
         const char* path,
         sapi_process_spawn_stderr_callback_t onstdout,
         sapi_process_spawn_stderr_callback_t onstderr,
         sapi_process_spawn_exit_callback_t onexit
-      ) : SSC::Process(
+      ) : ssc::runtime::process::Process(
         command,
         argv,
         env,
@@ -203,76 +205,77 @@ extern "C" {
       {}
   };
 
-  struct sapi_ipc_router : public SSC::IPC::Router {};
-  struct sapi_ipc_message : public SSC::IPC::Message {};
+  struct sapi_ipc_router : public ssc::runtime::ipc::Router {};
+  struct sapi_ipc_message : public ssc::runtime::ipc::Message {};
 
-  struct sapi_ipc_result : public SSC::IPC::Result {
-    sapi_context_t* context = nullptr;
-    sapi_ipc_result () {
-      this->id = SSC::rand64();
-    }
-  };
-
-  struct sapi_json_any : public SSC::JSON::Any {
+  struct sapi_ipc_result : public ssc::runtime::ipc::Result {
     sapi_context_t* context = nullptr;
   };
 
-  struct sapi_json_null : public SSC::JSON::Null {
+  struct sapi_json_any : public ssc::runtime::JSON::Any {
     sapi_context_t* context = nullptr;
   };
 
-  struct sapi_json_object : public SSC::JSON::Object {
+  struct sapi_json_null : public ssc::runtime::JSON::Null {
     sapi_context_t* context = nullptr;
   };
 
-  struct sapi_json_array : public SSC::JSON::Array {
+  struct sapi_json_object : public ssc::runtime::JSON::Object {
     sapi_context_t* context = nullptr;
   };
 
-  struct sapi_json_boolean : public SSC::JSON::Boolean {
+  struct sapi_json_array : public ssc::runtime::JSON::Array {
+    sapi_context_t* context = nullptr;
+  };
+
+  struct sapi_json_boolean : public ssc::runtime::JSON::Boolean {
     sapi_context_t* context = nullptr;
     sapi_json_boolean () = default;
     sapi_json_boolean (bool boolean)
-      : SSC::JSON::Boolean(boolean)
+      : ssc::runtime::JSON::Boolean(boolean)
     {}
     sapi_json_boolean (sapi_context_t* ctx, bool boolean)
-      : context(ctx), SSC::JSON::Boolean(boolean)
+      : context(ctx),
+        ssc::runtime::JSON::Boolean(boolean)
     {}
   };
 
-  struct sapi_json_number : public SSC::JSON::Number {
+  struct sapi_json_number : public ssc::runtime::JSON::Number {
     sapi_context_t* context = nullptr;
     sapi_json_number () = default;
     sapi_json_number (int64_t number)
-      : SSC::JSON::Number(number)
+      : ssc::runtime::JSON::Number(number)
     {}
     sapi_json_number (sapi_context_t* ctx, int64_t number)
-      : context(ctx), SSC::JSON::Number(number)
+      : context(ctx),
+        ssc::runtime::JSON::Number(number)
     {}
   };
 
-  struct sapi_json_string : public SSC::JSON::String {
+  struct sapi_json_string : public ssc::runtime::JSON::String {
     sapi_context_t* context = nullptr;
     sapi_json_string () = default;
     sapi_json_string (const char* string)
-      : SSC::JSON::String(string)
+      : ssc::runtime::JSON::String(string)
     {}
     sapi_json_string (sapi_context_t* ctx, const char* string)
-      : context(ctx), SSC::JSON::String(string)
+      : context(ctx),
+        ssc::runtime::JSON::String(string)
     {}
   };
 
-  struct sapi_json_raw : public SSC::JSON::Raw {
+  struct sapi_json_raw : public ssc::runtime::JSON::Raw {
     sapi_context_t* context = nullptr;
     sapi_json_raw (
       const char* source
-    ) : SSC::JSON::Raw(SSC::String(source))
+    ) : ssc::runtime::JSON::Raw(ssc::runtime::String(source))
     {}
 
     sapi_json_raw (
       sapi_context_t* ctx,
       const char* source
-    ) : context(ctx), SSC::JSON::Raw(SSC::String(source))
+    ) : context(ctx),
+        ssc::runtime::JSON::Raw(ssc::runtime::String(source))
     {}
   };
 };

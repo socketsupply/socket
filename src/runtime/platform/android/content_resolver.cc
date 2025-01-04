@@ -1,7 +1,10 @@
 #include "../../filesystem.hh"
+#include "../../string.hh"
 #include "../../url.hh"
 
 #include "content_resolver.hh"
+
+using ssc::runtime::string::split;
 
 namespace ssc::runtime::android {
   ContentResolver::ContentResolver (const ContentResolver& resolver) {
@@ -12,8 +15,8 @@ namespace ssc::runtime::android {
   ContentResolver::ContentResolver (ContentResolver&& resolver) {
     this->activity = resolver.activity;
     this->jvm = resolver.jvm;
-    resolver->jvm = nullptr;
-    resolver->activity = nullptr;
+    resolver.jvm = nullptr;
+    resolver.activity = nullptr;
   }
 
   ContentResolver& ContentResolver::operator = (const ContentResolver& resolver) {
@@ -25,8 +28,8 @@ namespace ssc::runtime::android {
   ContentResolver& ContentResolver::operator = (ContentResolver&& resolver) {
     this->activity = resolver.activity;
     this->jvm = resolver.jvm;
-    resolver->jvm = nullptr;
-    resolver->activity = nullptr;
+    resolver.jvm = nullptr;
+    resolver.activity = nullptr;
     return *this;
   }
 

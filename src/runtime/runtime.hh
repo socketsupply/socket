@@ -8,6 +8,7 @@
 #include "webview.hh"
 #include "options.hh"
 #include "context.hh"
+#include "serviceworker.hh"
 
 #include "core/services.hh"
 
@@ -16,16 +17,18 @@ namespace ssc::runtime {
     public:
       using DispatchCallback = Function<void()>;
       using UserConfig = Map<String, String>;
+      using Features = core::Services::Features;
 
-      struct Options : public ssc::runtime::Options {
+      struct Options : public runtime::Options {
         UserConfig userConfig = config::getUserConfig();
         loop::Loop::Options loop;
-        core::Services::Features features;
+        Features features;
       };
 
       // managers
       window::Manager windowManager;
       bridge::Manager bridgeManager;
+      serviceworker::Manager serviceWorkerManager;
 
       context::Dispatcher dispatcher;
       UserConfig userConfig;
@@ -51,6 +54,8 @@ namespace ssc::runtime {
 
       bool stopped () const;
       bool paused () const;
+
+      bool hasPermission (const String& permission) const;
   };
 }
 #endif

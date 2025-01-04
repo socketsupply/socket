@@ -88,7 +88,7 @@ namespace ssc::runtime::http {
       String str () const;
       bool empty () const;
 
-      Headers& set (const String&, const String&) noexcept;
+      Headers& set (const String&, const Value&) noexcept;
       Headers& set (const Header&) noexcept;
       bool has (const String&) const noexcept;
       const Header get (const String&) const noexcept;
@@ -106,10 +106,12 @@ namespace ssc::runtime::http {
     public:
       String version = "1.1";
       String method = "";
+      String scheme = "http";
       URL url;
       Headers headers;
       bytes::Buffer body;
 
+      Request () = default;
       Request (const String&);
       Request (const unsigned char*, size_t = -1);
       String str () const;
@@ -124,14 +126,17 @@ namespace ssc::runtime::http {
       bytes::Buffer body;
 
       Response (const String&);
+      Response (const Status&, const String&);
+      Response (const Status&, const JSON::Any&);
       Response (const Headers&);
       Response (const Status&);
       Response (const Status&, const Headers&);
 
       Response& setHeader (const Headers::Header&);
-      Response& setHeader (const String&, const String&);
+      Response& setHeader (const String&, const Headers::Value&);
 
       const unsigned char* data () const;
+      size_t size () const;
       String str () const;
   };
 }

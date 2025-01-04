@@ -9,7 +9,7 @@ namespace ssc::runtime::filesystem {
   class Resource : public ssc::runtime::Resource {
     public:
       struct Cache {
-        SharedPointer<char[]> bytes = nullptr;
+        SharedPointer<unsigned char[]> bytes = nullptr;
         size_t size = 0;
       };
 
@@ -63,7 +63,7 @@ namespace ssc::runtime::filesystem {
 
           struct Buffer {
             Atomic<size_t> size = 0;
-            SharedPointer<char[]> bytes = nullptr;
+            SharedPointer<unsigned char[]> bytes = nullptr;
             Buffer (size_t size);
             Buffer (const Options& options);
             Buffer (const Buffer& buffer);
@@ -105,7 +105,7 @@ namespace ssc::runtime::filesystem {
 
       Cache cache;
       Options options;
-      SharedPointer<char[]> bytes = nullptr;
+      SharedPointer<unsigned char[]> bytes = nullptr;
 
       static Map<String, Set<String>> mimeTypes;
       static Path getResourcesPath ();
@@ -167,8 +167,8 @@ namespace ssc::runtime::filesystem {
       const String mimeType () const noexcept;
       size_t size (bool cached = false) noexcept;
       size_t size () const noexcept;
-      const char* read () const;
-      const char* read (bool cached = false);
+      const unsigned char* read () const;
+      const unsigned char* read (bool cached = false);
       const String str (bool cached = false);
       ReadStream stream (const ReadStream::Options& options = {});
 

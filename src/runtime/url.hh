@@ -151,7 +151,6 @@ namespace ssc::runtime::url {
     };
 
     // core properties
-    String href = "";
     String origin = "";
     String protocol = "";
     String username = "";
@@ -173,6 +172,8 @@ namespace ssc::runtime::url {
     URL () = default;
     URL (const URL&);
     URL (URL&&);
+    URL (const String&, const String&, bool = false);
+    URL (const String&, const URL&, bool = false);
     URL (const String& href, bool decodeURIComponents = false);
     URL (const JSON::Object& json);
 
@@ -180,7 +181,8 @@ namespace ssc::runtime::url {
     URL& operator = (URL&&);
 
     void set (const String& href, bool decodeURIComponents = false);
-    void set (const JSON::Object& json);
+    void set (const JSON::Object&);
+    const String href () const;
     const String str () const;
     const char* c_str () const;
     const JSON::Object json () const;

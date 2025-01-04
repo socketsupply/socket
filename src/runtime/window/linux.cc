@@ -9,8 +9,7 @@
 #include "../string.hh"
 #include "../cwd.hh"
 #include "../env.hh"
-
-#include "../../app/app.hh"
+#include "../app.hh"
 
 #include "../window.hh"
 
@@ -25,6 +24,8 @@ using ssc::runtime::string::replace;
 using ssc::runtime::string::split;
 using ssc::runtime::string::trim;
 using ssc::runtime::string::tmpl;
+
+using ssc::runtime::app::App;
 
 static GtkTargetEntry droppableTypes[] = {
   { (char*) "text/uri-list", 0, 0 }
@@ -44,7 +45,7 @@ namespace ssc::runtime::window {
 
     if (webContexts.contains(bundleIdentifier)) {
       window->bridge->webContext = webContexts.at(bundleIdentifier);
-      return window->bridge.webContext;
+      return window->bridge->webContext;
     }
 
     webContext = webkit_web_context_new();
@@ -61,11 +62,11 @@ namespace ssc::runtime::window {
         WebKitWebContext* webContext,
         gpointer userData
       ) {
-        static const auto app = App::sharedApplication();
-        static const auto bundleIdentifier = app->userConfig["meta_bundle_identifier"];
+        auto window = reinterpret_cast<Window*>(userData);
+        static const auto bundleIdentifier = window->bridge->userConfig["meta_bundle_identifier"];
         static const auto areNotificationsAllowed = (
-          !app->userConfig.contains("permissions_allow_notifications") ||
-          app->userConfig.at("permissions_allow_notifications") != "false"
+          !window->bridge->userConfig.contains("permissions_allow_notifications") ||
+          window->bridge->userConfig.at("permissions_allow_notifications") != "false"
         );
 
         const auto uri = "socket://" + bundleIdentifier;
@@ -104,9 +105,10 @@ namespace ssc::runtime::window {
           webkit_security_origin_unref(origin);
         }
       }),
-      nullptr
+      window
     );
 
+    /*
     webkit_web_context_set_sandbox_enabled(webContext, true);
 
     auto extensionsPath = filesystem::Resource::getResourcePath(Path("lib/extensions"));
@@ -135,6 +137,8 @@ namespace ssc::runtime::window {
         nullptr
       )
     );
+
+    */
 
     return webContext;
   }
@@ -299,7 +303,7 @@ namespace ssc::runtime::window {
       this->eval(source);
     };
 
-    this->bridge->client.preload = IPC::Preload::compile({
+    this->bridge->client.preload = webview::Preload::compile({
       .client = this->bridge->client,
       .index = options.index,
       .userScript = options.userScript,
@@ -348,7 +352,7 @@ namespace ssc::runtime::window {
         return false;
       }
 
-      const auto bytes = file.read();
+      const auto bytes = reinterpret_cast<const char*>(file.read());
       const auto lines = split(bytes, '\n');
 
       for (const auto& line : lines) {
@@ -928,7 +932,7 @@ namespace ssc::runtime::window {
         auto w = reinterpret_cast<Window*>(arg);
         int index = w != nullptr ? w->index : -1;
 
-        for (auto& window : app->windowManager.windows) {
+        for (auto& window : app->runtime.windowManager.windows) {
           if (window == nullptr) {
             continue;
           }
@@ -945,7 +949,7 @@ namespace ssc::runtime::window {
         }
 
         if (index >= 0) {
-          for (auto window : app->windowManager.windows) {
+          for (auto window : app->runtime.windowManager.windows) {
             if (window == nullptr || window->index == index) {
               continue;
             }
@@ -957,7 +961,7 @@ namespace ssc::runtime::window {
             window->eval(getEmitToRenderProcessJavaScript("window-closed", json.str()));
           }
 
-          app->windowManager.destroyWindow(index);
+          app->runtime.windowManager.destroyWindow(index);
         }
         return FALSE;
       })),
@@ -1056,15 +1060,15 @@ namespace ssc::runtime::window {
 
   ScreenSize Window::getScreenSize () {
     auto app = App::sharedApplication();
+    int width = 0;
+    int height = 0;
+
     if (!app) {
       return ScreenSize { width, height };
     }
 
     auto list = gtk_window_list_toplevels();
-    auto defaultWindow = app->windowManager.getWindow(0);
-    int width = 0;
-    int height = 0;
-
+    auto defaultWindow = app->runtime.windowManager.getWindow(0);
     if (list != nullptr) {
       for (auto entry = list; entry != nullptr; entry = entry->next) {
         auto widget = (GtkWidget*) entry->data;
@@ -1127,7 +1131,8 @@ namespace ssc::runtime::window {
     return ScreenSize { width, height };
   }
 
-  void Window::eval (const String& source, const EvalCallback callback) {
+  void Window::eval (const String& input, const EvalCallback callback) {
+    auto source = input;
     this->bridge->dispatch([=, this] () {
       if (this->webview) {
         webkit_web_view_evaluate_javascript(
@@ -1380,8 +1385,11 @@ namespace ssc::runtime::window {
   }
 
   void Window::setTitle (const String& s) {
-    gtk_widget_realize(window);
-    gtk_window_set_title(GTK_WINDOW(window), s.c_str());
+    const auto title = s;
+    if (this->options.headless != true) {
+      gtk_widget_realize(this->window);
+    }
+    gtk_window_set_title(GTK_WINDOW(this->window), title.c_str());
   }
 
   void Window::about () {

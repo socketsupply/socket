@@ -1,5 +1,7 @@
-#include "../app/app.hh"
-#include "../cli/cli.hh"
+#include "../app.hh"
+#include "../cli.hh"
+
+using ssc::app::App;
 
 int main (int argc, char *argv[]) {
   struct rlimit limit;
@@ -7,7 +9,7 @@ int main (int argc, char *argv[]) {
   limit.rlim_cur = 2048;
   setrlimit(RLIMIT_NOFILE, &limit);
   @autoreleasepool {
-    SSC::App app(0);
+    App app(App::Options {});
     return app.run(argc, argv);
   }
 }

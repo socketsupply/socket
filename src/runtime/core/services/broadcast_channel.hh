@@ -20,14 +20,14 @@ namespace ssc::runtime::core::services {
         const String token = "";
         const String name = "";
         JSON::Any data;
-        const MessageID id = rand64();
+        const MessageID id = crypto::rand64();
 
         const JSON::Object json () const;
       };
 
       struct MessageEvent : public Message {
         const Subscription& subscription;
-        const MessageEventID id = rand64();
+        const MessageEventID id = crypto::rand64();
         const JSON::Object json () const;
       };
 
@@ -41,7 +41,7 @@ namespace ssc::runtime::core::services {
         const String origin = "";
         const Client client;
         const Observer::Callback callback;
-        const SubscriptionID id = rand64();
+        const SubscriptionID id = crypto::rand64();
         const JSON::Object json () const;
         const String key () const;
       };

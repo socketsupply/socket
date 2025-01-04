@@ -2,11 +2,12 @@
 #define SOCKET_RUNTIME_UNIQUE_CLIENT_H
 
 #include "platform.hh"
+#include "crypto.hh"
 
 namespace ssc::runtime {
   struct UniqueClient {
     using ID = uint64_t;
-    ID id = rand64();
+    ID id = crypto::rand64();
     int index = -1;
 
     UniqueClient () = default;

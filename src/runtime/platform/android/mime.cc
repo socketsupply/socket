@@ -1,7 +1,7 @@
 #include "mime.hh"
 #include "string_wrap.hh"
 
-namespace ssc::android {
+namespace ssc::runtime::android {
   static MimeTypeMap sharedMimeTypeMap;
 
   void initializeMimeTypeMap (MimeTypeMapRef ref, JVMEnvironment jvm) {
@@ -10,7 +10,7 @@ namespace ssc::android {
   }
 
   const MimeTypeMap* MimeTypeMap::sharedMimeTypeMap () {
-    return &Android::sharedMimeTypeMap;
+    return &android::sharedMimeTypeMap;
   }
 
   String MimeTypeMap::getMimeTypeFromExtension (const String& extension) const {

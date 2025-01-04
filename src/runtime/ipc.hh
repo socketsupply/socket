@@ -2,6 +2,7 @@
 #define SOCKET_RUNTIME_IPC_H
 
 #include "webview/preload.hh"
+#include "webview/client.hh"
 #include "queued_response.hh"
 #include "unique_client.hh"
 #include "crypto.hh"
@@ -15,13 +16,14 @@ namespace ssc::runtime::ipc {
   class IBridge;
 
   /**
-   * A `Client` that represents a unique caller of the IPC channel.
+   * A `Client` represents a unique caller of the IPC channel in a webview
+   * or the runtime.
    */
-  struct Client : public UniqueClient {
-    using UniqueClient::UniqueClient;
+  struct Client : public webview::Client {
+    using webview::Client::Client;
 
-    Client (const UniqueClient& client)
-      : UniqueClient(client)
+    Client (const webview::Client& client)
+      : webview::Client(client)
     {}
   };
 
@@ -63,7 +65,6 @@ namespace ssc::runtime::ipc {
       const String get (const String& key, const String& fallback) const;
       const Map<String, String> dump () const;
       const String str () const;
-      const char* c_str () const;
       const Map<String, String> map () const;
       const JSON::Object json () const;
   };
@@ -94,7 +95,7 @@ namespace ssc::runtime::ipc {
 
       Message message;
       Message::Seq seq = "-1";
-      uint64_t id = rand64();
+      uint64_t id = crypto::rand64();
       String source = "";
       String token = "";
       JSON::Any value = nullptr;
@@ -174,9 +175,9 @@ namespace ssc::runtime::ipc {
       void map (const String& name, bool async, const MessageCallback callback);
       void unmap (const String& name);
       bool invoke (const String& uri, const ResultCallback callback);
-      bool invoke (const String& uri, SharedPointer<char[]> bytes, size_t size);
-      bool invoke (const String&, SharedPointer<char[]>, size_t, const ResultCallback);
-      bool invoke (const Message&, SharedPointer<char[]>, size_t, const ResultCallback);
+      bool invoke (const String& uri, SharedPointer<unsigned char[]> bytes, size_t size);
+      bool invoke (const String&, SharedPointer<unsigned char[]>, size_t, const ResultCallback);
+      bool invoke (const Message&, SharedPointer<unsigned char[]>, size_t, const ResultCallback);
   };
 
   /**
@@ -186,14 +187,18 @@ namespace ssc::runtime::ipc {
     public:
       context::RuntimeContext& context;
       context::Dispatcher& dispatcher;
+      Map<String, String> userConfig;
       Client client;
       Router router;
+      int index = 0;
 
       IBridge (
         context::Dispatcher& dispatcher,
         context::RuntimeContext& context,
-        const Client& client
+        const Client& client,
+        Map<String, String> userConfig
       ) : dispatcher(dispatcher),
+          userConfig(userConfig),
           context(context),
           client(client),
           router(*this)
@@ -204,9 +209,11 @@ namespace ssc::runtime::ipc {
       virtual bool emit (const String&, const JSON::Any& = {}) = 0;
       virtual bool send (const Message::Seq&, const String&, const QueuedResponse& = {}) = 0;
       virtual bool send (const Message::Seq& seq, const JSON::Any& json, const QueuedResponse& = {}) = 0;
-      virtual bool route ( const String&, SharedPointer<char[]>, size_t) = 0;
-      virtual bool route (const String&, SharedPointer<char[]>, size_t, const Router::ResultCallback) = 0;
+      virtual bool route ( const String&, SharedPointer<unsigned char[]>, size_t) = 0;
+      virtual bool route (const String&, SharedPointer<unsigned char[]>, size_t, const Router::ResultCallback) = 0;
+      virtual bool dispatch (const context::DispatchCallback) = 0;
+      virtual Runtime* getRuntime () = 0;
+      virtual const Runtime* getRuntime () const = 0;
   };
-
 }
 #endif

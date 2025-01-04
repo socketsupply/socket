@@ -48,7 +48,7 @@ namespace ssc::runtime::core::services {
       void exec (const ipc::Message::Seq&, ID, const Vector<String>, const ExecOptions, const Callback);
       void spawn (const ipc::Message::Seq&, ID, const Vector<String>, const SpawnOptions, const Callback);
       void kill (const ipc::Message::Seq&, ID, int, const Callback);
-      void write (const ipc::Message::Seq&, ID, SharedPointer<char[]>, size_t, const Callback);
+      void write (const ipc::Message::Seq&, ID, SharedPointer<unsigned char[]>, size_t, const Callback);
   };
 }
 #endif

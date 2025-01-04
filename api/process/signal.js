@@ -12,7 +12,7 @@ import os from '../os.js'
 
 export { constants }
 
-export const channel = new ipc.IPCBroadcastChannel('socket.runtime.signal')
+export const channel = new BroadcastChannel('socket.runtime.signal')
 
 export const SIGHUP = constants.SIGHUP
 export const SIGINT = constants.SIGINT

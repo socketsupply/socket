@@ -7,6 +7,9 @@
 
 namespace ssc::runtime::crypto {
   uint64_t rand64 ();
+	int randint (int a, int b);
+	int randint (int a);
+	int randint ();
 
   struct SHA1Context {
     uint32_t state[5];
@@ -40,7 +43,7 @@ namespace ssc::runtime::crypto {
 
       SHA1 ();
       SHA1 (const String&);
-      SHA1 (const SharedPointer<char[]>&, size_t);
+      SHA1 (const SharedPointer<unsigned char[]>&, size_t);
       SHA1 (const unsigned char *, size_t);
 
       SHA1& update (const unsigned char *, size_t);
@@ -54,7 +57,7 @@ namespace ssc::runtime::crypto {
   };
 
   const String sha1 (const String&);
-  const String sha1 (const SharedPointer<char[]>&, size_t);
+  const String sha1 (const SharedPointer<unsigned char[]>&, size_t);
   const String sha1 (const unsigned char *, size_t);
 }
 #endif

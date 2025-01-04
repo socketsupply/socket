@@ -1,9 +1,9 @@
 #ifndef SOCKET_RUNTIME_DESKTOP_EXTENSION_H
 #define SOCKET_RUNTIME_DESKTOP_EXTENSION_H
 
-#include "../platform/platform.hh"
+#include "../runtime/platform.hh"
 
-namespace SSC {
+namespace ssc::desktop {
   struct WebExtensionContext {
     struct ConfigData {
       char* bytes = nullptr;

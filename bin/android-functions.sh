@@ -802,7 +802,7 @@ function android_fte() {
       SDK_OPTIONS+="\"platforms;android-$ANDROID_PLATFORM\" "
       SDK_OPTIONS+="\"emulator\" "
       SDK_OPTIONS+="\"system-images;android-$ANDROID_PLATFORM;google_apis;x86_64\" "
-      # TODO(@mribbons): If we skip downloading this in CI, we have to also prevent it from being installed by cli.cc
+      # TODO(@mribbons): If we skip downloading this in CI, we have to also prevent it from being installed by cli/main.cc
       # [[ -z "$CI" ]] && SDK_OPTIONS+="\"system-images;android-$ANDROID_PLATFORM;google_apis;arm64-v8a\" "
       SDK_OPTIONS+="\"system-images;android-$ANDROID_PLATFORM;google_apis;arm64-v8a\" "
 

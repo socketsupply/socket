@@ -30,7 +30,7 @@ namespace ssc {
   namespace fs = std::filesystem;
 }
 
-namespace ssc::runtime {
+namespace ssc::runtime::types {
   using AtomicBool = std::atomic<bool>;
   using AtomicInt = std::atomic<int>;
   using BinarySemaphore = std::binary_semaphore;

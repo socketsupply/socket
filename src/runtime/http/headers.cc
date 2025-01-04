@@ -46,7 +46,7 @@ namespace ssc::runtime::http {
     for (const auto& entry : split(source, '\n')) {
       const auto tuple = split(entry, ':');
       if (tuple.size() == 2) {
-        set(trim(tuple.front()), trim(tuple.back()));
+        this->set(trim(tuple.front()), trim(tuple.back()));
       }
     }
   }
@@ -69,26 +69,26 @@ namespace ssc::runtime::http {
     }
   }
 
-  Headers& Headers::set (const String& name, const String& value) noexcept {
-    set(Header { name, value });
+  Headers& Headers::set (const String& name, const Value& value) noexcept {
+    this->set(Header { name, value });
     return *this;
   }
 
   Headers& Headers::set (const Header& header) noexcept {
-    for (auto& entry : entries) {
+    for (auto& entry : this->entries) {
       if (header.name == entry.name) {
         entry.value = header.value;
         return *this;
       }
     }
 
-    entries.push_back(header);
+    this->entries.push_back(header);
     return *this;
   }
 
   bool Headers::has (const String& name) const noexcept {
     const auto normalizedName = toLowerCase(name);
-    for (const auto& header : entries) {
+    for (const auto& header : this->entries) {
       if (header.name == normalizedName) {
         return true;
       }
@@ -99,7 +99,7 @@ namespace ssc::runtime::http {
 
   const Headers::Header Headers::get (const String& name) const noexcept {
     const auto normalizedName = toLowerCase(name);
-    for (const auto& header : entries) {
+    for (const auto& header : this->entries) {
       if (header.name == normalizedName) {
         return header;
       }

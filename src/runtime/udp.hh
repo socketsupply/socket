@@ -71,19 +71,19 @@ namespace ssc::runtime::udp {
     public:
       struct RequestContext {
         using Callback = Function<void(int, QueuedResponse)>;
-        SharedPointer<char[]> bytes = nullptr;
+        SharedPointer<unsigned char[]> bytes = nullptr;
         size_t size = 0;
         uv_buf_t buffer;
         Callback callback;
         Socket* socket = nullptr;
         RequestContext (Callback callback) { this->callback = callback; }
-        RequestContext (size_t size, SharedPointer<char[]> bytes, Callback callback)
+        RequestContext (size_t size, SharedPointer<unsigned char[]> bytes, Callback callback)
           : size(size),
             bytes(bytes),
             callback(callback)
         {
           if (bytes != nullptr) {
-            this->buffer = uv_buf_init(bytes.get(), size);
+            this->buffer = uv_buf_init(reinterpret_cast<char*>(bytes.get()), size);
           }
         }
       };
@@ -156,7 +156,7 @@ namespace ssc::runtime::udp {
       int connect (const String& address, int port);
       int disconnect ();
       void send (
-        SharedPointer<char[]> bytes,
+        SharedPointer<unsigned char[]> bytes,
         size_t size,
         int port,
         const String& address,
