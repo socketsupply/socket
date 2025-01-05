@@ -424,7 +424,6 @@ namespace ssc::runtime::webview {
     // request scheme we do not know about, we do not need to call
     // `request.finalize()` as we'll just respond to the request right away
     if (!this->hasHandlerForScheme(request->scheme)) {
-      debug("NO HANDLER FOR REQUEST: %s", request->str().c_str());
       auto response = webview::SchemeHandlers::Response(request, 404);
       // make sure the response was finished first
       response.finish();

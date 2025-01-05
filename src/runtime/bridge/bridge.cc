@@ -597,13 +597,12 @@ export * from '{{url}}'
           });
 
           if (fetched) {
-            // FIXME(@jwerle): revisit timeout
-            //this->core->setTimeout(32000, [request] () mutable {
-              //if (request->isActive()) {
-                //auto response = SchemeHandlers::Response(request, 408);
-                //response.fail("ServiceWorker request timed out.");
-              //}
-            //});
+            this->getRuntime()->services.timers.setTimeout(32000, [request] () mutable {
+              if (request->isActive()) {
+                auto response = SchemeHandlers::Response(request, 408);
+                response.fail("ServiceWorker request timed out.");
+              }
+            });
             return;
           }
         }
@@ -739,13 +738,12 @@ export * from '{{url}}'
           });
 
           if (fetched) {
-            // FIXME(@jwerle): revisit timeout
-            //this->core->setTimeout(32000, [request] () mutable {
-              //if (request->isActive()) {
-                //auto response = SchemeHandlers::Response(request, 408);
-                //response.fail("ServiceWorker request timed out.");
-              //}
-            //});
+            this->getRuntime()->services.timers.setTimeout(32000, [request] () mutable {
+              if (request->isActive()) {
+                auto response = SchemeHandlers::Response(request, 408);
+                response.fail("ServiceWorker request timed out.");
+              }
+            });
             return;
           }
         }
@@ -779,23 +777,23 @@ export * from '{{url}}'
         auto resource = filesystem::Resource(resourcePath, { .cache = true });
 
         if (resource.exists()) {
-          const auto url = (
-            #if SOCKET_RUNTIME_PLATFORM_ANDROID
-            "https://" +
-            #else
-            "socket://" +
-            #endif
-            toLowerCase(bundleIdentifier) +
-            contentLocation +
-            (request->query.size() > 0 ? "?" + request->query : "")
-          );
+          auto url = URL();
+          #if SOCKET_RUNTIME_PLATFORM_ANDROID
+          url.scheme = "https";
+          #else
+          url.scheme = "socket";
+          #endif
+          url.hostname = toLowerCase(bundleIdentifier);
+          url.pathname = contentLocation;
+          url.search = request->query;
+          debug("URL1: %s", url.str().c_str());
 
           const auto moduleImportProxy = tmpl(
             String(reinterpret_cast<const char*>(resource.read())).find("export default") != String::npos
               ? ESM_IMPORT_PROXY_TEMPLATE_WITH_DEFAULT_EXPORT
               : ESM_IMPORT_PROXY_TEMPLATE_WITHOUT_DEFAULT_EXPORT,
             Map<String, String> {
-              {"url", url},
+              {"url", url.str()},
               {"commit", version::VERSION_HASH_STRING},
               {"protocol", "socket"},
               {"pathname", pathname},
@@ -902,22 +900,22 @@ export * from '{{url}}'
         }
 
         if (resource.exists()) {
-          const auto url = (
-            #if SOCKET_RUNTIME_PLATFORM_ANDROID
-            "https://" +
-            #else
-            "socket://" +
-            #endif
-            toLowerCase(bundleIdentifier) +
-            "/socket" +
-            pathname
-          );
+          auto url = URL();
+          #if SOCKET_RUNTIME_PLATFORM_ANDROID
+          url.scheme = "https";
+          #else
+          url.scheme = "socket";
+          #endif
+          url.hostname = toLowerCase(bundleIdentifier);
+          url.pathname = "/socket" + pathname;
+          url.search = request->query;
+          debug("URL2: %s", url.str().c_str());
           const auto moduleImportProxy = tmpl(
             String(reinterpret_cast<const char*>(resource.read())).find("export default") != String::npos
               ? ESM_IMPORT_PROXY_TEMPLATE_WITH_DEFAULT_EXPORT
               : ESM_IMPORT_PROXY_TEMPLATE_WITHOUT_DEFAULT_EXPORT,
             Map<String, String> {
-              {"url", url},
+              {"url", url.str()},
               {"commit", version::VERSION_HASH_STRING},
               {"protocol", "node"},
               {"pathname", pathname},
@@ -949,10 +947,29 @@ export * from '{{url}}'
       callback(response);
     });
 
+    Set<String> globalProtocolHandlers = { "npm" };
     Map<String, String> protocolHandlers = {};
     auto globalUserConfig = getUserConfig();
-    if (globalUserConfig["meta_bundle_identifier"] == this->userConfig["meta_bundle_identifier"]) {
-      protocolHandlers.insert({"npm", "/socket/npm/service-worker.js"});
+    protocolHandlers.insert({"npm", "/socket/npm/service-worker.js"});
+
+    for (const auto& entry : split(globalUserConfig["webview_protocol-handlers"], " ")) {
+      const auto scheme = replace(trim(entry), ":", "");
+      if (this->navigator.serviceWorkerServer->container.protocols.registerHandler(scheme)) {
+        protocolHandlers.insert_or_assign(scheme, "");
+        globalProtocolHandlers.insert(scheme);
+      }
+    }
+
+    for (const auto& entry : globalUserConfig) {
+      const auto& key = entry.first;
+      if (key.starts_with("webview_protocol-handlers_")) {
+        const auto scheme = replace(replace(trim(key), "webview_protocol-handlers_", ""), ":", "");;
+        const auto data = entry.second;
+        if (this->navigator.serviceWorkerServer->container.protocols.registerHandler(scheme, { data })) {
+          protocolHandlers.insert_or_assign(scheme, data);
+          globalProtocolHandlers.insert(scheme);
+        }
+      }
     }
 
     for (const auto& entry : split(this->userConfig["webview_protocol-handlers"], " ")) {
@@ -968,7 +985,6 @@ export * from '{{url}}'
         const auto scheme = replace(replace(trim(key), "webview_protocol-handlers_", ""), ":", "");;
         const auto data = entry.second;
         if (this->navigator.serviceWorkerServer->container.protocols.registerHandler(scheme, { data })) {
-          debug("protocol: %s %s", scheme.c_str(), data.c_str());
           protocolHandlers.insert_or_assign(scheme, data);
         }
       }
@@ -977,6 +993,12 @@ export * from '{{url}}'
     for (const auto& entry : protocolHandlers) {
       const auto& scheme = entry.first;
       const auto id = rand64();
+
+      if (globalUserConfig["meta_bundle_identifier"] != this->userConfig["meta_bundle_identifier"]) {
+        if (globalProtocolHandlers.contains(scheme)) {
+          continue;
+        }
+      }
 
       auto scriptURL = trim(entry.second);
 
@@ -1010,6 +1032,8 @@ export * from '{{url}}'
         scriptURL
       );
 
+      debug("scriptURL: %s", scriptURL.c_str());
+
       auto env = JSON::Object::Entries {};
       for (const auto& entry : this->userConfig) {
         if (entry.first.starts_with("env_")) {
@@ -1023,14 +1047,16 @@ export * from '{{url}}'
       }
 
       if (scheme == "npm") {
-        this->navigator.serviceWorkerServer->container.registerServiceWorker({
-          .type = serviceworker::Registration::Options::Type::Module,
-          .scriptURL = scriptURL,
-          .scope = scope,
-          .scheme = scheme,
-          .serializedWorkerArgs = "",
-          .id = id
-        });
+        if (globalUserConfig["meta_bundle_identifier"] == this->userConfig["meta_bundle_identifier"]) {
+          this->navigator.serviceWorkerServer->container.registerServiceWorker({
+            .type = serviceworker::Registration::Options::Type::Module,
+            .scriptURL = scriptURL,
+            .scope = scope,
+            .scheme = scheme,
+            .serializedWorkerArgs = "",
+            .id = id
+          });
+        }
       } else {
         this->navigator.serviceWorkerServer->container.registerServiceWorker({
           .type = serviceworker::Registration::Options::Type::Module,
@@ -1045,9 +1071,9 @@ export * from '{{url}}'
             {"headless", this->userConfig["build_headless"] == "true"},
             {"config", this->userConfig},
             {"conduit", JSON::Object::Entries {
-              {"port", this->context.getRuntime()->services.conduit.port},
-              {"hostname", this->context.getRuntime()->services.conduit.hostname},
-              {"sharedKey", this->context.getRuntime()->services.conduit.sharedKey}
+              {"port", this->getRuntime()->services.conduit.port},
+              {"hostname", this->getRuntime()->services.conduit.hostname},
+              {"sharedKey", this->getRuntime()->services.conduit.sharedKey}
             }}
           }).str()),
           .id = id
@@ -1248,7 +1274,7 @@ extern "C" {
       return false;
     }
 
-    const auto window = app->windowManager.getWindow(index);
+    const auto window = app->runtime.windowManager.getWindow(index);
 
     if (!window) {
       ANDROID_THROW(env, "Invalid window requested");

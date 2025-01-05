@@ -422,4 +422,8 @@ namespace ssc::runtime::url {
   const size_t URL::size () const {
     return this->str().size();
   }
+
+  bool URL::empty () const {
+    return this->str().empty();
+  }
 }

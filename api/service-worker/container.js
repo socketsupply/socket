@@ -376,14 +376,14 @@ export class ServiceWorkerContainer extends EventTarget {
     return new ServiceWorkerRegistration(info, serviceWorker)
   }
 
-  async getRegistrations () {
+  async getRegistrations (options) {
     if (globalThis.top && globalThis.window && globalThis.top !== globalThis.window) {
       try {
-        return await globalThis.top.navigator.serviceWorker.getRegistrations()
+        return await globalThis.top.navigator.serviceWorker.getRegistrations(options)
       } catch (err) {}
     }
 
-    const result = await ipc.request('serviceWorker.getRegistrations')
+    const result = await ipc.request('serviceWorker.getRegistrations', options)
 
     if (result.err) {
       throw result.err

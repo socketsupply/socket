@@ -47,7 +47,12 @@ export class ServiceWorkerInstance extends Worker {
           options.args = JSON.parse(decodeURIComponent(decodeURIComponent(info.serializedWorkerArgs)))
         }
       }
+
+      if (options?.args?.index) {
+        options.args.index = globalThis.__args.index
+      }
     }
+
     super(filename, {
       name: `ServiceWorker (${options?.info?.pathname ?? filename})`,
       ...options,

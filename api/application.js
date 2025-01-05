@@ -386,7 +386,7 @@ export async function getScreenSize () {
 }
 
 function throwOnInvalidIndex (index) {
-  if (index === undefined || typeof index !== 'number' || !Number.isInteger(index) || index < 0) {
+  if (index === undefined || typeof index !== 'number' || !Number.isInteger(index) || index < -1) {
     throw new Error(`Invalid window index: ${index} (must be a positive integer number)`)
   }
 }

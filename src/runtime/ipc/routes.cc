@@ -2560,6 +2560,7 @@ static void mapIPCRoutes (Router *router) {
 
     auto serviceWorkerServer = app->runtime.serviceWorkerManager.get(origin.name());
     if (!serviceWorkerServer) {
+    debug("no server for: %s", origin.name().c_str());
       serviceWorkerServer = dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer;
     }
 
@@ -2634,8 +2635,15 @@ static void mapIPCRoutes (Router *router) {
    * Gets all service worker scope registrations.
    */
   router->map("serviceWorker.getRegistrations", [=](auto message, auto router, auto reply) {
+    const auto origin = webview::Origin(message.get("origin"));
+    auto serviceWorkerServer = dynamic_cast<Bridge&>(router->bridge).getRuntime()->serviceWorkerManager.get(origin.name());
+
+    if (!serviceWorkerServer) {
+      serviceWorkerServer = dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer;
+    }
+
     auto json = JSON::Array::Entries {};
-    for (const auto& entry : dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.registrations) {
+    for (const auto& entry : serviceWorkerServer->container.registrations) {
       const auto& registration = entry.second;
       json.push_back(registration.json());
     }

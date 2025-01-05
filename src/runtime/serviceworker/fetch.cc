@@ -118,9 +118,11 @@ namespace ssc::runtime::serviceworker {
       auto json = registration.json();
       json.set("fetch", fetch);
 
+      debug("dispatch fetch: %s", json.str().c_str());
       return this->container.bridge->emit("serviceWorker.fetch", json);
     }
 
+    debug("failed to dispatch fetch: %s %s", pathname.c_str(), this->request.str().c_str());
     return false;
   }
 

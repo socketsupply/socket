@@ -513,8 +513,8 @@ function determine_cxx () {
   read_env_data
 
   if [ ! "$CXX" ]; then
-    # TODO(@mribbons): yum support
-    if [ -n "$dpkg" ]; then
+    # TODO(@jwerle): yum support
+    if [[ "$(host_os)" == "Linux" ]] && [ -n "$dpkg" ]; then
       tmp="$(mktemp)"
       {
         dpkg -S clang 2>&1| grep "clang++" | cut -d" " -f 2 | while read clang; do

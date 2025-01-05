@@ -225,14 +225,19 @@ namespace ssc::runtime::window {
 
     windowOptions.RUNTIME_PRIMORDIAL_OVERRIDES = options.RUNTIME_PRIMORDIAL_OVERRIDES;
     windowOptions.userScript = options.userScript;
-    windowOptions.userConfig = this->options.userConfig;
     windowOptions.headless = options.headless;
     windowOptions.features = options.features;
     windowOptions.debug = isDebugEnabled() || options.debug;
     windowOptions.index = options.index;
     windowOptions.argv = options.argv;
 
-    for (auto const &entry : parseStringList(this->options.userConfig["build_env"])) {
+    if (options.userConfig.size() > 0) {
+      windowOptions.userConfig = options.userConfig;
+    } else {
+      windowOptions.userConfig = this->options.userConfig;
+    }
+
+    for (auto const &entry : parseStringList(windowOptions.userConfig["build_env"])) {
       const auto key = trim(entry);
 
       if (!env::has(key)) {
@@ -244,30 +249,12 @@ namespace ssc::runtime::window {
       windowOptions.env[key] = value;
     }
 
-    if (options.userConfig.contains("build_env")) {
-      for (auto const &entry : parseStringList(options.userConfig.at("build_env"))) {
-        const auto key = trim(entry);
-
-        if (!env::has(key)) {
-          continue;
-        }
-
-        const auto value = decodeURIComponent(env::get(key));
-
-        windowOptions.env[key] = value;
-      }
-    }
-
-    for (auto const &tuple : options.userConfig) {
+    for (auto const &tuple : windowOptions.userConfig) {
       if (tuple.first.starts_with("env_")) {
         const auto key = tuple.first.substr(4);
         const auto& value = tuple.second;
         windowOptions.env[key] = value;
       }
-    }
-
-    for (const auto& tuple : options.userConfig) {
-      windowOptions.userConfig[tuple.first] = tuple.second;
     }
 
     windowOptions.origin = webview::Origin("socket://" + windowOptions.userConfig["meta_bundle_identifier"] + "/");

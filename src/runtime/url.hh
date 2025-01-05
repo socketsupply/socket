@@ -187,6 +187,7 @@ namespace ssc::runtime::url {
     const char* c_str () const;
     const JSON::Object json () const;
     const size_t size () const;
+    bool empty () const;
   };
 
   size_t url_encode_uri_component (

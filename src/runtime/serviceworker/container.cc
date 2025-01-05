@@ -62,23 +62,22 @@ namespace ssc::runtime::serviceworker {
     if (bridge->userConfig["webview_service-workers"].size() > 0) {
       const auto scripts = split(bridge->userConfig["webview_service-workers"], " ");
       for (const auto& value : scripts) {
-        auto parts = split(value, "/");
-        parts = Vector<String>(parts.begin(), parts.end() - 1);
+        auto url = URL(
+          value,
+          "socket://" + bridge->userConfig["meta_bundle_identifier"]
+        );
 
       #if SOCKET_RUNTIME_PLATFORM_ANDROID
-        auto scriptURL = String("https://");
+        url.scheme = "https";
       #else
-        auto scriptURL = String("socket://");
+        url.scheme = "socket";
       #endif
-        scriptURL += bridge->userConfig["meta_bundle_identifier"];
 
-        if (!value.starts_with("/")) {
-          scriptURL += "/";
-        }
-
-        scriptURL += value;
-
-        const auto scope = normalizeScope(join(parts, "/"));
+        const auto scriptURL = url.str();
+        const auto parts = split(url.pathname, "/");
+        const auto scope = parts.size() > 2
+          ?  join(Vector<String>(parts.begin(), parts.end() - 1), "/")
+          : "/";
         const auto id = rand64();
         this->registrations.insert_or_assign(scope, Registration(
           id,
@@ -425,24 +424,23 @@ namespace ssc::runtime::serviceworker {
       : getUserConfig();
 
     if (scope.size() == 0) {
-      auto tmp = trim(options.scriptURL);
-      tmp = replace(tmp, "https://", "");
-      tmp = replace(tmp, "socket://", "");
-      tmp = replace(tmp, userConfig["meta_bundle_identifier"], "");
-
-      auto parts = split(tmp, "/");
-      parts = Vector<String>(parts.begin(), parts.end() - 1);
+      auto url = URL(
+        scriptURL,
+        "socket://" + userConfig["meta_bundle_identifier"]
+      );
 
     #if SOCKET_RUNTIME_PLATFORM_ANDROID
-      scriptURL = String("https://");
+      url.scheme = "https";
     #else
-      scriptURL = String("socket://");
+      url.scheme = "socket";
     #endif
 
-      scriptURL += userConfig["meta_bundle_identifier"];
-      scriptURL += tmp;
+      scriptURL = url.str();
 
-      scope = join(parts, "/");
+      const auto parts = split(url.pathname, "/");
+      scope = parts.size() > 2
+        ?  join(Vector<String>(parts.begin(), parts.end() - 1), "/")
+        : "/";
     }
 
     scope = normalizeScope(scope);
