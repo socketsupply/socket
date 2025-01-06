@@ -73,10 +73,9 @@ namespace ssc::runtime::serviceworker {
 
   const String Protocols::getServiceWorkerScope (const String& scheme) {
     for (const auto& entry : this->container.registrations) {
-      const auto& scope = entry.first;
       const auto& registration = entry.second;
       if (registration.options.scheme == scheme) {
-        return scope;
+        return registration.options.scope;
       }
     }
 

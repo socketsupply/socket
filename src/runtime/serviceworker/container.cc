@@ -47,170 +47,6 @@ namespace ssc::runtime::serviceworker {
     this->bridge = bridge;
     this->isReady = true;
 
-    auto env = JSON::Object::Entries {};
-    for (const auto& entry : bridge->userConfig) {
-      if (entry.first.starts_with("env_")) {
-        env[entry.first.substr(4)] = entry.second;
-      } else if (entry.first == "build_env") {
-        const auto keys = parseStringList(entry.second, { ',', ' ' });
-        for (const auto& key : keys) {
-          env[key] = env::get(key);
-        }
-      }
-    }
-
-    if (bridge->userConfig["webview_service-workers"].size() > 0) {
-      const auto scripts = split(bridge->userConfig["webview_service-workers"], " ");
-      for (const auto& value : scripts) {
-        auto url = URL(
-          value,
-          "socket://" + bridge->userConfig["meta_bundle_identifier"]
-        );
-
-      #if SOCKET_RUNTIME_PLATFORM_ANDROID
-        url.scheme = "https";
-      #else
-        url.scheme = "socket";
-      #endif
-
-        const auto scriptURL = url.str();
-        const auto parts = split(url.pathname, "/");
-        const auto scope = parts.size() > 2
-          ?  join(Vector<String>(parts.begin(), parts.end() - 1), "/")
-          : "/";
-        const auto id = rand64();
-        this->registrations.insert_or_assign(scope, Registration(
-          id,
-          Registration::State::Registered,
-          this->origin,
-          Registration::Options {
-            Registration::Options::Type::Module,
-            scriptURL,
-            scope,
-            "*",
-            encodeURIComponent(JSON::Object(JSON::Object::Entries {
-              {"index", bridge->index},
-              {"env", env},
-              {"debug", isDebugEnabled()},
-              {"config", bridge->userConfig},
-              {"headless", bridge->userConfig["build_headless"] == "true"},
-              {"conduit", JSON::Object::Entries {
-                {"port", this->bridge->getRuntime()->services.conduit.port},
-                {"hostname", this->bridge->getRuntime()->services.conduit.hostname},
-                {"sharedKey", this->bridge->getRuntime()->services.conduit.sharedKey}
-              }}
-            }).str()),
-            id
-          }
-        ));
-      }
-    }
-
-    for (const auto& entry : bridge->userConfig) {
-      const auto& key = entry.first;
-      const auto& value = entry.second;
-
-      if (key.starts_with("webview_service-workers_")) {
-        const auto id = rand64();
-        const auto scope = normalizeScope(replace(key, "webview_service-workers_", ""));
-
-      #if SOCKET_RUNTIME_PLATFORM_ANDROID
-        auto scriptURL = String("https://");
-      #else
-        auto scriptURL = String("socket://");
-      #endif
-        scriptURL += bridge->userConfig["meta_bundle_identifier"];
-
-        if (!value.starts_with("/")) {
-          scriptURL += "/";
-        }
-
-        scriptURL += trim(value);
-
-        this->registrations.insert_or_assign(scope, Registration(
-          id,
-          Registration::State::Registered,
-          this->origin,
-          Registration::Options {
-            Registration::Options::Type::Module,
-            scriptURL,
-            scope,
-            "*",
-            encodeURIComponent(JSON::Object(JSON::Object::Entries {
-              {"index", bridge->index},
-              {"env", env},
-              {"debug", isDebugEnabled()},
-              {"headless", bridge->userConfig["build_headless"] == "true"},
-              {"config", bridge->userConfig},
-              {"conduit", JSON::Object::Entries {
-                {"port", this->bridge->getRuntime()->services.conduit.port},
-                {"hostname", this->bridge->getRuntime()->services.conduit.hostname},
-                {"sharedKey", this->bridge->getRuntime()->services.conduit.sharedKey}
-              }}
-            }).str()),
-            id
-          }
-        ));
-      }
-    }
-
-    for (const auto& entry : this->bridge->userConfig) {
-      const auto& key = entry.first;
-      if (key.starts_with("webview_protocol-handlers_")) {
-        const auto scheme = replace(replace(trim(key), "webview_protocol-handlers_", ""), ":", "");;
-        auto value = entry.second;
-        if (value.starts_with(".") || value.starts_with("/")) {
-          if (value.starts_with(".")) {
-            value = value.substr(1, value.size());
-          }
-
-          const auto id = rand64();
-          auto parts = split(value, "/");
-          parts = Vector<String>(parts.begin(), parts.end() - 1);
-          auto scope = normalizeScope(join(parts, "/"));
-
-        #if SOCKET_RUNTIME_PLATFORM_ANDROID
-          auto scriptURL = String("https://");
-        #else
-          auto scriptURL = String("socket://");
-        #endif
-
-          scriptURL += bridge->userConfig["meta_bundle_identifier"];
-
-          if (!value.starts_with("/")) {
-            scriptURL += "/";
-          }
-
-          scriptURL += trim(value);
-
-          this->registrations.insert_or_assign(scope, Registration(
-            id,
-            Registration::State::Registered,
-            this->origin,
-            Registration::Options {
-              Registration::Options::Type::Module,
-              scriptURL,
-              scope,
-              scheme,
-              encodeURIComponent(JSON::Object(JSON::Object::Entries {
-                {"index", bridge->index},
-                {"env", env},
-                {"debug", isDebugEnabled()},
-                {"config", bridge->userConfig},
-                {"headless", bridge->userConfig["build_headless"] == "true"},
-                {"conduit", JSON::Object::Entries {
-                  {"port", this->bridge->getRuntime()->services.conduit.port},
-                  {"hostname", this->bridge->getRuntime()->services.conduit.hostname},
-                  {"sharedKey", this->bridge->getRuntime()->services.conduit.sharedKey}
-                }}
-              }).str()),
-              id
-            }
-          ));
-        }
-      }
-    }
-
     this->bridge->router.map("serviceWorker.fetch.request.body", [this](auto message, auto router, auto reply) mutable {
       SharedPointer<Fetch> fetch = nullptr;
       ID id = 0;
@@ -445,8 +281,10 @@ namespace ssc::runtime::serviceworker {
 
     scope = normalizeScope(scope);
 
-    if (this->registrations.contains(scope)) {
-      const auto& registration = this->registrations.at(scope);
+    const auto key = Registration::key(scope, this->origin, options.scheme);
+    debug("KEY: (scope=%s, scheme=%s) %s", scope.c_str(), options.scheme.c_str(), key.c_str());
+    if (this->registrations.contains(key)) {
+      const auto& registration = this->registrations.at(key);
 
       if (this->bridge != nullptr) {
         this->bridge->emit("serviceWorker.register", registration.json(true).str());
@@ -456,7 +294,7 @@ namespace ssc::runtime::serviceworker {
     }
 
     const auto id = options.id > 0 ? options.id : rand64();
-    this->registrations.insert_or_assign(scope, Registration(
+    this->registrations.insert_or_assign(key, Registration(
       id,
       Registration::State::Registered,
       this->origin,
@@ -470,7 +308,7 @@ namespace ssc::runtime::serviceworker {
       }
     ));
 
-    const auto& registration = this->registrations.at(scope);
+    const auto& registration = this->registrations.at(key);
 
     if (this->bridge != nullptr) {
       this->bridge->emit("serviceWorker.register", registration.json(true));
@@ -484,8 +322,9 @@ namespace ssc::runtime::serviceworker {
 
     const auto& scope = normalizeScope(scopeOrScriptURL);
     const auto& scriptURL = scopeOrScriptURL;
+    const auto key = Registration::key(scope, this->origin);
 
-    if (this->registrations.contains(scope)) {
+    if (this->registrations.contains(key)) {
       const auto& registration = this->registrations.at(scope);
       if (this->bridge != nullptr) {
         return this->bridge->emit("serviceWorker.unregister", registration.json());

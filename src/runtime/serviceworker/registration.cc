@@ -5,6 +5,15 @@
 using ssc::runtime::url::encodeURIComponent;
 
 namespace ssc::runtime::serviceworker {
+  String Registration::key (
+    const String& scope,
+    const URL& origin,
+    const String& scheme
+  ) {
+    auto url = URL(scope, origin);
+    url.scheme = scheme;
+    return url.str();
+  }
   Registration::Registration (
     const ID id,
     const State state,

@@ -2406,14 +2406,14 @@ static void mapIPCRoutes (Router *router) {
     const auto scheme = message.get("scheme");
 
     for (const auto& entry : dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.registrations) {
-      const auto& scope = entry.first;
       const auto& registration = entry.second;
       if (registration.options.scheme == scheme) {
         auto json = JSON::Object::Entries {
           {"source", message.name},
           {"data", JSON::Object::Entries {
             {"id", registration.id},
-            {"scope", scope},
+            {"scope", registration.options.scope},
+            {"origin", registration.origin.name()},
             {"scheme", scheme},
             {"scriptURL", registration.options.scriptURL}
           }}
@@ -2552,15 +2552,16 @@ static void mapIPCRoutes (Router *router) {
       .type = serviceworker::Registration::Options::Type::Module,
       .scriptURL = message.get("scriptURL"),
       .scope = message.get("scope"),
-      .serializedWorkerArgs = encodeURIComponent(message.get("__runtime_worker_args"))
+      .scheme = message.get("scheme", "socket"),
+      .serializedWorkerArgs = encodeURIComponent(message.get("__runtime_worker_args", message.get("serializedWorkerArgs")))
     };
 
     const auto url = URL(options.scriptURL);
     const auto origin = webview::Origin(url.str());
+    debug("register: (%s) %s", origin.name().c_str(), url.str().c_str());
 
     auto serviceWorkerServer = app->runtime.serviceWorkerManager.get(origin.name());
     if (!serviceWorkerServer) {
-    debug("no server for: %s", origin.name().c_str());
       serviceWorkerServer = dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer;
     }
 
@@ -2611,10 +2612,10 @@ static void mapIPCRoutes (Router *router) {
     }
 
     const auto scope = message.get("scope");
-
+    const auto origin = webview::Origin(dynamic_cast<Bridge&>(router->bridge).navigator.location.str());
     for (const auto& entry : dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.registrations) {
       const auto& registration = entry.second;
-      if (scope.starts_with(registration.options.scope)) {
+      if (registration.options.scheme == "socket" && registration.origin.name() == origin.name() && scope.starts_with(registration.options.scope)) {
         auto json = JSON::Object {
           JSON::Object::Entries {
             {"registration", registration.json()},

@@ -70,6 +70,7 @@ namespace ssc::runtime::serviceworker {
 
   class Registration {
     public:
+      static String key (const String&, const URL&, const String& = "socket");
       struct Options {
         enum class Type { Classic, Module };
 

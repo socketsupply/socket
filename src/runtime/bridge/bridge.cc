@@ -454,6 +454,14 @@ export * from '{{url}}'
       if (request->hostname.size() > 0) {
         auto origin = webview::Origin(request->scheme + "://" + request->hostname);
         auto serviceWorker = app->runtime.serviceWorkerManager.get(origin.name());
+
+        debug(">> %d %d %d %d",
+          serviceWorker != nullptr,
+          request->hostname != globalBundleIdentifier,
+          window->options.shouldPreferServiceWorker,
+          serviceWorker->container.registrations.size() > 0
+          );
+
         if (
           serviceWorker != nullptr &&
           request->hostname != globalBundleIdentifier &&
@@ -463,6 +471,7 @@ export * from '{{url}}'
           auto fetch = serviceworker::Request();
           fetch.method = request->method;
           fetch.scheme = request->scheme;
+          fetch.url.scheme = request->scheme;
           fetch.url.hostname = request->hostname;
           fetch.url.pathname = request->pathname;
           fetch.url.searchParams.set(request->query);
@@ -477,6 +486,7 @@ export * from '{{url}}'
 
           const auto app = App::sharedApplication();
           const auto options = serviceworker::Fetch::Options { request->client };
+          debug("FETCH PLZ: %s", fetch.str().c_str());
           const auto fetched = serviceWorker->fetch(fetch, options, [
             this,
             applicationResources,
@@ -541,6 +551,7 @@ export * from '{{url}}'
                   contentLocation = resourcePath.substr(applicationResources.size(), resourcePath.size());
                 }
 
+                debug("RESOURCE PATH: %s", resourcePath.c_str());
                 auto resource = filesystem::Resource(resourcePath);
 
                 if (!resource.exists()) {
@@ -607,7 +618,10 @@ export * from '{{url}}'
           }
         }
 
-        if (request->hostname == userConfig["meta_bundle_identifier"]) {
+        if (
+          request->hostname == userConfig["meta_bundle_identifier"] ||
+          request->hostname == globalConfig["meta_bundle_identifier"]
+        ) {
           const auto resolved = this->navigator.location.resolve(request->pathname, applicationResources);
 
           if (resolved.redirect) {
@@ -786,7 +800,6 @@ export * from '{{url}}'
           url.hostname = toLowerCase(bundleIdentifier);
           url.pathname = contentLocation;
           url.search = request->query;
-          debug("URL1: %s", url.str().c_str());
 
           const auto moduleImportProxy = tmpl(
             String(reinterpret_cast<const char*>(resource.read())).find("export default") != String::npos
@@ -909,7 +922,6 @@ export * from '{{url}}'
           url.hostname = toLowerCase(bundleIdentifier);
           url.pathname = "/socket" + pathname;
           url.search = request->query;
-          debug("URL2: %s", url.str().c_str());
           const auto moduleImportProxy = tmpl(
             String(reinterpret_cast<const char*>(resource.read())).find("export default") != String::npos
               ? ESM_IMPORT_PROXY_TEMPLATE_WITH_DEFAULT_EXPORT
@@ -994,92 +1006,92 @@ export * from '{{url}}'
       const auto& scheme = entry.first;
       const auto id = rand64();
 
-      if (globalUserConfig["meta_bundle_identifier"] != this->userConfig["meta_bundle_identifier"]) {
-        if (globalProtocolHandlers.contains(scheme)) {
+      if (
+        globalUserConfig["meta_bundle_identifier"] == this->userConfig["meta_bundle_identifier"] ||
+        !globalProtocolHandlers.contains(scheme)
+        ) {
+
+        auto scriptURL = trim(entry.second);
+
+        if (scriptURL.size() == 0) {
           continue;
         }
-      }
 
-      auto scriptURL = trim(entry.second);
+        if (!scriptURL.starts_with(".") && !scriptURL.starts_with("/")) {
+          continue;
+        }
 
-      if (scriptURL.size() == 0) {
-        continue;
-      }
+        if (scriptURL.starts_with(".")) {
+          scriptURL = scriptURL.substr(1, scriptURL.size());
+        }
 
-      if (!scriptURL.starts_with(".") && !scriptURL.starts_with("/")) {
-        continue;
-      }
+        String scope = "/";
 
-      if (scriptURL.starts_with(".")) {
-        scriptURL = scriptURL.substr(1, scriptURL.size());
-      }
+        auto scopeParts = split(scriptURL, "/");
+        if (scopeParts.size() > 0) {
+          scopeParts = Vector<String>(scopeParts.begin(), scopeParts.end() - 1);
+          scope = join(scopeParts, "/");
+        }
 
-      String scope = "/";
+        scriptURL = (
+        #if SOCKET_RUNTIME_PLATFORM_ANDROID
+          "https://" +
+        #else
+          "socket://" +
+        #endif
+          this->userConfig["meta_bundle_identifier"] +
+          scriptURL
+        );
 
-      auto scopeParts = split(scriptURL, "/");
-      if (scopeParts.size() > 0) {
-        scopeParts = Vector<String>(scopeParts.begin(), scopeParts.end() - 1);
-        scope = join(scopeParts, "/");
-      }
-
-      scriptURL = (
-      #if SOCKET_RUNTIME_PLATFORM_ANDROID
-        "https://" +
-      #else
-        "socket://" +
-      #endif
-        this->userConfig["meta_bundle_identifier"] +
-        scriptURL
-      );
-
-      debug("scriptURL: %s", scriptURL.c_str());
-
-      auto env = JSON::Object::Entries {};
-      for (const auto& entry : this->userConfig) {
-        if (entry.first.starts_with("env_")) {
-          env[entry.first.substr(4)] = entry.second;
-        } else if (entry.first == "build_env") {
-          const auto keys = parseStringList(entry.second, { ',', ' ' });
-          for (const auto& key : keys) {
-            env[key] = env::get(key);
+        auto env = JSON::Object::Entries {};
+        for (const auto& entry : this->userConfig) {
+          if (entry.first.starts_with("env_")) {
+            env[entry.first.substr(4)] = entry.second;
+          } else if (entry.first == "build_env") {
+            const auto keys = parseStringList(entry.second, { ',', ' ' });
+            for (const auto& key : keys) {
+              env[key] = env::get(key);
+            }
           }
         }
-      }
 
-      if (scheme == "npm") {
-        if (globalUserConfig["meta_bundle_identifier"] == this->userConfig["meta_bundle_identifier"]) {
+        if (scheme == "npm") {
+          if (globalUserConfig["meta_bundle_identifier"] == this->userConfig["meta_bundle_identifier"]) {
+            this->navigator.serviceWorkerServer->container.registerServiceWorker({
+              .type = serviceworker::Registration::Options::Type::Module,
+              .scriptURL = scriptURL,
+              .scope = scope,
+              .scheme = scheme,
+              .serializedWorkerArgs = "",
+              .id = id
+            });
+          }
+        } else {
+          debug("BEFORE REGISTER: %s %s", scheme.c_str(), scope.c_str());
           this->navigator.serviceWorkerServer->container.registerServiceWorker({
             .type = serviceworker::Registration::Options::Type::Module,
             .scriptURL = scriptURL,
             .scope = scope,
             .scheme = scheme,
-            .serializedWorkerArgs = "",
-            .id = id
-          });
-        }
-      } else {
-        this->navigator.serviceWorkerServer->container.registerServiceWorker({
-          .type = serviceworker::Registration::Options::Type::Module,
-          .scriptURL = scriptURL,
-          .scope = scope,
-          .scheme = scheme,
-          .serializedWorkerArgs = encodeURIComponent(JSON::Object(JSON::Object::Entries {
-            {"index", this->client.index},
-            {"argv", JSON::Array {}},
-            {"env", env},
-            {"debug", isDebugEnabled()},
-            {"headless", this->userConfig["build_headless"] == "true"},
-            {"config", this->userConfig},
-            {"conduit", JSON::Object::Entries {
+            .serializedWorkerArgs = encodeURIComponent(JSON::Object(JSON::Object::Entries {
+              {"index", this->client.index},
+              {"argv", JSON::Array {}},
+              {"env", env},
+              {"debug", isDebugEnabled()},
+              {"headless", this->userConfig["build_headless"] == "true"},
+              {"config", this->userConfig},
+              {"conduit", JSON::Object::Entries {
               {"port", this->getRuntime()->services.conduit.port},
               {"hostname", this->getRuntime()->services.conduit.hostname},
               {"sharedKey", this->getRuntime()->services.conduit.sharedKey}
-            }}
-          }).str()),
-          .id = id
-        });
+              }}
+            }).str()),
+            .id = id
+          });
+        }
       }
 
+      debug("REGISTER SCHEME: %s", scheme.c_str());
       this->schemeHandlers.registerSchemeHandler(scheme, [this](
         auto request,
         auto bridge,
@@ -1093,8 +1105,6 @@ export * from '{{url}}'
 
         auto fetch = serviceworker::Request();
         SharedPointer<serviceworker::Server> serviceWorkerServer = nullptr;
-
-        debug("request: %s", request->str().c_str());
 
         if (window == nullptr) {
           auto response = SchemeHandlers::Response(request);
@@ -1144,8 +1154,8 @@ export * from '{{url}}'
           .waitForRegistrationToFinish = request->scheme != "npm"
         };
 
-        debug("fetch: %s", fetch.str().c_str());
-        const auto origin = webview::Origin(request->str());
+        auto origin = webview::Origin(fetch.url.str());
+        origin.scheme = "socket";
         debug("origin: %s", origin.name().c_str());
         serviceWorkerServer = app->runtime.serviceWorkerManager.get(origin.name());
         if (!serviceWorkerServer) {
@@ -1158,6 +1168,7 @@ export * from '{{url}}'
         if (scope.size() > 0) {
           fetch.url.pathname = scope + fetch.url.pathname;
         }
+        debug("fetch: %s", fetch.str().c_str());
 
         const auto fetched = serviceWorkerServer->fetch(fetch, options, [request, callback] (auto res) mutable {
           if (!request->isActive()) {

@@ -49,10 +49,13 @@ namespace ssc::runtime::serviceworker {
 
     if (scope.size() > 0) {
       scope = normalizeScope(scope);
+    } else {
+      return false;
     }
 
-    if (scope.size() > 0 && this->container.registrations.contains(scope)) {
-      auto& registration = this->container.registrations.at(scope);
+    const auto key = Registration::key(scope, this->container.origin, this->request.scheme);
+    if (this->container.registrations.contains(key)) {
+      auto& registration = this->container.registrations.at(key);
       if (
         this->options.waitForRegistrationToFinish &&
         !registration.isActive() &&
@@ -101,7 +104,8 @@ namespace ssc::runtime::serviceworker {
       };
 
       if (this->container.protocols.hasHandler(request.scheme)) {
-        pathname = replace(pathname, scope, "");
+        const auto url = URL(scope, this->container.origin);
+        pathname = replace(pathname, url.pathname, "");
       }
 
       const auto fetch = JSON::Object::Entries {
@@ -118,7 +122,6 @@ namespace ssc::runtime::serviceworker {
       auto json = registration.json();
       json.set("fetch", fetch);
 
-      debug("dispatch fetch: %s", json.str().c_str());
       return this->container.bridge->emit("serviceWorker.fetch", json);
     }
 

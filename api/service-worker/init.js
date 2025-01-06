@@ -198,6 +198,7 @@ export async function onActivate (event) {
 export async function onFetch (event) {
   const info = new ServiceWorkerInfo(event.detail)
   const exists = workers.has(info.hash)
+  console.log(exists, event.detail)
 
   // this may be an early fetch, just try waiting at most
   // 32*16 milliseconds for the worker to be available or
@@ -377,7 +378,7 @@ hooks.onReady(async () => {
   const result = await ipc.request('serviceWorker.getRegistrations')
   if (Array.isArray(result.data)) {
     for (const info of result.data) {
-      await navigator.serviceWorker.register(info.scriptURL, info)
+      //await navigator.serviceWorker.register(info.scriptURL, info)
     }
   }
 })
