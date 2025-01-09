@@ -718,7 +718,7 @@ namespace ssc::runtime::webview {
   SchemeHandlers::Request::Builder& SchemeHandlers::Request::Builder::setBody (size_t size, const unsigned char* bytes) {
     if (this->request->method == "POST" || this->request->method == "PUT" || this->request->method == "PATCH") {
       if (size > 0 && bytes != nullptr) {
-        this->request->body.set(bytes, 0, size);
+        this->request->body = bytes::Buffer::from(bytes, size);
       }
     }
     return *this;

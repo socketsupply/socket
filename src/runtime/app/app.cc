@@ -48,7 +48,7 @@ namespace ssc::runtime::app {
     gtk_init_check(0, nullptr);
   #elif SOCKET_RUNTIME_PLATFORM_MACOS
     this->delegate = [SSCApplicationDelegate new];
-    this->delegate.app = this;
+    this->delegate.app = App::sharedApplication();
     NSApplication.sharedApplication.delegate = this->delegate;
   #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
     OleInitialize(nullptr);
