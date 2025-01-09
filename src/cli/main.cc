@@ -2251,6 +2251,10 @@ int main (int argc, char* argv[]) {
         settings["arch"] = replace(platform.arch, "x86_64", "amd64");
       }
 
+      if (settings["meta_copyright"].empty()) {
+        settings["meta_copyright"] = "(c) " + settings["meta_title"] + " 2025";
+      }
+
       subcommandHandler(optionsAndEnv.optionsWithValue, optionsAndEnv.optionsWithoutValue);
     }
   };
@@ -4828,6 +4832,19 @@ int main (int argc, char* argv[]) {
           settings["ios_deployment_target"] = parts[0] + "." + parts[1];
         }
       }
+
+      if (settings["ios_category"].empty()) {
+        settings["ios_category"] = "public.app-category.developer-tools";
+      }
+
+      if (settings["ios_protocol"].empty()) {
+        settings["ios_protocol"] = settings["meta_application_protocol"];
+      }
+
+      xCodeProjectVariables["ios_project_version"] = settings["ios_project_version"];
+      xCodeProjectVariables["ios_deployment_target"] = settings["ios_deployment_target"];
+      xCodeProjectVariables["ios_category"] = settings["ios_category"];
+      xCodeProjectVariables["ios_protocol"] = settings["ios_protocol"];
 
       writeFile(paths.platformSpecificOutputPath / "exportOptions.plist", tmpl(gXCodeExportOptions, settings));
       writeFile(paths.platformSpecificOutputPath / "Info.plist", tmpl(gIOSInfoPList, settings));
