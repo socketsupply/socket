@@ -256,7 +256,7 @@ namespace ssc::runtime::core::services {
         const auto path = filesystem::Resource::getResourcePath(url.pathname);
         iconURL = [NSURL fileURLWithPath: @(path.string().c_str())];
       } else {
-        iconURL = [NSURL fileURLWithPath: @(url.href.c_str())];
+        iconURL = [NSURL fileURLWithPath: @(url.href().c_str())];
       }
 
       const auto types = [UTType
@@ -341,7 +341,7 @@ namespace ssc::runtime::core::services {
         const auto path = filesystem::Resource::getResourcePath(url.pathname);
         imageURL = [NSURL fileURLWithPath: @(path.string().c_str())];
       } else {
-        imageURL = [NSURL fileURLWithPath: @(url.href.c_str())];
+        imageURL = [NSURL fileURLWithPath: @(url.href().c_str())];
       }
 
       const auto types = [UTType

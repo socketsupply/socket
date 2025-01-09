@@ -17,7 +17,7 @@ static os_log_t SOCKET_RUNTIME_OS_LOG_DEBUG = nullptr;
 // wrap `os_log*` functions for global debugger
 #define socket_runtime_os_log_debug(format, fmt, ...) ({                       \
   if (!SOCKET_RUNTIME_OS_LOG_DEBUG) {                                          \
-    static auto userConfig = ssc::getUserConfig();                             \
+    static auto userConfig = ssc::runtime::config::getUserConfig();            \
     static auto bundleIdentifier = userConfig["meta_bundle_identifier"];       \
     SOCKET_RUNTIME_OS_LOG_DEBUG = os_log_create(                               \
       bundleIdentifier.c_str(),                                                \

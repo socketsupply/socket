@@ -42,6 +42,7 @@ namespace ssc::runtime::ipc {
 
       String value = "";
       String name = "";
+      String href = "";
       int index = -1;
       Seq seq = "";
 
@@ -50,10 +51,10 @@ namespace ssc::runtime::ipc {
       SharedPointer<MessageCancellation> cancel = nullptr;
 
       Message () = default;
-      Message (const Message& message);
-      Message (Message&& message);
       Message (const String& source, bool decodeValues);
       Message (const String& source);
+      Message (const Message& message);
+      Message (Message&& message);
 
       Message& operator = (const Message&);
       Message& operator = (Message&&);

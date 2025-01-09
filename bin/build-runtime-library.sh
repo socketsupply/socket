@@ -157,7 +157,7 @@ if [[ "$platform" = "android" ]]; then
   sources+=($(find "$root/src/platform/android"/*.cc))
   sources+=("$root/src/window/android.cc")
 elif [[ "$host" = "Darwin" ]]; then
-  sources+=("$root/src/runtime/app/delegate.mm")
+  sources+=("$root/src/runtime/app/apple.mm")
   sources+=("$root/src/runtime/window/apple.mm")
 
   if (( TARGET_OS_IPHONE)); then

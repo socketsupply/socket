@@ -25,6 +25,10 @@ namespace ssc::runtime {
         Features features;
       };
 
+      struct Counters {
+        int logSeq = 0;
+      };
+
       // managers
       window::Manager windowManager;
       bridge::Manager bridgeManager;
@@ -33,6 +37,7 @@ namespace ssc::runtime {
       context::Dispatcher dispatcher;
       UserConfig userConfig;
       core::Services services;
+      Counters counters;
       Options options;
 
       Runtime (const Options&);

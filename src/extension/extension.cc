@@ -586,7 +586,7 @@ void sapi_log (const sapi_context_t* ctx, const char* message) {
   #endif
 
   #if SOCKET_RUNTIME_PLATFORM_APPLE
-    static auto userConfig = ssc::runtime::getUserConfig();
+    static auto userConfig = ssc::runtime::config::getUserConfig();
     static auto bundleIdentifier = userConfig["meta_bundle_identifier"];
     static auto SOCKET_RUNTIME_OS_LOG_INFO = os_log_create(
       bundleIdentifier.c_str(),

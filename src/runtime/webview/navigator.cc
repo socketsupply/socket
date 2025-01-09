@@ -35,7 +35,7 @@ using ssc::runtime::app::App;
     decidePolicyForNavigationAction: (WKNavigationAction*) navigationAction
                     decisionHandler: (void (^)(WKNavigationActionPolicy)) decisionHandler
 {
-  using namespace SSC;
+  using namespace ssc::runtime;
   if (
     webview != nullptr &&
     webview.URL != nullptr &&

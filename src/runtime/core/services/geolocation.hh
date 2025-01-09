@@ -47,7 +47,7 @@ namespace ssc::runtime::core::services {
 @property (atomic, retain) NSMutableArray* activationCompletions;
 @property (atomic, retain) NSMutableArray* locationRequestCompletions;
 @property (atomic, retain) NSMutableArray* locationWatchers;
-W@property (nonatomic) ssc::runtime::core::services::Geolocation* geolocation;
+@property (nonatomic) ssc::runtime::core::services::Geolocation* geolocation;
 @property (atomic, assign) BOOL isAuthorized;
 - (BOOL) attemptActivation;
 - (BOOL) attemptActivationWithCompletion: (void (^)(BOOL)) completion;

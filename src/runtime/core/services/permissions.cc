@@ -6,9 +6,6 @@
 #include "../services.hh"
 #include "permissions.hh"
 
-using ssc::runtime::config::getUserConfig;
-using ssc::runtime::string::replace;
-
 namespace ssc::runtime::core::services {
   bool Permissions::hasRuntimePermission (const String& permission) const {
     return this->context.getRuntime()->hasPermission(permission);
@@ -263,16 +260,16 @@ namespace ssc::runtime::core::services {
       }
 
       if (name == "geolocation") {
-        JSON::Object json;
+        __block JSON::Object json;
 
       #if SOCKET_RUNTIME_PLATFORM_APPLE
-        const auto performedActivation = [this->core->geolocation.locationObserver attemptActivationWithCompletion: ^(BOOL isAuthorized) {
+        const auto performedActivation = [this->services.geolocation.locationObserver attemptActivationWithCompletion: ^(BOOL isAuthorized) {
           if (!isAuthorized) {
             auto reason = @("Location observer could not be activated");
 
-            if (!this->core->geolocation.locationObserver.locationManager) {
+            if (!this->services.geolocation.locationObserver.locationManager) {
               reason = @("Location observer manager is not initialized");
-            } else if (!this->core->geolocation.locationObserver.locationManager.location) {
+            } else if (!this->services.geolocation.locationObserver.locationManager.location) {
               reason = @("Location observer manager could not provide location");
             }
 
@@ -281,7 +278,7 @@ namespace ssc::runtime::core::services {
 
           if (isAuthorized) {
             json["data"] = JSON::Object::Entries {{"state", "granted"}};
-          } else if (this->core->geolocation.locationObserver.locationManager.authorizationStatus == kCLAuthorizationStatusNotDetermined) {
+          } else if (this->services.geolocation.locationObserver.locationManager.authorizationStatus == kCLAuthorizationStatusNotDetermined) {
             json["data"] = JSON::Object::Entries {{"state", "prompt"}};
           } else {
             json["data"] = JSON::Object::Entries {{"state", "denied"}};

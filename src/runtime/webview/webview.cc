@@ -3,6 +3,10 @@
 #include "../string.hh"
 #include "../crypto.hh"
 
+using namespace ssc::runtime;
+using ssc::runtime::javascript::getEmitToRenderProcessJavaScript;
+using ssc::runtime::config::getUserConfig;
+using ssc::runtime::window::Dialog;
 using ssc::runtime::window::Window;
 using ssc::runtime::crypto::rand64;
 using ssc::runtime::string::trim;

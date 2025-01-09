@@ -155,9 +155,10 @@ static void mapIPCRoutes (Router *router) {
     REQUIRE_AND_GET_MESSAGE_VALUE(exitCode, "value", std::stoi);
 
   #if SOCKET_RUNTIME_PLATFORM_APPLE
-    if (app->wasLaunchedFromCli) {
+    // from cli
+    if (app->launchSource == App::LaunchSource::Tool) {
       debug("__EXIT_SIGNAL__=%d", exitCode);
-      CLI::notify();
+      ssc::cli::notify();
     }
   #endif
 
@@ -2480,7 +2481,7 @@ static void mapIPCRoutes (Router *router) {
   router->map("stdout", [=](auto message, auto router, auto reply) {
     if (message.value.size() > 0) {
       #if SOCKET_RUNTIME_PLATFORM_APPLE
-        int seq = ++router->bridge.core->logSeq;
+        const auto seq = ++dynamic_cast<Bridge&>(router->bridge).getRuntime()->counters.logSeq;
         auto msg = String(std::to_string(seq) + "::::" + message.value.c_str());
         os_log_with_type(SOCKET_RUNTIME_OS_LOG_BUNDLE, OS_LOG_TYPE_INFO, "%{public}s", msg.c_str());
 
@@ -2491,7 +2492,7 @@ static void mapIPCRoutes (Router *router) {
           options.port = std::stoi(env::get("SSC_LOG_SOCKET"));
           options.ephemeral = true;
           options.bytes.reset(new unsigned char[3]{ '+', 'N', '\0' });
-          router->bridge.core->udp.send("-1", 0, options, [](auto seq, auto json, auto queuedResponse) {});
+          dynamic_cast<Bridge&>(router->bridge).getRuntime()->services.udp.send("-1", 0, options, [](auto seq, auto json, auto queuedResponse) {});
         }
       #endif
       io::write(message.value, false);
@@ -2513,7 +2514,7 @@ static void mapIPCRoutes (Router *router) {
       }
     } else if (message.value.size() > 0) {
       #if SOCKET_RUNTIME_PLATFORM_APPLE
-        int seq = ++router->bridge.core->logSeq;
+        const auto seq = ++dynamic_cast<Bridge&>(router->bridge).getRuntime()->counters.logSeq;
         auto msg = String(std::to_string(seq) + "::::" + message.value.c_str());
         os_log_with_type(SOCKET_RUNTIME_OS_LOG_BUNDLE, OS_LOG_TYPE_ERROR, "%{public}s", msg.c_str());
 
@@ -2524,7 +2525,7 @@ static void mapIPCRoutes (Router *router) {
           options.port = std::stoi(env::get("SSC_LOG_SOCKET"));
           options.ephemeral = true;
           options.bytes.reset(new unsigned char[3]{ '+', 'N', '\0' });
-          router->bridge.core->udp.send("-1", 0, options, [](auto seq, auto json, auto queuedResponse) {});
+          dynamic_cast<Bridge&>(router->bridge).getRuntime()->services.udp.send("-1", 0, options, [](auto seq, auto json, auto queuedResponse) {});
         }
       #endif
       io::write(message.value, true);

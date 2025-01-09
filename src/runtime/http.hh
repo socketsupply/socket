@@ -38,6 +38,7 @@ namespace ssc::runtime::http {
           Value (int64_t);
           Value (uint64_t);
           Value (double_t);
+          Value (size_t value);
         #if SOCKET_RUNTIME_PLATFORM_APPLE
           Value (ssize_t value);
         #endif

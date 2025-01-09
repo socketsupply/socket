@@ -12,7 +12,7 @@ using ssc::runtime::crypto::rand64;
 
 #if SOCKET_RUNTIME_PLATFORM_APPLE
 @interface SSCBluetoothController ()
-@property (nonatomic) Bluetooth* bluetooth;
+@property (nonatomic) ssc::runtime::bluetooth::Bluetooth* bluetooth;
 @end
 
 @implementation SSCBluetoothController
@@ -379,7 +379,7 @@ using ssc::runtime::crypto::rand64;
   queuedResponse.headers = headers;
 
   if (bytes != nullptr && length > 0) {
-    queuedResponse.body = std::make_shared<char[]>(length);
+    queuedResponse.body = std::make_shared<unsigned char[]>(length);
     queuedResponse.length = length;
     memcpy(queuedResponse.body.get(), bytes, length);
   }

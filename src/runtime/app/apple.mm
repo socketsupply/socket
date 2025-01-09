@@ -1,5 +1,10 @@
 #include "../app.hh"
 
+using namespace ssc::runtime;
+using ssc::runtime::config::getUserConfig;
+using ssc::runtime::string::parseStringList;
+using ssc::runtime::string::split;
+
 static dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
   DISPATCH_QUEUE_CONCURRENT,
   QOS_CLASS_USER_INITIATED,

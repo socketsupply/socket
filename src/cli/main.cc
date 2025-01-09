@@ -314,7 +314,7 @@ static Process::PID appPid = 0;
 static SharedPointer<Process> appProcess = nullptr;
 static std::atomic<int> appStatus = -1;
 static std::mutex appMutex;
-static uv_loop_t *loop = nullptr;
+static uv_loop_t *eventLoop = nullptr;
 
 static uv_udp_t logsocket;
 static int lastLogSequence = 0;
@@ -326,10 +326,10 @@ unsigned short createLogSocket() {
   std::future<int> future = p.get_future();
   int port = 0;
 
-  auto t = std::thread([](std::promise<int>&& p) {
-    loop = uv_default_loop();
+  auto t = Thread([](std::promise<int>&& p) {
+    eventLoop = uv_default_loop();
 
-    uv_udp_init(loop, &logsocket);
+    uv_udp_init(eventLoop, &logsocket);
     struct sockaddr_in addr;
     int port;
 
@@ -405,7 +405,7 @@ unsigned short createLogSocket() {
       p.set_value(port);
     }
 
-    uv_run(loop, UV_RUN_DEFAULT);
+    uv_run(eventLoop, UV_RUN_DEFAULT);
   }, std::move(p));
 
   port = future.get();

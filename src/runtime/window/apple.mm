@@ -1,10 +1,26 @@
-#include "../app.hh"
-#include "../../cli.h"
+#include "../../cli.hh"
+#include "../filesystem.hh"
+#include "../javascript.hh"
+#include "../runtime.hh"
 #include "../webview.hh"
+#include "../version.hh"
+#include "../config.hh"
+#include "../string.hh"
+#include "../cwd.hh"
+#include "../env.hh"
+#include "../app.hh"
 
 #include "../window.hh"
 
-using namespace SSC;
+using ssc::runtime::javascript::getResolveMenuSelectionJavaScript;
+using ssc::runtime::javascript::getEmitToRenderProcessJavaScript;
+
+using ssc::runtime::config::isDebugEnabled;
+
+using ssc::runtime::string::split;
+using ssc::runtime::string::trim;
+
+using namespace ssc::runtime;
 
 #if SOCKET_RUNTIME_PLATFORM_IOS
 static dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
@@ -85,7 +101,7 @@ CGFloat MACOS_TRAFFIC_LIGHT_BUTTON_SIZE = 16;
   #endif
 
     if (uri.size() > 0) {
-      if (!window->bridge.route(uri, nullptr, 0)) {
+      if (!window->bridge->route(uri, nullptr, 0)) {
         if (window->onMessage != nullptr) {
           window->onMessage(uri);
         }
@@ -151,13 +167,13 @@ CGFloat MACOS_TRAFFIC_LIGHT_BUTTON_SIZE = 16;
     {"data", window->index}
   };
 
-  for (auto window : app->windowManager.windows) {
+  for (auto window : app->runtime.windowManager.windows) {
     if (window != nullptr && window->index != index) {
       window->eval(getEmitToRenderProcessJavaScript("window-closed", json.str()));
     }
   }
 
-  app->windowManager.destroyWindow(index);
+  app->runtime.windowManager.destroyWindow(index);
   return true;
 }
 #elif SOCKET_RUNTIME_PLATFORM_IOS
@@ -170,15 +186,10 @@ CGFloat MACOS_TRAFFIC_LIGHT_BUTTON_SIZE = 16;
 #endif
 @end
 
-namespace SSC {
-  Window::Window (SharedPointer<Core> core, const Window::Options& options)
-    : core(core),
-      options(options),
-      bridge(core, IPC::Bridge::Options {
-        options.index,
-        options.userConfig,
-        options.as<IPC::Preload::Options>()
-      }),
+namespace ssc::runtime::window {
+  Window::Window (SharedPointer<IBridge> bridge, const Window::Options& options)
+    : options(options),
+      bridge(bridge),
       hotkey(this),
       dialog(this)
   {
@@ -193,26 +204,23 @@ namespace SSC {
     this->index = options.index;
     this->windowDelegate = [SSCWindowDelegate new];
 
-    this->bridge.navigateFunction = [this] (const auto url) {
+    this->bridge->navigateHandler = [this] (const auto url) {
       this->navigate(url);
     };
 
-    this->bridge.evaluateJavaScriptFunction = [this](auto source) {
+    this->bridge->evaluateJavaScriptHandler = [this](auto source) {
       this->eval(source);
     };
 
-    this->bridge.client.preload = IPC::Preload::compile({
-      .client = UniqueClient {
-        .id = this->bridge.client.id,
-        .index = this->bridge.client.index
-      },
+    this->bridge->client.preload = webview::Preload::compile({
+      .client = this->bridge->client,
       .index = options.index,
       .userScript = options.userScript,
       .userConfig = options.userConfig,
       .conduit = {
-        {"port", this->core->conduit.port},
-        {"hostname", this->core->conduit.hostname},
-        {"sharedKey", this->core->conduit.sharedKey}
+        {"port", static_cast<runtime::Runtime&>(this->bridge->context).services.conduit.port},
+        {"hostname", static_cast<runtime::Runtime&>(this->bridge->context).services.conduit.hostname},
+        {"sharedKey", static_cast<runtime::Runtime&>(this->bridge->context).services.conduit.sharedKey}
       }
     });
 
@@ -241,8 +249,8 @@ namespace SSC {
     ];
 
     auto preloadUserScript= [WKUserScript alloc];
-    auto preloadUserScriptSource = IPC::Preload::compile({
-      .features = IPC::Preload::Options::Features {
+    auto preloadUserScriptSource = webview::Preload::compile({
+      .features = webview::Preload::Options::Features {
         .useGlobalCommonJS = false,
         .useGlobalNodeJS = false,
         .useTestScript = false,
@@ -250,17 +258,14 @@ namespace SSC {
         .useESM = false,
         .useGlobalArgs = true
       },
-      .client = UniqueClient {
-        .id = this->bridge.client.id,
-        .index = this->bridge.client.index
-      },
+      .client = this->bridge->client,
       .index = options.index,
       .userScript = options.userScript,
       .userConfig = options.userConfig,
       .conduit = {
-        {"port", this->core->conduit.port},
-        {"hostname", this->core->conduit.hostname},
-        {"sharedKey", this->core->conduit.sharedKey}
+        {"port", static_cast<runtime::Runtime&>(this->bridge->context).services.conduit.port},
+        {"hostname", static_cast<runtime::Runtime&>(this->bridge->context).services.conduit.hostname},
+        {"sharedKey", static_cast<runtime::Runtime&>(this->bridge->context).services.conduit.sharedKey}
       }
     });
 
@@ -382,10 +387,10 @@ namespace SSC {
       [preferences setValue: @YES forKey: @"developerExtrasEnabled"];
     }
 
-    this->bridge.init();
+    this->bridge->init();
     this->hotkey.init();
-    this->bridge.configureNavigatorMounts();
-    this->bridge.configureSchemeHandlers({
+    this->bridge->configureNavigatorMounts();
+    this->bridge->configureSchemeHandlers({
       .webview = configuration
     });
 
@@ -404,7 +409,7 @@ namespace SSC {
         processInfo.operatingSystemVersion.majorVersion,
         processInfo.operatingSystemVersion.minorVersion,
         processInfo.operatingSystemVersion.patchVersion,
-        SSC::VERSION_STRING.c_str()
+        ssc::runtime::version::VERSION_STRING.c_str()
     ];
     [this->webview setValue: @(0) forKey: @"drawsBackground"];
   #elif SOCKET_RUNTIME_PLATFORM_IOS
@@ -465,7 +470,7 @@ namespace SSC {
       this->setSize(window.frame.size.width, options.height);
     }
 
-    this->bridge.configureWebView(this->webview);
+    this->bridge->configureWebView(this->webview);
   #if SOCKET_RUNTIME_PLATFORM_MACOS
     // Window style: titled, closable, minimizable
     uint style = NSWindowStyleMaskTitled | NSWindowStyleMaskFullSizeContentView;
@@ -719,14 +724,14 @@ namespace SSC {
   void Window::show () {
   #if SOCKET_RUNTIME_PLATFORM_MACOS
     if (this->options.index == 0) {
-      if (options.headless || this->bridge.userConfig["application_agent"] == "true") {
+      if (options.headless || this->bridge->userConfig["application_agent"] == "true") {
         NSApp.activationPolicy = NSApplicationActivationPolicyAccessory;
       } else {
         NSApp.activationPolicy = NSApplicationActivationPolicyRegular;
       }
     }
 
-    if (this->options.headless || this->bridge.userConfig["application_agent"] == "true") {
+    if (this->options.headless || this->bridge->userConfig["application_agent"] == "true") {
       [NSApp activateIgnoringOtherApps: NO];
     } else {
       [this->webview becomeFirstResponder];
@@ -741,7 +746,7 @@ namespace SSC {
     [this->window makeKeyAndVisible];
     this->window.hidden = NO;
     const auto app = App::sharedApplication();
-    for (auto window : app->windowManager.windows) {
+    for (auto window : app->runtime.windowManager.windows) {
       if (window != nullptr && reinterpret_cast<Window*>(window.get()) != this) {
         window->hide();
       }
@@ -911,7 +916,7 @@ namespace SSC {
 
       if (url != nullptr && this->webview != nullptr) {
         if (String(url.scheme.UTF8String) == "file") {
-          static const auto resourcesPath = FileResource::getResourcesPath();
+          static const auto resourcesPath = filesystem::Resource::getResourcesPath();
           [this->webview loadFileURL: url
             allowingReadAccessToURL: [NSURL fileURLWithPath: @(resourcesPath.string().c_str())]
           ];
@@ -1377,13 +1382,12 @@ namespace SSC {
 
     if (isTrayMenu) {
       menu.title = nssTitle;
-      menu.delegate = (id) app->applicationDelegate; // bring the main window to the front when clicked
+      menu.delegate = (id) app->delegate; // bring the main window to the front when clicked
       menu.autoenablesItems = NO;
 
-      auto userConfig = getUserConfig();
       auto bundlePath = [[[NSBundle mainBundle] resourcePath] UTF8String];
       auto cwd = fs::path(bundlePath);
-      auto trayIconPath = String("application_tray_icon");
+      auto trayIconPath = this->bridge->userConfig["application_tray_icon"];
 
       if (fs::exists(fs::path(cwd) / (trayIconPath + ".png"))) {
         trayIconPath = (fs::path(cwd) / (trayIconPath + ".png")).string();
@@ -1410,10 +1414,10 @@ namespace SSC {
       ];
       [resizedImage unlockFocus];
 
-      app->applicationDelegate.statusItem.menu = menu;
-      app->applicationDelegate.statusItem.button.image = resizedImage;
-      app->applicationDelegate.statusItem.button.toolTip = nssTitle;
-      [app->applicationDelegate.statusItem retain];
+      app->delegate.statusItem.menu = menu;
+      app->delegate.statusItem.button.image = resizedImage;
+      app->delegate.statusItem.button.toolTip = nssTitle;
+      [app->delegate.statusItem retain];
     } else {
       [NSApp setMainMenu: menu];
     }
@@ -1425,6 +1429,6 @@ namespace SSC {
       "url", url
     }};
 
-    this->bridge.emit("applicationurl", json.str());
+    this->bridge->emit("applicationurl", json.str());
   }
 }

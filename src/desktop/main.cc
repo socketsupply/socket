@@ -904,9 +904,10 @@ MAIN {
     }
 
   #if SOCKET_RUNTIME_PLATFORM_APPLE
-    if (app.wasLaunchedFromCli) {
+    // launched from CLI
+    if (app.launchSource == App::LaunchSource::Tool) {
       debug("__EXIT_SIGNAL__=%d", 0);
-      CLI::notify();
+      ssc::cli::notify();
     }
   #endif
 

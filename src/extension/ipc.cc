@@ -462,7 +462,7 @@ const char* sapi_ipc_message_get_seq (const sapi_ipc_message_t* message) {
 
 const char* sapi_ipc_message_get_uri (const sapi_ipc_message_t* message) {
   if (message->uri.size() == 0) return nullptr;
-  return message->uri.c_str();
+  return message->href.c_str();
 }
 
 const char* sapi_ipc_message_get (

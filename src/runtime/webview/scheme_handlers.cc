@@ -15,6 +15,7 @@ using ssc::runtime::config::isDebugEnabled;
 using ssc::runtime::config::getUserConfig;
 using ssc::runtime::config::getDevHost;
 using ssc::runtime::http::toHeaderCase;
+using ssc::runtime::string::toUpperCase;
 using ssc::runtime::string::toLowerCase;
 using ssc::runtime::string::split;
 using ssc::runtime::string::trim;
@@ -410,7 +411,6 @@ namespace ssc::runtime::webview {
     SharedPointer<Request> request,
     const HandlerCallback callback
   ) {
-    Lock lock(this->mutex);
     // request was not finalized, likely not from a `Request::Builder`
     if (request == nullptr || !request->finalized) {
       return false;
@@ -448,12 +448,18 @@ namespace ssc::runtime::webview {
       return false;
     }
 
-    this->activeRequests.emplace(request->id, request);
+    do {
+      Lock lock(this->mutex);
+      this->activeRequests.emplace(request->id, request);
+    } while (0);
 
     if (request->error != nullptr) {
       auto response = webview::SchemeHandlers::Response(request, 500);
       response.fail(request->error);
-      this->activeRequests.erase(id);
+      do {
+        Lock lock(this->mutex);
+        this->activeRequests.erase(id);
+      } while (0);
       return true;
     }
 
@@ -462,7 +468,6 @@ namespace ssc::runtime::webview {
     this->bridge->dispatch([this, id, span, handler, callback, request] () mutable {
       if (request != nullptr && request->isActive() && !request->isCancelled()) {
         handler(request, this->bridge, &request->callbacks, [this, id, span, callback](auto& response) mutable {
-          Lock lock(this->mutex);
           // make sure the response was finished before
           // calling the `callback` function below
           response.finish();
@@ -478,7 +483,10 @@ namespace ssc::runtime::webview {
 
           span->end();
 
-          this->activeRequests.erase(id);
+          do {
+            Lock lock(this->mutex);
+            this->activeRequests.erase(id);
+          } while (0);
         });
       }
     });

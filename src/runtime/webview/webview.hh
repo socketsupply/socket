@@ -8,6 +8,10 @@
 #include "../http.hh"
 #include "../json.hh"
 
+namespace ssc::runtime::webview {
+  class Navigator;
+}
+
 #if SOCKET_RUNTIME_PLATFORM_APPLE
 @interface SSCNavigationDelegate : NSObject<WKNavigationDelegate>
 @property (nonatomic) ssc::runtime::webview::Navigator* navigator;

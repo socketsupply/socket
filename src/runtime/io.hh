@@ -3,9 +3,12 @@
 
 #include <iostream>
 
-#include "../cli.hh"
 #include "platform.hh"
 #include "env.hh"
+
+namespace ssc::cli {
+  void notify ();
+}
 
 namespace ssc::runtime::io {
   inline void write (const String& input, bool isErrorOutput = false) {
@@ -17,7 +20,7 @@ namespace ssc::runtime::io {
 
   #if SOCKET_RUNTIME_PLATFORM_WINDOWS
     if (isGitHubActionsCI) {
-      CLI::notify();
+      ssc::cli::notify();
       // skip writing newline if running on Windows GHA CI
       return;
     }
@@ -25,7 +28,7 @@ namespace ssc::runtime::io {
   #endif
     stream << std::endl;
 
-    cli::notify();
+    ssc::cli::notify();
   }
 }
 #endif

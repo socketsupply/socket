@@ -6,28 +6,13 @@
 using ssc::runtime::url::decodeURIComponent;
 
 namespace ssc::runtime::ipc {
-  Message::Message (const Message& message)
-    : value(message.value),
-      index(message.index),
-      name(message.name),
-      seq(message.seq),
-      uri(message.uri),
-      isHTTP(message.isHTTP),
-      cancel(message.cancel),
-      buffer(message.buffer),
-      client(message.client)
-  {}
-
-  Message::Message (const String& source)
-    : Message(source, false)
-  {}
-
   Message::Message (const String& source, bool decodeValues)
     : uri(source, decodeValues)
   {
     this->seq = this->get("seq");
     this->name = this->uri.hostname;
     this->value = this->get("value");
+    this->href = this->uri.href();
 
     if (this->uri.searchParams.contains("index")) {
       try {
@@ -45,6 +30,26 @@ namespace ssc::runtime::ipc {
     }
   }
 
+  Message::Message (const String& source)
+    : Message(source, false)
+  {
+    this->href = this->uri.href();
+  }
+
+  Message::Message (const Message& message)
+    : value(message.value),
+      index(message.index),
+      name(message.name),
+      seq(message.seq),
+      uri(message.uri),
+      isHTTP(message.isHTTP),
+      cancel(message.cancel),
+      buffer(message.buffer),
+      client(message.client)
+  {
+    this->href = this->uri.href();
+  }
+
   Message::Message (Message&& msg) {
     this->buffer = std::move(msg.buffer);
     this->client = std::move(msg.client);
@@ -55,6 +60,7 @@ namespace ssc::runtime::ipc {
     this->seq = std::move(msg.seq);
     this->isHTTP = msg.isHTTP;
     this->cancel = std::move(msg.cancel);
+    this->href = this->uri.href();
 
     msg.name = "";
     msg.index = -1;
@@ -75,7 +81,8 @@ namespace ssc::runtime::ipc {
     this->uri = msg.uri;
     this->seq = msg.seq;
     this->isHTTP = msg.isHTTP;
-    this->cancel = std::move(msg.cancel);
+    this->cancel = msg.cancel;
+    this->href = this->uri.href();
     return *this;
   }
 
@@ -89,6 +96,7 @@ namespace ssc::runtime::ipc {
     this->seq = std::move(msg.seq);
     this->isHTTP = msg.isHTTP;
     this->cancel = std::move(msg.cancel);
+    this->href = this->uri.href();
 
     msg.name = "";
     msg.index = -1;
@@ -144,6 +152,7 @@ namespace ssc::runtime::ipc {
       {"name", this->name},
       {"value", this->value},
       {"index", this->index},
+      {"href", this->href},
       {"seq", this->seq},
       {"data", this->map()}
     };
