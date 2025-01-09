@@ -417,8 +417,11 @@ namespace ssc::runtime::window {
         gpointer ptr
       ) {
         auto window = static_cast<Window*>(ptr);
+        if (!window) return;
         auto value = webkit_javascript_result_get_js_value(result);
+        if (!value) return;
         auto valueString = jsc_value_to_string(value);
+        if (!valueString) return;
         auto str = String(valueString);
 
         if (!window->bridge->route(str, nullptr, 0)) {

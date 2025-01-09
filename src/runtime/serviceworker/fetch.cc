@@ -125,7 +125,6 @@ namespace ssc::runtime::serviceworker {
       return this->container.bridge->emit("serviceWorker.fetch", json);
     }
 
-    debug("failed to dispatch fetch: %s %s", pathname.c_str(), this->request.str().c_str());
     return false;
   }
 

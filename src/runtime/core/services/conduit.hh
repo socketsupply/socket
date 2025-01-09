@@ -1,8 +1,9 @@
 #ifndef SOCKET_RUNTIME_CORE_SERVICES_CONDUIT_H
 #define SOCKET_RUNTIME_CORE_SERVICES_CONDUIT_H
 
-#include "../../core.hh"
 #include "../../ipc.hh"
+#include "../../core.hh"
+#include "../../bytes.hh"
 
 namespace ssc::runtime::core::services {
   class Conduit : public core::Service {
@@ -39,13 +40,13 @@ namespace ssc::runtime::core::services {
 
       class Client {
         public:
-          using CloseCallback = Function<void()>;
           using SendCallback = Function<void()>;
+          using WriteCallback = Function<void()>;
+          using CloseCallback = Function<void()>;
           using ID = uint64_t;
 
           ID id = 0;
-          // client state
-          ID clientId = 0;
+          ipc::Client client;
           Atomic<bool> isHandshakeDone = false;
           Atomic<bool> isClosing = false;
           Atomic<bool> isClosed = false;
@@ -64,13 +65,20 @@ namespace ssc::runtime::core::services {
           Client (Conduit* conduit)
             : conduit(conduit),
               id(0),
-              clientId(0),
               isHandshakeDone(0)
           {}
 
           ~Client ();
 
-          bool send ( const Message::Options&, SharedPointer<unsigned char[]>, size_t, int opcode = 2, const SendCallback = nullptr);
+          bool send (
+            const Message::Options&,
+            SharedPointer<unsigned char[]>,
+            size_t,
+            int opcode = 2,
+            const SendCallback = nullptr
+          );
+
+          bool write (const bytes::Buffer&, const WriteCallback = nullptr);
           void close (const CloseCallback callback = nullptr);
       };
 

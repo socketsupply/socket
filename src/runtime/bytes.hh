@@ -135,6 +135,9 @@ namespace ssc::runtime::bytes {
       Buffer& operator = (Buffer&&);
       Buffer& operator = (const String&);
 
+      unsigned char operator [] (size_t) const;
+      unsigned char& operator [] (size_t);
+
       size_t size () const;
 
       template <size_t size>
@@ -146,7 +149,8 @@ namespace ssc::runtime::bytes {
       bool set (const unsigned char*, size_t, size_t);
       bool set (const char*, size_t, size_t);
 
-      unsigned char at (size_t) const;
+      unsigned char at (ssize_t);
+      unsigned char at (ssize_t) const;
       const unsigned char* data () const;
       unsigned char* data ();
       const Buffer slice (size_t, size_t = -1, bool = false) const;

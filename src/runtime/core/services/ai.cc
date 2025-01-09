@@ -228,7 +228,7 @@ namespace ssc::runtime::core::services {
 
   LLM::LLM (LLMOptions options) {
     llama_log_set([](ggml_log_level level, const char* message, void* llm) {
-      debug("LLMSTATUS: %s", message);
+      // debug("LLMSTATUS: %s", message);
       // llm.log(message);
     }, this);
 

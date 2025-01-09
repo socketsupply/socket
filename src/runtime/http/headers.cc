@@ -144,11 +144,11 @@ namespace ssc::runtime::http {
 
       headers << name << ": " << entry.value.str();
       if (--remaining > 0) {
-        headers << "\n";
+        headers << "\r\n";
       }
     }
 
-    return headers.str() + "\r\n";
+    return headers.str() + "\r\n\r\n";
   }
 
   const Headers::Iterator Headers::begin () const noexcept {

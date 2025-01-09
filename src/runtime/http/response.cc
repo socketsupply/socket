@@ -51,6 +51,6 @@ namespace ssc::runtime::http {
   }
 
   String Response::str () const {
-    return this->status.str() + "\r\n" + this->headers.str();
+    return "HTTP/" + this->version + " " + this->status.str() + "\r\n" + this->headers.str();
   }
 }

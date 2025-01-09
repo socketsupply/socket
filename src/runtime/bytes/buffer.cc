@@ -295,6 +295,22 @@ namespace ssc::runtime::bytes {
     return *this;
   }
 
+  unsigned char Buffer::operator [] (size_t byteOffset) const {
+    if (byteOffset >= this->byteLength) {
+      throw Error("Buffer::operator[]: RangeError: 'byteOffset' exceeds 'byteLength'");
+    }
+
+    return this->at(byteOffset);
+  }
+
+  unsigned char& Buffer::operator [] (size_t byteOffset) {
+    if (byteOffset >= this->byteLength) {
+      throw Error("Buffer::operator[]: RangeError: 'byteOffset' exceeds 'byteLength'");
+    }
+
+    return (this->buffer.bytes.get() + this->byteOffset)[byteOffset];
+  }
+
   size_t Buffer::size () const {
     return this->byteLength.load(std::memory_order_relaxed);
   }
@@ -357,12 +373,25 @@ namespace ssc::runtime::bytes {
     return true;
   }
 
-  unsigned char Buffer::at (size_t size) const {
+  unsigned char Buffer::at (ssize_t size) {
     if (size >= this->byteLength) {
       throw Error("Buffer::at: RangeError: 'size' exceeds 'byteLength'");
     }
 
-    const auto data = this->buffer.data();
+    const auto data = this->data();
+    if (data == nullptr) {
+      return 0;
+    }
+
+    return data[size];
+  }
+
+  unsigned char Buffer::at (ssize_t size) const {
+    if (size >= this->byteLength) {
+      throw Error("Buffer::at: RangeError: 'size' exceeds 'byteLength'");
+    }
+
+    const auto data = this->data();
     if (data == nullptr) {
       return 0;
     }

@@ -2548,7 +2548,7 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result { message.seq, message, err });
     }
 
-    const auto options = serviceworker::Registration::Options {
+    auto options = serviceworker::Registration::Options {
       .type = serviceworker::Registration::Options::Type::Module,
       .scriptURL = message.get("scriptURL"),
       .scope = message.get("scope"),
@@ -2556,13 +2556,29 @@ static void mapIPCRoutes (Router *router) {
       .serializedWorkerArgs = encodeURIComponent(message.get("__runtime_worker_args", message.get("serializedWorkerArgs")))
     };
 
+    if (message.get("priority") == "high") {
+      options.priority = serviceworker::Registration::Priority::High;
+    } else if (message.get("priority") == "low") {
+      options.priority = serviceworker::Registration::Priority::Low;
+    }
+
     const auto url = URL(options.scriptURL);
     const auto origin = webview::Origin(url.str());
-    debug("register: (%s) %s", origin.name().c_str(), url.str().c_str());
 
     auto serviceWorkerServer = app->runtime.serviceWorkerManager.get(origin.name());
     if (!serviceWorkerServer) {
-      serviceWorkerServer = dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer;
+      if (message.has("__runtime_user_config")) {
+        auto userConfig = INI::parse(message.get("__runtime_user_config"));
+        serviceWorkerServer = static_cast<Bridge&>(router->bridge).getRuntime()->serviceWorkerManager.init(
+          origin.name(),
+          serviceworker::Server::Options {
+            origin.name(),
+            userConfig
+          }
+        );
+      } else {
+        serviceWorkerServer = dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer;
+      }
     }
 
     const auto registration = serviceWorkerServer->container.registerServiceWorker(options);
@@ -2663,11 +2679,14 @@ static void mapIPCRoutes (Router *router) {
     auto fetch = serviceworker::Request();
     fetch.method = message.get("method", "GET");
     fetch.scheme = message.get("scheme", "socket");
+    fetch.url.scheme = message.get("scheme", "socket");
     fetch.url.hostname = message.get("hostname");
     fetch.url.pathname = message.get("pathname", "/");
+    fetch.url.search = "?" + message.get("query", "");
     fetch.url.searchParams.set(message.get("query", ""));
     fetch.headers = message.get("headers", "");
     fetch.body = message.buffer;
+    fetch.client = router->bridge.client;
 
     if (fetch.scheme == "socket" && fetch.url.hostname.size() == 0) {
       fetch.url.hostname = router->bridge.userConfig["meta_bundle_identifier"];
@@ -2690,11 +2709,17 @@ static void mapIPCRoutes (Router *router) {
     }
 
     if (fetch.scheme == "npm") {
+      static auto userConfig = ssc::runtime::config::getUserConfig();
+      const auto bundleIdentifier = userConfig["meta_bundle_identifier"];
       if (fetch.url.hostname.size() > 0) {
         fetch.url.pathname = "/" + fetch.url.hostname;
       }
 
-      fetch.url.hostname = dynamic_cast<Bridge&>(router->bridge).userConfig["meta_bundle_identifier"];
+      fetch.url.hostname = bundleIdentifier;
+    }
+
+    if (!fetch.headers.has("origin")) {
+      fetch.headers.set("origin", dynamic_cast<Bridge&>(router->bridge).navigator.location.origin);
     }
 
     const auto scope = dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.protocols.getServiceWorkerScope(fetch.scheme);
@@ -2707,7 +2732,14 @@ static void mapIPCRoutes (Router *router) {
       router->bridge.client
     };
 
-    const auto fetched = app->runtime.serviceWorkerManager.fetch(fetch, options, [=] (auto res) mutable {
+    auto origin = webview::Origin(fetch.url.str());
+    origin.scheme = "socket";
+    auto serviceWorkerServer = app->runtime.serviceWorkerManager.get(origin.name());
+    if (!serviceWorkerServer) {
+      serviceWorkerServer = dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer;
+    }
+
+    const auto fetched = serviceWorkerServer->fetch(fetch, options, [=] (auto res) mutable {
       if (res.statusCode == 0) {
         return reply(Result::Err {
           message,

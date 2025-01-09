@@ -5,6 +5,16 @@
 using ssc::runtime::url::encodeURIComponent;
 
 namespace ssc::runtime::serviceworker {
+  static String getPriorityString (const Registration::Priority& priority) {
+    if (priority == Registration::Priority::High) {
+      return "high";
+    } else if (priority == Registration::Priority::Low) {
+      return "low";
+    }
+
+    return "default";
+  }
+
   String Registration::key (
     const String& scope,
     const URL& origin,
@@ -14,6 +24,7 @@ namespace ssc::runtime::serviceworker {
     url.scheme = scheme;
     return url.str();
   }
+
   Registration::Registration (
     const ID id,
     const State state,
@@ -35,6 +46,7 @@ namespace ssc::runtime::serviceworker {
   Registration::Registration (Registration&& registration) {
     this->id = registration.id;
     this->state = registration.state.load();
+    this->origin = registration.origin;
     this->options = registration.options;
 
     registration.id = 0;
@@ -74,7 +86,8 @@ namespace ssc::runtime::serviceworker {
       {"state", this->getStateString()},
       {"scheme", this->options.scheme},
       {"origin", this->origin.name()},
-      {"serializedWorkerArgs", includeSerializedWorkerArgs ? encodeURIComponent(this->options.serializedWorkerArgs) : ""}
+      {"serializedWorkerArgs", includeSerializedWorkerArgs ? encodeURIComponent(this->options.serializedWorkerArgs) : ""},
+      {"priority", getPriorityString(this->options.priority)}
     };
   }
 

@@ -2,18 +2,12 @@
 #include "../config.hh"
 #include "../crypto.hh"
 #include "../string.hh"
-#include "../env.hh"
 
 #include "../serviceworker.hh"
 
-using ssc::runtime::url::encodeURIComponent;
 using ssc::runtime::crypto::rand64;
-using ssc::runtime::config::isDebugEnabled;
 using ssc::runtime::config::getUserConfig;
-using ssc::runtime::string::parseStringList;
-using ssc::runtime::string::replace;
 using ssc::runtime::string::split;
-using ssc::runtime::string::trim;
 using ssc::runtime::string::join;
 
 namespace ssc::runtime::serviceworker {
@@ -127,10 +121,12 @@ namespace ssc::runtime::serviceworker {
 
       do {
         Lock lock(fetch->mutex);
+        fetch->response.client.id = clientId;
+        fetch->response.status = statusCode;
+        fetch->response.statusCode = statusCode;
+
         if (fetch->response.headers.size() == 0 && message.has("headers")) {
           fetch->response.headers = http::Headers(message.get("headers"));
-          fetch->response.client.id = clientId;
-          fetch->response.status = statusCode;
         }
 
         if (message.buffer.size() > 0) {
@@ -188,11 +184,12 @@ namespace ssc::runtime::serviceworker {
 
       do {
         Lock lock(fetch->mutex);
+        fetch->response.client.id = clientId;
+        fetch->response.status = statusCode;
+        fetch->response.statusCode = statusCode;
 
         if (fetch->response.headers.size() == 0 && message.has("headers")) {
           fetch->response.headers = http::Headers(message.get("headers"));
-          fetch->response.client.id = clientId;
-          fetch->response.status = statusCode;
         }
 
         if (message.buffer.size() > 0) {
@@ -282,7 +279,6 @@ namespace ssc::runtime::serviceworker {
     scope = normalizeScope(scope);
 
     const auto key = Registration::key(scope, this->origin, options.scheme);
-    debug("KEY: (scope=%s, scheme=%s) %s", scope.c_str(), options.scheme.c_str(), key.c_str());
     if (this->registrations.contains(key)) {
       const auto& registration = this->registrations.at(key);
 
@@ -304,6 +300,7 @@ namespace ssc::runtime::serviceworker {
         scope,
         options.scheme,
         options.serializedWorkerArgs,
+        Registration::Priority::Default,
         id
       }
     ));

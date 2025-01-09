@@ -214,5 +214,4 @@ namespace ssc::runtime::crypto {
   const String sha1 (const unsigned char * input, size_t size) {
     return SHA1(input, size).str();
   }
-
 }

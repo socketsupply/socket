@@ -82,7 +82,7 @@ namespace ssc::runtime::ipc {
     size_t size
   ) {
     return this->invoke(uri, bytes, size, [this](auto result) {
-      this->dispatcher.dispatch([=, this] () {
+      this->dispatcher.dispatch([this, result] () {
         this->bridge.send(result.seq, result.str(), result.queuedResponse);
       });
     });

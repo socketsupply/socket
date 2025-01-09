@@ -133,4 +133,9 @@
 #if SOCKET_RUNTIME_PLATFORM_ANDROID
 #include "android.hh"
 #endif
+
+#ifdef _WIN32
+typedef __int64 ssize_t;
+#endif
+
 #endif

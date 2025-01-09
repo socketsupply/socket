@@ -455,13 +455,6 @@ export * from '{{url}}'
         auto origin = webview::Origin(request->scheme + "://" + request->hostname);
         auto serviceWorker = app->runtime.serviceWorkerManager.get(origin.name());
 
-        debug(">> %d %d %d %d",
-          serviceWorker != nullptr,
-          request->hostname != globalBundleIdentifier,
-          window->options.shouldPreferServiceWorker,
-          serviceWorker->container.registrations.size() > 0
-          );
-
         if (
           serviceWorker != nullptr &&
           request->hostname != globalBundleIdentifier &&
@@ -486,7 +479,6 @@ export * from '{{url}}'
 
           const auto app = App::sharedApplication();
           const auto options = serviceworker::Fetch::Options { request->client };
-          debug("FETCH PLZ: %s", fetch.str().c_str());
           const auto fetched = serviceWorker->fetch(fetch, options, [
             this,
             applicationResources,
@@ -551,7 +543,6 @@ export * from '{{url}}'
                   contentLocation = resourcePath.substr(applicationResources.size(), resourcePath.size());
                 }
 
-                debug("RESOURCE PATH: %s", resourcePath.c_str());
                 auto resource = filesystem::Resource(resourcePath);
 
                 if (!resource.exists()) {
@@ -723,6 +714,7 @@ export * from '{{url}}'
           auto fetch = serviceworker::Request();
           fetch.method = request->method;
           fetch.scheme = request->scheme;
+          fetch.url.scheme = request->scheme;
           fetch.url.hostname = request->hostname;
           fetch.url.pathname = request->pathname;
           fetch.url.searchParams.set(request->query);
@@ -1067,7 +1059,6 @@ export * from '{{url}}'
             });
           }
         } else {
-          debug("BEFORE REGISTER: %s %s", scheme.c_str(), scope.c_str());
           this->navigator.serviceWorkerServer->container.registerServiceWorker({
             .type = serviceworker::Registration::Options::Type::Module,
             .scriptURL = scriptURL,
@@ -1091,7 +1082,6 @@ export * from '{{url}}'
         }
       }
 
-      debug("REGISTER SCHEME: %s", scheme.c_str());
       this->schemeHandlers.registerSchemeHandler(scheme, [this](
         auto request,
         auto bridge,
@@ -1156,10 +1146,8 @@ export * from '{{url}}'
 
         auto origin = webview::Origin(fetch.url.str());
         origin.scheme = "socket";
-        debug("origin: %s", origin.name().c_str());
         serviceWorkerServer = app->runtime.serviceWorkerManager.get(origin.name());
         if (!serviceWorkerServer) {
-          debug("fall back to navigator serviceWorkerServer");
           serviceWorkerServer = this->navigator.serviceWorkerServer;
         }
 
@@ -1168,7 +1156,6 @@ export * from '{{url}}'
         if (scope.size() > 0) {
           fetch.url.pathname = scope + fetch.url.pathname;
         }
-        debug("fetch: %s", fetch.str().c_str());
 
         const auto fetched = serviceWorkerServer->fetch(fetch, options, [request, callback] (auto res) mutable {
           if (!request->isActive()) {

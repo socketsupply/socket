@@ -71,6 +71,12 @@ namespace ssc::runtime::serviceworker {
   class Registration {
     public:
       static String key (const String&, const URL&, const String& = "socket");
+      enum class Priority {
+        High,
+        Default,
+        Low
+      };
+
       struct Options {
         enum class Type { Classic, Module };
 
@@ -79,6 +85,7 @@ namespace ssc::runtime::serviceworker {
         String scope;
         String scheme = "*";
         String serializedWorkerArgs = "";
+        Priority priority = Priority::Default;
         ID id = 0;
       };
 

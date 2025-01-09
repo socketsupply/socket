@@ -1,22 +1,48 @@
-#include "../http.hh"
 #include "../string.hh"
+#include "../http.hh"
 
-using namespace ssc::runtime::string;
+using ssc::runtime::string::split;
 
 namespace ssc::runtime::http {
   Request::Request (const String& input) {
     const auto crlf = input.find("\r\n");
     if (crlf != String::npos) {
       auto stream = std::istringstream(input.substr(0, crlf));
-      String uri;
+      String pathname;
+      String version;
       stream
         >> this->method
-        >> uri
-        >> this->version;
+        >> pathname
+        >> version;
 
-      this->url = uri;
+      const auto versionParts = split(version, '/');
+      const auto pathParts = split(pathname, '?');
+
+      if (versionParts.size() == 2) {
+        this->version = versionParts[1];
+      }
+
+      if (pathParts.size() == 2) {
+        this->url.pathname = pathParts[0];
+        this->url.search = "?" + pathParts[1];
+        this->url.searchParams.set(pathParts[1]);
+      } else {
+        this->url.pathname = pathname;
+      }
+
       this->headers = input.substr(crlf, input.find("\r\n\r\n"));
       this->body = input.substr(input.find("\r\n\r\n"));
+
+      const auto host = this->headers.get("host");
+      if (!host.empty()) {
+        const auto parts = split(host.value.str(), ':');
+        if (parts.size() == 2) {
+          this->url.hostname = parts[0];
+          this->url.port = parts[0];
+        } else {
+          this->url.hostname = host.value.str();
+        }
+      }
     }
   }
 
@@ -29,19 +55,45 @@ namespace ssc::runtime::http {
 
     if (crlf != String::npos) {
       auto stream = std::istringstream(string.substr(0, crlf));
-      String uri;
+      String pathname;
+      String version;
       stream
         >> this->method
-        >> uri
-        >> this->version;
+        >> pathname
+        >> version;
 
-      this->url = uri;
+      const auto versionParts = split(version, '/');
+      const auto pathParts = split(pathname, '?');
+
+      if (versionParts.size() == 2) {
+        this->version = versionParts[1];
+      }
+
+      if (pathParts.size() == 2) {
+        this->url.pathname = pathParts[0];
+        this->url.search = "?" + pathParts[1];
+        this->url.searchParams.set(pathParts[1]);
+      } else {
+        this->url.pathname = pathname;
+      }
+
       this->headers = string.substr(crlf, string.find("\r\n\r\n"));
       this->body.set(
         input + string.find("\r\n\r\n") + 4,
         0,
         size - string.find("\r\n\r\n") - 4
       );
+
+      const auto host = this->headers.get("host");
+      if (!host.empty()) {
+        const auto parts = split(host.value.str(), ':');
+        if (parts.size() == 2) {
+          this->url.hostname = parts[0];
+          this->url.port = parts[0];
+        } else {
+          this->url.hostname = host.value.str();
+        }
+      }
     }
   }
 

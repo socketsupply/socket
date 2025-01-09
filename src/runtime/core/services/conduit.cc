@@ -1,18 +1,13 @@
-#include <iostream>
-
 #include "../../runtime.hh"
 #include "../../crypto.hh"
 #include "../../config.hh"
 #include "../../string.hh"
-#include "../../bytes.hh"
 #include "../../http.hh"
 #include "../../env.hh"
 #include "../../ipc.hh"
 #include "../../url.hh"
 
 #include "conduit.hh"
-
-#define SHA_DIGEST_LENGTH 20
 
 using ssc::runtime::config::getUserConfig;
 using ssc::runtime::string::toUpperCase;
@@ -261,10 +256,13 @@ namespace ssc::runtime::core::services {
     Conduit::Client* client,
     const char* buffer
   ) {
-    const auto request = http::Request(buffer);
+    auto request = http::Request(buffer);
+    request.url.hostname = "127.0.0.1";
+    request.url.scheme = "ws";
+    request.scheme = "ws";
 
     if (!request.valid()) {
-      // TODO(@jwerle); handle malformed handshake request
+      client->close();
       return;
     }
 
@@ -272,6 +270,20 @@ namespace ssc::runtime::core::services {
 
     if (webSocketKey.empty()) {
       // debug("Sec-WebSocket-Key is required but missing.");
+      const auto buffer = bytes::Buffer(http::Response(400).str());
+      client->write(buffer, [client]() {
+        client->close();
+      });
+      return;
+    }
+
+    const auto sharedKey = request.url.searchParams.get("key").str();
+    if (sharedKey != this->sharedKey) {
+      // debug("Conduit::Client failed auth");
+      const auto buffer = bytes::Buffer(http::Response(403).str());
+      client->write(buffer, [client]() {
+        client->close();
+      });
       return;
     }
 
@@ -283,7 +295,7 @@ namespace ssc::runtime::core::services {
       }
 
       try {
-        client->clientId = request.url.pathComponents.get<int>(1);
+        client->client.id = request.url.pathComponents.get<int>(1);
       } catch (...) {
         // debug("Unable to parse client id");
       }
@@ -306,45 +318,16 @@ namespace ssc::runtime::core::services {
       // std::cout << "added client " << this->clients.size() << std::endl;
     } while (0);
 
-    if (sharedKey != this->sharedKey) {
-      debug("Conduit::Client failed auth");
-      client->close();
-      return;
-    }
-
     const auto response = http::Response(101)
       .setHeader("upgrade", "websocket")
       .setHeader("connection", "upgrade")
       .setHeader(
         "sec-websocket-accept",
-        bytes::base64::encode(sha1(webSocketKey + WS_GUID))
+        bytes::base64::encode(crypto::SHA1(webSocketKey + WS_GUID).finalize())
       );
 
-    const auto output = response.str();
-    const auto size = output.size();
-    const auto data = new char[size]{0};
-    memcpy(data, output.c_str(), size);
-
-    const auto buf = uv_buf_init(data, size);
-
-    auto req = new uv_write_t;
-    auto handle = reinterpret_cast<uv_handle_t*>(req);
-    auto stream = reinterpret_cast<uv_stream_t*>(&client->handle);
-
-    uv_handle_set_data(handle, data);
-    uv_write(req, stream, &buf, 1, [](uv_write_t *req, int status) {
-      const auto data = reinterpret_cast<char*>(
-        uv_handle_get_data(reinterpret_cast<uv_handle_t*>(req))
-      );
-
-      if (data != nullptr) {
-        delete [] data;
-      }
-
-      delete req;
-    });
-
-    client->isHandshakeDone = 1;
+    client->write(response.str());
+    client->isHandshakeDone = true;
   }
 
   void Conduit::processFrame (
@@ -488,8 +471,8 @@ namespace ssc::runtime::core::services {
     const auto bytes = vectorToSharedPointer(buffer);
     const auto message = ipc::Message(uri);
 
-    auto window = client && client->clientId > 0
-      ? this->context.getRuntime()->windowManager.getWindowForClient({ client->clientId })
+    auto window = client && client->client.id > 0
+      ? this->context.getRuntime()->windowManager.getWindowForClient({ client->client.id })
       : nullptr;
 
     // prevent external usage of internal routes
@@ -644,6 +627,41 @@ namespace ssc::runtime::core::services {
           }
         }
       );
+    });
+
+    return true;
+  }
+
+  bool Conduit::Client::write (const bytes::Buffer& buffer, const WriteCallback callback) {
+    auto buf = uv_buf_init(reinterpret_cast<char*>(const_cast<unsigned char*>(buffer.data())), buffer.size());
+    auto req = new uv_write_t;
+    auto handle = reinterpret_cast<uv_handle_t*>(req);
+    auto stream = reinterpret_cast<uv_stream_t*>(&this->handle);
+
+    if (callback != nullptr) {
+      uv_handle_set_data(
+        reinterpret_cast<uv_handle_t*>(req),
+        new ClientWriteContext { this, callback }
+      );
+    } else {
+      uv_handle_set_data(
+        reinterpret_cast<uv_handle_t*>(req),
+        nullptr
+      );
+    }
+
+    uv_write(req, stream, &buf, 1, [](uv_write_t *req, int status) {
+      const auto data = uv_handle_get_data(reinterpret_cast<uv_handle_t*>(req));
+      const auto context = static_cast<ClientWriteContext*>(data);
+
+      delete req;
+
+      if (context != nullptr) {
+        context->client->conduit->loop.dispatch([=]() mutable {
+          context->callback();
+          delete context;
+        });
+      }
     });
 
     return true;

@@ -184,7 +184,6 @@ namespace ssc::runtime::url {
     void set (const JSON::Object&);
     const String href () const;
     const String str () const;
-    const char* c_str () const;
     const JSON::Object json () const;
     const size_t size () const;
     bool empty () const;
