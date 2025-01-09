@@ -1,9 +1,15 @@
 #include "../app.hh"
 
 using namespace ssc::runtime;
+using namespace ssc::runtime::app;
+using ssc::runtime::window::Window;
+using ssc::runtime::config::isDebugEnabled;
 using ssc::runtime::config::getUserConfig;
+using ssc::runtime::config::getDevHost;
+using ssc::runtime::config::getDevPort;
 using ssc::runtime::string::parseStringList;
 using ssc::runtime::string::split;
+using ssc::runtime::string::trim;
 
 static dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
   DISPATCH_QUEUE_CONCURRENT,
@@ -198,7 +204,7 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
     argv.push_back("'" + trim(arg) + "'");
   }
 
-  auto windowManagerOptions = WindowManagerOptions {};
+  auto windowManagerOptions = window::ManagerOptions {};
 
   for (const auto& arg : split(self.app->runtime.userConfig["ssc_argv"], ',')) {
     if (arg.find("--test") == 0) {
@@ -216,36 +222,9 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
   static const auto port = getDevPort();
   static const auto host = getDevHost();
 
-  if (
-    self.app->runtime.userConfig["webview_service_worker_mode"] != "hybrid" &&
-    self.app->runtime.userConfig["permissions_allow_service_worker"] != "false"
-  ) {
-    auto serviceWorkerWindowOptions = Window::Options {};
-    auto serviceWorkerUserConfig = self.app->runtime.userConfig;
-
-    serviceWorkerUserConfig["webview_watch_reload"] = "false";
-    serviceWorkerWindowOptions.shouldExitApplicationOnClose = false;
-    serviceWorkerWindowOptions.index = SOCKET_RUNTIME_SERVICE_WORKER_CONTAINER_WINDOW_INDEX;
-    serviceWorkerWindowOptions.headless = Env::get("SOCKET_RUNTIME_SERVICE_WORKER_DEBUG").size() == 0;
-    serviceWorkerWindowOptions.userConfig = serviceWorkerUserConfig;
-    serviceWorkerWindowOptions.features.useGlobalCommonJS = false;
-    serviceWorkerWindowOptions.features.useGlobalNodeJS = false;
-
-    auto serviceWorkerWindow = self.app->runtime.windowManager.createWindow(serviceWorkerWindowOptions);
-    self.app->serviceWorkerContainer.init(&serviceWorkerWindow->bridge);
-
-    serviceWorkerWindow->navigate(
-      "socket://" + self.app->runtime.userConfig["meta_bundle_identifier"] + "/socket/service-worker/index.html"
-    );
-  }
-
   auto defaultWindow = self.app->runtime.windowManager.createDefaultWindow(Window::Options {
      .shouldExitApplicationOnClose = true
   });
-
-  if (self.app->runtime.userConfig["webview_service_worker_mode"] == "hybrid") {
-    self.app->serviceWorkerContainer.init(&defaultWindow->bridge);
-  }
 
   defaultWindow->setTitle(self.app->runtime.userConfig["meta_title"]);
 

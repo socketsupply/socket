@@ -5,7 +5,10 @@
 #include "platform.hh"
 
 using ssc::runtime::url::decodeURIComponent;
+
+#if !SOCKET_RUNTIME_PLATFORM_IOS
 using ssc::runtime::process::exec;
+#endif
 
 namespace ssc::runtime::core::services {
   void Platform::event (

@@ -51,7 +51,7 @@ namespace ssc::runtime::app {
   willContinueUserActivityWithType: (NSString*) userActivityType;
 #endif
 
-@property (nonatomic, assign) ssc::runtime::app::App* app;
+@property (nonatomic, assign) ssc::runtime::SharedPointer<ssc::runtime::app::App> app;
 @end
 #endif
 

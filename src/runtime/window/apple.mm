@@ -88,14 +88,14 @@ CGFloat MACOS_TRAFFIC_LIGHT_BUTTON_SIZE = 16;
     const auto uri = String(string.UTF8String);
 
   #if SOCKET_RUNTIME_PLATFORM_IOS
-    const auto msg = IPC::Message(uri);
+    const auto msg = ipc::Message(uri);
     if (msg.name == "application.exit" || msg.name == "process.exit") {
       const auto code = std::stoi(msg.get("value", "0"));
 
       if (code > 0) {
-        CLI::notify(SIGTERM);
+        ssc::cli::notify(SIGTERM);
       } else {
-        CLI::notify(SIGUSR2);
+        ssc::cli::notify(SIGUSR2);
       }
     }
   #endif
@@ -431,7 +431,7 @@ namespace ssc::runtime::window {
       processInfo.operatingSystemVersion.majorVersion,
       processInfo.operatingSystemVersion.minorVersion,
       processInfo.operatingSystemVersion.patchVersion,
-      SSC::VERSION_STRING.c_str()
+      ssc::runtime::VERSION_STRING.c_str()
     ];
   #endif
 

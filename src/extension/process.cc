@@ -1,6 +1,9 @@
 #include "extension.hh"
 
+#if !SOCKET_RUNTIME_PLATFORM_IOS
 using ssc::runtime::process::exec;
+#endif
+
 using ssc::runtime::string::trim;
 
 const sapi_process_exec_t* sapi_process_exec (
