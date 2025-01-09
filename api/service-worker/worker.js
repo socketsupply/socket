@@ -410,7 +410,6 @@ export async function onMessage (event) {
     }
 
     const url = new URL(data.fetch.request.url)
-    console.log('FetchEvent: %s', url.href)
     const fetchEvent = new FetchEvent('fetch', {
       clientId: data.fetch.client.id,
       fetchId: data.fetch.request.id,

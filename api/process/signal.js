@@ -3,7 +3,6 @@
  */
 import { signal as constants } from '../os/constants.js'
 import { SignalEvent } from '../internal/events.js'
-import ipc from '../ipc.js'
 import os from '../os.js'
 
 /**

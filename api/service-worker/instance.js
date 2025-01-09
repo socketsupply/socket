@@ -77,7 +77,7 @@ export function createServiceWorker (
     state: {
       configurable: true,
       enumerable: false,
-      get: () => currentState === null ? state.serviceWorker.state : currentState,
+      get: () => currentState === null ? state.serviceWorker.state : currentState
     },
 
     [Symbol.for('socket.runtime.serviceWorker.state')]: {

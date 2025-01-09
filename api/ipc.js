@@ -1772,43 +1772,33 @@ export function findIPCMessageTransfers (transfers, object) {
       object[i] = findIPCMessageTransfers(transfers, object[i])
     }
   } else if (object && typeof object === 'object') {
-    if (
-      object instanceof MessagePort || (
-        typeof object.postMessage === 'function' &&
-        Object.getPrototypeOf(object).constructor.name === 'MessagePort'
-      )
-    ) {
-      const port = IPCMessagePort.create(object)
-      object.addEventListener('message', function onMessage (event) {
-        if (port.closed === true) {
-          port.onmessage = null
-          event.preventDefault()
-          event.stopImmediatePropagation()
-          object.removeEventListener('message', onMessage)
-          return false
+    if (object instanceof MessagePort) {
+      if (object instanceof IPCMessagePort) {
+        const port = IPCMessagePort.create(object)
+        ports.get(port.id).channel.onmessage = (event) => {
+          if (port.closed === true) {
+            port.onmessage = null
+            event.preventDefault()
+            event.stopImmediatePropagation()
+            return false
+          }
+
+          if (port.started && event.data?.token !== port.token) {
+            console.log(event.data)
+            const transfers = new Set()
+            findIPCMessageTransfers(transfers, event.data)
+            object.postMessage(event.data, {
+              transfer: Array.from(transfers)
+            })
+          }
         }
-
-        port.dispatchEvent(new MessageEvent('message', event))
-      })
-
-
-      port.onmessage = (event) => {
-        if (port.closed === true) {
-          port.onmessage = null
-          event.preventDefault()
-          event.stopImmediatePropagation()
-          return false
-        }
-
-        const transfers = new Set()
-        findIPCMessageTransfers(transfers, event.data)
-        object.postMessage(event.data, {
-          transfer: Array.from(transfers)
-        })
+        add(port)
+        return port
+      } else {
+        add(object)
+        return object
       }
-      add(port)
-      return port
-    } else {
+    } else if (Object.getPrototypeOf(object) === Object.prototype) {
       for (const key in object) {
         object[key] = findIPCMessageTransfers(
           transfers,
@@ -1841,13 +1831,15 @@ export class IPCMessagePort extends MessagePort {
   static create (options = null) {
     const id = String(options?.id ?? rand64())
     const port = Object.create(this.prototype)
-    const token = String(rand64())
-    const channel = typeof options?.channel === 'string'
-      ? new BroadcastChannel(options.channel)
-      : (
-          (options?.channel && new BroadcastChannel(options.channel.name, options.channel)) ??
-          new BroadcastChannel(id)
-        )
+    const token = ports.get(id)?.token || String(rand64())
+    const channel = ports.get(id)?.channel ||
+      (typeof options?.channel === 'string'
+        ? new BroadcastChannel(options.channel)
+        : (
+            (options?.channel && new BroadcastChannel(options.channel.name, options.channel)) ??
+            new BroadcastChannel(id)
+          )
+      )
 
     if (ports.has(id)) {
       ports.get(id).closed = true
@@ -1868,8 +1860,8 @@ export class IPCMessagePort extends MessagePort {
       eventTarget: { writable: true, value: ports.get(id)?.eventTarget || new EventTarget() }
     }))
 
-    const state = ports.get(id)
     channel.onmessage = function onMessage (event) {
+      const state = ports.get(id)
       if (!state || state?.closed === true) {
         event.preventDefault()
         event.stopImmediatePropagation()
@@ -2051,10 +2043,9 @@ export class IPCMessagePort extends MessagePort {
   }
 
   [Symbol.for('socket.runtime.serialize')] () {
-    const channel = ports.get(this.id)?.channel
     return {
       __type__: 'IPCMessagePort',
-      channel: channel ? { name: channel.name, origin: channel.origin || location.origin } : null,
+      channel: ports.get(this.id)?.channel?.name ?? null,
       id: this.id
     }
   }

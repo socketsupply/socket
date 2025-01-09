@@ -147,7 +147,6 @@ export async function getContextWindow () {
   }
 
   const windows = await application.getWindows([], { max: false })
-  let firstInit = true
 
   for (const window of windows) {
     if (window.title === SHARED_WORKER_WINDOW_TITLE) {
@@ -155,7 +154,7 @@ export async function getContextWindow () {
         const url = new URL(window.location.href, globalThis.location.origin)
         if (url.origin === globalThis.location.origin) {
           contextWindow = window
-          firstInit = false
+          break
         }
       }
     }

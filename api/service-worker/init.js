@@ -77,6 +77,7 @@ export class ServiceWorkerInstance extends Worker {
       this.postMessage({ register: info })
     } else if (event.data.__service_worker_registered?.id === info.id) {
       this.postMessage({ install: info })
+      info.promise.resolve()
     } else if (event.data?.message && event?.data.client?.id) {
       sharedWorker.port.postMessage({
         ...event.data,
@@ -132,6 +133,9 @@ export class ServiceWorkerInfo {
   scope = null
   scriptURL = null
   serializedWorkerArgs = null
+  priority = 'default'
+  // @ts-ignore
+  #promise = Promise.withResolvers()
 
   constructor (data) {
     for (const key in data) {
@@ -149,6 +153,10 @@ export class ServiceWorkerInfo {
   get pathname () {
     return new URL(this.url).pathname
   }
+
+  get promise () {
+    return this.#promise
+  }
 }
 
 export async function onRegister (event) {
@@ -156,6 +164,16 @@ export async function onRegister (event) {
 
   if (!info.id || workers.has(info.hash)) {
     return
+  }
+
+  for (const worker of workers.values()) {
+    if (worker.priority === 'high' && /high|default|low/i.test(info.priority)) {
+      await worker.ready
+    } else if (worker.priority === 'default' && /default|low/i.test(info.priority)) {
+      await worker.ready
+    } else if (worker.priority === 'low' && /low/i.test(info.priority)) {
+      await worker.ready
+    }
   }
 
   const worker = new ServiceWorkerInstance('./worker.js', {
@@ -198,7 +216,6 @@ export async function onActivate (event) {
 export async function onFetch (event) {
   const info = new ServiceWorkerInfo(event.detail)
   const exists = workers.has(info.hash)
-  console.log(exists, event.detail)
 
   // this may be an early fetch, just try waiting at most
   // 32*16 milliseconds for the worker to be available or
@@ -378,7 +395,7 @@ hooks.onReady(async () => {
   const result = await ipc.request('serviceWorker.getRegistrations')
   if (Array.isArray(result.data)) {
     for (const info of result.data) {
-      //await navigator.serviceWorker.register(info.scriptURL, info)
+      await navigator.serviceWorker.register(info.scriptURL, info)
     }
   }
 })
