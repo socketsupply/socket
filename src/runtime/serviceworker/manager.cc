@@ -1,3 +1,4 @@
+#include "../bridge.hh"
 #include "../serviceworker.hh"
 
 namespace ssc::runtime::serviceworker {
@@ -38,10 +39,10 @@ namespace ssc::runtime::serviceworker {
     return this->servers.contains(key) ? this->servers.at(key) : nullptr;
   }
 
-  SharedPointer<Server> Manager::get (ipc::IBridge* bridge) {
+  SharedPointer<Server> Manager::get (const bridge::Bridge* bridge) {
     Lock lock(this->mutex);
     for (const auto& entry : this->servers) {
-      if (dynamic_cast<ipc::IBridge*>(entry.second->bridge.get()) == bridge) {
+      if (dynamic_cast<bridge::Bridge*>(entry.second->bridge.get()) == bridge) {
         return entry.second;
       }
     }

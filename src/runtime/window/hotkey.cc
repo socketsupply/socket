@@ -1,6 +1,7 @@
 #include "../ipc.hh"
 #include "../url.hh"
 #include "../json.hh"
+#include "../bridge.hh"
 #include "../config.hh"
 #include "../string.hh"
 #include "../window.hh"

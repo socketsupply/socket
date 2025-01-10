@@ -13,7 +13,7 @@ using ssc::runtime::color::Color;
 using ssc::runtime::app::App;
 
 namespace ssc::runtime::window {
-  Window::Window (SharedPointer<IBridge> bridge, const Window::Options& options)
+  Window::Window (SharedPointer<bridge::Bridge> bridge, const Window::Options& options)
     : options(options),
       bridge(bridge),
       hotkey(this),

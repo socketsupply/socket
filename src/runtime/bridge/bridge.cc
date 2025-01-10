@@ -104,7 +104,10 @@ export * from '{{url}}'
 
   Bridge::Bridge (
     const Options& options
-  ) : window::IBridge(options.dispatcher, options.context, options.client, options.userConfig)
+  ) : window::IBridge(options.dispatcher, options.context, options.client, options.userConfig),
+      schemeHandlers(*this),
+      navigator(*this),
+      router(*this)
   {
     // '-1' may mean the bridge is running as a WebKit web process extension
     if (options.client.index >= 0) {
@@ -137,13 +140,15 @@ export * from '{{url}}'
   }
 
   Bridge::~Bridge () {
-    auto& runtime = static_cast<runtime::Runtime&>(this->context);
-    // remove observers
-    runtime.services.geolocation.removePermissionChangeObserver(this->geolocationPermissionChangeObserver);
-    runtime.services.networkStatus.removeObserver(this->networkStatusObserver);
-    runtime.services.notifications.removePermissionChangeObserver(this->notificationsPermissionChangeObserver);
-    runtime.services.notifications.removeNotificationResponseObserver(this->notificationResponseObserver);
-    runtime.services.notifications.removeNotificationPresentedObserver(this->notificationPresentedObserver);
+    auto app = App::sharedApplication();
+    if (app && !app->shouldExit) {
+      // remove observers
+      app->runtime.services.geolocation.removePermissionChangeObserver(this->geolocationPermissionChangeObserver);
+      app->runtime.services.networkStatus.removeObserver(this->networkStatusObserver);
+      app->runtime.services.notifications.removePermissionChangeObserver(this->notificationsPermissionChangeObserver);
+      app->runtime.services.notifications.removeNotificationResponseObserver(this->notificationResponseObserver);
+      app->runtime.services.notifications.removeNotificationPresentedObserver(this->notificationPresentedObserver);
+    }
   }
 
   void Bridge::init () {
@@ -292,7 +297,7 @@ export * from '{{url}}'
     this->schemeHandlers.configure(configuration);
     this->schemeHandlers.registerSchemeHandler("ipc", [this](
       const auto request,
-      const auto bridge,
+      const auto& bridge,
       auto callbacks,
       auto callback
     ) {
@@ -407,7 +412,7 @@ export * from '{{url}}'
 
     this->schemeHandlers.registerSchemeHandler("socket", [this](
       const auto request,
-      const auto bridge,
+      const auto& bridge,
       auto callbacks,
       auto callback
     ) {
@@ -416,9 +421,7 @@ export * from '{{url}}'
       auto userConfig = this->userConfig;
       auto bundleIdentifier = userConfig["meta_bundle_identifier"];
       auto globalBundleIdentifier = globalConfig["meta_bundle_identifier"];
-      auto window = app->runtime.windowManager.getWindowForBridge(
-        reinterpret_cast<const window::IBridge*>(bridge)
-      );
+      auto window = app->runtime.windowManager.getWindowForBridge(&bridge);
 
       // if there was no window, then this is a bad request as scheme
       // handlers should only be handled directly in a window with
@@ -832,7 +835,7 @@ export * from '{{url}}'
 
     this->schemeHandlers.registerSchemeHandler("node", [this](
       const auto request,
-      const auto router,
+      const auto& bridge,
       auto callbacks,
       auto callback
     ) {
@@ -1001,8 +1004,7 @@ export * from '{{url}}'
       if (
         globalUserConfig["meta_bundle_identifier"] == this->userConfig["meta_bundle_identifier"] ||
         !globalProtocolHandlers.contains(scheme)
-        ) {
-
+      ) {
         auto scriptURL = trim(entry.second);
 
         if (scriptURL.size() == 0) {
@@ -1084,14 +1086,12 @@ export * from '{{url}}'
 
       this->schemeHandlers.registerSchemeHandler(scheme, [this](
         auto request,
-        auto bridge,
+        const auto& bridge,
         auto callbacks,
         auto callback
       ) {
         auto app = App::sharedApplication();
-        auto window = app->runtime.windowManager.getWindowForBridge(
-          reinterpret_cast<const window::IBridge*>(bridge)
-        );
+        auto window = app->runtime.windowManager.getWindowForBridge(&bridge);
 
         auto fetch = serviceworker::Request();
         SharedPointer<serviceworker::Server> serviceWorkerServer = nullptr;

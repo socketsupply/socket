@@ -187,7 +187,7 @@ CGFloat MACOS_TRAFFIC_LIGHT_BUTTON_SIZE = 16;
 @end
 
 namespace ssc::runtime::window {
-  Window::Window (SharedPointer<IBridge> bridge, const Window::Options& options)
+  Window::Window (SharedPointer<bridge::Bridge> bridge, const Window::Options& options)
     : options(options),
       bridge(bridge),
       hotkey(this),

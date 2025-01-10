@@ -1,6 +1,7 @@
 #include "../filesystem.hh"
 #include "../runtime.hh"
 #include "../config.hh"
+#include "../bridge.hh"
 #include "../string.hh"
 #include "../app.hh"
 
@@ -64,8 +65,8 @@ using ssc::runtime::app::App;
 #endif
 
 namespace ssc::runtime::webview {
-  Navigator::Location::Location (IBridge* bridge)
-    : bridge(bridge),
+  Navigator::Location::Location (Navigator& navigator)
+    : navigator(navigator),
       URL()
   {}
 
@@ -183,12 +184,12 @@ namespace ssc::runtime::webview {
 
   void Navigator::Location::assign (const String& url) {
     this->set(url);
-    this->bridge->navigate(url);
+    this->navigator.bridge.navigate(url);
   }
 
-  Navigator::Navigator (IBridge* bridge)
+  Navigator::Navigator (bridge::Bridge& bridge)
     : bridge(bridge),
-      location(bridge)
+      location(*this)
   {
   #if SOCKET_RUNTIME_PLATFORM_APPLE
     this->navigationDelegate = [SSCNavigationDelegate new];
@@ -294,11 +295,9 @@ namespace ssc::runtime::webview {
     const String& currentURL,
     const String& requestedURL
   ) {
-    auto userConfig = this->bridge->userConfig;
+    auto userConfig = this->bridge.userConfig;
     const auto links = parseStringList(userConfig["meta_application_links"], ' ');
-    const auto window = this->bridge->context.getRuntime()->windowManager.getWindowForBridge(
-      reinterpret_cast<window::IBridge*>(this->bridge)
-    );
+    const auto window = this->bridge.context.getRuntime()->windowManager.getWindowForBridge(&this->bridge);
     const auto applinks = parseStringList(userConfig["meta_application_links"], ' ');
     const auto currentURLComponents = URL::Components::parse(currentURL);
 
@@ -352,7 +351,7 @@ namespace ssc::runtime::webview {
     const String& requestedURL
   ) {
     static const auto devHost = getDevHost();
-    auto userConfig = this->bridge->userConfig;
+    auto userConfig = this->bridge.userConfig;
     const auto allowed = split(trim(userConfig["webview_navigator_policies_allowed"]), ' ');
 
     if (requestedURL == "about:blank") {

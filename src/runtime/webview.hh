@@ -9,6 +9,11 @@
 #include "webview/webview.hh"
 #include "webview/client.hh"
 
+namespace ssc::runtime::bridge {
+  // forward
+  class Bridge;
+}
+
 namespace ssc::runtime::serviceworker {
   // forward
   class Server;
@@ -17,6 +22,7 @@ namespace ssc::runtime::serviceworker {
 namespace ssc::runtime::webview {
   // forward
   class IBridge;
+  class Navigator;
 
   class Origin : public URL {
     public:
@@ -43,13 +49,17 @@ namespace ssc::runtime::webview {
           bool isMount () const;
         };
 
-        IBridge* bridge = nullptr;
+        Navigator& navigator;
         Map<String, String> workers;
         Map<String, String> mounts;
 
+        Location (Navigator&);
         Location () = delete;
         Location (const Location&) = delete;
-        Location (IBridge* bridge);
+        Location (Location&&) = delete;
+
+        Location& operator = (const Location&) = delete;
+        Location& operator = (Location&&) = delete;
 
         void init ();
         void assign (const String& url);
@@ -67,16 +77,21 @@ namespace ssc::runtime::webview {
 
       SharedPointer<serviceworker::Server> serviceWorkerServer = nullptr;
       Location location;
-      IBridge* bridge = nullptr;
+      bridge::Bridge& bridge;
 
     #if SOCKET_RUNTIME_PLATFORM_APPLE
       SSCNavigationDelegate* navigationDelegate = nullptr;
     #endif
 
+      // owned by bridge
+      Navigator (bridge::Bridge&);
       Navigator () = delete;
       Navigator (const Navigator&) = delete;
-      Navigator (IBridge* bridge);
+      Navigator (Navigator&&) = delete;
       ~Navigator ();
+
+      Navigator& operator = (const Navigator&) = delete;
+      Navigator& operator = (Navigator&&) = delete;
 
       void init ();
       void configureWebView (WebView* object);
@@ -207,8 +222,7 @@ namespace ssc::runtime::webview {
         Atomic<bool> cancelled = false;
 
         Error* error = nullptr;
-        IBridge* bridge = nullptr;
-        SchemeHandlers* handlers = nullptr;
+        SchemeHandlers* handlers;
         PlatformRequest platformRequest;
 
       #if SOCKET_RUNTIME_PLATFORM_WINDOWS
@@ -313,7 +327,7 @@ namespace ssc::runtime::webview {
       using HandlerCallback = Function<void(Response&)>;
       using Handler = Function<void(
         const SharedPointer<Request>,
-        const IBridge*,
+        const bridge::Bridge&,
         RequestCallbacks* callbacks,
         HandlerCallback
       )>;
@@ -333,11 +347,13 @@ namespace ssc::runtime::webview {
       HandlerMap handlers;
 
       Mutex mutex;
-      IBridge* bridge = nullptr;
+      bridge::Bridge& bridge;
       RequestMap activeRequests;
 
-      SchemeHandlers (IBridge* bridge);
+      // owned by bridge
+      SchemeHandlers (bridge::Bridge&);
       ~SchemeHandlers ();
+      SchemeHandlers () = delete;
       SchemeHandlers (const SchemeHandlers&) = delete;
       SchemeHandlers (SchemeHandlers&&) = delete;
 
@@ -359,9 +375,6 @@ namespace ssc::runtime::webview {
 
   class IBridge : public ipc::IBridge {
     public:
-      SchemeHandlers schemeHandlers;
-      Navigator navigator;
-
     #if SOCKET_RUNTIME_PLATFORM_LINUX && !SOCKET_RUNTIME_DESKTOP_EXTENSION
       WebKitWebContext* webContext = nullptr;
     #endif
@@ -376,9 +389,7 @@ namespace ssc::runtime::webview {
             context,
             dynamic_cast<const ipc::Client&>(client),
             userConfig
-          ),
-          schemeHandlers(this),
-          navigator(this)
+          )
       {}
 
       virtual bool navigate (const String& url) = 0;

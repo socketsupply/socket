@@ -29,6 +29,11 @@ namespace ssc::runtime::window {
   class Window;
 }
 
+namespace ssc::runtime::bridge {
+  // forward
+  class Bridge;
+}
+
 #if SOCKET_RUNTIME_PLATFORM_APPLE
 @class SSCWindow;
 
@@ -331,7 +336,7 @@ namespace ssc::runtime::window {
        * The IPC bridge that connects the application window's WebView to
        * the runtime and various core modules and functions.
        */
-      SharedPointer<IBridge> bridge = nullptr;
+      SharedPointer<bridge::Bridge> bridge = nullptr;
 
       /**
        * The (x, y) screen coordinate position of the window.
@@ -460,7 +465,7 @@ namespace ssc::runtime::window {
       Map<String, EvalCallback> evaluateJavaScriptCallbacks;
     #endif
 
-      Window (SharedPointer<IBridge> bridge, const Window::Options&);
+      Window (SharedPointer<bridge::Bridge> bridge, const Window::Options&);
       ~Window ();
 
       static ScreenSize getScreenSize ();
@@ -575,7 +580,7 @@ namespace ssc::runtime::window {
 
           ManagedWindow (
             Manager &manager,
-            SharedPointer<IBridge> bridge,
+            SharedPointer<bridge::Bridge> bridge,
             const Window::Options& options
           );
 
@@ -618,15 +623,15 @@ namespace ssc::runtime::window {
 
       SharedPointer<ManagedWindow> getWindow (int index, const WindowStatus status);
       SharedPointer<ManagedWindow> getWindow (int index);
-      SharedPointer<ManagedWindow> getWindowForClient (const Client& client);
-      SharedPointer<ManagedWindow> getWindowForBridge (const IBridge* bridge);
-      SharedPointer<ManagedWindow> getWindowForWebView (webview::WebView* webview);;
+      SharedPointer<ManagedWindow> getWindowForClient (const Client&);
+      SharedPointer<ManagedWindow> getWindowForBridge (const bridge::Bridge*);
+      SharedPointer<ManagedWindow> getWindowForWebView (const webview::WebView*);
       SharedPointer<ManagedWindow> getOrCreateWindow (int index);
-      SharedPointer<ManagedWindow> getOrCreateWindow (int index, const Window::Options& options);
+      SharedPointer<ManagedWindow> getOrCreateWindow (int index, const Window::Options&);
       WindowStatus getWindowStatus (int index);
 
-      SharedPointer<ManagedWindow> createWindow (const Window::Options& options);
-      SharedPointer<ManagedWindow> createDefaultWindow (const Window::Options& options);
+      SharedPointer<ManagedWindow> createWindow (const Window::Options&);
+      SharedPointer<ManagedWindow> createDefaultWindow (const Window::Options&);
 
       void destroyWindow (int index);
       JSON::Array json (const Vector<int>& indices);

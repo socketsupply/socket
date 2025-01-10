@@ -23,9 +23,7 @@ namespace ssc::runtime::window {
       windows(SOCKET_RUNTIME_MAX_WINDOWS + SOCKET_RUNTIME_MAX_WINDOWS_RESERVED)
   {}
 
-  Manager::~Manager () {
-    this->destroy();
-  }
+  Manager::~Manager () {}
 
   void Manager::destroy () {
     if (this->destroyed) {
@@ -73,7 +71,7 @@ namespace ssc::runtime::window {
   }
 
   SharedPointer<Manager::ManagedWindow> Manager::getWindowForBridge (
-    const IBridge* bridge
+    const bridge::Bridge* bridge
   ) {
     for (const auto& window : this->windows) {
       if (window != nullptr && window->bridge.get() == bridge) {
@@ -83,7 +81,9 @@ namespace ssc::runtime::window {
     return nullptr;
   }
 
-  SharedPointer<Manager::ManagedWindow> Manager::getWindowForWebView (webview::WebView* webview) {
+  SharedPointer<Manager::ManagedWindow> Manager::getWindowForWebView (
+    const webview::WebView* webview
+  ) {
     for (const auto& window : this->windows) {
       if (window != nullptr && window->webview == webview) {
         return window;
@@ -92,7 +92,9 @@ namespace ssc::runtime::window {
     return nullptr;
   }
 
-  SharedPointer<Manager::ManagedWindow> Manager::getWindowForClient (const Client& client) {
+  SharedPointer<Manager::ManagedWindow> Manager::getWindowForClient (
+    const Client& client
+  ) {
     for (const auto& window : this->windows) {
       if (window != nullptr && window->bridge != nullptr && window->bridge->client.id == client.id) {
         return this->getWindow(window->index);
@@ -366,7 +368,7 @@ namespace ssc::runtime::window {
 
   Manager::ManagedWindow::ManagedWindow (
     Manager &manager,
-    SharedPointer<IBridge> bridge,
+    SharedPointer<bridge::Bridge> bridge,
     const Window::Options& options
   ) : Window(bridge, options),
       manager(manager)

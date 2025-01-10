@@ -1,12 +1,13 @@
-#include "../string.hh"
+#include "../bridge.hh"
 #include "../crypto.hh"
+#include "../string.hh"
 #include "../ipc.hh"
 
 using ssc::runtime::string::toLowerCase;
 using ssc::runtime::crypto::rand64;
 
 namespace ssc::runtime::ipc {
-  Router::Router (IBridge& bridge)
+  Router::Router (bridge::Bridge& bridge)
     : dispatcher(bridge.dispatcher),
       bridge(bridge)
   {}

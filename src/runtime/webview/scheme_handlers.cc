@@ -84,7 +84,7 @@ using Task = id<WKURLSchemeTask>;
   startURLSchemeTask: (Task) task
 {
   if (self.handlers == nullptr) {
-    auto& userConfig = self.handlers->bridge->userConfig;
+    auto& userConfig = self.handlers->bridge.userConfig;
     const auto bundleIdentifier = userConfig.contains("meta_bundle_identifier")
       ? userConfig.at("meta_bundle_identifier")
       : "";
@@ -309,16 +309,13 @@ namespace ssc::runtime::webview {
   static Map<String, Set<String>> globallyRegisteredSchemesForLinux;
 #endif
 
-  SchemeHandlers::SchemeHandlers (IBridge* bridge)
+  SchemeHandlers::SchemeHandlers (bridge::Bridge& bridge)
     : bridge(bridge)
   {
     this->internals = new SchemeHandlersInternals(this);
   }
 
   SchemeHandlers::~SchemeHandlers () {
-    for (auto& entry : this->activeRequests) {
-      entry.second->handlers = nullptr;
-    }
   #if SOCKET_RUNTIME_PLATFORM_APPLE
     this->configuration.webview = nullptr;
   #endif
@@ -465,7 +462,7 @@ namespace ssc::runtime::webview {
 
     auto span = request->tracer.span("handler");
 
-    this->bridge->dispatch([this, id, span, handler, callback, request] () mutable {
+    this->bridge.dispatch([this, id, span, handler, callback, request] () mutable {
       if (request != nullptr && request->isActive() && !request->isCancelled()) {
         handler(request, this->bridge, &request->callbacks, [this, id, span, callback](auto& response) mutable {
           // make sure the response was finished before
@@ -519,7 +516,7 @@ namespace ssc::runtime::webview {
     PlatformRequest platformRequest
   #endif
   ) {
-    const auto userConfig = handlers->bridge->userConfig;
+    const auto userConfig = handlers->bridge.userConfig;
     const auto bundleIdentifier = userConfig.contains("meta_bundle_identifier")
       ? userConfig.at("meta_bundle_identifier")
       : "";
@@ -569,7 +566,7 @@ namespace ssc::runtime::webview {
     this->request->env = env;
   #endif
 
-    this->request->client = handlers->bridge->client;
+    this->request->client = handlers->bridge.client;
 
     // build request URL components from parsed URL components
     this->request->originalURL = this->absoluteURL;
@@ -741,7 +738,6 @@ namespace ssc::runtime::webview {
     const Options& options
   )
     : handlers(handlers),
-      bridge(handlers->bridge),
       scheme(options.scheme),
       method(options.method),
       hostname(options.hostname),
@@ -785,7 +781,6 @@ namespace ssc::runtime::webview {
     destination->finalized = source.finalized.load();
     destination->cancelled  = source.cancelled.load();
 
-    destination->bridge = source.bridge;
     destination->tracer = source.tracer;
     destination->handlers = source.handlers;
     destination->platformRequest = source.platformRequest;
@@ -881,9 +876,7 @@ namespace ssc::runtime::webview {
 
   bool SchemeHandlers::Request::isActive () const {
     auto app = app::App::sharedApplication();
-    auto window = app->runtime.windowManager.getWindowForBridge(
-      dynamic_cast<window::IBridge*>(this->bridge)
-    );
+    auto window = app->runtime.windowManager.getWindowForBridge(&this->handlers->bridge);
 
     // only a scheme handler owned by this bridge and attached to a
     // window should be considered "active"
@@ -897,9 +890,7 @@ namespace ssc::runtime::webview {
 
   bool SchemeHandlers::Request::isCancelled () const {
     auto app = app::App::sharedApplication();
-    auto window = app->runtime.windowManager.getWindowForBridge(
-      dynamic_cast<window::IBridge*>(this->bridge)
-    );
+    auto window = app->runtime.windowManager.getWindowForBridge(&this->handlers->bridge);
 
     if (window != nullptr && this->handlers != nullptr) {
       return this->handlers->isRequestCancelled(this->id);
@@ -934,8 +925,8 @@ namespace ssc::runtime::webview {
       tracer("webview::SchemeHandlers::Response")
   {
     const auto defaultHeaders = split(
-      this->request->bridge->userConfig.contains("webview_headers")
-        ? this->request->bridge->userConfig.at("webview_headers")
+      this->request->handlers->bridge.userConfig.contains("webview_headers")
+        ? this->request->handlers->bridge.userConfig.at("webview_headers")
         : "",
       '\n'
     );
@@ -1405,7 +1396,7 @@ namespace ssc::runtime::webview {
 
   void SchemeHandlers::Response::setHeader (const String& name, const Headers::Value& value) {
     auto app = App::sharedApplication();
-    const auto bridge = this->request->handlers->bridge;
+    const auto bridge = &this->request->handlers->bridge;
     if (toLowerCase(name) == "referer") {
       if (bridge->navigator.location.workers.contains(value.string)) {
         const auto workerLocation = bridge->navigator.location.workers[value.string];
@@ -1474,8 +1465,8 @@ namespace ssc::runtime::webview {
   }
 
   bool SchemeHandlers::Response::fail (const String& reason) {
-    const auto bundleIdentifier = this->request->bridge->userConfig.contains("meta_bundle_identifier")
-      ? this->request->bridge->userConfig.at("meta_bundle_identifier")
+    const auto bundleIdentifier = this->request->handlers->bridge.userConfig.contains("meta_bundle_identifier")
+      ? this->request->handlers->bridge.userConfig.at("meta_bundle_identifier")
       : "";
 
     if (

@@ -38,10 +38,13 @@ namespace ssc::runtime::bridge {
       const core::services::Notifications::NotificationPresentedObserver notificationPresentedObserver;
 
       DispatchHandler dispatchHandler = nullptr;
+      webview::SchemeHandlers schemeHandlers;
+      webview::Navigator navigator;
+      ipc::Router router;
 
       using window::IBridge::IBridge;
       Bridge (const Options&);
-      ~Bridge ();
+      ~Bridge () override;
 
       void init () override;
 

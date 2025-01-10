@@ -143,7 +143,7 @@ namespace ssc::runtime::window {
     return webContext;
   }
 
-  Window::Window (SharedPointer<IBridge> bridge, const Window::Options& options)
+  Window::Window (SharedPointer<bridge::Bridge> bridge, const Window::Options& options)
     : options(options),
       bridge(bridge),
       hotkey(this),

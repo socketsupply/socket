@@ -382,7 +382,7 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    dynamic_cast<window::IBridge*>(&router->bridge)->bluetooth.startService(
+    router->bridge.bluetooth.startService(
       message.seq,
       message.get("serviceId"),
       [reply, message](auto seq, auto json) {
@@ -414,7 +414,7 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    dynamic_cast<window::IBridge*>(&router->bridge)->bluetooth.subscribeCharacteristic(
+    router->bridge.bluetooth.subscribeCharacteristic(
       message.seq,
       message.get("serviceId"),
       message.get("characteristicId"),
@@ -455,7 +455,7 @@ static void mapIPCRoutes (Router *router) {
       size = message.value.size();
     }
 
-    dynamic_cast<window::IBridge*>(&router->bridge)->bluetooth.publishCharacteristic(
+    router->bridge.bluetooth.publishCharacteristic(
       message.seq,
       bytes,
       size,
@@ -2079,7 +2079,7 @@ static void mapIPCRoutes (Router *router) {
   router->map("platform.event", [=](auto message, auto router, auto reply) {
     const auto err = validateMessageParameters(message, {"value"});
     const auto app = App::sharedApplication();
-    const auto window = app->runtime.windowManager.getWindowForBridge(dynamic_cast<window::IBridge*>(&router->bridge));
+    const auto window = app->runtime.windowManager.getWindowForBridge(&router->bridge);
 
     if (err.type != JSON::Type::Null) {
       return reply(Result { message.seq, message, err });
@@ -2113,25 +2113,25 @@ static void mapIPCRoutes (Router *router) {
       if (message.value == "load") {
         const auto href = message.get("location.href");
         if (href.size() > 0) {
-          dynamic_cast<Bridge&>(router->bridge).navigator.location.set(href);
-          dynamic_cast<Bridge&>(router->bridge).navigator.location.workers.clear();
+          router->bridge.navigator.location.set(href);
+          router->bridge.navigator.location.workers.clear();
           auto tmp = href;
           tmp = replace(tmp, "socket://", "");
           tmp = replace(tmp, "https://", "");
           tmp = replace(tmp, userConfig["meta_bundle_identifier"], "");
           const auto parsed = URL::Components::parse(tmp);
-          dynamic_cast<Bridge&>(router->bridge).navigator.location.pathname = parsed.pathname;
-          dynamic_cast<Bridge&>(router->bridge).navigator.location.query = parsed.query;
+          router->bridge.navigator.location.pathname = parsed.pathname;
+          router->bridge.navigator.location.query = parsed.query;
         }
       }
 
-      if (dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer) {
+      if (router->bridge.navigator.serviceWorkerServer) {
         if (router->bridge.userConfig["webview_service_worker_mode"] == "hybrid") {
-          if (dynamic_cast<Bridge&>(router->bridge).navigator.location.size() > 0 && message.value == "beforeruntimeinit") {
-            dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.reset();
-            dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.isReady = false;
+          if (router->bridge.navigator.location.size() > 0 && message.value == "beforeruntimeinit") {
+            router->bridge.navigator.serviceWorkerServer->container.reset();
+            router->bridge.navigator.serviceWorkerServer->container.isReady = false;
           } else if (message.value == "runtimeinit") {
-            dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.isReady = true;
+            router->bridge.navigator.serviceWorkerServer->container.isReady = true;
           }
         }
       }
@@ -2141,7 +2141,7 @@ static void mapIPCRoutes (Router *router) {
       const auto workerLocation = message.get("runtime-worker-location");
       const auto href = message.get("location.href");
       if (href.size() > 0 && workerLocation.size() > 0) {
-        dynamic_cast<Bridge&>(router->bridge).navigator.location.workers[href] = workerLocation;
+        router->bridge.navigator.location.workers[href] = workerLocation;
       }
     }
 
@@ -2191,7 +2191,7 @@ static void mapIPCRoutes (Router *router) {
         { "url", message.value }
       };
 
-      const auto window = app->runtime.windowManager.getWindowForBridge(dynamic_cast<window::IBridge*>(&router->bridge));
+      const auto window = app->runtime.windowManager.getWindowForBridge(&router->bridge);
 
       if (window) {
         window->handleApplicationURL(message.value);
@@ -2310,10 +2310,10 @@ static void mapIPCRoutes (Router *router) {
     const auto scheme = message.get("scheme");
     const auto data = message.get("data");
 
-    if (data.size() > 0 && dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.protocols.hasHandler(scheme)) {
-      dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.protocols.setHandlerData(scheme, { data });
+    if (data.size() > 0 && router->bridge.navigator.serviceWorkerServer->container.protocols.hasHandler(scheme)) {
+      router->bridge.navigator.serviceWorkerServer->container.protocols.setHandlerData(scheme, { data });
     } else {
-      dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.protocols.registerHandler(scheme, { data });
+      router->bridge.navigator.serviceWorkerServer->container.protocols.registerHandler(scheme, { data });
     }
 
     reply(Result { message.seq, message });
@@ -2332,13 +2332,13 @@ static void mapIPCRoutes (Router *router) {
 
     const auto scheme = message.get("scheme");
 
-    if (!dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.protocols.hasHandler(scheme)) {
+    if (!router->bridge.navigator.serviceWorkerServer->container.protocols.hasHandler(scheme)) {
       return reply(Result::Err { message, JSON::Object::Entries {
         {"message", "Protocol handler scheme is not registered."}
       }});
     }
 
-    dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.protocols.unregisterHandler(scheme);
+    router->bridge.navigator.serviceWorkerServer->container.protocols.unregisterHandler(scheme);
 
     reply(Result { message.seq, message });
   });
@@ -2356,13 +2356,13 @@ static void mapIPCRoutes (Router *router) {
 
     const auto scheme = message.get("scheme");
 
-    if (!dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.protocols.hasHandler(scheme)) {
+    if (!router->bridge.navigator.serviceWorkerServer->container.protocols.hasHandler(scheme)) {
       return reply(Result::Err { message, JSON::Object::Entries {
         {"message", "Protocol handler scheme is not registered."}
       }});
     }
 
-    const auto data = dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.protocols.getHandlerData(scheme);
+    const auto data = router->bridge.navigator.serviceWorkerServer->container.protocols.getHandlerData(scheme);
 
     reply(Result { message.seq, message, JSON::Raw(data.json) });
   });
@@ -2382,13 +2382,13 @@ static void mapIPCRoutes (Router *router) {
     const auto scheme = message.get("scheme");
     const auto data = message.get("data");
 
-    if (!dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.protocols.hasHandler(scheme)) {
+    if (!router->bridge.navigator.serviceWorkerServer->container.protocols.hasHandler(scheme)) {
       return reply(Result::Err { message, JSON::Object::Entries {
         {"message", "Protocol handler scheme is not registered."}
       }});
     }
 
-    dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.protocols.setHandlerData(scheme, { data });
+    router->bridge.navigator.serviceWorkerServer->container.protocols.setHandlerData(scheme, { data });
 
     reply(Result { message.seq, message });
   });
@@ -2406,7 +2406,7 @@ static void mapIPCRoutes (Router *router) {
 
     const auto scheme = message.get("scheme");
 
-    for (const auto& entry : dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.registrations) {
+    for (const auto& entry : router->bridge.navigator.serviceWorkerServer->container.registrations) {
       const auto& registration = entry.second;
       if (registration.options.scheme == scheme) {
         auto json = JSON::Object::Entries {
@@ -2481,7 +2481,7 @@ static void mapIPCRoutes (Router *router) {
   router->map("stdout", [=](auto message, auto router, auto reply) {
     if (message.value.size() > 0) {
       #if SOCKET_RUNTIME_PLATFORM_APPLE
-        const auto seq = ++dynamic_cast<Bridge&>(router->bridge).getRuntime()->counters.logSeq;
+        const auto seq = ++router->bridge.getRuntime()->counters.logSeq;
         auto msg = String(std::to_string(seq) + "::::" + message.value.c_str());
         os_log_with_type(SOCKET_RUNTIME_OS_LOG_BUNDLE, OS_LOG_TYPE_INFO, "%{public}s", msg.c_str());
 
@@ -2492,7 +2492,7 @@ static void mapIPCRoutes (Router *router) {
           options.port = std::stoi(env::get("SSC_LOG_SOCKET"));
           options.ephemeral = true;
           options.bytes.reset(new unsigned char[3]{ '+', 'N', '\0' });
-          dynamic_cast<Bridge&>(router->bridge).getRuntime()->services.udp.send("-1", 0, options, [](auto seq, auto json, auto queuedResponse) {});
+          router->bridge.getRuntime()->services.udp.send("-1", 0, options, [](auto seq, auto json, auto queuedResponse) {});
         }
       #endif
       io::write(message.value, false);
@@ -2514,7 +2514,7 @@ static void mapIPCRoutes (Router *router) {
       }
     } else if (message.value.size() > 0) {
       #if SOCKET_RUNTIME_PLATFORM_APPLE
-        const auto seq = ++dynamic_cast<Bridge&>(router->bridge).getRuntime()->counters.logSeq;
+        const auto seq = ++router->bridge.getRuntime()->counters.logSeq;
         auto msg = String(std::to_string(seq) + "::::" + message.value.c_str());
         os_log_with_type(SOCKET_RUNTIME_OS_LOG_BUNDLE, OS_LOG_TYPE_ERROR, "%{public}s", msg.c_str());
 
@@ -2525,7 +2525,7 @@ static void mapIPCRoutes (Router *router) {
           options.port = std::stoi(env::get("SSC_LOG_SOCKET"));
           options.ephemeral = true;
           options.bytes.reset(new unsigned char[3]{ '+', 'N', '\0' });
-          dynamic_cast<Bridge&>(router->bridge).getRuntime()->services.udp.send("-1", 0, options, [](auto seq, auto json, auto queuedResponse) {});
+          router->bridge.getRuntime()->services.udp.send("-1", 0, options, [](auto seq, auto json, auto queuedResponse) {});
         }
       #endif
       io::write(message.value, true);
@@ -2578,7 +2578,7 @@ static void mapIPCRoutes (Router *router) {
           }
         );
       } else {
-        serviceWorkerServer = dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer;
+        serviceWorkerServer = router->bridge.navigator.serviceWorkerServer;
       }
     }
 
@@ -2596,7 +2596,7 @@ static void mapIPCRoutes (Router *router) {
    * Resets the service worker container state.
    */
   router->map("serviceWorker.reset", [=](auto message, auto router, auto reply) {
-    dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.reset();
+    router->bridge.navigator.serviceWorkerServer->container.reset();
     reply(Result::Data { message, JSON::Object {}});
   });
 
@@ -2612,7 +2612,7 @@ static void mapIPCRoutes (Router *router) {
     }
 
     const auto scope = message.get("scope");
-    dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.unregisterServiceWorker(scope);
+    router->bridge.navigator.serviceWorkerServer->container.unregisterServiceWorker(scope);
 
     return reply(Result::Data { message, JSON::Object {} });
   });
@@ -2629,8 +2629,8 @@ static void mapIPCRoutes (Router *router) {
     }
 
     const auto scope = message.get("scope");
-    const auto origin = webview::Origin(dynamic_cast<Bridge&>(router->bridge).navigator.location.str());
-    for (const auto& entry : dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.registrations) {
+    const auto origin = webview::Origin(router->bridge.navigator.location.str());
+    for (const auto& entry : router->bridge.navigator.serviceWorkerServer->container.registrations) {
       const auto& registration = entry.second;
       if (registration.options.scheme == "socket" && registration.origin.name() == origin.name() && scope.starts_with(registration.options.scope)) {
         auto json = JSON::Object {
@@ -2654,10 +2654,10 @@ static void mapIPCRoutes (Router *router) {
    */
   router->map("serviceWorker.getRegistrations", [=](auto message, auto router, auto reply) {
     const auto origin = webview::Origin(message.get("origin"));
-    auto serviceWorkerServer = dynamic_cast<Bridge&>(router->bridge).getRuntime()->serviceWorkerManager.get(origin.name());
+    auto serviceWorkerServer = router->bridge.getRuntime()->serviceWorkerManager.get(origin.name());
 
     if (!serviceWorkerServer) {
-      serviceWorkerServer = dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer;
+      serviceWorkerServer = router->bridge.navigator.serviceWorkerServer;
     }
 
     auto json = JSON::Array::Entries {};
@@ -2720,10 +2720,10 @@ static void mapIPCRoutes (Router *router) {
     }
 
     if (!fetch.headers.has("origin")) {
-      fetch.headers.set("origin", dynamic_cast<Bridge&>(router->bridge).navigator.location.origin);
+      fetch.headers.set("origin", router->bridge.navigator.location.origin);
     }
 
-    const auto scope = dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.protocols.getServiceWorkerScope(fetch.scheme);
+    const auto scope = router->bridge.navigator.serviceWorkerServer->container.protocols.getServiceWorkerScope(fetch.scheme);
 
     if (scope.size() > 0) {
       fetch.url.pathname = scope + fetch.url.pathname;
@@ -2737,7 +2737,7 @@ static void mapIPCRoutes (Router *router) {
     origin.scheme = "socket";
     auto serviceWorkerServer = app->runtime.serviceWorkerManager.get(origin.name());
     if (!serviceWorkerServer) {
-      serviceWorkerServer = dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer;
+      serviceWorkerServer = router->bridge.navigator.serviceWorkerServer;
     }
 
     const auto fetched = serviceWorkerServer->fetch(fetch, options, [=] (auto res) mutable {
@@ -2789,7 +2789,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.skipWaiting(id);
+    router->bridge.navigator.serviceWorkerServer->container.skipWaiting(id);
 
     reply(Result::Data { message, JSON::Object {}});
   });
@@ -2813,10 +2813,10 @@ static void mapIPCRoutes (Router *router) {
     const auto scriptURL = message.get("scriptURL");
 
     if (workerURL.size() > 0 && scriptURL.size() > 0) {
-      dynamic_cast<Bridge&>(router->bridge).navigator.location.workers[workerURL] = scriptURL;
+      router->bridge.navigator.location.workers[workerURL] = scriptURL;
     }
 
-    dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.updateState(id, message.get("state"));
+    router->bridge.navigator.serviceWorkerServer->container.updateState(id, message.get("state"));
     reply(Result::Data { message, JSON::Object {}});
   });
 
@@ -2836,7 +2836,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    for (auto& entry : dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.registrations) {
+    for (auto& entry : router->bridge.navigator.serviceWorkerServer->container.registrations) {
       if (entry.second.id == id) {
         auto& registration = entry.second;
         registration.storage.set(message.get("key"), message.get("value"));
@@ -2868,7 +2868,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    for (auto& entry : dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.registrations) {
+    for (auto& entry : router->bridge.navigator.serviceWorkerServer->container.registrations) {
       if (entry.second.id == id) {
         auto& registration = entry.second;
         return reply(Result::Data {
@@ -2904,7 +2904,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    for (auto& entry : dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.registrations) {
+    for (auto& entry : router->bridge.navigator.serviceWorkerServer->container.registrations) {
       if (entry.second.id == id) {
         auto& registration = entry.second;
         registration.storage.remove(message.get("key"));
@@ -2935,7 +2935,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    for (auto& entry : dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.registrations) {
+    for (auto& entry : router->bridge.navigator.serviceWorkerServer->container.registrations) {
       if (entry.second.id == id) {
         auto& registration = entry.second;
         registration.storage.clear();
@@ -2966,7 +2966,7 @@ static void mapIPCRoutes (Router *router) {
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
 
-    for (auto& entry : dynamic_cast<Bridge&>(router->bridge).navigator.serviceWorkerServer->container.registrations) {
+    for (auto& entry : router->bridge.navigator.serviceWorkerServer->container.registrations) {
       if (entry.second.id == id) {
         auto& registration = entry.second;
         return reply(Result::Data { message, registration.storage.json() });
@@ -3298,7 +3298,7 @@ static void mapIPCRoutes (Router *router) {
     const auto defaultPath = message.get("defaultPath");
     const auto title = message.get("title", isSave ? "Save" : "Open");
     const auto app = App::sharedApplication();
-    const auto window = app->runtime.windowManager.getWindowForBridge(dynamic_cast<window::IBridge*>(&router->bridge));
+    const auto window = app->runtime.windowManager.getWindowForBridge(&router->bridge);
 
     app->dispatch([=]() {
       window::Dialog* dialog = nullptr;

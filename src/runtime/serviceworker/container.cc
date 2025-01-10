@@ -1,4 +1,5 @@
 #include "../runtime.hh"
+#include "../bridge.hh"
 #include "../config.hh"
 #include "../crypto.hh"
 #include "../string.hh"
@@ -34,7 +35,7 @@ namespace ssc::runtime::serviceworker {
     }
   }
 
-  void Container::init (SharedPointer<ipc::IBridge> bridge) {
+  void Container::init (SharedPointer<bridge::Bridge> bridge) {
     Lock lock(this->mutex);
 
     this->reset();

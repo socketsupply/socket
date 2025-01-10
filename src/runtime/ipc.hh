@@ -11,10 +11,12 @@
 #include "http.hh"
 #include "url.hh"
 
-namespace ssc::runtime::ipc {
+namespace ssc::runtime::bridge {
   // forward
-  class IBridge;
+  class Bridge;
+}
 
+namespace ssc::runtime::ipc {
   /**
    * A `Client` represents a unique caller of the IPC channel in a webview
    * or the runtime.
@@ -151,13 +153,14 @@ namespace ssc::runtime::ipc {
 
     public:
       context::Dispatcher& dispatcher;
-      IBridge& bridge;
+      bridge::Bridge& bridge;
 
       Listeners listeners;
       Mutex mutex;
       Table table;
 
-      Router (IBridge&);
+      // owned by bridge
+      Router (bridge::Bridge&);
 
       // the `Router` instance is strictly owned and cannot be copied or moved
       Router () = delete;
@@ -190,7 +193,6 @@ namespace ssc::runtime::ipc {
       context::Dispatcher& dispatcher;
       Map<String, String> userConfig;
       Client client;
-      Router router;
       int index = 0;
 
       IBridge (
@@ -201,10 +203,10 @@ namespace ssc::runtime::ipc {
       ) : dispatcher(dispatcher),
           userConfig(userConfig),
           context(context),
-          client(client),
-          router(*this)
+          client(client)
       {}
 
+      virtual ~IBridge () {};
       virtual bool active () const = 0;
       virtual bool emit (const String&, const String& = "") = 0;
       virtual bool emit (const String&, const JSON::Any& = {}) = 0;

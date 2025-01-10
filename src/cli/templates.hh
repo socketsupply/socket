@@ -1314,6 +1314,49 @@ constexpr auto gIOSInfoPList = R"XML(<?xml version="1.0" encoding="UTF-8"?>
   <dict>
     <key>NSAllowsArbitraryLoads</key>
     <true/>
+
+    <key>NSAllowsLocalNetworking</key>
+    <true/>
+
+    <key>NSExceptionDomains</key>
+    <dict>
+{{ios_app_transport_security_domain_exceptions}}
+      <key>127.0.0.1</key>
+      <dict>
+        <key>NSTemporaryExceptionAllowsInsecureHTTPLoads</key>
+        <true/>
+
+        <key>NSTemporaryExceptionRequiresForwardSecrecy</key>
+        <false/>
+
+        <key>NSIncludesSubdomains</key>
+        <false/>
+
+        <key>NSTemporaryExceptionMinimumTLSVersion</key>
+        <string>1.0</string>
+
+        <key>NSTemporaryExceptionAllowsInsecureHTTPSLoads</key>
+        <false/>
+      </dict>
+
+      <key>localhost</key>
+      <dict>
+        <key>NSTemporaryExceptionAllowsInsecureHTTPLoads</key>
+        <true/>
+
+        <key>NSTemporaryExceptionRequiresForwardSecrecy</key>
+        <false/>
+
+        <key>NSIncludesSubdomains</key>
+        <false/>
+
+        <key>NSTemporaryExceptionMinimumTLSVersion</key>
+        <string>1.0</string>
+
+        <key>NSTemporaryExceptionAllowsInsecureHTTPSLoads</key>
+        <false/>
+      </dict>
+    </dict>
   </dict>
 
 

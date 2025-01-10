@@ -2813,6 +2813,15 @@ int main (int argc, char* argv[]) {
     }
     settings.insert(std::make_pair("port", devPort));
 
+    if (!devHost.empty() && !devPort.empty() && devPort != "0") {
+      const auto url = URL(devHost + ":" + devPort);
+      if (settings["webview_insecure_domains"].empty()) {
+        settings["webview_insecure_domains"] = url.hostname;
+      } else {
+        settings["webview_insecure_domains"] += " " + url.hostname;
+      }
+    }
+
     auto cnt = 0;
 
     AndroidCliState androidState;
@@ -3174,6 +3183,29 @@ int main (int argc, char* argv[]) {
 
       if (settings["meta_application_links"].size() > 0) {
         const auto links = parseStringList(trim(settings["meta_application_links"]), ' ');
+
+        for (const auto link : links) {
+          auto domain = split(link, '?')[0];
+          settings["macos_app_transport_security_domain_exceptions"] += (
+            "      <key>" + domain + "</key>\n"
+            "      <dict>\n"
+            "        <key>NSTemporaryExceptionAllowsInsecureHTTPLoads</key>\n"
+            "        <true/>\n"
+            "        <key>NSTemporaryExceptionRequiresForwardSecrecy</key>\n"
+            "        <false/>\n"
+            "        <key>NSIncludesSubdomains</key>\n"
+            "        <true/>\n"
+            "        <key>NSTemporaryExceptionMinimumTLSVersion</key>\n"
+            "        <string>1.0</string>\n"
+            "        <key>NSTemporaryExceptionAllowsInsecureHTTPSLoads</key>\n"
+            "        <false/>\n"
+            "      </dict>\n"
+          );
+        }
+      }
+
+      if (settings["webview_insecure_domains"].size() > 0) {
+        const auto links = parseStringList(trim(settings["webview_insecure_domains"]), ' ');
 
         for (const auto link : links) {
           auto domain = split(link, '?')[0];
@@ -4845,6 +4877,29 @@ int main (int argc, char* argv[]) {
       xCodeProjectVariables["ios_deployment_target"] = settings["ios_deployment_target"];
       xCodeProjectVariables["ios_category"] = settings["ios_category"];
       xCodeProjectVariables["ios_protocol"] = settings["ios_protocol"];
+
+      if (settings["webview_insecure_domains"].size() > 0) {
+        const auto links = parseStringList(trim(settings["webview_insecure_domains"]), ' ');
+
+        for (const auto link : links) {
+          auto domain = split(link, '?')[0];
+          settings["ios_app_transport_security_domain_exceptions"] += (
+            "      <key>" + domain + "</key>\n"
+            "      <dict>\n"
+            "        <key>NSTemporaryExceptionAllowsInsecureHTTPLoads</key>\n"
+            "        <true/>\n"
+            "        <key>NSTemporaryExceptionRequiresForwardSecrecy</key>\n"
+            "        <false/>\n"
+            "        <key>NSIncludesSubdomains</key>\n"
+            "        <true/>\n"
+            "        <key>NSTemporaryExceptionMinimumTLSVersion</key>\n"
+            "        <string>1.0</string>\n"
+            "        <key>NSTemporaryExceptionAllowsInsecureHTTPSLoads</key>\n"
+            "        <false/>\n"
+            "      </dict>\n"
+          );
+        }
+      }
 
       writeFile(paths.platformSpecificOutputPath / "exportOptions.plist", tmpl(gXCodeExportOptions, settings));
       writeFile(paths.platformSpecificOutputPath / "Info.plist", tmpl(gIOSInfoPList, settings));

@@ -10,6 +10,11 @@
 #include "webview.hh"
 #include "platform.hh"
 
+namespace ssc::runtime::bridge {
+  // forward
+  class Bridge;
+}
+
 namespace ssc::runtime::serviceworker {
   // forward
   class Fetch;
@@ -167,7 +172,7 @@ namespace ssc::runtime::serviceworker {
 
   class Container {
     public:
-      SharedPointer<ipc::IBridge> bridge = nullptr;
+      SharedPointer<bridge::Bridge> bridge = nullptr;
       Atomic<bool> isReady = false;
       Mutex mutex;
 
@@ -180,7 +185,7 @@ namespace ssc::runtime::serviceworker {
       ~Container ();
 
       bool ready ();
-      void init (SharedPointer<ipc::IBridge>);
+      void init (SharedPointer<bridge::Bridge>);
       void reset ();
       const Registration& registerServiceWorker (const Registration::Options&);
       bool unregisterServiceWorker (ID);
@@ -212,7 +217,7 @@ namespace ssc::runtime::serviceworker {
       Manager& manager;
 
       SharedPointer<window::Manager::ManagedWindow> window = nullptr;
-      SharedPointer<window::IBridge> bridge = nullptr;
+      SharedPointer<bridge::Bridge> bridge = nullptr;
 
       Server (Manager&, const Options&);
       bool init ();
@@ -236,7 +241,7 @@ namespace ssc::runtime::serviceworker {
 
       SharedPointer<Server> init (const String&, const Server::Options&);
       SharedPointer<Server> get (const String&);
-      SharedPointer<Server> get (ipc::IBridge*);
+      SharedPointer<Server> get (const bridge::Bridge*);
       bool destroy (const String&);
   };
 
