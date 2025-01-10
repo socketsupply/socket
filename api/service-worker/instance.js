@@ -1,13 +1,10 @@
-import { SharedWorker } from '../shared-worker/index.js'
 import location from '../location.js'
 import state from './state.js'
 import ipc from '../ipc.js'
 
 const serviceWorkers = new Map()
-let sharedWorker = null
 
-export const SHARED_WORKER_URL = `${globalThis.origin}/socket/service-worker/shared-worker.js`
-
+export const channel = new BroadcastChannel('socket.runtime.serviceWorker')
 export const ServiceWorker = globalThis.ServiceWorker ?? class ServiceWorker extends EventTarget {
   get onmessage () { return null }
   set onmessage (_) {}
@@ -32,8 +29,6 @@ export function createServiceWorker (
     }
   }
 
-  const channel = new BroadcastChannel('socket.runtime.serviceWorker.state')
-
   // events
   const eventTarget = new EventTarget()
   let onstatechange = null
@@ -43,21 +38,13 @@ export function createServiceWorker (
   let serviceWorker = null
   let scriptURL = options?.scriptURL ?? null
 
-  if (
-    globalThis.RUNTIME_WORKER_LOCATION !== SHARED_WORKER_URL &&
-    globalThis.location.pathname !== '/socket/service-worker/index.html'
-  ) {
-    sharedWorker = new SharedWorker(SHARED_WORKER_URL)
-    sharedWorker.port.start()
-  }
-
   serviceWorker = Object.create(ServiceWorker.prototype, {
     postMessage: {
       enumerable: false,
       configurable: false,
       value (message, ...args) {
-        if (sharedWorker && globalThis.__args?.client) {
-          sharedWorker.port.postMessage({
+        if (globalThis.__args?.client) {
+          channel.postMessage({
             message,
             from: 'instance',
             registration: { id },

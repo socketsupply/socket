@@ -1,6 +1,4 @@
 /* global Worker */
-import { SHARED_WORKER_URL } from './instance.js'
-import { SharedWorker } from '../shared-worker/index.js'
 import { Notification } from '../notification.js'
 import { sleep } from '../timers.js'
 import globals from '../internal/globals.js'
@@ -9,13 +7,12 @@ import hooks from '../hooks.js'
 import ipc from '../ipc.js'
 
 export const workers = new Map()
+export const channel = new BroadcastChannel('socket.runtime.serviceWorker')
 
 globals.register('ServiceWorkerContext.workers', workers)
 globals.register('ServiceWorkerContext.info', new Map())
 
-const sharedWorker = new SharedWorker(SHARED_WORKER_URL)
-sharedWorker.port.start()
-sharedWorker.port.onmessage = (event) => {
+channel.onmessage = (event) => {
   if (event.data?.from === 'instance' && event.data.registration?.id) {
     for (const worker of workers.values()) {
       if (worker.info.id === event.data.registration.id) {
@@ -24,9 +21,9 @@ sharedWorker.port.onmessage = (event) => {
       }
     }
   } else if (event.data?.showNotification && event.data.registration?.id) {
-    onNotificationShow(event, sharedWorker.port)
+    onNotificationShow(event)
   } else if (event.data?.getNotifications && event.data.registration?.id) {
-    onGetNotifications(event, sharedWorker.port)
+    onGetNotifications(event)
   }
 }
 
@@ -79,7 +76,7 @@ export class ServiceWorkerInstance extends Worker {
       this.postMessage({ install: info })
       info.promise.resolve()
     } else if (event.data?.message && event?.data.client?.id) {
-      sharedWorker.port.postMessage({
+      channel.postMessage({
         ...event.data,
         from: 'realm'
       })
@@ -344,7 +341,7 @@ export function onNotificationShow (event, target) {
   }
 }
 
-export function onNotificationClose (event, target) {
+export function onNotificationClose (event) {
   for (const worker of workers.values()) {
     for (const notification of worker.notifications) {
       if (event.data.notificationclose.id === notification.id) {
@@ -355,10 +352,10 @@ export function onNotificationClose (event, target) {
   }
 }
 
-export function onGetNotifications (event, target) {
+export function onGetNotifications (event) {
   for (const worker of workers.values()) {
     if (worker.info.id === event.data.registration.id) {
-      return target.postMessage({
+      return channel.postMessage({
         nonce: event.data.nonce,
         notifications: worker.notifications
           .filter((notification) =>
@@ -392,10 +389,12 @@ hooks.onReady(async () => {
     __service_worker_frame_init: true
   })
 
-  const result = await ipc.request('serviceWorker.getRegistrations')
-  if (Array.isArray(result.data)) {
-    for (const info of result.data) {
-      await navigator.serviceWorker.register(info.scriptURL, info)
+  if (workers.size === 0) {
+    const result = await ipc.request('serviceWorker.getRegistrations')
+    if (Array.isArray(result.data)) {
+      for (const info of result.data) {
+        await navigator.serviceWorker.register(info.scriptURL, info)
+      }
     }
   }
 })

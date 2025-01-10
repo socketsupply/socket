@@ -64,7 +64,7 @@ function createGeolocationPosition (data) {
     altitude: {
       configurable: false,
       writable: false,
-      value: data.coords.altitude
+      value: data.coords.altitude ?? null
     },
 
     accuracy: {
@@ -95,12 +95,34 @@ function createGeolocationPosition (data) {
       configurable: false,
       writable: false,
       value: data.coords.speed <= 0 ? null : data.coords.speed
+    },
+
+    toJSON: {
+      configurable: false,
+      writable: true,
+      value: () => ({
+        accuracy: data.coords.accuracy,
+        latitude: data.coords.latitude,
+        longitude: data.coords.longitude,
+        altitude: data.coords.altitude ?? null,
+        altitudeAccuracy: data.coords.altitudeAccuracy ?? null,
+        heading: data.coords.heading ?? null,
+        speed: data.coords.speed ?? null
+      })
     }
   })
 
   return Object.create(GeolocationPosition.prototype, {
     coords: { configurable: false, writable: false, value: coords },
-    timestamp: { configurable: false, writable: false, value: Date.now() }
+    timestamp: { configurable: false, writable: false, value: Date.now() },
+    toJSON: {
+      configurable: false,
+      writable: true,
+      value: () => ({
+        coords: coords.toJSON(),
+        timestamp: Date.now()
+      })
+    }
   })
 }
 
@@ -176,7 +198,8 @@ export async function getCurrentPosition (
     timer = setTimeout(() => {
       didTimeout = true
       const error = Object.create(GeolocationPositionError.prototype, {
-        code: { value: GeolocationPositionError.TIMEOUT }
+        code: { value: GeolocationPositionError.TIMEOUT },
+        message: { value: 'Position acquisition timed out' }
       })
 
       if (typeof onError === 'function') {

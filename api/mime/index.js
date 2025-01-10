@@ -157,8 +157,16 @@ export class Database {
   query (query) {
     query = query.toLowerCase()
 
-    const queryParts = query.split('+')
+    if (query.startsWith('.')) {
+      query = query.slice(1)
+    }
+
     const results = []
+    const queryParts = query
+      .split('+')
+      .map((query) => query.trim())
+      .map((query) => query.startsWith('.') ? query.slice(1) : query)
+      .filter(Boolean)
 
     for (const [key, value] of this.map.entries()) {
       const name = key.toLowerCase()

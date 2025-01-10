@@ -1772,39 +1772,51 @@ export function findIPCMessageTransfers (transfers, object) {
       object[i] = findIPCMessageTransfers(transfers, object[i])
     }
   } else if (object && typeof object === 'object') {
-    if (object instanceof MessagePort) {
-      if (object instanceof IPCMessagePort) {
-        const port = IPCMessagePort.create(object)
-        ports.get(port.id).channel.onmessage = (event) => {
-          if (port.closed === true) {
-            port.onmessage = null
-            event.preventDefault()
-            event.stopImmediatePropagation()
-            return false
-          }
-
-          if (port.started && event.data?.token !== port.token) {
-            console.log(event.data)
-            const transfers = new Set()
-            findIPCMessageTransfers(transfers, event.data)
-            object.postMessage(event.data, {
-              transfer: Array.from(transfers)
-            })
-          }
+    if (
+      object instanceof MessagePort || (
+        typeof object.postMessage === 'function' &&
+        Object.getPrototypeOf(object).constructor.name === 'MessagePort'
+      )
+    ) {
+      const port = IPCMessagePort.create(object)
+      object.addEventListener('message', function onMessage (event) {
+        if (port.closed === true) {
+          port.onmessage = null
+          event.preventDefault()
+          event.stopImmediatePropagation()
+          object.removeEventListener('message', onMessage)
+          return false
         }
-        add(port)
-        return port
-      } else {
-        add(object)
-        return object
+
+        port.dispatchEvent(new MessageEvent('message', event))
+      })
+
+      port.onmessage = (event) => {
+        if (port.closed === true) {
+          port.onmessage = null
+          event.preventDefault()
+          event.stopImmediatePropagation()
+          return false
+        }
+
+        const transfers = new Set()
+        findIPCMessageTransfers(transfers, event.data)
+        object.postMessage(event.data, {
+          transfer: Array.from(transfers)
+        })
       }
-    } else if (Object.getPrototypeOf(object) === Object.prototype) {
-      for (const key in object) {
-        object[key] = findIPCMessageTransfers(
-          transfers,
-          object[key]
-        )
-      }
+      add(port)
+      return port
+    } else {
+      add(object)
+      return object
+    }
+  } else if (Object.getPrototypeOf(object) === Object.prototype) {
+    for (const key in object) {
+      object[key] = findIPCMessageTransfers(
+        transfers,
+        object[key]
+      )
     }
   }
 

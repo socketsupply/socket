@@ -1,7 +1,6 @@
 /* global EventTarget */
 import { ServiceWorkerRegistration } from './registration.js'
-import { createServiceWorker, SHARED_WORKER_URL } from './instance.js'
-import { SharedWorker } from '../shared-worker/index.js'
+import { createServiceWorker } from './instance.js'
 import { Deferred } from '../async.js'
 import application from '../application.js'
 import location from '../location.js'
@@ -23,8 +22,7 @@ class ServiceWorkerContainerInternalStateMap extends Map {
 class ServiceWorkerContainerInternalState {
   currentWindow = null
   controller = null
-  sharedWorker = null
-  channel = new BroadcastChannel('socket.runtime.ServiceWorkerContainer')
+  channel = new BroadcastChannel('socket.runtime.serviceWorker')
   ready = new Deferred()
   init = new Deferred()
 
@@ -487,52 +485,26 @@ export class ServiceWorkerContainer extends EventTarget {
       return globalThis.top.navigator.serviceWorker.startMessages()
     }
 
-    if (!internal.get(this).sharedWorker && globalThis.RUNTIME_WORKER_LOCATION !== SHARED_WORKER_URL) {
-      internal.get(this).sharedWorker = new SharedWorker(SHARED_WORKER_URL)
-      internal.get(this).sharedWorker.port.start()
-      internal.get(this).sharedWorker.port.onmessage = async (event) => {
-        if (
-          event.data?.from === 'realm' &&
-          event.data?.registration?.id &&
-          event.data?.client?.id === globalThis.__args.client.id &&
-          event.data?.client?.type === globalThis.__args.client.type &&
-          event.data?.client?.frameType === globalThis.__args.client.frameType
-        ) {
-          const registrations = await this.getRegistrations()
-          for (const registration of registrations) {
-            const info = registration[Symbol.for('socket.runtime.ServiceWorkerRegistration.info')]
-            if (info?.id === event.data.registration.id) {
-              const serviceWorker = createServiceWorker(state.serviceWorker.state, {
-                subscribe: false,
-                scriptURL: info.scriptURL,
-                id: info.id
-              })
+    internal.get(this).channel.onmessage = async (event) => {
+      if (
+        event.data?.from === 'realm' &&
+        event.data?.registration?.id &&
+        event.data?.client?.id === globalThis.__args.client.id &&
+        event.data?.client?.type === globalThis.__args.client.type &&
+        event.data?.client?.frameType === globalThis.__args.client.frameType
+      ) {
+        const registrations = await this.getRegistrations()
+        for (const registration of registrations) {
+          const info = registration[Symbol.for('socket.runtime.ServiceWorkerRegistration.info')]
+          if (info?.id === event.data.registration.id) {
+            const serviceWorker = createServiceWorker(state.serviceWorker.state, {
+              subscribe: false,
+              scriptURL: info.scriptURL,
+              id: info.id
+            })
 
-              const messageEvent = new MessageEvent('message', {
-                origin: new URL(info.scriptURL, location.origin).origin,
-                data: event.data.message
-              })
-
-              Object.defineProperty(messageEvent, 'source', {
-                configurable: false,
-                enumerable: false,
-                writable: false,
-                value: serviceWorker
-              })
-
-              this.dispatchEvent(messageEvent)
-              break
-            }
-          }
-        } else if (
-          event.data?.from === 'instance' &&
-          event.data?.registration?.id &&
-          event.data?.client?.id &&
-          event.data?.client?.id !== globalThis.__args.client.id
-        ) {
-          if (globalThis.isWorkerScope && globalThis.serviceWorker) {
             const messageEvent = new MessageEvent('message', {
-              origin: event.data.client.origin.origin,
+              origin: new URL(info.scriptURL, location.origin).origin,
               data: event.data.message
             })
 
@@ -540,11 +512,33 @@ export class ServiceWorkerContainer extends EventTarget {
               configurable: false,
               enumerable: false,
               writable: false,
-              value: await globalThis.clients.get(event.data.client.id)
+              value: serviceWorker
             })
 
             this.dispatchEvent(messageEvent)
+            break
           }
+        }
+      } else if (
+        event.data?.from === 'instance' &&
+        event.data?.registration?.id &&
+        event.data?.client?.id &&
+        event.data?.client?.id !== globalThis.__args.client.id
+      ) {
+        if (globalThis.isWorkerScope && globalThis.serviceWorker) {
+          const messageEvent = new MessageEvent('message', {
+            origin: event.data.client.origin.origin,
+            data: event.data.message
+          })
+
+          Object.defineProperty(messageEvent, 'source', {
+            configurable: false,
+            enumerable: false,
+            writable: false,
+            value: await globalThis.clients.get(event.data.client.id)
+          })
+
+          this.dispatchEvent(messageEvent)
         }
       }
     }

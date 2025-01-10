@@ -1,12 +1,9 @@
 import { Notification, NotificationOptions } from '../notification.js'
-import { SHARED_WORKER_URL } from './instance.js'
 import { NotAllowedError } from '../errors.js'
-import { SharedWorker } from '../shared-worker/index.js'
 import permissions from '../internal/permissions.js'
 
-let sharedWorker = null
-
 const observedNotifications = new Set()
+const channel = new BroadcastChannel('socket.runtime.serviceWorker')
 
 if (globalThis.isServiceWorkerScope) {
   globalThis.addEventListener('notificationclose', (event) => {
@@ -19,16 +16,7 @@ if (globalThis.isServiceWorkerScope) {
   })
 }
 
-function ensureSharedWorker () {
-  if (!globalThis.isServiceWorkerScope && !sharedWorker) {
-    sharedWorker = new SharedWorker(SHARED_WORKER_URL)
-    sharedWorker.port.start()
-  }
-}
-
 export async function showNotification (registration, title, options) {
-  ensureSharedWorker()
-
   if (title && typeof title === 'object') {
     options = title
     title = options.title ?? ''
@@ -53,7 +41,7 @@ export async function showNotification (registration, title, options) {
   // will throw if invalid options are given
   options = new NotificationOptions(options, /* allowServiceWorkerGlobalScope= */ true)
   const nonce = Math.random().toString(16).slice(2)
-  const target = globalThis.isServiceWorkerScope ? globalThis : sharedWorker.port
+  const target = globalThis.isServiceWorkerScope ? globalThis : channel
   const message = {
     nonce,
     registration: { id: info.id },
@@ -77,8 +65,6 @@ export async function showNotification (registration, title, options) {
 }
 
 export async function getNotifications (registration, options = null) {
-  ensureSharedWorker()
-
   const info = registration[Symbol.for('socket.runtime.ServiceWorkerRegistration.info')]
 
   if (!info) {
@@ -90,7 +76,7 @@ export async function getNotifications (registration, options = null) {
   }
 
   const nonce = Math.random().toString(16).slice(2)
-  const target = globalThis.isServiceWorkerScope ? globalThis : sharedWorker.port
+  const target = globalThis.isServiceWorkerScope ? globalThis : channel
   const message = {
     nonce,
     registration: { id: info.id },
