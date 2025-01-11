@@ -3476,12 +3476,34 @@ static void mapIPCRoutes (Router *router) {
         });
       }
 
+      if (message.get("unique") == "true" && message.has("url")) {
+        const auto origin = webview::Origin(URL(message.get("url"), router->bridge.navigator.location.href()).str());
+        Lock lock(app->runtime.windowManager.mutex);
+        for (const auto& window : app->runtime.windowManager.windows) {
+          if (window != nullptr) {
+            const auto windowOrigin = webview::Origin(URL(message.get("url"), window->bridge->navigator.location.href()).str());
+            const auto pathname = window->bridge->navigator.location.resolve(URL(message.get("url")).pathname).pathname;
+
+            if (window->options.token == message.get("token")) {
+              reply(Result::Data { message, window->json() });
+              return;
+            } else if (windowOrigin.name() == origin.name() && window->bridge->navigator.location.pathname == pathname) {
+              reply(Result::Data { message, window->json() });
+              return;
+            }
+          }
+        }
+      }
+
       const auto window = app->runtime.windowManager.getWindow(0);
       const auto screen = window->getScreenSize();
       auto options = Window::Options {};
 
       options.shouldExitApplicationOnClose = message.get("shouldExitApplicationOnClose") == "true" ? true : false;
       options.headless = app->runtime.userConfig["build_headless"] == "true";
+      if (message.has("token")) {
+        options.token = message.get("token");
+      }
 
       if (message.get("headless") == "true") {
         options.headless = true;

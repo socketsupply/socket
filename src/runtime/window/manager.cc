@@ -232,6 +232,9 @@ namespace ssc::runtime::window {
     windowOptions.debug = isDebugEnabled() || options.debug;
     windowOptions.index = options.index;
     windowOptions.argv = options.argv;
+    if (options.token.size() > 0) {
+      windowOptions.token = options.token;
+    }
 
     if (options.userConfig.size() > 0) {
       windowOptions.userConfig = options.userConfig;

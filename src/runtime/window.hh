@@ -314,6 +314,12 @@ namespace ssc::runtime::window {
          * The origin for this window.
          */
         webview::Origin origin;
+
+        /**
+         * A unique token for a window to ensure only one of this particular
+         * type can exist. This value is handled in the IPC routing only.
+         */
+        String token = std::to_string(crypto::rand64());
       };
 
       /**

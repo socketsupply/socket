@@ -240,7 +240,9 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
     );
   }
 
-  defaultWindow->show();
+  self.app->dispatch([defaultWindow](){
+    defaultWindow->show();
+  });
 
   return YES;
 }

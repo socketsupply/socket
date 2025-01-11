@@ -1037,6 +1037,13 @@ namespace ssc::runtime::webview {
       headerFields[@(entry.name.c_str())] = @(entry.value.c_str());
     }
 
+    if (
+      !this->handlers->isRequestActive(this->id) ||
+      this->handlers->isRequestCancelled(this->id)
+    ) {
+      return false;
+    }
+
     auto platformRequest = this->request->platformRequest;
     if (platformRequest != nullptr && platformRequest.request != nullptr) {
       const auto url = platformRequest.request.URL;
@@ -1336,6 +1343,13 @@ namespace ssc::runtime::webview {
     }
 
   #if SOCKET_RUNTIME_PLATFORM_APPLE
+    if (
+      !this->handlers->isRequestActive(this->id) ||
+      this->handlers->isRequestCancelled(this->id)
+    ) {
+      return false;
+    }
+
     @try {
       [this->request->platformRequest didFinish];
     } @catch (::id) {}
