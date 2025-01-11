@@ -826,9 +826,9 @@ function _compile_llama_metal {
 }
 
 function _compile_llama {
-  target=$1
-  hosttarget=$1
-  platform=$2
+  local target=$1
+  local hosttarget=$1
+  local platform=$2
 
   if [ -z "$target" ]; then
     target="$(host_arch)"
@@ -836,7 +836,7 @@ function _compile_llama {
   fi
 
   echo "# building llama.cpp for $platform ($target) on $host..."
-  STAGING_DIR="$BUILD_DIR/$target-$platform/llama"
+  local STAGING_DIR="$BUILD_DIR/$target-$platform/llama"
 
   if [ ! -d "$STAGING_DIR" ]; then
     mkdir -p "$STAGING_DIR"
