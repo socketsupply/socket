@@ -4878,6 +4878,7 @@ int main (int argc, char* argv[]) {
       xCodeProjectVariables["ios_category"] = settings["ios_category"];
       xCodeProjectVariables["ios_protocol"] = settings["ios_protocol"];
 
+      settings["ios_app_transport_security_domain_exceptions"] = "";
       if (settings["webview_insecure_domains"].size() > 0) {
         const auto links = parseStringList(trim(settings["webview_insecure_domains"]), ' ');
 
@@ -5279,7 +5280,7 @@ int main (int argc, char* argv[]) {
         : "name=" + settings["ios_simulator_device"];
 
       String destination = flagBuildForSimulator
-        ? "platform=iOS Simulator,OS=latest," + deviceIdentity + ",arch=x86_64"
+        ? "platform=iOS Simulator,OS=latest," + deviceIdentity 
         : "generic/platform=iOS";
 
       String deviceType;
@@ -5304,6 +5305,10 @@ int main (int argc, char* argv[]) {
 
       if (flagShouldPackage) {
         archiveCommand << " -archivePath build/" << settings["build_name"];
+      }
+
+      if (flagBuildForSimulator) {
+        archiveCommand << " ARCHS=x86_64 ONLY_ACTIVE_ARCH=NO";
       }
 
       if (!flagCodeSign) {
