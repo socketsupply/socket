@@ -77,8 +77,8 @@ export class ServiceWorkerInstance extends Worker {
       info.promise.resolve()
     } else if (event.data?.message && event?.data.client?.id) {
       channel.postMessage({
-        ...event.data,
-        from: 'realm'
+        from: 'realm',
+        ...event.data
       })
     } else if (Array.isArray(event.data.__service_worker_debug)) {
       const log = document.querySelector('#log')

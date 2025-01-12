@@ -520,14 +520,14 @@ export class ServiceWorkerContainer extends EventTarget {
           }
         }
       } else if (
-        event.data?.from === 'instance' &&
+        /serviceworker|instance/i.test(event.data?.from) &&
         event.data?.registration?.id &&
         event.data?.client?.id &&
         event.data?.client?.id !== globalThis.__args.client.id
       ) {
         if (globalThis.isWorkerScope && globalThis.serviceWorker) {
           const messageEvent = new MessageEvent('message', {
-            origin: event.data.client.origin.origin,
+            origin: event.data.client.origin?.origin ?? null,
             data: event.data.message
           })
 

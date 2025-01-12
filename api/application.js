@@ -218,7 +218,7 @@ export function getCurrentWindowIndex () {
  * @param {boolean=} opts.maximizable - deterime if the window can be maximized.
  * @param {number} [opts.margin] - a margin around the webview. (Private)
  * @param {number} [opts.radius] - a radius on the webview. (Private)
- * @param {number} opts.index - the index of the window.
+ * @param {number=} [opts.index = -1] - the index of the window, if not provided or the value is `-1`, then one will be assigned
  * @param {string} opts.path - the path to the HTML file to load into the window.
  * @param {string=} opts.title - the title of the window.
  * @param {string=} opts.titlebarStyle - determines the style of the titlebar (MacOS only).
@@ -249,7 +249,7 @@ export async function createWindow (opts) {
 
   // default values
   const options = {
-    targetWindowIndex: opts.index,
+    targetWindowIndex: Number.isFinite(opts.index) ? opts.index : -1,
     url: formatURL(opts.path),
     index: globalThis.__args.index,
     title: opts.title ?? '',
@@ -269,6 +269,10 @@ export async function createWindow (opts) {
     shouldPreferServiceWorker: Boolean(opts.shouldPreferServiceWorker ?? false),
     // @ts-ignore
     reserved: Boolean(opts.reserved),
+    // @ts-ignore
+    unique: Boolean(opts.unique),
+    // @ts-ignore
+    token: opts.token || '',
     /**
      * @private
      * @type {number}

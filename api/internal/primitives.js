@@ -10,6 +10,7 @@ import serviceWorker from './service-worker.js'
 import Notification from '../notification.js'
 import geolocation from './geolocation.js'
 import permissions from './permissions.js'
+import application from '../application.js'
 import WebAssembly from './webassembly.js'
 import { Buffer } from '../buffer.js'
 import scheduler from './scheduler.js'
@@ -301,7 +302,12 @@ export function init () {
 
   if (globalThis.navigator) {
     if (globalThis.window) {
-      install({ geolocation }, globalThis.navigator, 'geolocation')
+      install({ geolocation, close }, globalThis.navigator, 'geolocation')
+      async function close () {
+        // eventually handle windows from `window.open()`
+        const currentWindow = await application.getCurrentWindow()
+        await currentWindow.close()
+      }
     }
 
     install({ permissions, serviceWorker }, globalThis.navigator, 'navigator')

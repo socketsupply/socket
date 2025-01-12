@@ -1203,18 +1203,14 @@ export async function getContextWindow () {
     await contextWindow.ready
     return contextWindow
   }
-  const windows = await application.getWindows([], { max: false })
-  let firstInit = true
 
+  const windows = await application.getWindows([], { max: false })
+  const url = new URL(VM_WINDOW_PATH, globalThis.location.origin)
   for (const window of windows) {
-    if (window.title === VM_WINDOW_TITLE) {
-      if (window.location) {
-        const url = new URL(window.location.href, globalThis.location.origin)
-        if (url.origin === globalThis.location.origin) {
-          contextWindow = window
-          firstInit = false
-        }
-      }
+    if (window.location.href === url.href) {
+      contextWindow = window
+      contextWindow.ready = Promise.resolve()
+      break
     }
   }
 
@@ -1227,6 +1223,9 @@ export async function getContextWindow () {
       debug: Boolean(process.env.SOCKET_RUNTIME_VM_DEBUG),
       index: -1,
       reserved: true,
+      // @ts-ignore
+      unique: true,
+      token: url.href,
       title: VM_WINDOW_TITLE,
       path: VM_WINDOW_PATH,
       width: '80%',
@@ -1238,7 +1237,7 @@ export async function getContextWindow () {
     })
   }
 
-  if (firstInit) {
+  if (!contextWindow.ready) {
     contextWindow.ready = new Promise((resolve) => {
       const timeout = setTimeout(resolve, 500)
       channel.addEventListener('message', function onMessage (event) {

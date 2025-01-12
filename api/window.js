@@ -541,7 +541,6 @@ export class ApplicationWindow {
 
   /**
    * Updates wnidow state
-   * @param {string} title - the title of the window
    * @return {Promise<ipc.Result>}
    */
   async update () {

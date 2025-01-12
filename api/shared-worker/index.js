@@ -42,12 +42,13 @@ export async function init (sharedWorker, options) {
         scriptURL: options.scriptURL,
         client: client.toJSON(),
         name: options.name,
-        port: serialize(ipc.findIPCMessageTransfers(new Set(), sharedWorker.port)),
+        port: serialize(ipc.findIPCMessageTransfers(new Set(), sharedWorker.channel.port2)),
         id: sharedWorker.id
       }
     }
   })
 
+  ipc.IPCMessagePort.transfer(sharedWorker.channel.port2)
   workers.set(sharedWorker.id, new WeakRef(sharedWorker))
 }
 
@@ -62,9 +63,9 @@ export class SharedWorkerMessagePort extends ipc.IPCMessagePort {
 
 export class SharedWorker extends EventTarget {
   #id = null
-  #port = null
   #ready = null
   #onerror = null
+  #channel = new ipc.IPCMessageChannel()
 
   /**
    * `SharedWorker` class constructor.
@@ -91,10 +92,10 @@ export class SharedWorker extends EventTarget {
     const url = new URL(aURL, location.origin)
     const id = crypto.murmur3(url.origin + url.pathname)
 
+    // @ts-ignore
     super(url.toString(), nameOrOptions)
 
     this.#id = id
-    this.#port = SharedWorkerMessagePort.create({ id })
     this.#ready = init(this, {
       scriptURL: url.toString(),
       name: typeof nameOrOptions === 'string'
@@ -126,8 +127,12 @@ export class SharedWorker extends EventTarget {
     return this.#ready
   }
 
+  get channel () {
+    return this.#channel
+  }
+
   get port () {
-    return this.#port
+    return this.#channel.port1
   }
 
   get id () {
@@ -147,16 +152,12 @@ export async function getContextWindow () {
   }
 
   const windows = await application.getWindows([], { max: false })
-
+  const url = new URL(SHARED_WORKER_WINDOW_PATH, globalThis.location.origin)
   for (const window of windows) {
-    if (window.title === SHARED_WORKER_WINDOW_TITLE) {
-      if (window.location) {
-        const url = new URL(window.location.href, globalThis.location.origin)
-        if (url.origin === globalThis.location.origin) {
-          contextWindow = window
-          break
-        }
-      }
+    if (window.location.href === url.href) {
+      contextWindow = window
+      contextWindow.ready = Promise.resolve()
+      break
     }
   }
 
@@ -168,6 +169,9 @@ export async function getContextWindow () {
       // @ts-ignore
       debug: Boolean(process.env.SOCKET_RUNTIME_SHARED_WORKER_DEBUG),
       reserved: true,
+      // @ts-ignore
+      unique: true,
+      token: url.href,
       index: -1,
       title: SHARED_WORKER_WINDOW_TITLE,
       path: SHARED_WORKER_WINDOW_PATH,

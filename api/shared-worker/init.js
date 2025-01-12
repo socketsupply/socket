@@ -9,9 +9,9 @@ export { channel }
 globals.register('SharedWorkerContext.workers', workers)
 globals.register('SharedWorkerContext.info', new Map())
 
-channel.addEventListener('message', (event) => {
-  if (event.data?.connect) {
-    onConnect(event)
+globalThis.addEventListener('connect', (event) => {
+  if (event.detail?.connect) {
+    onConnect(new MessageEvent('connect', { data: event.detail }))
   }
 })
 

@@ -23,7 +23,6 @@ import * as asyncHooks from './async/hooks.js'
 import { Deferred } from '../async.js'
 import { rand64 } from '../crypto.js'
 import location from '../location.js'
-import * as sw from '../shared-worker/index.js'
 import mime from '../mime.js'
 import path from '../path.js'
 import os from '../os.js'
@@ -34,9 +33,6 @@ import {
 } from '../fs/web.js'
 
 const GlobalWorker = globalThis.Worker || class Worker extends EventTarget {}
-
-// init `SharedWorker` window context
-sw.getContextWindow()
 
 // only patch a webview or worker context
 if ((globalThis.window || globalThis.self) === globalThis) {

@@ -1147,7 +1147,6 @@ export function sendSync (command, value = '', options = null, buffer = null) {
 
       let response = null
       try {
-        console.log({ uri })
         response = globalThis.__global_ipc_extension_handler(uri)
       } catch (err) {
         return Result.from(null, err)
@@ -1760,6 +1759,11 @@ export function inflateIPCMessageTransfers (object, types = new Map()) {
   return object
 }
 
+/**
+ * @param {Set<any>} transfers
+ * @param {any} object
+ * @return {any}
+ */
 export function findIPCMessageTransfers (transfers, object) {
   if (ArrayBuffer.isView(object)) {
     add(object.buffer)
@@ -1772,39 +1776,11 @@ export function findIPCMessageTransfers (transfers, object) {
       object[i] = findIPCMessageTransfers(transfers, object[i])
     }
   } else if (object && typeof object === 'object') {
-    if (
-      object instanceof MessagePort || (
-        typeof object.postMessage === 'function' &&
-        Object.getPrototypeOf(object).constructor.name === 'MessagePort'
-      )
-    ) {
+    if (object instanceof IPCMessagePort) {
+      add(object)
+      return object
+    } else if (object instanceof MessagePort) {
       const port = IPCMessagePort.create(object)
-      object.addEventListener('message', function onMessage (event) {
-        if (port.closed === true) {
-          port.onmessage = null
-          event.preventDefault()
-          event.stopImmediatePropagation()
-          object.removeEventListener('message', onMessage)
-          return false
-        }
-
-        port.dispatchEvent(new MessageEvent('message', event))
-      })
-
-      port.onmessage = (event) => {
-        if (port.closed === true) {
-          port.onmessage = null
-          event.preventDefault()
-          event.stopImmediatePropagation()
-          return false
-        }
-
-        const transfers = new Set()
-        findIPCMessageTransfers(transfers, event.data)
-        object.postMessage(event.data, {
-          transfer: Array.from(transfers)
-        })
-      }
       add(port)
       return port
     } else {
@@ -1833,156 +1809,146 @@ export function findIPCMessageTransfers (transfers, object) {
   }
 }
 
-export const ports = new Map()
-
 export class IPCMessagePort extends MessagePort {
+  // `IPCMessagePort` instances "owned" by thie environment
+  static ports = new Map()
+
   static from (options = null) {
     return this.create(options)
   }
 
+  static transfer (port) {
+    port[Symbol.for('socket.runtime.ipc.IPCMessagePort.transferred')] = true
+    return port
+  }
+
   static create (options = null) {
     const id = String(options?.id ?? rand64())
-    const port = Object.create(this.prototype)
-    const token = ports.get(id)?.token || String(rand64())
-    const channel = ports.get(id)?.channel ||
-      (typeof options?.channel === 'string'
-        ? new BroadcastChannel(options.channel)
-        : (
-            (options?.channel && new BroadcastChannel(options.channel.name, options.channel)) ??
-            new BroadcastChannel(id)
-          )
-      )
 
-    if (ports.has(id)) {
-      ports.get(id).closed = true
-      ports.get(id).channel.onmessage = null
-      ports.get(id).onmessage = null
-      ports.get(id).onmessageerror = null
+    if (IPCMessagePort.ports.has(id)) {
+      return IPCMessagePort.ports.get(id)
     }
 
-    port[Symbol.for('socket.runtime.IPCMessagePort.id')] = id
-    ports.set(id, Object.create(null, {
-      id: { writable: true, value: id },
-      token: { writable: false, value: token },
-      closed: { writable: true, value: false },
-      started: { writable: true, value: false },
-      channel: { writable: true, value: channel },
-      onmessage: { writable: true, value: null },
-      onmessageerror: { writable: true, value: null },
-      eventTarget: { writable: true, value: ports.get(id)?.eventTarget || new EventTarget() }
-    }))
+    const rx = new BroadcastChannel(String(options?.rx ?? rand64()))
+    const tx = new BroadcastChannel(String(options?.tx ?? rand64()))
+    const port = Object.create(this.prototype)
+    const token = String(rand64()) // unique to the instance
+    const eventTarget = new EventTarget()
 
-    channel.onmessage = function onMessage (event) {
-      const state = ports.get(id)
-      if (!state || state?.closed === true) {
-        event.preventDefault()
-        event.stopImmediatePropagation()
-        channel.onmessage = null
-        return false
-      }
+    // hidden state
+    port[Symbol.for('socket.runtime.ipc.IPCMessagePort.id')] = id
+    port[Symbol.for('socket.runtime.ipc.IPCMessagePort.rx')] = rx
+    port[Symbol.for('socket.runtime.ipc.IPCMessagePort.tx')] = tx
+    port[Symbol.for('socket.runtime.ipc.IPCMessagePort.token')] = token
+    port[Symbol.for('socket.runtime.ipc.IPCMessagePort.closed')] = false
+    port[Symbol.for('socket.runtime.ipc.IPCMessagePort.started')] = false
+    port[Symbol.for('socket.runtime.ipc.IPCMessagePort.transferred')] = options?.transferred ?? false
+    port[Symbol.for('socket.runtime.ipc.IPCMessagePort.eventTarget')] = eventTarget
+    port[Symbol.for('socket.runtime.ipc.IPCMessagePort.onmessage')] = null
+    port[Symbol.for('socket.runtime.ipc.IPCMessagePort.onmessageerror')] = null
 
-      if (state?.started && event.data?.token !== state.token) {
-        port.dispatchEvent(new MessageEvent('message', {
-          ...event,
-          data: event.data?.data
+    rx.onmessage = (event) => {
+      if (event.data?.data && event.data?.token && event.data.token !== token) {
+        eventTarget.dispatchEvent(new MessageEvent('message', {
+          data: inflateIPCMessageTransfers(event.data.data)
         }))
       }
     }
+
+    IPCMessagePort.ports.set(id, port)
 
     gc.ref(port)
     return port
   }
 
   get id () {
-    return this[Symbol.for('socket.runtime.IPCMessagePort.id')] ?? null
+    return this[Symbol.for('socket.runtime.ipc.IPCMessagePort.id')] ?? null
   }
 
   get started () {
-    if (!ports.has(this.id)) {
-      return false
-    }
-
-    return ports.get(this.id)?.started ?? false
+    return this[Symbol.for('socket.runtime.ipc.IPCMessagePort.started')] ?? false
   }
 
   get closed () {
-    if (!ports.has(this.id)) {
-      return true
-    }
-
-    return ports.get(this.id)?.closed ?? false
+    return this[Symbol.for('socket.runtime.ipc.IPCMessagePort.closed')] ?? false
   }
 
   get onmessage () {
-    return ports.get(this.id)?.onmessage ?? null
+    return this[Symbol.for('socket.runtime.ipc.IPCMessagePort.onmessage')] ?? null
   }
 
   set onmessage (onmessage) {
-    const port = ports.get(this.id)
+    const konmessage = Symbol.for('socket.runtime.ipc.IPCMessagePort.onmessage')
+    const port = IPCMessagePort.ports.get(this.id)
 
-    if (!port) {
+    if (port !== this) {
       return
     }
 
-    if (typeof port.onmessage === 'function') {
-      this.removeEventListener('message', port.onmessage)
-      port.onmessage = null
+    if (typeof this[konmessage] === 'function') {
+      this.removeEventListener('message', this[konmessage])
+      this[konmessage] = null
     }
 
     if (typeof onmessage === 'function') {
       this.addEventListener('message', onmessage)
-      port.onmessage = onmessage
-      if (!port.started) {
+      this[konmessage] = onmessage
+      if (!this.started) {
         this.start()
       }
     }
   }
 
   get onmessageerror () {
-    return ports.get(this.id)?.onmessageerror ?? null
+    return this[Symbol.for('socket.runtime.ipc.IPCMessagePort.onmessageerror')] ?? null
   }
 
   set onmessageerror (onmessageerror) {
-    const port = ports.get(this.id)
+    const konmessageerror = Symbol.for('socket.runtime.ipc.IPCMessagePort.onmessageerror')
+    const port = IPCMessagePort.ports.get(this.id)
 
-    if (!port) {
+    if (port !== this) {
       return
     }
 
-    if (typeof this.onmessageerror === 'function') {
-      this.removeEventListener('messageerror', port.onmessageerror)
-      port.onmessageerror = null
+    if (typeof this[konmessageerror] === 'function') {
+      this.removeEventListener('messageerror', this[konmessageerror])
+      this[konmessageerror] = null
     }
 
     if (typeof onmessageerror === 'function') {
       this.addEventListener('messageerror', onmessageerror)
-      port.onmessageerror = onmessageerror
+      this[konmessageerror] = onmessageerror
     }
   }
 
   start () {
-    const port = ports.get(this.id)
-    if (port) {
-      port.started = true
+    const port = IPCMessagePort.ports.get(this.id)
+
+    if (port !== this) {
+      return
     }
+
+    this[Symbol.for('socket.runtime.ipc.IPCMessagePort.started')] = true
   }
 
-  close (purge = true) {
-    const port = ports.get(this.id)
-    if (port) {
-      port.closed = true
+  close () {
+    const port = IPCMessagePort.ports.get(this.id)
+
+    if (port !== this) {
+      return
     }
 
-    if (purge) {
-      ports.delete(this.id)
-    }
+    this[Symbol.for('socket.runtime.ipc.IPCMessagePort.closed')] = true
+
+    IPCMessagePort.ports.delete(this.id)
   }
 
   postMessage (message, optionsOrTransferList) {
-    const port = ports.get(this.id)
+    const port = IPCMessagePort.ports.get(this.id)
     const options = { transfer: [] }
 
-    if (!port) {
+    if (port !== this) {
       return
     }
 
@@ -1992,62 +1958,74 @@ export class IPCMessagePort extends MessagePort {
       options.transfer.push(...optionsOrTransferList.transfer)
     }
 
+    const tx = this[Symbol.for('socket.runtime.ipc.IPCMessagePort.tx')]
+    const handle = this[Symbol.for('socket.runtime.ipc.IPCMessagePort.handlePostMessage')]
     const transfers = new Set(options.transfer)
-    const handle = this[Symbol.for('socket.runtime.ipc.MessagePort.handlePostMessage')]
-
     const serializedMessage = serialize(findIPCMessageTransfers(transfers, message))
+
     options.transfer = Array.from(transfers)
+    for (const entry of transfers) {
+      if (entry instanceof IPCMessagePort) {
+        entry[Symbol.for('socket.runtime.ipc.IPCMessagePort.transferred')] = true
+        if (entry.id) {
+          IPCMessagePort.ports.delete(entry.id)
+        }
+      }
+    }
 
     if (typeof handle === 'function') {
-      if (handle.call(this, serializedMessage, options) === false) {
+      if (handle.call(this, serializedMessage, options, this) === false) {
         return
       }
     }
 
-    port.channel.postMessage({
-      token: port.token,
+    tx.postMessage({
+      token: this[Symbol.for('socket.runtime.ipc.IPCMessagePort.token')],
       data: serializedMessage
     }, options)
   }
 
   addEventListener (...args) {
-    const eventTarget = ports.get(this.id)?.eventTarget
+    const port = IPCMessagePort.ports.get(this.id)
+    const eventTarget = this[Symbol.for('socket.runtime.ipc.IPCMessagePort.eventTarget')]
 
-    if (eventTarget) {
-      return eventTarget.addEventListener(...args)
+    if (port !== this || !eventTarget) {
+      return false
     }
 
-    return false
+    return eventTarget.addEventListener(...args)
   }
 
   removeEventListener (...args) {
-    const eventTarget = ports.get(this.id)?.eventTarget
+    const port = IPCMessagePort.ports.get(this.id)
+    const eventTarget = this[Symbol.for('socket.runtime.ipc.IPCMessagePort.eventTarget')]
 
-    if (eventTarget) {
-      return eventTarget.removeEventListener(...args)
+    if (port !== this || !eventTarget) {
+      return false
     }
 
-    return false
+    return eventTarget.removeEventListener(...args)
   }
 
   dispatchEvent (event) {
-    const eventTarget = ports.get(this.id)?.eventTarget
+    const port = IPCMessagePort.ports.get(this.id)
+    const eventTarget = this[Symbol.for('socket.runtime.ipc.IPCMessagePort.eventTarget')]
 
-    if (eventTarget) {
-      if (event.type === 'message') {
-        return eventTarget.dispatchEvent(new MessageEvent('message', {
-          ...event,
-          data: inflateIPCMessageTransfers(event.data)
-        }))
-      } else {
-        return eventTarget.dispatchEvent(event)
-      }
+    if (port !== this || !eventTarget) {
+      return false
     }
 
-    return false
+    if (event.type === 'message') {
+      return eventTarget.dispatchEvent(new MessageEvent('message', {
+        ...event,
+        data: inflateIPCMessageTransfers(event.data)
+      }))
+    }
+
+    return eventTarget.dispatchEvent(event)
   }
 
-  [Symbol.for('socket.runtime.ipc.MessagePort.handlePostMessage')] (
+  [Symbol.for('socket.runtime.ipc.IPCMessagePort.handlePostMessage')] (
     message,
     options = null
   ) {
@@ -2055,9 +2033,20 @@ export class IPCMessagePort extends MessagePort {
   }
 
   [Symbol.for('socket.runtime.serialize')] () {
+    if (this[Symbol.for('socket.runtime.ipc.IPCMessagePort.transferred')]) {
+      return {
+        __type__: 'IPCMessagePort',
+        transferred: true,
+        rx: this[Symbol.for('socket.runtime.ipc.IPCMessagePort.rx')]?.name ?? null,
+        tx: this[Symbol.for('socket.runtime.ipc.IPCMessagePort.tx')]?.name ?? null,
+        id: this.id
+      }
+    }
     return {
       __type__: 'IPCMessagePort',
-      channel: ports.get(this.id)?.channel?.name ?? null,
+      // swap rx/tx
+      rx: this[Symbol.for('socket.runtime.ipc.IPCMessagePort.tx')]?.name ?? null,
+      tx: this[Symbol.for('socket.runtime.ipc.IPCMessagePort.rx')]?.name ?? null,
       id: this.id
     }
   }
@@ -2066,8 +2055,8 @@ export class IPCMessagePort extends MessagePort {
     return {
       args: [this.id],
       handle (id) {
-        if (!ports.get(id)?.channel?.onmessage) {
-          ports.delete(id)
+        if (IPCMessagePort.ports.has(id)) {
+          IPCMessagePort.ports.delete(id)
         }
       }
     }
@@ -2078,25 +2067,57 @@ export class IPCMessageChannel extends MessageChannel {
   #id = null
   #port1 = null
   #port2 = null
-  #channel = null
+
+  static #connect (port1, port2) {
+    createPostMessageHandler(port1, port2)
+    createPostMessageHandler(port2, port1)
+    port1[Symbol.for('socket.runtime.ipc.IPCMessagePort.rx')].addEventListener('message', (event) => {
+      const rx = port2[Symbol.for('socket.runtime.ipc.IPCMessagePort.rx')]
+      if (rx && port1[Symbol.for('socket.runtime.ipc.IPCMessagePort.transferred')]) {
+        rx.dispatchEvent(new MessageEvent('message', event))
+      }
+    })
+
+    port2[Symbol.for('socket.runtime.ipc.IPCMessagePort.rx')].addEventListener('message', (event) => {
+      const rx = port1[Symbol.for('socket.runtime.ipc.IPCMessagePort.rx')]
+      if (rx && port2[Symbol.for('socket.runtime.ipc.IPCMessagePort.transferred')]) {
+        rx.dispatchEvent(new MessageEvent('message', event))
+      }
+    })
+
+    return { port1, port2 }
+
+    function createPostMessageHandler (port1, port2) {
+      port1[Symbol.for('socket.runtime.ipc.IPCMessagePort.handlePostMessage')] = (message, _, port) => {
+        const transferred = port2[Symbol.for('socket.runtime.ipc.IPCMessagePort.transferred')]
+        const rx = port2[Symbol.for('socket.runtime.ipc.IPCMessagePort.rx')]
+        const tx = port2[Symbol.for('socket.runtime.ipc.IPCMessagePort.tx')]
+
+        if (transferred) {
+          tx.postMessage({
+            token: port[Symbol.for('socket.runtime.ipc.IPCMessagePort.token')],
+            data: message
+          })
+        } else {
+          rx.dispatchEvent(new MessageEvent('message', {
+            data: {
+              token: port[Symbol.for('socket.runtime.ipc.IPCMessagePort.token')],
+              data: message
+            }
+          }))
+        }
+      }
+    }
+  }
 
   constructor (options = null) {
     super()
-    this.#id = String(options?.id ?? rand64())
-    this.#channel = options?.channel ?? new BroadcastChannel(this.#id)
 
+    this.#id = String(options?.id ?? rand64())
     this.#port1 = IPCMessagePort.create(options?.port1)
     this.#port2 = IPCMessagePort.create(options?.port2)
 
-    this.port1[Symbol.for('socket.runtime.ipc.MessagePort.handlePostMessage')] = (message, options) => {
-      this.port2.channel.postMessage(message, options)
-      return false
-    }
-
-    this.port2[Symbol.for('socket.runtime.ipc.MessagePort.handlePostMessage')] = (message, options) => {
-      this.port2.channel.postMessage(message, options)
-      return false
-    }
+    IPCMessageChannel.#connect(this.#port1, this.#port2)
   }
 
   get id () {
@@ -2109,10 +2130,6 @@ export class IPCMessageChannel extends MessageChannel {
 
   get port2 () {
     return this.#port2
-  }
-
-  get channel () {
-    return this.#channel
   }
 }
 
