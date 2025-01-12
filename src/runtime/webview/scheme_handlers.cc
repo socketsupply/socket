@@ -462,7 +462,6 @@ namespace ssc::runtime::webview {
 
     auto span = request->tracer.span("handler");
 
-    this->bridge.dispatch([this, id, span, handler, callback, request] () mutable {
       if (request != nullptr && request->isActive() && !request->isCancelled()) {
         handler(request, this->bridge, &request->callbacks, [this, id, span, callback](auto& response) mutable {
           // make sure the response was finished before
@@ -486,7 +485,6 @@ namespace ssc::runtime::webview {
           } while (0);
         });
       }
-    });
 
     return true;
   }

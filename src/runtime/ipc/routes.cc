@@ -2605,14 +2605,15 @@ static void mapIPCRoutes (Router *router) {
    * @param scope
    */
   router->map("serviceWorker.unregister", [=](auto message, auto router, auto reply) {
-    auto err = validateMessageParameters(message, {"scope"});
+    auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
       return reply(Result { message.seq, message, err });
     }
 
-    const auto scope = message.get("scope");
-    router->bridge.navigator.serviceWorkerServer->container.unregisterServiceWorker(scope);
+    uint64_t id;
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+    router->bridge.navigator.serviceWorkerServer->container.unregisterServiceWorker(id);
 
     return reply(Result::Data { message, JSON::Object {} });
   });
@@ -3562,6 +3563,7 @@ static void mapIPCRoutes (Router *router) {
       options.index = targetWindowIndex;
       options.RUNTIME_PRIMORDIAL_OVERRIDES = message.get("__runtime_primordial_overrides__");
       options.userConfig = INI::parse(message.get("config"));
+      options.userScript = message.get("userScript");
       options.resourcesDirectory = message.get("resourcesDirectory");
       options.shouldPreferServiceWorker = message.get("shouldPreferServiceWorker", "false") == "true";
 
@@ -3580,9 +3582,7 @@ static void mapIPCRoutes (Router *router) {
           createdWindow->navigate(message.get("url"));
         }
 
-        if (!options.headless) {
-          createdWindow->show();
-        }
+        createdWindow->show();
 
         reply(Result::Data { message, createdWindow->json() });
       } else {

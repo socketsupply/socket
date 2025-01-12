@@ -778,6 +778,7 @@ namespace ssc::runtime::window {
       [this->webview removeFromSuperview];
       this->webview.navigationDelegate = nullptr;
       this->webview.UIDelegate = nullptr;
+      this->webview = nullptr;
     }
 
     if (this->window != nullptr) {
@@ -794,7 +795,6 @@ namespace ssc::runtime::window {
       }
 
       [this->window performClose: nullptr];
-      this->window = nullptr;
       this->window.webview = nullptr;
       this->window.delegate = nullptr;
       this->window.contentView = nullptr;
@@ -807,6 +807,7 @@ namespace ssc::runtime::window {
       }
 
       this->window.titleBarView = nullptr;
+      this->window = nullptr;
     #endif
     }
   }

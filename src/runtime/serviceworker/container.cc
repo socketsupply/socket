@@ -290,6 +290,17 @@ namespace ssc::runtime::serviceworker {
       return registration;
     }
 
+    for (const auto& entry : this->registrations) {
+      const auto& registration = entry.second;
+      if (registration.options.scriptURL == scriptURL) {
+        if (this->bridge != nullptr) {
+          this->bridge->emit("serviceWorker.register", registration.json(true).str());
+        }
+
+        return registration;
+      }
+    }
+
     const auto id = options.id > 0 ? options.id : rand64();
     this->registrations.insert_or_assign(key, Registration(
       id,
@@ -301,7 +312,7 @@ namespace ssc::runtime::serviceworker {
         scope,
         options.scheme,
         options.serializedWorkerArgs,
-        Registration::Priority::Default,
+        options.priority,
         id
       }
     ));
@@ -323,7 +334,7 @@ namespace ssc::runtime::serviceworker {
     const auto key = Registration::key(scope, this->origin);
 
     if (this->registrations.contains(key)) {
-      const auto& registration = this->registrations.at(scope);
+      const auto& registration = this->registrations.at(key);
       if (this->bridge != nullptr) {
         return this->bridge->emit("serviceWorker.unregister", registration.json());
       }
@@ -334,13 +345,14 @@ namespace ssc::runtime::serviceworker {
 
     for (const auto& entry : this->registrations) {
       if (entry.second.options.scriptURL == scriptURL) {
-        const auto& registration = this->registrations.at(entry.first);
+        const auto& registration = entry.second;
 
         if (this->bridge != nullptr) {
           return this->bridge->emit("serviceWorker.unregister", registration.json().str());
         }
 
         this->registrations.erase(entry.first);
+        return true;
       }
     }
 
@@ -352,7 +364,14 @@ namespace ssc::runtime::serviceworker {
 
     for (const auto& entry : this->registrations) {
       if (entry.second.id == id) {
-        return this->unregisterServiceWorker(entry.first);
+        const auto& registration = entry.second;
+
+        if (this->bridge != nullptr) {
+          return this->bridge->emit("serviceWorker.unregister", registration.json().str());
+        }
+
+        this->registrations.erase(entry.first);
+        return true;
       }
     }
 
