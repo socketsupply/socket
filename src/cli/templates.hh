@@ -1196,7 +1196,7 @@ constexpr auto gIOSInfoPList = R"XML(<?xml version="1.0" encoding="UTF-8"?>
   <string>{{meta_bundle_identifier}}</string>
 
   <key>CFBundleDisplayName</key>
-  <string>{{build_name}}</string>
+  <string>{{meta_title}}</string>
 
   <key>CFBundleName</key>
   <string>{{build_name}}</string>

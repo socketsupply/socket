@@ -4902,6 +4902,9 @@ int main (int argc, char* argv[]) {
         }
       }
 
+      if (settings["ios_distribution_method"].empty()) {
+        settings["ios_distribution_method"] = "";
+      }
       writeFile(paths.platformSpecificOutputPath / "exportOptions.plist", tmpl(gXCodeExportOptions, settings));
       writeFile(paths.platformSpecificOutputPath / "Info.plist", tmpl(gIOSInfoPList, settings));
       writeFile(pathToProject / "project.pbxproj", tmpl(gXCodeProject, xCodeProjectVariables));
