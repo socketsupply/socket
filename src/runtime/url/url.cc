@@ -406,6 +406,7 @@ namespace ssc::runtime::url {
   }
 
   const JSON::Object URL::json () const {
+    const auto search = this->searchParams.str();
     return JSON::Object::Entries {
       {"href", this->href()},
       {"origin", this->origin},
@@ -414,7 +415,7 @@ namespace ssc::runtime::url {
       {"password", this->password},
       {"hostname", this->hostname},
       {"pathname", this->pathname},
-      {"search", this->search},
+      {"search", "?" + search},
       {"hash", this->hash}
     };
   }

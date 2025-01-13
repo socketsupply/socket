@@ -82,7 +82,6 @@ export class Context {
       return await clients.get(this.event.clientId)
     }
 
-    console.log('NO EVENT CLIENT ID')
     return null
   }
 }

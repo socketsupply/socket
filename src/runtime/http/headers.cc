@@ -234,11 +234,11 @@ namespace ssc::runtime::http {
     this->string = std::to_string(value);
   }
 
+#if SOCKET_RUNTIME_PLATFORM_APPLE
   Headers::Value::Value (size_t value) {
     this->string = std::to_string(value);
   }
 
-#if SOCKET_RUNTIME_PLATFORM_APPLE
   Headers::Value::Value (ssize_t value) {
     this->string = std::to_string(value);
   }

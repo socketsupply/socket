@@ -265,6 +265,7 @@ namespace ssc::runtime::webview {
         int statusCode = 200;
         http::Headers headers;
         Client client;
+        mutable Mutex mutex;
 
         Atomic<bool> finished = false;
 

@@ -467,6 +467,7 @@ namespace ssc::runtime::core::services {
     }
 
     client->queue.clear();
+    client->frameBuffer.resize(0);
 
     const auto bytes = vectorToSharedPointer(buffer);
     const auto message = ipc::Message(uri);

@@ -260,7 +260,11 @@ namespace ssc::runtime::core::services {
       }
 
       if (name == "geolocation") {
+      #if SOCKET_RUNTIME_PLATFORM_APPLE
         __block JSON::Object json;
+      #else
+        JSON::Object json;
+      #endif
 
       #if SOCKET_RUNTIME_PLATFORM_APPLE
         const auto performedActivation = [this->services.geolocation.locationObserver attemptActivationWithCompletion: ^(BOOL isAuthorized) {

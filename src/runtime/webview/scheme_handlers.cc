@@ -361,7 +361,7 @@ namespace ssc::runtime::webview {
     ];
 
   #elif SOCKET_RUNTIME_PLATFORM_LINUX
-    const auto bundleIdentifier = this->bridge->userConfig["meta_bundle_identifier"];
+    const auto bundleIdentifier = this->bridge.userConfig["meta_bundle_identifier"];
     if (!globallyRegisteredSchemesForLinux.contains(bundleIdentifier)) {
       globallyRegisteredSchemesForLinux[bundleIdentifier] = Set<String> {};
     }
@@ -380,10 +380,10 @@ namespace ssc::runtime::webview {
       ) == schemes.end()
     ) {
       schemes.insert(scheme);
-      auto context = this->bridge->webContext;
+      auto context = this->bridge.webContext;
       auto security = webkit_web_context_get_security_manager(context);
       webkit_web_context_register_uri_scheme(
-        this->bridge->webContext,
+        this->bridge.webContext,
         scheme.c_str(),
         onURISchemeRequest,
         nullptr,
@@ -461,30 +461,35 @@ namespace ssc::runtime::webview {
     }
 
     auto span = request->tracer.span("handler");
-
+  #if SOCKET_RUNTIME_PLATFORM_ANDROID
+    this->bridge.dispatch([=]() {
+  #endif
       if (request != nullptr && request->isActive() && !request->isCancelled()) {
-        handler(request, this->bridge, &request->callbacks, [this, id, span, callback](auto& response) mutable {
+        handler(request, this->bridge, &request->callbacks, [this, id, span, request, callback](auto& response) mutable {
+          span->end();
+
+          // notify finished
+          if (request->callbacks.finish != nullptr) {
+            request->callbacks.finish();
+          }
+
           // make sure the response was finished before
           // calling the `callback` function below
           response.finish();
-
-          // notify finished
-          if (response.request->callbacks.finish != nullptr) {
-            response.request->callbacks.finish();
-          }
-
-          if (callback != nullptr) {
-            callback(response);
-          }
-
-          span->end();
 
           do {
             Lock lock(this->mutex);
             this->activeRequests.erase(id);
           } while (0);
+
+          if (callback != nullptr) {
+            callback(response);
+          }
         });
       }
+  #if SOCKET_RUNTIME_PLATFORM_ANDROID
+    });
+  #endif
 
     return true;
   }
@@ -771,10 +776,8 @@ namespace ssc::runtime::webview {
     destination->callbacks = source.callbacks;
     destination->originalURL = source.originalURL;
 
-    if (destination->finalized) {
-      destination->origin = source.origin;
-      destination->params = source.params;
-    }
+    destination->origin = source.origin;
+    destination->params = source.params;
 
     destination->finalized = source.finalized.load();
     destination->cancelled  = source.cancelled.load();
@@ -782,6 +785,7 @@ namespace ssc::runtime::webview {
     destination->tracer = source.tracer;
     destination->handlers = source.handlers;
     destination->platformRequest = source.platformRequest;
+    destination->error = source.error;
 
   #if SOCKET_RUNTIME_PLATFORM_WINDOWS
     destination->env = source.env;
@@ -798,6 +802,35 @@ namespace ssc::runtime::webview {
     : tracer("SchemeHandlers::Request")
   {
     copyRequest(this, request);
+    request.id = 0;
+    request.scheme = "";
+    request.method = "";
+    request.hostname = "";
+    request.pathname = "";
+    request.query = "";
+    request.fragment = "";
+    request.headers = Headers {};
+    request.body = bytes::Buffer {};
+
+    request.client = Client {};
+    request.callbacks.cancel = nullptr;
+    request.callbacks.fail = nullptr;
+    request.callbacks.finish = nullptr;
+    request.originalURL = "";
+    request.error = nullptr;
+    request.finalized = true;
+    if (request.finalized) {
+      request.origin = "";
+      request.params = Map<String, String> {};
+    }
+
+    request.tracer.clear();
+    request.handlers = nullptr;
+    request.platformRequest = nullptr;
+
+  #if SOCKET_RUNTIME_PLATFORM_WINDOWS
+    request.env = nullptr;
+  #endif
   }
 
   SchemeHandlers::Request& SchemeHandlers::Request::operator= (const Request& request) noexcept {
@@ -807,6 +840,35 @@ namespace ssc::runtime::webview {
 
   SchemeHandlers::Request& SchemeHandlers::Request::operator= (Request&& request) noexcept {
     copyRequest(this, request);
+    request.id = 0;
+    request.scheme = "";
+    request.method = "";
+    request.hostname = "";
+    request.pathname = "";
+    request.query = "";
+    request.fragment = "";
+    request.headers = Headers {};
+    request.body = bytes::Buffer {};
+
+    request.client = Client {};
+    request.callbacks.cancel = nullptr;
+    request.callbacks.fail = nullptr;
+    request.callbacks.finish = nullptr;
+    request.originalURL = "";
+    request.error = nullptr;
+    request.finalized = true;
+    if (request.finalized) {
+      request.origin = "";
+      request.params = Map<String, String> {};
+    }
+
+    request.tracer.clear();
+    request.handlers = nullptr;
+    request.platformRequest = nullptr;
+
+  #if SOCKET_RUNTIME_PLATFORM_WINDOWS
+    request.env = nullptr;
+  #endif
     return *this;
   }
 
@@ -894,7 +956,7 @@ namespace ssc::runtime::webview {
       return this->handlers->isRequestCancelled(this->id);
     }
 
-    return false;
+    return true;
   }
 
   JSON::Object SchemeHandlers::Request::json () const {
@@ -953,14 +1015,20 @@ namespace ssc::runtime::webview {
     SchemeHandlers::Response* destination,
     const SchemeHandlers::Response& source
   ) noexcept {
+    ScopedLock lock(destination->mutex, source.mutex);
     destination->id = source.id;
     destination->client = source.client;
     destination->headers = source.headers;
     destination->finished = source.finished.load();
     destination->handlers = source.handlers;
     destination->statusCode = source.statusCode;
+    destination->tracer = source.tracer;
     destination->buffers = source.buffers;
     destination->platformResponse = source.platformResponse;
+    destination->request = source.request;
+  #if SOCKET_RUNTIME_PLATFORM_LINUX || SOCKET_RUNTIME_PLATFORM_WINDOWS
+    destination->platformResponseStream = source.platformResponseStream;
+  #endif
   }
 
   SchemeHandlers::Response::Response (const Response& response) noexcept
@@ -975,6 +1043,20 @@ namespace ssc::runtime::webview {
       tracer("SchemeHandlers::Response")
   {
     copyResponse(this, response);
+    Lock lock(response.mutex);
+    response.id = 0;
+    response.client = Client {};
+    response.headers = Headers {};
+    response.finished = true;
+    response.handlers = nullptr;
+    response.statusCode = 0;
+    response.tracer.clear();
+    response.buffers.clear();
+    response.platformResponse = nullptr;
+    response.request = nullptr;
+  #if SOCKET_RUNTIME_PLATFORM_LINUX || SOCKET_RUNTIME_PLATFORM_WINDOWS
+    response.platformResponseStream = nullptr;
+  #endif
   }
 
   SchemeHandlers::Response::~Response () {}
@@ -986,10 +1068,25 @@ namespace ssc::runtime::webview {
 
   SchemeHandlers::Response& SchemeHandlers::Response::operator= (Response&& response) noexcept {
     copyResponse(this, response);
+    Lock lock(response.mutex);
+    response.id = 0;
+    response.client = Client {};
+    response.headers = Headers {};
+    response.finished = true;
+    response.handlers = nullptr;
+    response.statusCode = 0;
+    response.tracer.clear();
+    response.buffers.clear();
+    response.platformResponse = nullptr;
+    response.request = nullptr;
+  #if SOCKET_RUNTIME_PLATFORM_LINUX || SOCKET_RUNTIME_PLATFORM_WINDOWS
+    response.platformResponseStream = nullptr;
+  #endif
     return *this;
   }
 
   bool SchemeHandlers::Response::writeHead (int statusCode, const Headers headers) {
+    Lock lock(this->mutex);
     // fail if already finished
     if (this->finished) {
       debug("SchemeHandlers::Response: Failed to write head. Already finished");
@@ -1181,19 +1278,23 @@ namespace ssc::runtime::webview {
       this->setHeader("content-type", "application/octet-stream");
     }
 
-    if (!this->platformResponse) {
-      // set 'content-length' header if response was not created
-      this->setHeader("content-length", size);
-      if (!this->writeHead()) {
-        debug(
-          "SchemeHandlers::Response: Failed to write head for %s",
-          this->request->str().c_str()
-        );
-        return false;
+    do {
+      Lock lock(this->mutex);
+      if (!this->platformResponse) {
+        // set 'content-length' header if response was not created
+        this->setHeader("content-length", size);
+        if (!this->writeHead()) {
+          debug(
+            "SchemeHandlers::Response: Failed to write head for %s",
+            this->request->str().c_str()
+          );
+          return false;
+        }
       }
-    }
+    } while (0);
 
     if (size > 0 && bytes != nullptr) {
+      Lock lock(this->mutex);
     #if SOCKET_RUNTIME_PLATFORM_APPLE
       const auto data = [NSData dataWithBytes: bytes.get() length: size];
       @try {
@@ -1310,11 +1411,11 @@ namespace ssc::runtime::webview {
   }
 
   bool SchemeHandlers::Response::send (const String& source) {
-    return this->write(source) && this->finish();
+    return this->write(source);
   }
 
   bool SchemeHandlers::Response::send (const JSON::Any& json) {
-    return this->write(json) && this->finish();
+    return this->write(json);
   }
 
   bool SchemeHandlers::Response::send (const filesystem::Resource& resource) {
@@ -1340,7 +1441,6 @@ namespace ssc::runtime::webview {
       }
     }
 
-  #if SOCKET_RUNTIME_PLATFORM_APPLE
     if (
       !this->handlers->isRequestActive(this->id) ||
       this->handlers->isRequestCancelled(this->id)
@@ -1348,6 +1448,8 @@ namespace ssc::runtime::webview {
       return false;
     }
 
+    Lock lock(this->mutex);
+  #if SOCKET_RUNTIME_PLATFORM_APPLE
     @try {
       [this->request->platformRequest didFinish];
     } @catch (::id) {}
@@ -1356,29 +1458,27 @@ namespace ssc::runtime::webview {
   #endif
     this->platformResponse = nullptr;
   #elif SOCKET_RUNTIME_PLATFORM_LINUX
-    if (this->request->platformRequest) {
-      auto platformRequest = this->request->platformRequest;
-      auto platformResponse = this->platformResponse;
-      auto platformResponseStream = this->platformResponseStream;
-
-      this->platformResponseStream = nullptr;
-      this->platformResponse = nullptr;
-
+    if (this->request && this->request->platformRequest && this->platformResponse) {
       webkit_uri_scheme_request_finish_with_response(
-        platformRequest,
-        platformResponse
+        this->request->platformRequest,
+        this->platformResponse
       );
 
-      g_object_unref(platformResponseStream);
+      g_object_unref(this->platformResponseStream);
       g_input_stream_close_async(
-        platformResponseStream,
+        this->platformResponseStream,
         G_PRIORITY_DEFAULT,
         nullptr,
-        [](auto stream, auto res, auto _) {
+        [](auto stream, auto result, auto _) {
+          GError* error = nullptr;
+          g_input_stream_close_finish(reinterpret_cast<GInputStream*>(stream), result, &error);
           g_object_unref(stream);
         },
         nullptr
       );
+
+      this->platformResponseStream = nullptr;
+      this->platformResponse = nullptr;
     }
   #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
     this->platformResponseStream = nullptr;

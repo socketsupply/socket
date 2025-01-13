@@ -229,7 +229,7 @@ namespace ssc::runtime::webview {
         gpointer userData
       ) {
         const auto navigator = reinterpret_cast<Navigator*>(userData);
-        auto window = navigator->bridge->context.getRuntime()->windowManager.getWindowForWebView(webview);
+        auto window = navigator->bridge.context.getRuntime()->windowManager.getWindowForWebView(webview);
 
         if (!window) {
           webkit_policy_decision_ignore(decision);
@@ -412,7 +412,7 @@ namespace ssc::runtime::webview {
     for (const auto& entry : this->location.mounts) {
       const auto& path = entry.first;
       #if SOCKET_RUNTIME_PLATFORM_LINUX
-        auto webContext = this->bridge->webContext;
+        auto webContext = this->bridge.webContext;
         if (path != wellKnownPaths.home.string()) {
           webkit_web_context_add_path_to_sandbox(webContext, path.c_str(), false);
         }
@@ -420,7 +420,7 @@ namespace ssc::runtime::webview {
     }
 
   #if SOCKET_RUNTIME_PLATFORM_LINUX
-    auto webContext = this->bridge->webContext;
+    auto webContext = this->bridge.webContext;
     for (const auto& entry : wellKnownPaths.entries()) {
       if (filesystem::Resource::isDirectory(entry) && entry != wellKnownPaths.home) {
         webkit_web_context_add_path_to_sandbox(webContext, entry.c_str(), false);

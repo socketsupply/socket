@@ -239,11 +239,18 @@ namespace ssc::runtime::serviceworker {
         fetch->response.body = bytes::Buffer::from(html);
       }
 
-      fetch->callback(fetch->response);
-      reply(ipc::Result { message.seq, message });
+      do {
+        Lock lock(this->mutex);
+        this->fetches.erase(id);
+      } while (0);
 
-      Lock lock(this->mutex);
-      this->fetches.erase(id);
+      this->bridge->dispatch([=](){
+        fetch->callback(fetch->response);
+      });
+
+      this->bridge->dispatch([=](){
+        reply(ipc::Result { message.seq, message });
+      });
     });
   }
 

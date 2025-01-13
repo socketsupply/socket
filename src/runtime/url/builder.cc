@@ -77,7 +77,7 @@ namespace ssc::runtime::url {
       }
 
       for (const auto& entry : params) {
-        this->search += entry.first + "=" + entry.second + "&";
+        this->search += encodeURIComponent(entry.first) + "=" + encodeURIComponent(entry.second) + "&";
       }
     }
 

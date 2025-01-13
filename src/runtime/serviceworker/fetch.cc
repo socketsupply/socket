@@ -27,7 +27,9 @@ namespace ssc::runtime::serviceworker {
       return false;
     }
 
-    this->callback = callback;
+    if (callback != nullptr) {
+      this->callback = std::move(callback);
+    }
 
     for (const auto& entry : this->container.registrations) {
       const auto& registration = entry.second;
@@ -69,10 +71,10 @@ namespace ssc::runtime::serviceworker {
         )
       ) {
         auto runtime = this->container.bridge->getRuntime();
-        runtime->dispatch([this, runtime, callback, &registration]() {
-          const auto interval = runtime->services.timers.setInterval(8, [this, runtime, callback, &registration] (auto cancel) {
+        runtime->dispatch([this, runtime, &registration]() {
+          const auto interval = runtime->services.timers.setInterval(8, [this, runtime, &registration] (auto cancel) {
             if (registration.state == Registration::State::Activated) {
-              if (!this->init(callback)) {
+              if (!this->init(this->callback)) {
                 debug(
                 #if SOCKET_RUNTIME_PLATFORM_APPLE
                   "ServiceWorkerContainer: Failed to dispatch fetch request '%s %s%s' for client '%llu'",
@@ -114,7 +116,7 @@ namespace ssc::runtime::serviceworker {
         {"host", request.url.hostname},
         {"scheme", request.url.scheme},
         {"pathname", pathname},
-        {"query", request.url.query},
+        {"query", request.url.searchParams.str()},
         {"headers", request.headers.json()},
         {"client", client}
       };
