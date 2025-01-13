@@ -461,8 +461,8 @@ namespace ssc::runtime::webview {
     }
 
     auto span = request->tracer.span("handler");
-  #if SOCKET_RUNTIME_PLATFORM_ANDROID
-    this->bridge.dispatch([=]() {
+  #if SOCKET_RUNTIME_PLATFORM_ANDROID || SOCKET_RUNTIME_PLATFORM_LINUX
+    this->bridge.dispatch([=, this]() {
   #endif
       if (request != nullptr && request->isActive() && !request->isCancelled()) {
         handler(request, this->bridge, &request->callbacks, [this, id, span, request, callback](auto& response) mutable {
@@ -487,7 +487,7 @@ namespace ssc::runtime::webview {
           }
         });
       }
-  #if SOCKET_RUNTIME_PLATFORM_ANDROID
+  #if SOCKET_RUNTIME_PLATFORM_ANDROID || SOCKET_RUNTIME_PLATFORM_LINUX
     });
   #endif
 
@@ -732,7 +732,7 @@ namespace ssc::runtime::webview {
   SharedPointer<SchemeHandlers::Request> SchemeHandlers::Request::Builder::build () {
     this->request->error = this->error;
     this->request->finalize();
-    return this->request;
+    return std::move(this->request);
   }
 
   SchemeHandlers::Request::Request (
@@ -751,125 +751,19 @@ namespace ssc::runtime::webview {
       tracer("webview::SchemeHandlers::Request")
   {
     this->platformRequest = platformRequest;
+    if (this->platformRequest) {
+    #if SOCKET_RUNTIME_PLATFORM_LINUX
+      g_object_ref(this->platformRequest);
+    #endif
+    }
   }
 
   SchemeHandlers::Request::~Request () {
-    this->platformRequest = nullptr;
-  }
-
-  static void copyRequest (
-    SchemeHandlers::Request* destination,
-    const SchemeHandlers::Request& source
-  ) noexcept {
-    destination->id = source.id;
-    destination->scheme = source.scheme;
-    destination->method = source.method;
-    destination->hostname = source.hostname;
-    destination->pathname = source.pathname;
-    destination->query = source.query;
-    destination->fragment = source.fragment;
-
-    destination->headers = source.headers;
-    destination->body = source.body;
-
-    destination->client = source.client;
-    destination->callbacks = source.callbacks;
-    destination->originalURL = source.originalURL;
-
-    destination->origin = source.origin;
-    destination->params = source.params;
-
-    destination->finalized = source.finalized.load();
-    destination->cancelled  = source.cancelled.load();
-
-    destination->tracer = source.tracer;
-    destination->handlers = source.handlers;
-    destination->platformRequest = source.platformRequest;
-    destination->error = source.error;
-
-  #if SOCKET_RUNTIME_PLATFORM_WINDOWS
-    destination->env = source.env;
-  #endif
-  }
-
-  SchemeHandlers::Request::Request (const Request& request) noexcept
-    : tracer("webview::SchemeHandlers::Request")
-  {
-    copyRequest(this, request);
-  }
-
-  SchemeHandlers::Request::Request (Request&& request) noexcept
-    : tracer("SchemeHandlers::Request")
-  {
-    copyRequest(this, request);
-    request.id = 0;
-    request.scheme = "";
-    request.method = "";
-    request.hostname = "";
-    request.pathname = "";
-    request.query = "";
-    request.fragment = "";
-    request.headers = Headers {};
-    request.body = bytes::Buffer {};
-
-    request.client = Client {};
-    request.callbacks.cancel = nullptr;
-    request.callbacks.fail = nullptr;
-    request.callbacks.finish = nullptr;
-    request.originalURL = "";
-    request.error = nullptr;
-    request.finalized = true;
-    if (request.finalized) {
-      request.origin = "";
-      request.params = Map<String, String> {};
+    if (this->platformRequest) {
+    #if SOCKET_RUNTIME_PLATFORM_LINUX
+      g_object_unref(this->platformRequest);
+    #endif
     }
-
-    request.tracer.clear();
-    request.handlers = nullptr;
-    request.platformRequest = nullptr;
-
-  #if SOCKET_RUNTIME_PLATFORM_WINDOWS
-    request.env = nullptr;
-  #endif
-  }
-
-  SchemeHandlers::Request& SchemeHandlers::Request::operator= (const Request& request) noexcept {
-    copyRequest(this, request);
-    return *this;
-  }
-
-  SchemeHandlers::Request& SchemeHandlers::Request::operator= (Request&& request) noexcept {
-    copyRequest(this, request);
-    request.id = 0;
-    request.scheme = "";
-    request.method = "";
-    request.hostname = "";
-    request.pathname = "";
-    request.query = "";
-    request.fragment = "";
-    request.headers = Headers {};
-    request.body = bytes::Buffer {};
-
-    request.client = Client {};
-    request.callbacks.cancel = nullptr;
-    request.callbacks.fail = nullptr;
-    request.callbacks.finish = nullptr;
-    request.originalURL = "";
-    request.error = nullptr;
-    request.finalized = true;
-    if (request.finalized) {
-      request.origin = "";
-      request.params = Map<String, String> {};
-    }
-
-    request.tracer.clear();
-    request.handlers = nullptr;
-    request.platformRequest = nullptr;
-
-  #if SOCKET_RUNTIME_PLATFORM_WINDOWS
-    request.env = nullptr;
-  #endif
-    return *this;
   }
 
   bool SchemeHandlers::Request::hasHeader (const String& name) const {
@@ -1012,80 +906,6 @@ namespace ssc::runtime::webview {
       const auto parts = split(trim(entry), ':');
       this->setHeader(parts[0], parts[1]);
     }
-  }
-
-  static void copyResponse (
-    SchemeHandlers::Response* destination,
-    const SchemeHandlers::Response& source
-  ) noexcept {
-    ScopedLock lock(destination->mutex, source.mutex);
-    destination->id = source.id;
-    destination->client = source.client;
-    destination->headers = source.headers;
-    destination->finished = source.finished.load();
-    destination->handlers = source.handlers;
-    destination->statusCode = source.statusCode;
-    destination->tracer = source.tracer;
-    destination->buffers = source.buffers;
-    destination->platformResponse = source.platformResponse;
-    destination->request = source.request;
-  #if SOCKET_RUNTIME_PLATFORM_LINUX || SOCKET_RUNTIME_PLATFORM_WINDOWS
-    destination->platformResponseStream = source.platformResponseStream;
-  #endif
-  }
-
-  SchemeHandlers::Response::Response (const Response& response) noexcept
-    : request(response.request),
-      tracer("SchemeHandlers::Response")
-  {
-    copyResponse(this, response);
-  }
-
-  SchemeHandlers::Response::Response (Response&& response) noexcept
-    : request(response.request),
-      tracer("SchemeHandlers::Response")
-  {
-    copyResponse(this, response);
-    Lock lock(response.mutex);
-    response.id = 0;
-    response.client = Client {};
-    response.headers = Headers {};
-    response.finished = true;
-    response.handlers = nullptr;
-    response.statusCode = 0;
-    response.tracer.clear();
-    response.buffers.clear();
-    response.platformResponse = nullptr;
-    response.request = nullptr;
-  #if SOCKET_RUNTIME_PLATFORM_LINUX || SOCKET_RUNTIME_PLATFORM_WINDOWS
-    response.platformResponseStream = nullptr;
-  #endif
-  }
-
-  SchemeHandlers::Response::~Response () {}
-
-  SchemeHandlers::Response& SchemeHandlers::Response::operator= (const Response& response) noexcept {
-    copyResponse(this, response);
-    return *this;
-  }
-
-  SchemeHandlers::Response& SchemeHandlers::Response::operator= (Response&& response) noexcept {
-    copyResponse(this, response);
-    Lock lock(response.mutex);
-    response.id = 0;
-    response.client = Client {};
-    response.headers = Headers {};
-    response.finished = true;
-    response.handlers = nullptr;
-    response.statusCode = 0;
-    response.tracer.clear();
-    response.buffers.clear();
-    response.platformResponse = nullptr;
-    response.request = nullptr;
-  #if SOCKET_RUNTIME_PLATFORM_LINUX || SOCKET_RUNTIME_PLATFORM_WINDOWS
-    response.platformResponseStream = nullptr;
-  #endif
-    return *this;
   }
 
   bool SchemeHandlers::Response::writeHead (int statusCode, const Headers headers) {
@@ -1466,6 +1286,8 @@ namespace ssc::runtime::webview {
         this->request->platformRequest,
         this->platformResponse
       );
+
+      this->request->platformRequest = nullptr;
 
       g_object_unref(this->platformResponseStream);
       g_input_stream_close_async(

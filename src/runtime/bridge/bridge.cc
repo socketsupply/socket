@@ -323,19 +323,23 @@ export * from '{{url}}'
           return;
         }
 
-        auto response = SchemeHandlers::Response(request);
+        auto response = new SchemeHandlers::Response(request);
 
-        response.setHeaders(result.headers);
+        response->setHeaders(result.headers);
 
         // handle event source streams
         if (result.queuedResponse.eventStreamCallback != nullptr) {
-          response.setHeader("content-type", "text/event-stream");
-          response.setHeader("cache-control", "no-store");
+          response->setHeader("content-type", "text/event-stream");
+          response->setHeader("cache-control", "no-store");
           *result.queuedResponse.eventStreamCallback = [request, response, message, callback](
             const char* name,
             const unsigned char* data,
             bool finished
           ) mutable {
+            if (response == nullptr) {
+              return false;
+            }
+
             if (request->isCancelled()) {
               if (message.cancel->handler != nullptr) {
                 message.cancel->handler(message.cancel->data);
@@ -343,16 +347,18 @@ export * from '{{url}}'
               return false;
             }
 
-            response.writeHead(200);
+            response->writeHead(200);
 
             const auto event = SchemeHandlers::Response::Event { name, reinterpret_cast<const char*>(data) };
 
             if (event.count() > 0) {
-              response.write(event.str());
+              response->write(event.str());
             }
 
             if (finished) {
-              callback(response);
+              callback(*response);
+              delete response;
+              response = nullptr;
             }
 
             return true;
@@ -362,12 +368,16 @@ export * from '{{url}}'
 
         // handle chunk streams
         if (result.queuedResponse.chunkStreamCallback != nullptr) {
-          response.setHeader("transfer-encoding", "chunked");
+          response->setHeader("transfer-encoding", "chunked");
           *result.queuedResponse.chunkStreamCallback = [request, response, message, callback](
             const unsigned char* chunk,
             size_t size,
             bool finished
           ) mutable {
+            if (response == nullptr) {
+              return false;
+            }
+
             if (request->isCancelled()) {
               if (message.cancel->handler != nullptr) {
                 message.cancel->handler(message.cancel->data);
@@ -375,11 +385,13 @@ export * from '{{url}}'
               return false;
             }
 
-            response.writeHead(200);
-            response.write(size, chunk);
+            response->writeHead(200);
+            response->write(size, chunk);
 
             if (finished) {
-              callback(response);
+              callback(*response);
+              delete response;
+              response = nullptr;
             }
 
             return true;
@@ -388,12 +400,14 @@ export * from '{{url}}'
         }
 
         if (result.queuedResponse.body != nullptr) {
-          response.write(result.queuedResponse.length, result.queuedResponse.body);
+          response->write(result.queuedResponse.length, result.queuedResponse.body);
         } else {
-          response.write(result.json());
+          response->write(result.json());
         }
 
-        callback(response);
+        callback(*response);
+        delete response;
+        response = nullptr;
       });
 
       if (!invoked) {
@@ -486,6 +500,8 @@ export * from '{{url}}'
             if (!request ||  !request->isActive()) {
               return;
             }
+
+            auto response = SchemeHandlers::Response(request, 404);
 
             if (res.statusCode == 0) {
               response.fail("ServiceWorker request failed");
@@ -721,10 +737,12 @@ export * from '{{url}}'
           }
 
           const auto options = serviceworker::Fetch::Options { request->client };
-          const auto fetched = serviceWorker->fetch(fetch, options, [request, callback, response] (auto res) mutable {
+          const auto fetched = serviceWorker->fetch(fetch, options, [request, callback] (auto res) mutable {
             if (!request->isActive()) {
               return;
             }
+
+            auto response = SchemeHandlers::Response(request, 404);
 
             if (res.statusCode == 0) {
               response.fail("ServiceWorker request failed");

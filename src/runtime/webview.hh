@@ -235,12 +235,14 @@ namespace ssc::runtime::webview {
           PlatformRequest platformRequest,
           const Options& options
         );
-
-        Request (const Request&) noexcept;
-        Request (Request&&) noexcept;
         ~Request ();
-        Request& operator= (const Request&) noexcept;
-        Request& operator= (Request&&) noexcept;
+
+        // a request cannot be moved/copied as it is owned by a shared
+        // pointer made available to the scheme handler and its response
+        Request (const Request&) = delete;
+        Request (Request&&) = delete;
+        Request& operator= (const Request&) = delete;
+        Request& operator= (Request&&) = delete;
 
         const String getHeader (const String& name) const;
         bool hasHeader (const String& name) const;
@@ -266,11 +268,8 @@ namespace ssc::runtime::webview {
         http::Headers headers;
         Client client;
         mutable Mutex mutex;
-
         Atomic<bool> finished = false;
-
         Vector<SharedPointer<unsigned char[]>> buffers;
-
         debug::Tracer tracer;
 
         SchemeHandlers* handlers = nullptr;
@@ -287,12 +286,14 @@ namespace ssc::runtime::webview {
           int statusCode = 200,
           const http::Headers headers = {}
         );
+        ~Response () = default;
 
-        Response (const Response&) noexcept;
-        Response (Response&&) noexcept;
-        ~Response ();
-        Response& operator= (const Response&) noexcept;
-        Response& operator= (Response&&) noexcept;
+        // responses can only be created on the stack or with `new`
+        // and cannot be moved/copied as they should bw owned
+        Response (const Response&) = delete;
+        Response (Response&&) = delete;
+        Response& operator= (const Response&) = delete;
+        Response& operator= (Response&&) = delete;
 
         bool write (const bytes::Buffer&);
         bool write (size_t size, SharedPointer<unsigned char[]>);
