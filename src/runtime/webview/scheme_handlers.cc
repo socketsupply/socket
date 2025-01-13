@@ -936,6 +936,9 @@ namespace ssc::runtime::webview {
 
   bool SchemeHandlers::Request::isActive () const {
     auto app = app::App::sharedApplication();
+    if (this->handlers == nullptr) {
+      return false;
+    }
     auto window = app->runtime.windowManager.getWindowForBridge(&this->handlers->bridge);
 
     // only a scheme handler owned by this bridge and attached to a

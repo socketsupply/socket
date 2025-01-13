@@ -482,8 +482,8 @@ export * from '{{url}}'
 
           const auto app = App::sharedApplication();
           const auto options = serviceworker::Fetch::Options { request->client };
-          const auto fetched = serviceWorker->fetch(fetch, options, [=, this, &request] (auto res) mutable {
-            if (!request->isActive()) {
+          const auto fetched = serviceWorker->fetch(fetch, options, [=, this] (auto res) mutable {
+            if (!request ||  !request->isActive()) {
               return;
             }
 
@@ -592,7 +592,7 @@ export * from '{{url}}'
           });
 
           if (fetched) {
-             this->getRuntime()->services.timers.setTimeout(32000, [&request] () mutable {
+             this->getRuntime()->services.timers.setTimeout(32000, [request] () mutable {
                if (request->isActive()) {
                  auto response = SchemeHandlers::Response(request, 408);
                  response.fail("ServiceWorker request timed out.");
