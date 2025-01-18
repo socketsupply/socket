@@ -120,7 +120,7 @@ namespace ssc::runtime::url {
     };
 
     struct Builder {
-      String protocol = "";
+      String scheme = "";
       String username = "";
       String password = "";
       String hostname = "";
@@ -131,7 +131,7 @@ namespace ssc::runtime::url {
 
       bool decodeURIComponents = false;
 
-      Builder& setProtocol (const String&);
+      Builder& setScheme (const String&);
       Builder& setUsername (const String&);
       Builder& setPassword (const String&);
       Builder& setHostname (const String&);
@@ -151,8 +151,8 @@ namespace ssc::runtime::url {
     };
 
     // core properties
+    String scheme = "";
     String origin = "";
-    String protocol = "";
     String username = "";
     String password = "";
     String hostname = "";
@@ -162,7 +162,6 @@ namespace ssc::runtime::url {
     String hash = ""; // include '#' and 'fragment' if 'fragment' is not empty
 
     // extra properties
-    String scheme = "";
     String fragment = "";
     String query = "";
 

@@ -86,7 +86,6 @@ namespace ssc::runtime::url {
 
   URL::URL (const URL& url) {
     this->origin = url.origin;
-    this->protocol = url.protocol;
     this->username = url.username;
     this->password = url.password;
     this->hostname = url.hostname;
@@ -105,7 +104,6 @@ namespace ssc::runtime::url {
 
   URL::URL (URL&& url) {
     this->origin = url.origin;
-    this->protocol = url.protocol;
     this->username = url.username;
     this->password = url.password;
     this->hostname = url.hostname;
@@ -122,7 +120,6 @@ namespace ssc::runtime::url {
     this->pathComponents = std::move(url.pathComponents);
 
     url.origin = "";
-    url.protocol = "";
     url.username = "";
     url.password = "";
     url.hostname = "";
@@ -240,7 +237,6 @@ namespace ssc::runtime::url {
 
   URL& URL::operator = (const URL& url) {
     this->origin = url.origin;
-    this->protocol = url.protocol;
     this->username = url.username;
     this->password = url.password;
     this->hostname = url.hostname;
@@ -260,7 +256,6 @@ namespace ssc::runtime::url {
 
   URL& URL::operator = (URL&& url) {
     this->origin = url.origin;
-    this->protocol = url.protocol;
     this->username = url.username;
     this->password = url.password;
     this->hostname = url.hostname;
@@ -277,7 +272,6 @@ namespace ssc::runtime::url {
     this->pathComponents = std::move(url.pathComponents);
 
     url.origin = "";
-    url.protocol = "";
     url.username = "";
     url.password = "";
     url.hostname = "";
@@ -303,10 +297,6 @@ namespace ssc::runtime::url {
     this->fragment = components.fragment;
     this->search = this->query.size() > 0 ? "?" + this->query : "";
     this->hash = this->fragment.size() > 0 ? "#" + this->fragment : "";
-
-    if (components.scheme.size() > 0) {
-      this->protocol = components.scheme + ":";
-    }
 
     const auto authorityParts = components.authority.size() > 0
       ? split(components.authority, '@')
@@ -341,11 +331,11 @@ namespace ssc::runtime::url {
       }
     }
 
-    if (this->protocol.size() > 0) {
+    if (this->scheme.size() > 0) {
       if (this->hostname.size() > 0) {
-        this->origin = this->protocol + "//" + this->hostname;
+        this->origin = this->scheme + "://" + this->hostname;
       } else {
-        this->origin = this->protocol + this->pathname;
+        this->origin = this->scheme + ":" + this->pathname;
       }
     }
 
@@ -385,6 +375,14 @@ namespace ssc::runtime::url {
           stream << "@";
         }
         stream << this->hostname;
+
+        if (!this->port.empty()) {
+          stream << ":" << this->port;
+        }
+
+        if (!this->pathname.starts_with("/")) {
+           stream << "/";
+        }
         stream << this->pathname;
       } else if (!this->pathname.empty()) {
         if (this->pathname.starts_with("/")) {
@@ -410,7 +408,6 @@ namespace ssc::runtime::url {
     return JSON::Object::Entries {
       {"href", this->href()},
       {"origin", this->origin},
-      {"protocol", this->protocol},
       {"username", this->username},
       {"password", this->password},
       {"hostname", this->hostname},

@@ -860,7 +860,7 @@ class RuntimeQueuedResponses extends ConcurrentQueue {
       params = {}
     }
 
-    const result = await ipc.request('post', { id }, {
+    const result = await ipc.request('queuedResponse', { id }, {
       responseType: 'arraybuffer'
     })
 

@@ -1,417 +1,14 @@
 
-declare module "socket:async/context" {
-    /**
-     * @module async.context
-     *
-     * Async Context for JavaScript based on the TC39 proposal.
-     *
-     * Example usage:
-     * ```js
-     * // `AsyncContext` is also globally available as `globalThis.AsyncContext`
-     * import AsyncContext from 'socket:async/context'
-     *
-     * const var = new AsyncContext.Variable()
-     * var.run('top', () => {
-     *   console.log(var.get()) // 'top'
-     *   queueMicrotask(() => {
-     *     var.run('nested', () => {
-     *       console.log(var.get()) // 'nested'
-     *     })
-     *   })
-     * })
-     * ```
-     *
-     * @see {@link https://tc39.es/proposal-async-context}
-     * @see {@link https://github.com/tc39/proposal-async-context}
-     */
-    /**
-     * @template T
-     * @typedef {{
-     *   name?: string,
-     *   defaultValue?: T
-     * }} VariableOptions
-     */
-    /**
-     * @callback AnyFunc
-     * @template T
-     * @this T
-     * @param {...any} args
-     * @returns {any}
-     */
-    /**
-     * `FrozenRevert` holds a frozen Mapping that will be simply restored
-     * when the revert is run.
-     * @see {@link https://github.com/tc39/proposal-async-context/blob/master/src/fork.ts}
-     */
-    export class FrozenRevert {
-        /**
-         * `FrozenRevert` class constructor.
-         * @param {Mapping} mapping
-         */
-        constructor(mapping: Mapping);
-        /**
-         * Restores (unchaged) mapping from this `FrozenRevert`. This function is
-         * called by `AsyncContext.Storage` when it reverts a current mapping to the
-         * previous state before a "fork".
-         * @param {Mapping=} [unused]
-         * @return {Mapping}
-         */
-        restore(unused?: Mapping | undefined): Mapping;
-        #private;
-    }
-    /**
-     * Revert holds the state on how to revert a change to the
-     * `AsyncContext.Storage` current `Mapping`
-     * @see {@link https://github.com/tc39/proposal-async-context/blob/master/src/fork.ts}
-     * @template T
-     */
-    export class Revert<T> {
-        /**
-         * `Revert` class constructor.
-         * @param {Mapping} mapping
-         * @param {Variable<T>} key
-         */
-        constructor(mapping: Mapping, key: Variable<T>);
-        /**
-         * @type {T|undefined}
-         */
-        get previousVariable(): T;
-        /**
-         * Restores a mapping from this `Revert`. This function is called by
-         * `AsyncContext.Storage` when it reverts a current mapping to the
-         * previous state before a "fork".
-         * @param {Mapping} current
-         * @return {Mapping}
-         */
-        restore(current: Mapping): Mapping;
-        #private;
-    }
-    /**
-     * A container for all `AsyncContext.Variable` instances and snapshot state.
-     * @see {@link https://github.com/tc39/proposal-async-context/blob/master/src/mapping.ts}
-     */
-    export class Mapping {
-        /**
-         * `Mapping` class constructor.
-         * @param {Map<Variable<any>, any>} data
-         */
-        constructor(data: Map<Variable<any>, any>);
-        /**
-         * Freezes the `Mapping` preventing `AsyncContext.Variable` modifications with
-         * `set()` and `delete()`.
-         */
-        freeze(): void;
-        /**
-         * Returns `true` if the `Mapping` is frozen, otherwise `false`.
-         * @return {boolean}
-         */
-        isFrozen(): boolean;
-        /**
-         * Optionally returns a new `Mapping` if the current one is "frozen",
-         * otherwise it just returns the current instance.
-         * @return {Mapping}
-         */
-        fork(): Mapping;
-        /**
-         * Returns `true` if the `Mapping` has a `AsyncContext.Variable` at `key`,
-         * otherwise `false.
-         * @template T
-         * @param {Variable<T>} key
-         * @return {boolean}
-         */
-        has<T>(key: Variable<T>): boolean;
-        /**
-         * Gets an `AsyncContext.Variable` value at `key`. If not set, this function
-         * returns `undefined`.
-         * @template T
-         * @param {Variable<T>} key
-         * @return {boolean}
-         */
-        get<T_1>(key: Variable<T_1>): boolean;
-        /**
-         * Sets an `AsyncContext.Variable` value at `key`. If the `Mapping` is frozen,
-         * then a "forked" (new) instance with the value set on it is returned,
-         * otherwise the current instance.
-         * @template T
-         * @param {Variable<T>} key
-         * @param {T} value
-         * @return {Mapping}
-         */
-        set<T_2>(key: Variable<T_2>, value: T_2): Mapping;
-        /**
-         * Delete  an `AsyncContext.Variable` value at `key`.
-         * If the `Mapping` is frozen, then a "forked" (new) instance is returned,
-         * otherwise the current instance.
-         * @template T
-         * @param {Variable<T>} key
-         * @param {T} value
-         * @return {Mapping}
-         */
-        delete<T_3>(key: Variable<T_3>): Mapping;
-        #private;
-    }
-    /**
-     * A container of all `AsyncContext.Variable` data.
-     * @ignore
-     * @see {@link https://github.com/tc39/proposal-async-context/blob/master/src/storage.ts}
-     */
-    export class Storage {
-        /**
-         * The current `Mapping` for this `AsyncContext`.
-         * @type {Mapping}
-         */
-        static "__#4@#current": Mapping;
-        /**
-         * Returns `true` if the current `Mapping` has a
-         * `AsyncContext.Variable` at `key`,
-         * otherwise `false.
-         * @template T
-         * @param {Variable<T>} key
-         * @return {boolean}
-         */
-        static has<T>(key: Variable<T>): boolean;
-        /**
-         * Gets an `AsyncContext.Variable` value at `key` for the current `Mapping`.
-         * If not set, this function returns `undefined`.
-         * @template T
-         * @param {Variable<T>} key
-         * @return {T|undefined}
-         */
-        static get<T_1>(key: Variable<T_1>): T_1;
-        /**
-         * Set updates the `AsyncContext.Variable` with a new value and returns a
-         * revert action that allows the modification to be reversed in the future.
-         * @template T
-         * @param {Variable<T>} key
-         * @param {T} value
-         * @return {Revert<T>|FrozenRevert}
-         */
-        static set<T_2>(key: Variable<T_2>, value: T_2): FrozenRevert | Revert<T_2>;
-        /**
-         * "Freezes" the current storage `Mapping`, and returns a new `FrozenRevert`
-         * or `Revert` which can restore the storage state to the state at
-         * the time of the snapshot.
-         * @return {FrozenRevert}
-         */
-        static snapshot(): FrozenRevert;
-        /**
-         * Restores the storage `Mapping` state to state at the time the
-         * "revert" (`FrozenRevert` or `Revert`) was created.
-         * @template T
-         * @param {Revert<T>|FrozenRevert} revert
-         */
-        static restore<T_3>(revert: FrozenRevert | Revert<T_3>): void;
-        /**
-         * Switches storage `Mapping` state to the state at the time of a
-         * "snapshot".
-         * @param {FrozenRevert} snapshot
-         * @return {FrozenRevert}
-         */
-        static switch(snapshot: FrozenRevert): FrozenRevert;
-    }
-    /**
-     * `AsyncContext.Variable` is a container for a value that is associated with
-     * the current execution flow. The value is propagated through async execution
-     * flows, and can be snapshot and restored with Snapshot.
-     * @template T
-     * @see {@link https://github.com/tc39/proposal-async-context/blob/master/README.md#asynccontextvariable}
-     */
-    export class Variable<T> {
-        /**
-         * `Variable` class constructor.
-         * @param {VariableOptions<T>=} [options]
-         */
-        constructor(options?: VariableOptions<T> | undefined);
-        set defaultValue(defaultValue: T);
-        /**
-         * @ignore
-         */
-        get defaultValue(): T;
-        /**
-         * @ignore
-         */
-        get revert(): FrozenRevert | Revert<T>;
-        /**
-         * The name of this async context variable.
-         * @type {string}
-         */
-        get name(): string;
-        /**
-         * Executes a function `fn` with specified arguments,
-         * setting a new value to the current context before the call,
-         * and ensuring the environment is reverted back afterwards.
-         * The function allows for the modification of a specific context's
-         * state in a controlled manner, ensuring that any changes can be undone.
-         * @template T, F extends AnyFunc<null>
-         * @param {T} value
-         * @param {F} fn
-         * @param {...Parameters<F>} args
-         * @returns {ReturnType<F>}
-         */
-        run<T_1, F>(value: T_1, fn: F, ...args: Parameters<F>[]): ReturnType<F>;
-        /**
-         * Get the `AsyncContext.Variable` value.
-         * @template T
-         * @return {T|undefined}
-         */
-        get<T_2>(): T_2;
-        #private;
-    }
-    /**
-     * `AsyncContext.Snapshot` allows you to opaquely capture the current values of
-     * all `AsyncContext.Variable` instances and execute a function at a later time
-     * as if those values were still the current values (a snapshot and restore).
-     * @see {@link https://github.com/tc39/proposal-async-context/blob/master/README.md#asynccontextsnapshot}
-     */
-    export class Snapshot {
-        /**
-         * Wraps a given function `fn` with additional logic to take a snapshot of
-         * `Storage` before invoking `fn`. Returns a new function with the same
-         * signature as `fn` that when called, will invoke `fn` with the current
-         * `this` context and provided arguments, after restoring the `Storage`
-         * snapshot.
-         *
-         * `AsyncContext.Snapshot.wrap` is a helper which captures the current values
-         * of all Variables and returns a wrapped function. When invoked, this
-         * wrapped function restores the state of all Variables and executes the
-         * inner function.
-         *
-         * @see {@link https://github.com/tc39/proposal-async-context/blob/master/README.md#asynccontextsnapshotwrap}
-         *
-         * @template F
-         * @param {F} fn
-         * @returns {F}
-         */
-        static wrap<F_1>(fn: F_1): F_1;
-        /**
-         * Runs the given function `fn` with arguments `args`, using a `null`
-         * context and the current snapshot.
-         *
-         * @template F extends AnyFunc<null>
-         * @param {F} fn
-         * @param {...Parameters<F>} args
-         * @returns {ReturnType<F>}
-         */
-        run<F>(fn: F, ...args: Parameters<F>[]): ReturnType<F>;
-        #private;
-    }
-    /**
-     * `AsyncContext` container.
-     */
-    export class AsyncContext {
-        /**
-         * `AsyncContext.Variable` is a container for a value that is associated with
-         * the current execution flow. The value is propagated through async execution
-         * flows, and can be snapshot and restored with Snapshot.
-         * @see {@link https://github.com/tc39/proposal-async-context/blob/master/README.md#asynccontextvariable}
-         * @type {typeof Variable}
-         */
-        static Variable: typeof Variable;
-        /**
-         * `AsyncContext.Snapshot` allows you to opaquely capture the current values of
-         * all `AsyncContext.Variable` instances and execute a function at a later time
-         * as if those values were still the current values (a snapshot and restore).
-         * @see {@link https://github.com/tc39/proposal-async-context/blob/master/README.md#asynccontextsnapshot}
-         * @type {typeof Snapshot}
-         */
-        static Snapshot: typeof Snapshot;
-    }
-    export default AsyncContext;
-    export type VariableOptions<T> = {
-        name?: string;
-        defaultValue?: T;
-    };
-    export type AnyFunc = () => any;
-}
-
-declare module "socket:events" {
-    export const Event: {
-        new (type: string, eventInitDict?: EventInit): Event;
-        prototype: Event;
-        readonly NONE: 0;
-        readonly CAPTURING_PHASE: 1;
-        readonly AT_TARGET: 2;
-        readonly BUBBLING_PHASE: 3;
-    } | {
-        new (): {};
-    };
-    export const EventTarget: {
-        new (): {};
-    };
-    export const CustomEvent: {
-        new <T>(type: string, eventInitDict?: CustomEventInit<T>): CustomEvent<T>;
-        prototype: CustomEvent<any>;
-    } | {
-        new (type: any, options: any): {
-            "__#7@#detail": any;
-            readonly detail: any;
-        };
-    };
-    export const MessageEvent: {
-        new <T>(type: string, eventInitDict?: MessageEventInit<T>): MessageEvent<T>;
-        prototype: MessageEvent<any>;
-    } | {
-        new (type: any, options: any): {
-            "__#8@#detail": any;
-            "__#8@#data": any;
-            readonly detail: any;
-            readonly data: any;
-        };
-    };
-    export const ErrorEvent: {
-        new (type: string, eventInitDict?: ErrorEventInit): ErrorEvent;
-        prototype: ErrorEvent;
-    } | {
-        new (type: any, options: any): {
-            "__#9@#detail": any;
-            "__#9@#error": any;
-            readonly detail: any;
-            readonly error: any;
-        };
-    };
-    export default EventEmitter;
-    export function EventEmitter(): void;
-    export class EventEmitter {
-        _events: any;
-        _contexts: any;
-        _eventsCount: number;
-        _maxListeners: number;
-        setMaxListeners(n: any): this;
-        getMaxListeners(): any;
-        emit(type: any, ...args: any[]): boolean;
-        addListener(type: any, listener: any): any;
-        on(arg0: any, arg1: any): any;
-        prependListener(type: any, listener: any): any;
-        once(type: any, listener: any): this;
-        prependOnceListener(type: any, listener: any): this;
-        removeListener(type: any, listener: any): this;
-        off(type: any, listener: any): this;
-        removeAllListeners(type: any, ...args: any[]): this;
-        listeners(type: any): any[];
-        rawListeners(type: any): any[];
-        listenerCount(type: any): any;
-        eventNames(): (string | symbol)[];
-    }
-    export namespace EventEmitter {
-        export { EventEmitter };
-        export let defaultMaxListeners: number;
-        export function init(): void;
-        export function listenerCount(emitter: any, type: any): any;
-        export { once };
-    }
-    export function once(emitter: any, name: any): Promise<any>;
-}
-
 declare module "socket:url/urlpattern/urlpattern" {
     export { me as URLPattern };
     var me: {
         new (t: {}, r: any, n: any): {
-            "__#11@#i": any;
-            "__#11@#n": {};
-            "__#11@#t": {};
-            "__#11@#e": {};
-            "__#11@#s": {};
-            "__#11@#l": boolean;
+            "__#2@#i": any;
+            "__#2@#n": {};
+            "__#2@#t": {};
+            "__#2@#e": {};
+            "__#2@#s": {};
+            "__#2@#l": boolean;
             test(t: {}, r: any): boolean;
             exec(t: {}, r: any): {
                 inputs: any[] | {}[];
@@ -1194,7 +791,7 @@ declare module "socket:ipc" {
         dispatchEvent(event: any): any;
     }
     export class IPCMessageChannel extends MessageChannel {
-        static "__#12@#connect"(port1: any, port2: any): {
+        static "__#3@#connect"(port1: any, port2: any): {
             port1: any;
             port2: any;
         };
@@ -1244,7 +841,7 @@ declare module "socket:ipc" {
          * @param {function(ErrorEvent):any} callback
          * @param {{ once?: boolean }=} [options]
          */
-        addEventListener(type: 'message', callback: (arg0: MessageEvent) => any, options?: {
+        addEventListener(type: "message", callback: (arg0: MessageEvent) => any, options?: {
             once?: boolean;
         } | undefined): any;
         /**
@@ -1258,7 +855,7 @@ declare module "socket:ipc" {
          * @param {function(ErrorEvent):any} callback
          * @param {{ once?: boolean }=} [options]
          */
-        addEventListener(type: 'messageerror', callback: (arg0: ErrorEvent) => any, options?: {
+        addEventListener(type: "messageerror", callback: (arg0: ErrorEvent) => any, options?: {
             once?: boolean;
         } | undefined): any;
         postMessage(message: any, optionsOrTransferList: any): Promise<void>;
@@ -1495,7 +1092,7 @@ declare module "socket:errors" {
          * `ErrnoError` class constructor.
          * @param {import('./errno').errno|string} code
          */
-        constructor(code: import('./errno').errno | string, message?: any, ...args: any[]);
+        constructor(code: import("socket:errno").errno | string, message?: any, ...args: any[]);
         get name(): string;
         get code(): number;
         #private;
@@ -2090,7 +1687,7 @@ declare module "socket:util" {
     export function isTypedArray(object: any): boolean;
     export function isArrayLike(input: any): boolean;
     export function isError(object: any): boolean;
-    export function isSymbol(value: any): boolean;
+    export function isSymbol(value: any): value is symbol;
     export function isNumber(value: any): boolean;
     export function isBoolean(value: any): boolean;
     export function isArrayBufferView(buf: any): boolean;
@@ -2156,6 +1753,409 @@ declare module "socket:util" {
     import * as exports from "socket:util";
     
     export { types, MIMEType, MIMEParams };
+}
+
+declare module "socket:async/context" {
+    /**
+     * @module async.context
+     *
+     * Async Context for JavaScript based on the TC39 proposal.
+     *
+     * Example usage:
+     * ```js
+     * // `AsyncContext` is also globally available as `globalThis.AsyncContext`
+     * import AsyncContext from 'socket:async/context'
+     *
+     * const var = new AsyncContext.Variable()
+     * var.run('top', () => {
+     *   console.log(var.get()) // 'top'
+     *   queueMicrotask(() => {
+     *     var.run('nested', () => {
+     *       console.log(var.get()) // 'nested'
+     *     })
+     *   })
+     * })
+     * ```
+     *
+     * @see {@link https://tc39.es/proposal-async-context}
+     * @see {@link https://github.com/tc39/proposal-async-context}
+     */
+    /**
+     * @template T
+     * @typedef {{
+     *   name?: string,
+     *   defaultValue?: T
+     * }} VariableOptions
+     */
+    /**
+     * @callback AnyFunc
+     * @template T
+     * @this T
+     * @param {...any} args
+     * @returns {any}
+     */
+    /**
+     * `FrozenRevert` holds a frozen Mapping that will be simply restored
+     * when the revert is run.
+     * @see {@link https://github.com/tc39/proposal-async-context/blob/master/src/fork.ts}
+     */
+    export class FrozenRevert {
+        /**
+         * `FrozenRevert` class constructor.
+         * @param {Mapping} mapping
+         */
+        constructor(mapping: Mapping);
+        /**
+         * Restores (unchaged) mapping from this `FrozenRevert`. This function is
+         * called by `AsyncContext.Storage` when it reverts a current mapping to the
+         * previous state before a "fork".
+         * @param {Mapping=} [unused]
+         * @return {Mapping}
+         */
+        restore(unused?: Mapping | undefined): Mapping;
+        #private;
+    }
+    /**
+     * Revert holds the state on how to revert a change to the
+     * `AsyncContext.Storage` current `Mapping`
+     * @see {@link https://github.com/tc39/proposal-async-context/blob/master/src/fork.ts}
+     * @template T
+     */
+    export class Revert<T> {
+        /**
+         * `Revert` class constructor.
+         * @param {Mapping} mapping
+         * @param {Variable<T>} key
+         */
+        constructor(mapping: Mapping, key: Variable<T>);
+        /**
+         * @type {T|undefined}
+         */
+        get previousVariable(): T;
+        /**
+         * Restores a mapping from this `Revert`. This function is called by
+         * `AsyncContext.Storage` when it reverts a current mapping to the
+         * previous state before a "fork".
+         * @param {Mapping} current
+         * @return {Mapping}
+         */
+        restore(current: Mapping): Mapping;
+        #private;
+    }
+    /**
+     * A container for all `AsyncContext.Variable` instances and snapshot state.
+     * @see {@link https://github.com/tc39/proposal-async-context/blob/master/src/mapping.ts}
+     */
+    export class Mapping {
+        /**
+         * `Mapping` class constructor.
+         * @param {Map<Variable<any>, any>} data
+         */
+        constructor(data: Map<Variable<any>, any>);
+        /**
+         * Freezes the `Mapping` preventing `AsyncContext.Variable` modifications with
+         * `set()` and `delete()`.
+         */
+        freeze(): void;
+        /**
+         * Returns `true` if the `Mapping` is frozen, otherwise `false`.
+         * @return {boolean}
+         */
+        isFrozen(): boolean;
+        /**
+         * Optionally returns a new `Mapping` if the current one is "frozen",
+         * otherwise it just returns the current instance.
+         * @return {Mapping}
+         */
+        fork(): Mapping;
+        /**
+         * Returns `true` if the `Mapping` has a `AsyncContext.Variable` at `key`,
+         * otherwise `false.
+         * @template T
+         * @param {Variable<T>} key
+         * @return {boolean}
+         */
+        has<T>(key: Variable<T>): boolean;
+        /**
+         * Gets an `AsyncContext.Variable` value at `key`. If not set, this function
+         * returns `undefined`.
+         * @template T
+         * @param {Variable<T>} key
+         * @return {boolean}
+         */
+        get<T>(key: Variable<T>): boolean;
+        /**
+         * Sets an `AsyncContext.Variable` value at `key`. If the `Mapping` is frozen,
+         * then a "forked" (new) instance with the value set on it is returned,
+         * otherwise the current instance.
+         * @template T
+         * @param {Variable<T>} key
+         * @param {T} value
+         * @return {Mapping}
+         */
+        set<T>(key: Variable<T>, value: T): Mapping;
+        /**
+         * Delete  an `AsyncContext.Variable` value at `key`.
+         * If the `Mapping` is frozen, then a "forked" (new) instance is returned,
+         * otherwise the current instance.
+         * @template T
+         * @param {Variable<T>} key
+         * @param {T} value
+         * @return {Mapping}
+         */
+        delete<T>(key: Variable<T>): Mapping;
+        #private;
+    }
+    /**
+     * A container of all `AsyncContext.Variable` data.
+     * @ignore
+     * @see {@link https://github.com/tc39/proposal-async-context/blob/master/src/storage.ts}
+     */
+    export class Storage {
+        /**
+         * The current `Mapping` for this `AsyncContext`.
+         * @type {Mapping}
+         */
+        static "__#10@#current": Mapping;
+        /**
+         * Returns `true` if the current `Mapping` has a
+         * `AsyncContext.Variable` at `key`,
+         * otherwise `false.
+         * @template T
+         * @param {Variable<T>} key
+         * @return {boolean}
+         */
+        static has<T>(key: Variable<T>): boolean;
+        /**
+         * Gets an `AsyncContext.Variable` value at `key` for the current `Mapping`.
+         * If not set, this function returns `undefined`.
+         * @template T
+         * @param {Variable<T>} key
+         * @return {T|undefined}
+         */
+        static get<T>(key: Variable<T>): T | undefined;
+        /**
+         * Set updates the `AsyncContext.Variable` with a new value and returns a
+         * revert action that allows the modification to be reversed in the future.
+         * @template T
+         * @param {Variable<T>} key
+         * @param {T} value
+         * @return {Revert<T>|FrozenRevert}
+         */
+        static set<T>(key: Variable<T>, value: T): Revert<T> | FrozenRevert;
+        /**
+         * "Freezes" the current storage `Mapping`, and returns a new `FrozenRevert`
+         * or `Revert` which can restore the storage state to the state at
+         * the time of the snapshot.
+         * @return {FrozenRevert}
+         */
+        static snapshot(): FrozenRevert;
+        /**
+         * Restores the storage `Mapping` state to state at the time the
+         * "revert" (`FrozenRevert` or `Revert`) was created.
+         * @template T
+         * @param {Revert<T>|FrozenRevert} revert
+         */
+        static restore<T>(revert: Revert<T> | FrozenRevert): void;
+        /**
+         * Switches storage `Mapping` state to the state at the time of a
+         * "snapshot".
+         * @param {FrozenRevert} snapshot
+         * @return {FrozenRevert}
+         */
+        static switch(snapshot: FrozenRevert): FrozenRevert;
+    }
+    /**
+     * `AsyncContext.Variable` is a container for a value that is associated with
+     * the current execution flow. The value is propagated through async execution
+     * flows, and can be snapshot and restored with Snapshot.
+     * @template T
+     * @see {@link https://github.com/tc39/proposal-async-context/blob/master/README.md#asynccontextvariable}
+     */
+    export class Variable<T> {
+        /**
+         * `Variable` class constructor.
+         * @param {VariableOptions<T>=} [options]
+         */
+        constructor(options?: VariableOptions<T> | undefined);
+        set defaultValue(defaultValue: T);
+        /**
+         * @ignore
+         */
+        get defaultValue(): T;
+        /**
+         * @ignore
+         */
+        get revert(): FrozenRevert | Revert<T>;
+        /**
+         * The name of this async context variable.
+         * @type {string}
+         */
+        get name(): string;
+        /**
+         * Executes a function `fn` with specified arguments,
+         * setting a new value to the current context before the call,
+         * and ensuring the environment is reverted back afterwards.
+         * The function allows for the modification of a specific context's
+         * state in a controlled manner, ensuring that any changes can be undone.
+         * @template T, F extends AnyFunc<null>
+         * @param {T} value
+         * @param {F} fn
+         * @param {...Parameters<F>} args
+         * @returns {ReturnType<F>}
+         */
+        run<T_1, F>(value: T_1, fn: F, ...args: Parameters<F>[]): ReturnType<F>;
+        /**
+         * Get the `AsyncContext.Variable` value.
+         * @template T
+         * @return {T|undefined}
+         */
+        get<T_1>(): T_1 | undefined;
+        #private;
+    }
+    /**
+     * `AsyncContext.Snapshot` allows you to opaquely capture the current values of
+     * all `AsyncContext.Variable` instances and execute a function at a later time
+     * as if those values were still the current values (a snapshot and restore).
+     * @see {@link https://github.com/tc39/proposal-async-context/blob/master/README.md#asynccontextsnapshot}
+     */
+    export class Snapshot {
+        /**
+         * Wraps a given function `fn` with additional logic to take a snapshot of
+         * `Storage` before invoking `fn`. Returns a new function with the same
+         * signature as `fn` that when called, will invoke `fn` with the current
+         * `this` context and provided arguments, after restoring the `Storage`
+         * snapshot.
+         *
+         * `AsyncContext.Snapshot.wrap` is a helper which captures the current values
+         * of all Variables and returns a wrapped function. When invoked, this
+         * wrapped function restores the state of all Variables and executes the
+         * inner function.
+         *
+         * @see {@link https://github.com/tc39/proposal-async-context/blob/master/README.md#asynccontextsnapshotwrap}
+         *
+         * @template F
+         * @param {F} fn
+         * @returns {F}
+         */
+        static wrap<F>(fn: F): F;
+        /**
+         * Runs the given function `fn` with arguments `args`, using a `null`
+         * context and the current snapshot.
+         *
+         * @template F extends AnyFunc<null>
+         * @param {F} fn
+         * @param {...Parameters<F>} args
+         * @returns {ReturnType<F>}
+         */
+        run<F>(fn: F, ...args: Parameters<F>[]): ReturnType<F>;
+        #private;
+    }
+    /**
+     * `AsyncContext` container.
+     */
+    export class AsyncContext {
+        /**
+         * `AsyncContext.Variable` is a container for a value that is associated with
+         * the current execution flow. The value is propagated through async execution
+         * flows, and can be snapshot and restored with Snapshot.
+         * @see {@link https://github.com/tc39/proposal-async-context/blob/master/README.md#asynccontextvariable}
+         * @type {typeof Variable}
+         */
+        static Variable: typeof Variable;
+        /**
+         * `AsyncContext.Snapshot` allows you to opaquely capture the current values of
+         * all `AsyncContext.Variable` instances and execute a function at a later time
+         * as if those values were still the current values (a snapshot and restore).
+         * @see {@link https://github.com/tc39/proposal-async-context/blob/master/README.md#asynccontextsnapshot}
+         * @type {typeof Snapshot}
+         */
+        static Snapshot: typeof Snapshot;
+    }
+    export default AsyncContext;
+    export type VariableOptions<T> = {
+        name?: string;
+        defaultValue?: T;
+    };
+    export type AnyFunc = () => any;
+}
+
+declare module "socket:events" {
+    export const Event: {
+        new (type: string, eventInitDict?: EventInit): Event;
+        prototype: Event;
+        readonly NONE: 0;
+        readonly CAPTURING_PHASE: 1;
+        readonly AT_TARGET: 2;
+        readonly BUBBLING_PHASE: 3;
+    } | {
+        new (): {};
+    };
+    export const EventTarget: {
+        new (): {};
+    };
+    export const CustomEvent: {
+        new <T>(type: string, eventInitDict?: CustomEventInit<T>): CustomEvent<T>;
+        prototype: CustomEvent;
+    } | {
+        new (type: any, options: any): {
+            "__#13@#detail": any;
+            readonly detail: any;
+        };
+    };
+    export const MessageEvent: {
+        new <T>(type: string, eventInitDict?: MessageEventInit<T>): MessageEvent<T>;
+        prototype: MessageEvent;
+    } | {
+        new (type: any, options: any): {
+            "__#14@#detail": any;
+            "__#14@#data": any;
+            readonly detail: any;
+            readonly data: any;
+        };
+    };
+    export const ErrorEvent: {
+        new (type: string, eventInitDict?: ErrorEventInit): ErrorEvent;
+        prototype: ErrorEvent;
+    } | {
+        new (type: any, options: any): {
+            "__#15@#detail": any;
+            "__#15@#error": any;
+            readonly detail: any;
+            readonly error: any;
+        };
+    };
+    export default EventEmitter;
+    export function EventEmitter(): void;
+    export class EventEmitter {
+        _events: any;
+        _contexts: any;
+        _eventsCount: number;
+        _maxListeners: number;
+        setMaxListeners(n: any): this;
+        getMaxListeners(): any;
+        emit(type: any, ...args: any[]): boolean;
+        addListener(type: any, listener: any): any;
+        on(arg0: any, arg1: any): any;
+        prependListener(type: any, listener: any): any;
+        once(type: any, listener: any): this;
+        prependOnceListener(type: any, listener: any): this;
+        removeListener(type: any, listener: any): this;
+        off(type: any, listener: any): this;
+        removeAllListeners(type: any, ...args: any[]): this;
+        listeners(type: any): any[];
+        rawListeners(type: any): any[];
+        listenerCount(type: any): any;
+        eventNames(): (string | symbol)[];
+    }
+    export namespace EventEmitter {
+        export { EventEmitter };
+        export let defaultMaxListeners: number;
+        export function init(): void;
+        export function listenerCount(emitter: any, type: any): any;
+        export { once };
+    }
+    export function once(emitter: any, name: any): Promise<any>;
 }
 
 declare module "socket:async/wrap" {
@@ -2765,7 +2765,7 @@ declare module "socket:internal/events" {
          * @param {object=} [data]
          * @param {import('../application/menu.js').Menu} menu
          */
-        constructor(type?: string | undefined, data?: object | undefined, menu?: import('../application/menu.js').Menu);
+        constructor(type?: string | undefined, data?: object | undefined, menu?: import("socket:application/menu").Menu);
         /**
          * The `Menu` this event has been dispatched for.
          * @type {import('../application/menu.js').Menu?}
@@ -3006,7 +3006,7 @@ declare module "socket:os" {
      * @ignore
      * @return {'android'|'android-emulator'|'iphoneos'|iphone-simulator'|'linux'|'macosx'|unix'|unknown'|win32'}
      */
-    export function host(): 'android' | 'android-emulator' | 'iphoneos' | iphone;
+    export function host(): "android" | "android-emulator" | "iphoneos" | iphone;
     /**
      * Returns the home directory of the current user.
      * @return {string}
@@ -3036,7 +3036,7 @@ declare module "socket:process/signal" {
      * @param {string|number} name
      * @return {signal}
      */
-    export function getCode(name: string | number): any;
+    export function getCode(name: string | number): signal;
     /**
      * Gets the name for a given 'signal' code
      * @return {string}
@@ -3180,7 +3180,7 @@ declare module "socket:internal/streams/web" {
         constructor(e?: {}, t?: {});
         get locked(): boolean;
         cancel(e?: any): any;
-        getReader(e?: any): ReadableStreamDefaultReader | ReadableStreamBYOBReader;
+        getReader(e?: any): ReadableStreamBYOBReader | ReadableStreamDefaultReader;
         pipeThrough(e: any, t?: {}): any;
         pipeTo(e: any, t?: {}): any;
         tee(): any;
@@ -3561,7 +3561,7 @@ declare module "socket:process" {
     export class ProcessEnvironment extends EventTarget {
         get [Symbol.toStringTag](): string;
     }
-    export const env: any;
+    export const env: ProcessEnvironment;
     export default process;
     const process: any;
 }
@@ -3663,12 +3663,12 @@ declare module "socket:path/path" {
          */
         protected constructor();
         pattern: {
-            "__#11@#i": any;
-            "__#11@#n": {};
-            "__#11@#t": {};
-            "__#11@#e": {};
-            "__#11@#s": {};
-            "__#11@#l": boolean;
+            "__#2@#i": any;
+            "__#2@#n": {};
+            "__#2@#t": {};
+            "__#2@#e": {};
+            "__#2@#s": {};
+            "__#2@#l": boolean;
             test(t: {}, r: any): boolean;
             exec(t: {}, r: any): {
                 inputs: any[] | {}[];
@@ -4683,9 +4683,9 @@ declare module "socket:diagnostics/window" {
         patched: {
             open: {
                 (method: string, url: string | URL): void;
-                (method: string, url: string | URL, async: boolean, username?: string, password?: string): void;
+                (method: string, url: string | URL, async: boolean, username?: string | null, password?: string | null): void;
             };
-            send: (body?: Document | XMLHttpRequestBodyInit) => void;
+            send: (body?: Document | XMLHttpRequestBodyInit | null) => void;
         };
     }
     export class WorkerMetric extends Metric {
@@ -5413,7 +5413,7 @@ declare module "socket:fs/stats" {
          * @param {fromBigInt=} [fromBigInt = false]
          * @return {Stats}
          */
-        static from(stat?: object | Stats, fromBigInt?: any): Stats;
+        static from(stat?: object | Stats, fromBigInt?: any | undefined): Stats;
         /**
          * `Stats` class constructor.
          * @param {object|Stats} stat
@@ -6286,7 +6286,7 @@ declare module "socket:fs/watcher" {
          * The encoding of the `filename`
          * @type {'utf8'|'buffer'}
          */
-        encoding: 'utf8' | 'buffer';
+        encoding: "utf8" | "buffer";
         /**
          * A `AbortController` `AbortSignal` for async aborts.
          * @type {AbortSignal?}
@@ -7000,113 +7000,233 @@ declare module "socket:crypto" {
     
 }
 
-declare module "socket:ai" {
+declare module "socket:ai/llm" {
     /**
-     * A class to interact with large language models (using llama.cpp)
+     * @typedef {{
+     *   name: string,
+     * }} ModelOptions
      */
-    export class LLM extends EventEmitter {
+    /**
+     * @typedef {{
+     *   directory?: string,
+     *   gpuLayerCount?: number
+     * }} ModelLoadOptions
+     */
+    export class Model {
         /**
-         * Constructs an LLM instance. Each parameter is designed to configure and control
-         * the behavior of the underlying large language model provided by llama.cpp.
-         * @param {Object} options - Configuration options for the LLM instance.
-         * @param {string} options.path - The file path to the model in .gguf format. This model file contains
-         *                                the weights and configuration necessary for initializing the language model.
-         * @param {string} options.prompt - The initial input text to the model, setting the context or query
-         *                                  for generating responses. The model uses this as a starting point for text generation.
-         * @param {string} [options.id] - An optional unique identifier for this specific instance of the model,
-         *                                useful for tracking or referencing the model in multi-model setups.
-         * @param {number} [options.n_ctx=1024] - Specifies the maximum number of tokens that the model can consider
-         *                                        for a single query. This is crucial for managing memory and computational
-         *                                        efficiency. Exceeding the model's configuration may lead to errors or truncated outputs.
-         * @param {number} [options.n_threads=8] - The number of threads allocated for the model's computation,
-         *                                         affecting performance and speed of response generation.
-         * @param {number} [options.temp=1.1] - Sampling temperature controls the randomness of predictions.
-         *                                      Higher values increase diversity, potentially at the cost of coherence.
-         * @param {number} [options.max_tokens=512] - The upper limit on the number of tokens that the model can generate
-         *                                            in response to a single prompt. This prevents runaway generations.
-         * @param {number} [options.n_gpu_layers=32] - The number of GPU layers dedicated to the model processing.
-         *                                             More layers can increase accuracy and complexity of the outputs.
-         * @param {number} [options.n_keep=0] - Determines how many of the top generated responses are retained after
-         *                                      the initial generation phase. Useful for models that generate multiple outputs.
-         * @param {number} [options.n_batch=0] - The size of processing batches. Larger batch sizes can reduce
-         *                                       the time per token generation by parallelizing computations.
-         * @param {number} [options.n_predict=0] - Specifies how many forward predictions the model should make
-         *                                         from the current state. This can pre-generate responses or calculate probabilities.
-         * @param {number} [options.grp_attn_n=0] - Group attention parameter 'N' modifies how attention mechanisms
-         *                                          within the model are grouped and interact, affecting the model’s focus and accuracy.
-         * @param {number} [options.grp_attn_w=0] - Group attention parameter 'W' adjusts the width of each attention group,
-         *                                          influencing the breadth of context considered by each attention group.
-         * @param {number} [options.seed=0] - A seed for the random number generator used in the model. Setting this ensures
-         *                                    consistent results in model outputs, important for reproducibility in experiments.
-         * @param {number} [options.top_k=0] - Limits the model's output choices to the top 'k' most probable next words,
-         *                                     reducing the risk of less likely, potentially nonsensical outputs.
-         * @param {number} [options.tok_p=0.0] - Top-p (nucleus) sampling threshold, filtering the token selection pool
-         *                                      to only those whose cumulative probability exceeds this value, enhancing output relevance.
-         * @param {number} [options.min_p=0.0] - Sets a minimum probability filter for token generation, ensuring
-         *                                      that generated tokens have at least this likelihood of being relevant or coherent.
-         * @param {number} [options.tfs_z=0.0] - Temperature factor scale for zero-shot learning scenarios, adjusting how
-         *                                      the model weights novel or unseen prompts during generation.
-         * @throws {Error} Throws an error if the model path is not provided, as the model cannot initialize without it.
+         * @param {ModelOptions} options
          */
-        constructor(options?: {
-            path: string;
-            prompt: string;
-            id?: string;
-            n_ctx?: number;
-            n_threads?: number;
-            temp?: number;
-            max_tokens?: number;
-            n_gpu_layers?: number;
-            n_keep?: number;
-            n_batch?: number;
-            n_predict?: number;
-            grp_attn_n?: number;
-            grp_attn_w?: number;
-            seed?: number;
-            top_k?: number;
-            tok_p?: number;
-            min_p?: number;
-            tfs_z?: number;
-        });
-        path: string;
-        prompt: string;
-        id: string | BigInt;
+        constructor(options: ModelOptions);
         /**
-         * Tell the LLM to stop after the next token.
-         * @returns {Promise<void>} A promise that resolves when the LLM stops.
+         * @type {string}
          */
-        stop(): Promise<void>;
+        get id(): string;
         /**
-         * Send a message to the chat.
-         * @param {string} message - The message to send to the chat.
-         * @returns {Promise<any>} A promise that resolves with the response from the chat.
+         * @type {string}
          */
-        chat(message: string): Promise<any>;
+        get name(): string;
+        /**
+         * @type {Promise}
+         */
+        get ready(): Promise<any>;
+        get loaded(): boolean;
+        /**
+         * @param {ModelLoadOptions=} [options]
+         */
+        load(options?: ModelLoadOptions | undefined): Promise<any>;
+        #private;
     }
-    export default exports;
-    import { EventEmitter } from "socket:events";
-    import * as exports from "socket:ai";
-    
+    /**
+     * @typedef {{
+     *   size?: number,
+     *   minP?: number,
+     *   temp?: number,
+     *   topK?: number,
+     *   id?: string
+     * }} ContextOptions
+     */
+    /**
+     * @typedef {{
+     *   id: string,
+     *   size: number,
+     *   used: number
+     * }} ContextStats
+     */
+    export class Context {
+        /**
+         * @param {ContextOptions=} [options]
+         */
+        constructor(options?: ContextOptions | undefined);
+        /**
+         * @type {string}
+         */
+        get id(): string;
+        /**
+         * @type {number}
+         */
+        get size(): number;
+        /**
+         * @type {boolean}
+         */
+        get loaded(): boolean;
+        /**
+         * @type {Model}
+         */
+        get model(): Model;
+        /**
+         * @type {Promise}
+         */
+        get ready(): Promise<any>;
+        /**
+         * @type {ContextOptions}
+         */
+        get options(): ContextOptions;
+        /**
+         * @param {Model} model
+         * @param {ContextOptions=} [options]
+         * @return {Promise}
+         */
+        load(model: Model, options?: ContextOptions | undefined): Promise<any>;
+        /**
+         * @return {Promise<ContextStats>}
+         */
+        stats(): Promise<ContextStats>;
+        #private;
+    }
+    namespace _default {
+        export { Model };
+        export { Context };
+    }
+    export default _default;
+    export type ModelOptions = {
+        name: string;
+    };
+    export type ModelLoadOptions = {
+        directory?: string;
+        gpuLayerCount?: number;
+    };
+    export type ContextOptions = {
+        size?: number;
+        minP?: number;
+        temp?: number;
+        topK?: number;
+        id?: string;
+    };
+    export type ContextStats = {
+        id: string;
+        size: number;
+        used: number;
+    };
 }
 
-declare module "socket:window/constants" {
-    export const WINDOW_ERROR: -1;
-    export const WINDOW_NONE: 0;
-    export const WINDOW_CREATING: 10;
-    export const WINDOW_CREATED: 11;
-    export const WINDOW_HIDING: 20;
-    export const WINDOW_HIDDEN: 21;
-    export const WINDOW_SHOWING: 30;
-    export const WINDOW_SHOWN: 31;
-    export const WINDOW_CLOSING: 40;
-    export const WINDOW_CLOSED: 41;
-    export const WINDOW_EXITING: 50;
-    export const WINDOW_EXITED: 51;
-    export const WINDOW_KILLING: 60;
-    export const WINDOW_KILLED: 61;
+declare module "socket:timers/platform" {
+    export namespace platform {
+        let setTimeout: any;
+        let setInterval: any;
+        let setImmediate: any;
+        let clearTimeout: any;
+        let clearInterval: any;
+        let clearImmediate: any;
+        let postTask: any;
+    }
+    export default platform;
+}
+
+declare module "socket:timers/timer" {
+    export class Timer extends AsyncResource {
+        static from(...args: any[]): Timer;
+        constructor(type: any, create: any, destroy: any);
+        get id(): number;
+        init(...args: any[]): this;
+        close(): boolean;
+        [Symbol.toPrimitive](): number;
+        #private;
+    }
+    export class Timeout extends Timer {
+        constructor();
+    }
+    export class Interval extends Timer {
+        constructor();
+    }
+    export class Immediate extends Timer {
+        constructor();
+    }
+    namespace _default {
+        export { Timer };
+        export { Immediate };
+        export { Timeout };
+        export { Interval };
+    }
+    export default _default;
+    import { AsyncResource } from "socket:async/resource";
+}
+
+declare module "socket:timers/promises" {
+    export function setTimeout(delay?: number, value?: any, options?: any): Promise<any>;
+    export function setInterval(delay?: number, value?: any, options?: any): AsyncGenerator<any, void, unknown>;
+    export function setImmediate(value?: any, options?: any): Promise<any>;
+    namespace _default {
+        export { setImmediate };
+        export { setInterval };
+        export { setTimeout };
+    }
+    export default _default;
+}
+
+declare module "socket:timers/scheduler" {
+    export function wait(delay: any, options?: any): Promise<any>;
+    export function postTask(callback: any, options?: any): Promise<any>;
+    namespace _default {
+        export { postTask };
+        export { setImmediate as yield };
+        export { wait };
+    }
+    export default _default;
+    import { setImmediate } from "socket:timers/promises";
+}
+
+declare module "socket:timers/index" {
+    export function setTimeout(callback: any, delay: any, ...args: any[]): import("socket:timers/timer").Timer;
+    export function clearTimeout(timeout: any): void;
+    export function setInterval(callback: any, delay: any, ...args: any[]): import("socket:timers/timer").Timer;
+    export function clearInterval(interval: any): void;
+    export function setImmediate(callback: any, ...args: any[]): import("socket:timers/timer").Timer;
+    export function clearImmediate(immediate: any): void;
+    /**
+     * Pause async execution for `timeout` milliseconds.
+     * @param {number} timeout
+     * @return {Promise}
+     */
+    export function sleep(timeout: number): Promise<any>;
+    export namespace sleep {
+        /**
+         * Pause sync execution for `timeout` milliseconds.
+         * @param {number} timeout
+         */
+        function sync(timeout: number): void;
+    }
+    export { platform };
+    namespace _default {
+        export { platform };
+        export { promises };
+        export { scheduler };
+        export { setTimeout };
+        export { clearTimeout };
+        export { setInterval };
+        export { clearInterval };
+        export { setImmediate };
+        export { clearImmediate };
+    }
+    export default _default;
+    import platform from "socket:timers/platform";
+    import promises from "socket:timers/promises";
+    import scheduler from "socket:timers/scheduler";
+}
+
+declare module "socket:timers" {
+    export * from "socket:timers/index";
     export default exports;
-    import * as exports from "socket:window/constants";
-    
+    import * as exports from "socket:timers/index";
 }
 
 declare module "socket:application/client" {
@@ -7135,7 +7255,7 @@ declare module "socket:application/client" {
          * The frame type of the client.
          * @type {'top-level'|'nested'|'none'}
          */
-        get frameType(): "none" | "nested" | "top-level";
+        get frameType(): "none" | "top-level" | "nested";
         /**
          * The type of the client.
          * @type {'window'|'worker'}
@@ -7167,11 +7287,401 @@ declare module "socket:application/client" {
     export default _default;
     export type ClientState = {
         id?: string | null;
-        type?: 'window' | 'worker';
+        type?: "window" | "worker";
         parent?: object | null;
         top?: object | null;
-        frameType?: 'top-level' | 'nested' | 'none';
+        frameType?: "top-level" | "nested" | "none";
     };
+}
+
+declare module "socket:internal/conduit" {
+    /**
+     * @typedef {{ options: object, payload: Uint8Array }} ReceiveMessage
+     * @typedef {function(Error?, ReceiveMessage | undefined)} ReceiveCallback
+     * @typedef {{ isActive: boolean, handles: { ids: string[], count: number }}} ConduitDiagnostics
+     * @typedef {{ isActive: boolean, port: number, sharedKey: string }} ConduitStatus
+     * @typedef {{
+     *   id?: string|BigInt|number,
+     *   sharedKey?: string
+     *}} ConduitOptions
+     */
+    export const DEFALUT_MAX_RECONNECT_RETRIES: 32;
+    export const DEFAULT_MAX_RECONNECT_TIMEOUT: 256;
+    /**
+     * A pool of known `Conduit` instances.
+     * @type {Set<Conduit>}
+     */
+    export const pool: Set<Conduit>;
+    /**
+     * A container for managing a WebSocket connection to the internal runtime
+     * Conduit WebSocket server.
+     */
+    export class Conduit extends EventTarget {
+        static set port(port: number);
+        /**
+         * The global `Conduit` port
+         * @type {number}
+         */
+        static get port(): number;
+        /**
+         * Returns diagnostics information about the conduit server
+         * @return {Promise<ConduitDiagnostics>}
+         */
+        static diagnostics(): Promise<ConduitDiagnostics>;
+        /**
+         * Returns the current Conduit server status
+         * @return {Promise<ConduitStatus>}
+         */
+        static status(): Promise<ConduitStatus>;
+        /**
+         * Waits for conduit to be active
+         * @param {{ maxQueriesForStatus?: number }=} [options]
+         * @return {Promise}
+         */
+        static waitForActiveState(options?: {
+            maxQueriesForStatus?: number;
+        } | undefined): Promise<any>;
+        /**
+         * Gets the current conduit shared key.
+         * @return {Promise<string>}
+         */
+        static getSharedKey(): Promise<string>;
+        /**
+         * Sets the conduit shared key.
+         * @param {string} sharedKey
+         * @return {Promise<string>}
+         */
+        static setSharedKey(sharedKey: string): Promise<string>;
+        /**
+         * Creates an instance of Conduit.
+         *
+         * @param {ConduitOptions} options
+         */
+        constructor(options: ConduitOptions);
+        /**
+         * @type {boolean}
+         */
+        shouldReconnect: boolean;
+        /**
+         * @type {boolean}
+         */
+        isConnecting: boolean;
+        /**
+         * @type {boolean}
+         */
+        isActive: boolean;
+        /**
+         * @type {WebSocket?}
+         */
+        socket: WebSocket | null;
+        /**
+         * @type {number}
+         */
+        port: number;
+        /**
+         * @type {string}
+         */
+        id: string;
+        /**
+         * @type {string}
+         */
+        sharedKey: string;
+        /**
+         * The URL string for the WebSocket server.
+         * @type {string}
+         */
+        get url(): string;
+        set onmessage(onmessage: (arg0: MessageEvent) => any);
+        /**
+         * @type {function(MessageEvent)}
+         */
+        get onmessage(): (arg0: MessageEvent) => any;
+        set onerror(onerror: (arg0: ErrorEvent) => any);
+        /**
+         * @type {function(ErrorEvent)}
+         */
+        get onerror(): (arg0: ErrorEvent) => any;
+        set onclose(onclose: (arg0: CloseEvent) => any);
+        /**
+         * @type {function(CloseEvent)}
+         */
+        get onclose(): (arg0: CloseEvent) => any;
+        set onopen(onopen: (arg0: Event) => any);
+        /**
+         * @type {function(Event)}
+         */
+        get onopen(): (arg0: Event) => any;
+        /**
+         * Connects the underlying conduit `WebSocket`.
+         * @param {function(Error?)=} [callback]
+         * @return {Promise<Conduit>}
+         */
+        connect(callback?: ((arg0: Error | null) => any) | undefined): Promise<Conduit>;
+        /**
+         * Reconnects a `Conduit` socket.
+         * @param {{retries?: number, timeout?: number}} [options]
+         * @return {Promise<Conduit>}
+         */
+        reconnect(options?: {
+            retries?: number;
+            timeout?: number;
+        }): Promise<Conduit>;
+        /**
+         * Encodes a single header into a Uint8Array.
+         *
+         * @private
+         * @param {string} key - The header key.
+         * @param {string} value - The header value.
+         * @returns {Uint8Array} The encoded header.
+         */
+        private encodeOption;
+        /**
+         * Encodes options and payload into a single Uint8Array message.
+         *
+         * @private
+         * @param {object} options - The options to encode.
+         * @param {Uint8Array} payload - The payload to encode.
+         * @returns {Uint8Array} The encoded message.
+         */
+        private encodeMessage;
+        /**
+         * Decodes a Uint8Array message into options and payload.
+         * @param {Uint8Array} data - The data to decode.
+         * @return {ReceiveMessage} The decoded message containing options and payload.
+         * @throws Will throw an error if the data is invalid.
+         */
+        decodeMessage(data: Uint8Array): ReceiveMessage;
+        /**
+         * Registers a callback to handle incoming messages.
+         * The callback will receive an error object and an object containing
+         * decoded options and payload.
+         * @param {ReceiveCallback} callback - The callback function to handle incoming messages.
+         */
+        receive(callback: ReceiveCallback): void;
+        /**
+         * Sends a message with the specified options and payload over the
+         * WebSocket connection.
+         * @param {object} options - The options to send.
+         * @param {Uint8Array=} [payload] - The payload to send.
+         * @return {boolean}
+         */
+        send(options: object, payload?: Uint8Array | undefined): boolean;
+        /**
+         * Closes the WebSocket connection, preventing reconnects.
+         */
+        close(): void;
+        #private;
+    }
+    export type ReceiveMessage = {
+        options: object;
+        payload: Uint8Array;
+    };
+    export type ReceiveCallback = (arg0: Error | null, arg1: ReceiveMessage | undefined) => any;
+    export type ConduitDiagnostics = {
+        isActive: boolean;
+        handles: {
+            ids: string[];
+            count: number;
+        };
+    };
+    export type ConduitStatus = {
+        isActive: boolean;
+        port: number;
+        sharedKey: string;
+    };
+    export type ConduitOptions = {
+        id?: string | BigInt | number;
+        sharedKey?: string;
+    };
+}
+
+declare module "socket:ai/chat" {
+    /**
+     * @typedef {import('./llm.js').ModelOptions} ModelOptions
+     * @typedef {import('./llm.js').ModelLoadOptions} ModelLoadOptions
+     * @typedef {import('./llm.js').ContextOptions} ContextOptions
+     */
+    export class ChatMessageEvent {
+        /**
+         * @param {string} type
+         * @param {MessageEventInit & { finished?: boolean }} options
+         */
+        constructor(type: string, options: MessageEventInit & {
+            finished?: boolean;
+        });
+        get finished(): boolean;
+        #private;
+    }
+    /**
+     * @typedef {{
+     *   id: string,
+     *   role: string,
+     *   content: string
+     * }} MessageOptions
+     */
+    export class Message {
+        constructor(options: any);
+        /**
+         * @type {string}
+         */
+        get id(): string;
+        /**
+         * @type {string}
+         */
+        get role(): string;
+        /**
+         * @type {string}
+         */
+        get content(): string;
+        #private;
+    }
+    /**
+     * @typedef {{
+     *   id?: string,
+     *   antiprompt?: Set<string>|string[]
+     * }} SessionOptions
+     */
+    export class Session extends EventTarget {
+        /**
+         * @param {Context} context
+         * @param {SessionOptions=} [options]
+         */
+        constructor(context: Context, options?: SessionOptions | undefined);
+        /**
+         * @type {string}
+         */
+        get id(): string;
+        /**
+         * @type {string}
+         */
+        get prompt(): string;
+        /**
+         * @type {Context}
+         */
+        get context(): Context;
+        /**
+         * @type {Conduit}
+         */
+        get conduit(): Conduit;
+        /**
+         * @type {boolean}
+         */
+        get started(): boolean;
+        /**
+         * @type {boolean}
+         */
+        get loaded(): boolean;
+        /**
+         * @type {boolean}
+         */
+        get generating(): boolean;
+        /**
+         * @type {Message[]}
+         */
+        get messages(): Message[];
+        /**
+         * @type {Set<string>}
+         */
+        get antiprompt(): Set<string>;
+        /**
+         * @param {Model} model
+         * @param {(ModelLoadOptions & ContextOptions)=} [options]
+         * @return {Promise}
+         */
+        load(model: Model, options?: (ModelLoadOptions & ContextOptions) | undefined): Promise<any>;
+        /**
+         * @return {Promise}
+         */
+        start(): Promise<any>;
+        /**
+         * @param {GenerateOptions=} [options]
+         * @return {Promise<object>}
+         */
+        generate(options?: GenerateOptions | undefined): Promise<object>;
+        message(options: any): Promise<any>;
+        #private;
+    }
+    /**
+     * @typedef {SessionOptions & {
+     *   model: string | (ModelOptions & ModelLoadOptions),
+     *   context?: ContextOptions
+     * }} ChatOptions
+     */
+    export class Chat extends Session {
+        /**
+         * @param {ChatOptions} options
+         */
+        constructor(options: ChatOptions);
+        /**
+         * @type {Model}
+         */
+        get model(): Model;
+        /**
+         * @type {Promise}
+         */
+        get ready(): Promise<any>;
+        /**
+         * @return {Promise}
+         */
+        load(): Promise<any>;
+        #private;
+    }
+    namespace _default {
+        export { Message };
+        export { Session };
+        export { Chat };
+    }
+    export default _default;
+    export type ModelOptions = import("socket:ai/llm").ModelOptions;
+    export type ModelLoadOptions = import("socket:ai/llm").ModelLoadOptions;
+    export type ContextOptions = import("socket:ai/llm").ContextOptions;
+    export type MessageOptions = {
+        id: string;
+        role: string;
+        content: string;
+    };
+    export type SessionOptions = {
+        id?: string;
+        antiprompt?: Set<string> | string[];
+    };
+    export type ChatOptions = SessionOptions & {
+        model: string | (ModelOptions & ModelLoadOptions);
+        context?: ContextOptions;
+    };
+    import { Context } from "socket:ai/llm";
+    import { Conduit } from "socket:internal/conduit";
+    import { Model } from "socket:ai/llm";
+}
+
+declare module "socket:ai" {
+    namespace _default {
+        export { llm };
+        export { chat };
+    }
+    export default _default;
+    import llm from "socket:ai/llm";
+    import chat from "socket:ai/chat";
+    export { llm, chat };
+}
+
+declare module "socket:window/constants" {
+    export const WINDOW_ERROR: -1;
+    export const WINDOW_NONE: 0;
+    export const WINDOW_CREATING: 10;
+    export const WINDOW_CREATED: 11;
+    export const WINDOW_HIDING: 20;
+    export const WINDOW_HIDDEN: 21;
+    export const WINDOW_SHOWING: 30;
+    export const WINDOW_SHOWN: 31;
+    export const WINDOW_CLOSING: 40;
+    export const WINDOW_CLOSED: 41;
+    export const WINDOW_EXITING: 50;
+    export const WINDOW_EXITED: 51;
+    export const WINDOW_KILLING: 60;
+    export const WINDOW_KILLED: 61;
+    export default exports;
+    import * as exports from "socket:window/constants";
+    
 }
 
 declare module "socket:window/hotkey" {
@@ -7244,7 +7754,7 @@ declare module "socket:window/hotkey" {
          * @ignore
          * @param {import('../internal/events.js').HotKeyEvent} event
          */
-        onHotKey(event: import('../internal/events.js').HotKeyEvent): boolean;
+        onHotKey(event: import("socket:internal/events").HotKeyEvent): boolean;
         /**
          * The number of `Binding` instances in the mapping.
          * @type {number}
@@ -7457,6 +7967,7 @@ declare module "socket:window/hotkey" {
      */
     export const bindings: Bindings;
     export default bindings;
+    import { HotKeyEvent } from "socket:internal/events";
 }
 
 declare module "socket:window" {
@@ -8220,7 +8731,7 @@ declare module "socket:internal/promise" {
     export const NativePromise: PromiseConstructor;
     export namespace NativePromisePrototype {
         export let then: <TResult1 = any, TResult2 = never>(onfulfilled?: (value: any) => TResult1 | PromiseLike<TResult1>, onrejected?: (reason: any) => TResult2 | PromiseLike<TResult2>) => globalThis.Promise<TResult1 | TResult2>;
-        let _catch: <TResult = never>(onrejected?: (reason: any) => TResult | PromiseLike<TResult>) => globalThis.Promise<any>;
+        let _catch: <TResult = never>(onrejected?: (reason: any) => TResult | PromiseLike<TResult>) => globalThis.Promise<any | TResult>;
         export { _catch as catch };
         let _finally: (onfinally?: () => void) => globalThis.Promise<any>;
         export { _finally as finally };
@@ -8266,9 +8777,9 @@ declare module "socket:internal/promise" {
             readonly destroyed: boolean;
             asyncId(): number;
             triggerAsyncId(): number;
-            emitDestroy(): asyncHooks.CoreAsyncResource;
-            bind(fn: Function, thisArg?: any): Function;
-            runInAsyncScope(fn: Function, thisArg?: any, ...args?: any[]): any;
+            emitDestroy(): CoreAsyncResource;
+            bind(fn: Function, thisArg?: object | undefined): Function;
+            runInAsyncScope(fn: Function, thisArg?: object | undefined, ...args?: any[]): any;
         };
     }
     export namespace Promise {
@@ -8888,7 +9399,7 @@ declare module "socket:worker_threads" {
          * @ignore
          * @param {import('./process.js').ProcessEnvironmentEvent} event
          */
-        onProcessEnvironmentEvent(event: import('./process.js').ProcessEnvironmentEvent): void;
+        onProcessEnvironmentEvent(event: import("socket:process").ProcessEnvironmentEvent): void;
         /**
          * The unique ID for this `Worker` thread instace.
          * @type {number}
@@ -9255,317 +9766,6 @@ declare module "socket:constants" {
     export const SIGSYS: any;
     const _default: any;
     export default _default;
-}
-
-declare module "socket:timers/platform" {
-    export namespace platform {
-        let setTimeout: any;
-        let setInterval: any;
-        let setImmediate: any;
-        let clearTimeout: any;
-        let clearInterval: any;
-        let clearImmediate: any;
-        let postTask: any;
-    }
-    export default platform;
-}
-
-declare module "socket:timers/timer" {
-    export class Timer extends AsyncResource {
-        static from(...args: any[]): Timer;
-        constructor(type: any, create: any, destroy: any);
-        get id(): number;
-        init(...args: any[]): this;
-        close(): boolean;
-        [Symbol.toPrimitive](): number;
-        #private;
-    }
-    export class Timeout extends Timer {
-        constructor();
-    }
-    export class Interval extends Timer {
-        constructor();
-    }
-    export class Immediate extends Timer {
-        constructor();
-    }
-    namespace _default {
-        export { Timer };
-        export { Immediate };
-        export { Timeout };
-        export { Interval };
-    }
-    export default _default;
-    import { AsyncResource } from "socket:async/resource";
-}
-
-declare module "socket:timers/promises" {
-    export function setTimeout(delay?: number, value?: any, options?: any): Promise<any>;
-    export function setInterval(delay?: number, value?: any, options?: any): AsyncGenerator<any, void, unknown>;
-    export function setImmediate(value?: any, options?: any): Promise<any>;
-    namespace _default {
-        export { setImmediate };
-        export { setInterval };
-        export { setTimeout };
-    }
-    export default _default;
-}
-
-declare module "socket:timers/scheduler" {
-    export function wait(delay: any, options?: any): Promise<any>;
-    export function postTask(callback: any, options?: any): Promise<any>;
-    namespace _default {
-        export { postTask };
-        export { setImmediate as yield };
-        export { wait };
-    }
-    export default _default;
-    import { setImmediate } from "socket:timers/promises";
-}
-
-declare module "socket:timers/index" {
-    export function setTimeout(callback: any, delay: any, ...args: any[]): import("socket:timers/timer").Timer;
-    export function clearTimeout(timeout: any): void;
-    export function setInterval(callback: any, delay: any, ...args: any[]): import("socket:timers/timer").Timer;
-    export function clearInterval(interval: any): void;
-    export function setImmediate(callback: any, ...args: any[]): import("socket:timers/timer").Timer;
-    export function clearImmediate(immediate: any): void;
-    /**
-     * Pause async execution for `timeout` milliseconds.
-     * @param {number} timeout
-     * @return {Promise}
-     */
-    export function sleep(timeout: number): Promise<any>;
-    export namespace sleep {
-        /**
-         * Pause sync execution for `timeout` milliseconds.
-         * @param {number} timeout
-         */
-        function sync(timeout: number): void;
-    }
-    export { platform };
-    namespace _default {
-        export { platform };
-        export { promises };
-        export { scheduler };
-        export { setTimeout };
-        export { clearTimeout };
-        export { setInterval };
-        export { clearInterval };
-        export { setImmediate };
-        export { clearImmediate };
-    }
-    export default _default;
-    import platform from "socket:timers/platform";
-    import promises from "socket:timers/promises";
-    import scheduler from "socket:timers/scheduler";
-}
-
-declare module "socket:timers" {
-    export * from "socket:timers/index";
-    export default exports;
-    import * as exports from "socket:timers/index";
-}
-
-declare module "socket:internal/conduit" {
-    /**
-     * @typedef {{ options: object, payload: Uint8Array }} ReceiveMessage
-     * @typedef {function(Error?, ReceiveCallback | undefined)} ReceiveCallback
-     * @typedef {{ isActive: boolean, handles: { ids: string[], count: number }}} ConduitDiagnostics
-     * @typedef {{ isActive: boolean, port: number, sharedKey: string }} ConduitStatus
-     * @typedef {{
-     *   id?: string|BigInt|number,
-     *   sharedKey?: string
-     *}} ConduitOptions
-     */
-    export const DEFALUT_MAX_RECONNECT_RETRIES: 32;
-    export const DEFAULT_MAX_RECONNECT_TIMEOUT: 256;
-    /**
-     * A pool of known `Conduit` instances.
-     * @type {Set<Conduit>}
-     */
-    export const pool: Set<Conduit>;
-    /**
-     * A container for managing a WebSocket connection to the internal runtime
-     * Conduit WebSocket server.
-     */
-    export class Conduit extends EventTarget {
-        static set port(port: number);
-        /**
-         * The global `Conduit` port
-         * @type {number}
-         */
-        static get port(): number;
-        /**
-         * Returns diagnostics information about the conduit server
-         * @return {Promise<ConduitDiagnostics>}
-         */
-        static diagnostics(): Promise<ConduitDiagnostics>;
-        /**
-         * Returns the current Conduit server status
-         * @return {Promise<ConduitStatus>}
-         */
-        static status(): Promise<ConduitStatus>;
-        /**
-         * Waits for conduit to be active
-         * @param {{ maxQueriesForStatus?: number }=} [options]
-         * @return {Promise}
-         */
-        static waitForActiveState(options?: {
-            maxQueriesForStatus?: number;
-        } | undefined): Promise<any>;
-        /**
-         * Gets the current conduit shared key.
-         * @return {Promise<string>}
-         */
-        static getSharedKey(): Promise<string>;
-        /**
-         * Sets the conduit shared key.
-         * @param {string} sharedKey
-         * @return {Promise<string>}
-         */
-        static setSharedKey(sharedKey: string): Promise<string>;
-        /**
-         * Creates an instance of Conduit.
-         *
-         * @param {ConduitOptions} options
-         */
-        constructor(options: ConduitOptions);
-        /**
-         * @type {boolean}
-         */
-        shouldReconnect: boolean;
-        /**
-         * @type {boolean}
-         */
-        isConnecting: boolean;
-        /**
-         * @type {boolean}
-         */
-        isActive: boolean;
-        /**
-         * @type {WebSocket?}
-         */
-        socket: WebSocket | null;
-        /**
-         * @type {number}
-         */
-        port: number;
-        /**
-         * @type {string}
-         */
-        id: string;
-        /**
-         * @type {string}
-         */
-        sharedKey: string;
-        /**
-         * The URL string for the WebSocket server.
-         * @type {string}
-         */
-        get url(): string;
-        set onmessage(onmessage: (arg0: MessageEvent) => any);
-        /**
-         * @type {function(MessageEvent)}
-         */
-        get onmessage(): (arg0: MessageEvent) => any;
-        set onerror(onerror: (arg0: ErrorEvent) => any);
-        /**
-         * @type {function(ErrorEvent)}
-         */
-        get onerror(): (arg0: ErrorEvent) => any;
-        set onclose(onclose: (arg0: CloseEvent) => any);
-        /**
-         * @type {function(CloseEvent)}
-         */
-        get onclose(): (arg0: CloseEvent) => any;
-        set onopen(onopen: (arg0: Event) => any);
-        /**
-         * @type {function(Event)}
-         */
-        get onopen(): (arg0: Event) => any;
-        /**
-         * Connects the underlying conduit `WebSocket`.
-         * @param {function(Error?)=} [callback]
-         * @return {Promise<Conduit>}
-         */
-        connect(callback?: ((arg0: Error | null) => any) | undefined): Promise<Conduit>;
-        /**
-         * Reconnects a `Conduit` socket.
-         * @param {{retries?: number, timeout?: number}} [options]
-         * @return {Promise<Conduit>}
-         */
-        reconnect(options?: {
-            retries?: number;
-            timeout?: number;
-        }): Promise<Conduit>;
-        /**
-         * Encodes a single header into a Uint8Array.
-         *
-         * @private
-         * @param {string} key - The header key.
-         * @param {string} value - The header value.
-         * @returns {Uint8Array} The encoded header.
-         */
-        private encodeOption;
-        /**
-         * Encodes options and payload into a single Uint8Array message.
-         *
-         * @private
-         * @param {object} options - The options to encode.
-         * @param {Uint8Array} payload - The payload to encode.
-         * @returns {Uint8Array} The encoded message.
-         */
-        private encodeMessage;
-        /**
-         * Decodes a Uint8Array message into options and payload.
-         * @param {Uint8Array} data - The data to decode.
-         * @return {ReceiveMessage} The decoded message containing options and payload.
-         * @throws Will throw an error if the data is invalid.
-         */
-        decodeMessage(data: Uint8Array): ReceiveMessage;
-        /**
-         * Registers a callback to handle incoming messages.
-         * The callback will receive an error object and an object containing
-         * decoded options and payload.
-         * @param {ReceiveCallback} callback - The callback function to handle incoming messages.
-         */
-        receive(callback: ReceiveCallback): void;
-        /**
-         * Sends a message with the specified options and payload over the
-         * WebSocket connection.
-         * @param {object} options - The options to send.
-         * @param {Uint8Array=} [payload] - The payload to send.
-         * @return {boolean}
-         */
-        send(options: object, payload?: Uint8Array | undefined): boolean;
-        /**
-         * Closes the WebSocket connection, preventing reconnects.
-         */
-        close(): void;
-        #private;
-    }
-    export type ReceiveMessage = {
-        options: object;
-        payload: Uint8Array;
-    };
-    export type ReceiveCallback = (arg0: Error | null, arg1: ReceiveCallback | undefined) => any;
-    export type ConduitDiagnostics = {
-        isActive: boolean;
-        handles: {
-            ids: string[];
-            count: number;
-        };
-    };
-    export type ConduitStatus = {
-        isActive: boolean;
-        port: number;
-        sharedKey: string;
-    };
-    export type ConduitOptions = {
-        id?: string | BigInt | number;
-        sharedKey?: string;
-    };
 }
 
 declare module "socket:ip" {
@@ -10238,7 +10438,7 @@ declare module "socket:extension" {
          * @param {string} name
          * @return {Promise<'shared'|'wasm32'|'unknown'|null>}
          */
-        static type(name: string): Promise<'shared' | 'wasm32' | 'unknown' | null>;
+        static type(name: string): Promise<"shared" | "wasm32" | "unknown" | null>;
         /**
          * Provides current stats about the loaded extensions or one by name.
          * @param {?string} name
@@ -10313,7 +10513,7 @@ declare module "socket:extension" {
     export type ExtensionLoadOptions = {
         allow: string[] | string;
         imports?: object;
-        type?: 'shared' | 'wasm32';
+        type?: "shared" | "wasm32";
         path?: string;
         stats?: object;
         instance?: WebAssembly.Instance;
@@ -10738,7 +10938,7 @@ declare module "socket:internal/database" {
     export type DatabasePutOptions = {
         store?: string | undefined;
         stores?: string[] | undefined;
-        durability?: 'strict' | 'relaxed' | undefined;
+        durability?: "strict" | "relaxed" | undefined;
     };
     /**
      * A typed container for various optional options made to a `delete()` function
@@ -10802,7 +11002,7 @@ declare module "socket:service-worker/env" {
          * @param {'set'|'delete'} type
          * @param {object=} [entry]
          */
-        constructor(type: 'set' | 'delete', entry?: object | undefined);
+        constructor(type: "set" | "delete", entry?: object | undefined);
         entry: any;
     }
     /**
@@ -10934,7 +11134,7 @@ declare module "socket:service-worker/context" {
          * `Context` class constructor.
          * @param {import('./events.js').ExtendableEvent} event
          */
-        constructor(event: import('./events.js').ExtendableEvent);
+        constructor(event: import("socket:service-worker/events").ExtendableEvent);
         /**
          * Context data. This may be a custom protocol handler scheme data
          * by default, if available.
@@ -10975,7 +11175,7 @@ declare module "socket:service-worker/context" {
          * Gets the client for this event context.
          * @return {Promise<import('./clients.js').Client>}
          */
-        client(): Promise<import('./clients.js').Client>;
+        client(): Promise<import("socket:service-worker/clients").Client>;
         #private;
     }
     namespace _default {
@@ -11162,7 +11362,7 @@ declare module "socket:http/adapters" {
          * @param {import('../http.js').Server} server
          * @param {HTTPModuleInterface} httpInterface
          */
-        constructor(server: import('../http.js').Server, httpInterface: HTTPModuleInterface);
+        constructor(server: import("socket:http").Server, httpInterface: HTTPModuleInterface);
         /**
          * A readonly reference to the underlying HTTP(S) server
          * for this adapter.
@@ -11197,13 +11397,13 @@ declare module "socket:http/adapters" {
          * @ignore
          * @param {import('../service-worker/events.js').ExtendableEvent} event
          */
-        onInstall(event: import('../service-worker/events.js').ExtendableEvent): Promise<void>;
+        onInstall(event: import("socket:service-worker/events").ExtendableEvent): Promise<void>;
         /**
          * Handles the 'activate' service worker event.
          * @ignore
          * @param {import('../service-worker/events.js').ExtendableEvent} event
          */
-        onActivate(event: import('../service-worker/events.js').ExtendableEvent): Promise<void>;
+        onActivate(event: import("socket:service-worker/events").ExtendableEvent): Promise<void>;
         /**
          * Handles the 'fetch' service worker event.
          * @ignore
@@ -13843,7 +14043,7 @@ declare module "socket:test/index" {
          * @param {string} [msg]
          * @returns {void}
          */
-        notDeepEqual<T_1>(actual: T_1, expected: T_1, msg?: string): void;
+        notDeepEqual<T>(actual: T, expected: T, msg?: string): void;
         /**
          * @template T
          * @param {T} actual
@@ -13851,7 +14051,7 @@ declare module "socket:test/index" {
          * @param {string} [msg]
          * @returns {void}
          */
-        equal<T_2>(actual: T_2, expected: T_2, msg?: string): void;
+        equal<T>(actual: T, expected: T, msg?: string): void;
         /**
          * @param {unknown} actual
          * @param {unknown} expected
@@ -14100,7 +14300,7 @@ declare module "socket:test/index" {
          * })
          * ```
          */
-        waitForText(selector: string | HTMLElement | Element, opts?: string | RegExp | {
+        waitForText(selector: string | HTMLElement | Element, opts?: {
             /**
              * - The text to wait for
              */
@@ -14111,7 +14311,7 @@ declare module "socket:test/index" {
              * The regex to wait for
              */
             regex?: RegExp;
-        }, msg?: string): Promise<HTMLElement | Element | void>;
+        } | string | RegExp, msg?: string): Promise<HTMLElement | Element | void>;
         /**
          * Run a querySelector as an assert and also get the results
          *
@@ -15392,7 +15592,7 @@ declare module "socket:commonjs/package" {
          * @param {PackageResolveOptions=} [options]
          * @return {string}
          */
-        resolve(pathname: string | URL, options?: PackageResolveOptions): string;
+        resolve(pathname: string | URL, options?: PackageResolveOptions | undefined): string;
         #private;
     }
     export default Package;
@@ -15403,13 +15603,13 @@ declare module "socket:commonjs/package" {
         version?: string;
         license?: string;
         exports?: object;
-        type?: 'commonjs' | 'module';
+        type?: "commonjs" | "module";
         info?: object;
         origin?: string;
         dependencies?: Dependencies | object | Map<any, any>;
     };
     export type PackageLoadOptions = import("socket:commonjs/loader").RequestOptions & {
-        type?: 'commonjs' | 'module';
+        type?: "commonjs" | "module";
         prefix?: string;
     };
     export type ParsedPackageName = {
@@ -15449,7 +15649,7 @@ declare module "socket:commonjs/module" {
      * @param {typeof process} process
      * @param {object} global
      */
-    export function CommonJSModuleScope(exports: object, require: (arg0: string) => any, module: Module, __filename: string, __dirname: string, process: typeof process, global: object): void;
+    export function CommonJSModuleScope(exports: object, require: (arg0: string) => any, module: Module, __filename: string, __dirname: string, process: any, global: object): void;
     /**
      * Creates a `require` function from a given module URL.
      * @param {string|URL} url
@@ -15809,7 +16009,7 @@ declare module "socket:commonjs/module" {
          * @throws TypeError
          * @return {any}
          */
-        require(url: any, options?: RequireOptions): any;
+        require(url: any, options?: RequireOptions | undefined): any;
         /**
          * Loads the module
          * @param {ModuleLoadOptions=} [options]
@@ -15847,9 +16047,9 @@ declare module "socket:commonjs/module" {
     export type ModuleLoadOptions = {
         extensions?: object;
     };
-    import process from "socket:process";
     import { Package } from "socket:commonjs/package";
     import { Loader } from "socket:commonjs/loader";
+    import process from "socket:process";
 }
 
 declare module "socket:commonjs/require" {
@@ -15908,7 +16108,7 @@ declare module "socket:commonjs/require" {
          * `Meta` class constructor.
          * @param {import('./module.js').Module} module
          */
-        constructor(module: import('./module.js').Module);
+        constructor(module: import("socket:commonjs/module").Module);
         /**
          * The referrer (parent) of this module.
          * @type {string}
@@ -16468,7 +16668,7 @@ declare module "socket:notification" {
          * @param {boolean=} [options.force = false]
          * @return {Promise<'granted'|'default'|'denied'>}
          */
-        static requestPermission(options?: object | undefined): Promise<'granted' | 'default' | 'denied'>;
+        static requestPermission(options?: object | undefined): Promise<"granted" | "default" | "denied">;
         /**
          * `Notification` class constructor.
          * @param {string} title
@@ -16675,9 +16875,9 @@ declare module "socket:service-worker/instance" {
             readonly state: any;
             readonly scriptURL: any;
             postMessage(): void;
-            addEventListener(type: string, callback: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
+            addEventListener(type: string, callback: EventListenerOrEventListenerObject | null, options?: AddEventListenerOptions | boolean): void;
             dispatchEvent(event: Event): boolean;
-            removeEventListener(type: string, callback: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions): void;
+            removeEventListener(type: string, callback: EventListenerOrEventListenerObject | null, options?: EventListenerOptions | boolean): void;
         };
     };
     export default createServiceWorker;
@@ -17393,7 +17593,7 @@ declare module "socket:internal/pickers" {
      * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Window/showOpenFilePicker}
      * @return {Promise<FileSystemFileHandle[]>}
      */
-    export function showOpenFilePicker(options?: ShowOpenFilePickerOptions): Promise<FileSystemFileHandle[]>;
+    export function showOpenFilePicker(options?: ShowOpenFilePickerOptions | undefined): Promise<FileSystemFileHandle[]>;
     /**
      * @typedef {{
      *   id?: string,
@@ -17413,7 +17613,7 @@ declare module "socket:internal/pickers" {
      * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Window/showSaveFilePicker}
      * @return {Promise<FileSystemHandle>}
      */
-    export function showSaveFilePicker(options?: ShowSaveFilePickerOptions): Promise<FileSystemHandle>;
+    export function showSaveFilePicker(options?: ShowSaveFilePickerOptions | undefined): Promise<FileSystemHandle>;
     /**
      * Key-value store for general usage by the file pickers"
      * @ignore
@@ -17435,8 +17635,8 @@ declare module "socket:internal/pickers" {
     export default _default;
     export type ShowDirectoryPickerOptions = {
         id?: string;
-        mode?: 'read' | 'readwrite';
-        startIn?: FileSystemHandle | 'desktop' | 'documents' | 'downloads' | 'music' | 'pictures' | 'videos';
+        mode?: "read" | "readwrite";
+        startIn?: FileSystemHandle | "desktop" | "documents" | "downloads" | "music" | "pictures" | "videos";
     };
     /**
      * ]?: string[]
@@ -17446,10 +17646,10 @@ declare module "socket:internal/pickers" {
     export type object = {
         id?: string;
         excludeAcceptAllOption?: boolean;
-        startIn?: FileSystemHandle | 'desktop' | 'documents' | 'downloads' | 'music' | 'pictures' | 'videos';
+        startIn?: FileSystemHandle | "desktop" | "documents" | "downloads" | "music" | "pictures" | "videos";
         types?: Array<{
             description?: string;
-            [keyof];
+            [keyof]: any;
         }>;
     };
 }
@@ -17550,7 +17750,7 @@ declare module "socket:npm/module" {
      */
     export function resolve(specifier: string | URL, origin?: (string | URL) | undefined, options?: {
         prefix?: string;
-        type?: 'commonjs' | 'module';
+        type?: "commonjs" | "module";
     }): ModuleResolution | null;
     namespace _default {
         export { resolve };
@@ -17559,7 +17759,7 @@ declare module "socket:npm/module" {
     export type ModuleResolution = {
         package: Package;
         origin: string;
-        type: 'commonjs' | 'module';
+        type: "commonjs" | "module";
         url: string;
     };
     import { Package } from "socket:commonjs/package";
@@ -17650,7 +17850,7 @@ declare module "socket:service-worker/storage" {
      * @param {'memoryStorage'|'localStorage'|'sessionStorage'} type
      * @return {Promise<Storage>}
      */
-    export function createStorageInterface(type: 'memoryStorage' | 'localStorage' | 'sessionStorage'): Promise<Storage>;
+    export function createStorageInterface(type: "memoryStorage" | "localStorage" | "sessionStorage"): Promise<Storage>;
     /**
      * @typedef {{ done: boolean, value: string | undefined }} IndexIteratorResult
      */
@@ -18100,12 +18300,12 @@ declare module "socket:test/harness" {
      * @param {new (options: object) => T} harnessClass
      * @returns {TapeTestFn<T>}
      */
-    export function wrapHarness<T extends exports.Harness>(tapzero: typeof import("socket:test/index"), harnessClass: new (options: object) => T): exports.TapeTestFn<T>;
+    export function wrapHarness<T extends Harness>(tapzero: typeof import("socket:test/index"), harnessClass: new (options: object) => T): TapeTestFn<T>;
     export default exports;
     /**
      * @template {Harness} T
      */
-    export class TapeHarness<T extends exports.Harness> {
+    export class TapeHarness<T extends Harness> {
         /**
          * @param {import('./index.js')} tapzero
          * @param {new (options: object) => T} harnessClass
@@ -18158,7 +18358,7 @@ declare module "socket:test/harness" {
         bootstrap(): Promise<void>;
         close(): Promise<void>;
     };
-    export type TapeTestFn<T extends exports.Harness> = {
+    export type TapeTestFn<T extends Harness> = {
         (name: string, cb?: (harness: T, test: Test) => (void | Promise<void>)): void;
         (name: string, opts: object, cb: (harness: T, test: Test) => (void | Promise<void>)): void;
         only(name: string, cb?: (harness: T, test: Test) => (void | Promise<void>)): void;
@@ -18174,7 +18374,7 @@ declare module "socket:vm/init" {
     export {};
 }
 declare function isTypedArray(object: any): boolean;
-declare function isArrayBuffer(object: any): boolean;
+declare function isArrayBuffer(object: any): object is ArrayBuffer;
 declare function findMessageTransfers(transfers: any, object: any, options?: any): any;
 declare const Uint8ArrayPrototype: Uint8Array;
 declare const TypedArrayPrototype: any;

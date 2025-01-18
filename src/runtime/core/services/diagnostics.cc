@@ -37,6 +37,7 @@ namespace ssc::runtime::core::services {
       } while (0);
     #endif
 
+      /*
       // ai diagnostics
       do {
         Lock lock(this->services.ai.mutex);
@@ -45,6 +46,7 @@ namespace ssc::runtime::core::services {
           query.ai.llm.handles.ids.push_back(entry.first);
         }
       } while (0);
+      */
 
       // fs diagnostics
       do {

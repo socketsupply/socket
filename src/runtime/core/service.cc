@@ -8,6 +8,7 @@ namespace ssc::runtime::core {
       services(options.services),
       context(options.context),
       enabled(options.enabled),
+      queue(options.workerQueue),
       loop(options.loop)
   {}
 

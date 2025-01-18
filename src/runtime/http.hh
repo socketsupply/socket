@@ -113,8 +113,8 @@ namespace ssc::runtime::http {
       bytes::Buffer body;
 
       Request () = default;
-      Request (const String&);
-      Request (const unsigned char*, size_t = -1);
+      Request (const String&, const String& = "http", const String& = "");
+      Request (const unsigned char*, size_t = -1, const String& = "http", const String& = "");
       String str () const;
       bool valid () const;
   };

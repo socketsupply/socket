@@ -100,6 +100,7 @@ declare sources=(
   $(find "$root"/src/extension/*.cc)
   ## runtime
   $(find "$root"/src/runtime/*.cc)
+  $(find "$root"/src/runtime/ai/**/*.cc)
   $(find "$root"/src/runtime/app/app.cc)
   $(find "$root"/src/runtime/bluetooth/*.cc)
   $(find "$root"/src/runtime/bridge/*.cc)
@@ -109,6 +110,7 @@ declare sources=(
   $(find "$root"/src/runtime/context/*.cc)
   $(find "$root"/src/runtime/core/*.cc)
   $(find "$root"/src/runtime/core/*/*.cc)
+  $(find "$root"/src/runtime/concurrent/*.cc)
   $(find "$root"/src/runtime/crypto/*.cc)
   $(find "$root"/src/runtime/cwd/*.cc)
   $(find "$root"/src/runtime/debug/*.cc)
@@ -135,8 +137,7 @@ declare sources=(
   "$root/build/llama/common/common.cpp"
   "$root/build/llama/common/sampling.cpp"
   "$root/build/llama/common/json-schema-to-grammar.cpp"
-  "$root/build/llama/common/grammar-parser.cpp"
-  "$root/build/llama/llama.cpp"
+  "$root/build/llama/src/llama.cpp"
 )
 
 declare cflags

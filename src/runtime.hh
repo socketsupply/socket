@@ -1,6 +1,7 @@
 #ifndef SOCKET_RUNTIME_H
 #define SOCKET_RUNTIME_H
 
+#include "runtime/ai.hh"
 #include "runtime/app.hh"
 #include "runtime/cwd.hh"
 #include "runtime/core.hh"

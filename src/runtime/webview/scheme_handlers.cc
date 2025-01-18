@@ -1082,7 +1082,7 @@ namespace ssc::runtime::webview {
   }
 
   bool SchemeHandlers::Response::write (const bytes::Buffer& buffer) {
-    return this->write(buffer.size(), buffer.pointer());
+    return this->write(buffer.size(), buffer.shared());
   }
 
   bool SchemeHandlers::Response::write (

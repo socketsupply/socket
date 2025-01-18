@@ -72,67 +72,453 @@ static void mapIPCRoutes (Router *router) {
   #endif
 
   /**
-   * AI
+   * Loads a LLM model by name. A directory path where the model is located
+   * can be given. The runtime will attempt to use the
+   * `SOCKET_RUNTIME_AI_LLM_MODEL_PATH` environment variable,
+   * the `[ai.llm.model] path` user config value, or the application resources
+   * directory when trying to load a model.
+   * @param name
+   * @param path
+   * @param gpuLayerCount
    */
-  router->map("ai.llm.create", [](auto message, auto router, auto reply) {
-    auto err = validateMessageParameters(message, {"id", "path", "prompt"});
+  router->map("ai.llm.model.load", [](auto message, auto router, auto reply) {
+    auto app = App::sharedApplication();
+    auto err = validateMessageParameters(message, {"name"});
 
     if (err.type != JSON::Type::Null) {
       return reply(Result::Err { message, err });
     }
 
-    ssc::runtime::core::services::LLMOptions options;
-    options.path = message.get("path");
-    options.prompt = message.get("prompt");
-    options.antiprompt = message.get("antiprompt");
+    auto options = core::services::AI::LLM::LoadModelOptions {};
+    options.name = message.get("name");
+    options.directory = message.get("directory");
 
-    uint64_t modelId = 0;
-    REQUIRE_AND_GET_MESSAGE_VALUE(modelId, "id", std::stoull);
+    if (message.has("gpuLayerCount")) {
+      REQUIRE_AND_GET_MESSAGE_VALUE(options.gpuLayerCount, "gpuLayerCount", std::stoul);
+    }
 
-    if (message.has("n_batch")) REQUIRE_AND_GET_MESSAGE_VALUE(options.n_batch, "n_batch", std::stoi);
-    if (message.has("n_ctx")) REQUIRE_AND_GET_MESSAGE_VALUE(options.n_ctx, "n_ctx", std::stoi);
-    if (message.has("n_gpu_layers")) REQUIRE_AND_GET_MESSAGE_VALUE(options.n_gpu_layers, "n_gpu_layers", std::stoi);
-    if (message.has("n_keep")) REQUIRE_AND_GET_MESSAGE_VALUE(options.n_keep, "n_keep", std::stoi);
-    if (message.has("n_threads")) REQUIRE_AND_GET_MESSAGE_VALUE(options.n_threads, "n_threads", std::stoi);
-    if (message.has("n_predict")) REQUIRE_AND_GET_MESSAGE_VALUE(options.n_predict, "n_predict", std::stoi);
-    if (message.has("grp_attn_n")) REQUIRE_AND_GET_MESSAGE_VALUE(options.grp_attn_n, "grp_attn_n", std::stoi);
-    if (message.has("grp_attn_w")) REQUIRE_AND_GET_MESSAGE_VALUE(options.grp_attn_w, "grp_attn_w", std::stoi);
-    if (message.has("max_tokens")) REQUIRE_AND_GET_MESSAGE_VALUE(options.max_tokens, "max_tokens", std::stoi);
-    if (message.has("seed")) REQUIRE_AND_GET_MESSAGE_VALUE(options.seed, "seed", std::stoi);
-    if (message.has("temp")) REQUIRE_AND_GET_MESSAGE_VALUE(options.temp, "temp", std::stof);
-    if (message.has("top_k")) REQUIRE_AND_GET_MESSAGE_VALUE(options.top_k, "top_k", std::stoi);
-    if (message.has("top_p")) REQUIRE_AND_GET_MESSAGE_VALUE(options.top_p, "top_p", std::stof);
-    if (message.has("min_p")) REQUIRE_AND_GET_MESSAGE_VALUE(options.min_p, "min_p", std::stof);
-    if (message.has("tfs_z")) REQUIRE_AND_GET_MESSAGE_VALUE(options.tfs_z, "tfs_z", std::stof);
-    if (message.has("conversation")) options.conversation = message.get("conversation") == "true";
-    if (message.has("chatml")) options.chatml = message.get("chatml") == "true";
-    if (message.has("instruct")) options.instruct = message.get("instruct") == "true";
-
-    router->bridge.getRuntime()->services.ai.createLLM(message.seq, modelId, options, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+    app->runtime.services.ai.llm.loadModel(
+      message.seq,
+      options,
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
+    );
   });
 
-  router->map("ai.llm.destroy", [](auto message, auto router, auto reply) {
+  router->map("ai.llm.model.list", [](auto message, auto router, auto reply) {
+    auto app = App::sharedApplication();
+    app->runtime.services.ai.llm.listModels(
+      message.seq,
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
+    );
+  });
+
+  /**
+   * Creates a new LLM Context for a given model with optional parameters.
+   * @param model
+   * @param id
+   * @param size
+   * @param minP
+   * @param temp
+   * @param topK
+   */
+  router->map("ai.llm.context.create", [](auto message, auto router, auto reply) {
+    auto app = App::sharedApplication();
+    auto err = validateMessageParameters(message, {"model"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    auto options = core::services::AI::LLM::CreateContextOptions {};
+    if (message.has("size")) {
+      REQUIRE_AND_GET_MESSAGE_VALUE(options.size, "size", std::stoul);
+    }
+
+    if (message.has("minP")) {
+      REQUIRE_AND_GET_MESSAGE_VALUE(options.minP, "minP", std::stof);
+    }
+
+    if (message.has("temp")) {
+      REQUIRE_AND_GET_MESSAGE_VALUE(options.temp, "temp", std::stof);
+    }
+
+    if (message.has("topK")) {
+      REQUIRE_AND_GET_MESSAGE_VALUE(options.topK, "topK", std::stoi);
+    }
+
+    if (message.has("id")) {
+      REQUIRE_AND_GET_MESSAGE_VALUE(options.id, "id", std::stoull);
+    }
+
+    SharedPointer<ai::llm::Model> model = nullptr;
+    ai::llm::ID modelId = 0;
+
+    try {
+      modelId = std::stoull(message.get("model"));
+    } catch (...) {}
+
+    if (modelId > 0) {
+      do {
+        Lock lock(app->runtime.services.ai.llm.manager.mutex);
+        for (const auto& entry : app->runtime.services.ai.llm.manager.models) {
+          if (entry.second->id == modelId) {
+            model = entry.second;
+            break;
+          }
+        }
+      } while (0);
+    } else {
+      Lock lock(app->runtime.services.ai.llm.manager.mutex);
+      model = app->runtime.services.ai.llm.manager.models[message.get("model")];
+    }
+
+    if (model == nullptr) {
+      const auto json = JSON::Object::Entries {
+        {"source", "ai.llm.context.create"},
+        {"err", JSON::Object::Entries {
+          {"message", "Model is not loaded or doest not exist"},
+        }}
+      };
+
+      return reply(Result { message.seq, message, json });
+    }
+
+    options.model.id = model->id;
+    app->runtime.services.ai.llm.createContext(
+      message.seq,
+      options,
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
+    );
+  });
+
+  /**
+   * @param id
+   */
+  router->map("ai.llm.context.destroy", [](auto message, auto router, auto reply) {
+    auto app = App::sharedApplication();
     auto err = validateMessageParameters(message, {"id"});
-    uint64_t modelId = 0;
-    REQUIRE_AND_GET_MESSAGE_VALUE(modelId, "id", std::stoull);
-    router->bridge.getRuntime()->services.ai.destroyLLM(message.seq, modelId, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    ai::llm::ID id = 0;
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+    app->runtime.services.ai.llm.destroyContext(
+      message.seq,
+      id,
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
+    );
   });
 
-  router->map("ai.llm.stop", [](auto message, auto router, auto reply) {
+  /**
+   * @param id
+   */
+  router->map("ai.llm.context.info", [](auto message, auto router, auto reply) {
+    auto app = App::sharedApplication();
     auto err = validateMessageParameters(message, {"id"});
-    uint64_t modelId = 0;
-    REQUIRE_AND_GET_MESSAGE_VALUE(modelId, "id", std::stoull);
-    router->bridge.getRuntime()->services.ai.stopLLM(message.seq, modelId, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    ai::llm::ID id = 0;
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+    app->runtime.services.ai.llm.getContextStats(
+      message.seq,
+      id,
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
+    );
   });
 
-  router->map("ai.llm.chat", [](auto message, auto router, auto reply) {
-    auto err = validateMessageParameters(message, {"id", "message"});
+  /**
+   * Adds an ai chat session message
+   * @param id
+   * @param prompt
+   */
+  router->map("ai.chat.session.message", [](auto message, auto router, auto reply) {
+    auto app = App::sharedApplication();
+    auto err = message.buffer.size() > 0
+      ? validateMessageParameters(message, {"id"})
+      : validateMessageParameters(message, {"id", "prompt"});
 
-    uint64_t modelId = 0;
-    REQUIRE_AND_GET_MESSAGE_VALUE(modelId, "id", std::stoull);
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
 
-    auto value = message.get("message");
-    router->bridge.getRuntime()->services.ai.chatLLM(message.seq, modelId, value, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
+    const auto prompt = trim(message.get("prompt", message.buffer.str()));
+    ai::llm::ID id = 0;
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+    app->runtime.services.ai.chat.message(
+      message.seq,
+      id,
+      { prompt },
+      [=](auto seq, auto json, auto queuedResponse) {
+        if (seq == "-1" && app->runtime.services.conduit.has(id)) {
+          auto client = app->runtime.services.conduit.get(id);
+          client->send(
+            {
+              {"source", message.name},
+              {"eog", json
+                .template as<JSON::Object>()
+                .get("data")
+                .template as<JSON::Object>()
+                .get("eog")
+                .template as<JSON::Boolean>()
+                .str()
+              }
+            },
+            queuedResponse.body,
+            queuedResponse.length
+          );
+          return;
+        }
+
+        reply(Result { seq, message, json, queuedResponse });
+      }
+    );
+  });
+
+  /**
+   * Ephemeral chat session prompt generation
+   * @param id
+   * @param prompt
+   */
+  router->map("ai.chat.session.generate", [](auto message, auto router, auto reply) {
+    auto app = App::sharedApplication();
+    auto err = message.buffer.size() > 0
+      ? validateMessageParameters(message, {"id"})
+      : validateMessageParameters(message, {"id", "prompt"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    const auto prompt = trim(message.get("prompt", message.buffer.str()));
+    const auto antiprompt = split(trim(message.get("antiprompt")), '\x01');
+
+    ai::llm::ID id = 0;
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+    app->runtime.services.ai.chat.generate(
+      message.seq,
+      id,
+      { prompt, antiprompt },
+      [=](auto seq, auto json, auto queuedResponse) {
+        if (seq == "-1" && app->runtime.services.conduit.has(id)) {
+          auto client = app->runtime.services.conduit.get(id);
+          client->send(
+            {
+              {"source", message.name},
+              {"complete", json
+                .template as<JSON::Object>()
+                .get("data")
+                .template as<JSON::Object>()
+                .get("eog")
+                .template as<JSON::Boolean>()
+                .str()
+              }
+            },
+            queuedResponse.body,
+            queuedResponse.length
+          );
+          return;
+        }
+
+        reply(Result { seq, message, json, queuedResponse });
+      }
+    );
+  });
+
+  /**
+   * List an ai chat session history
+   * @param id
+   */
+  router->map("ai.chat.session.history", [](auto message, auto router, auto reply) {
+    auto app = App::sharedApplication();
+    auto err = validateMessageParameters(message, {"id"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    ai::llm::ID id = 0;
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+    app->runtime.services.ai.chat.history(
+      message.seq,
+      id,
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
+    );
+  });
+
+  /**
+   * list ai chat sessions
+   */
+  router->map("ai.chat.list", [](auto message, auto router, auto reply) {
+    auto app = App::sharedApplication();
+    app->runtime.services.ai.chat.list(
+      message.seq,
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
+    );
+  });
+
+  /**
+   * @param model
+   * @param name
+   * @param directory
+   * @param id
+   */
+  router->map("ai.llm.lora.load", [](auto message, auto router, auto reply) {
+    const auto app = App::sharedApplication();
+    const auto err = message.has("id")
+      ? validateMessageParameters(message, {"id"})
+      : validateMessageParameters(message, {"model", "name"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    auto options = core::services::AI::LLM::LoadLoRAOptions {};
+    SharedPointer<ai::llm::Model> model = nullptr;
+    ai::llm::ID modelId = 0;
+
+    try {
+      modelId = std::stoull(message.get("model"));
+    } catch (...) {}
+
+    if (modelId > 0) {
+      do {
+        Lock lock(app->runtime.services.ai.llm.manager.mutex);
+        for (const auto& entry : app->runtime.services.ai.llm.manager.models) {
+          if (entry.second->id == modelId) {
+            model = entry.second;
+            break;
+          }
+        }
+      } while (0);
+    } else {
+      Lock lock(app->runtime.services.ai.llm.manager.mutex);
+      model = app->runtime.services.ai.llm.manager.models[message.get("model")];
+    }
+
+    if (model == nullptr) {
+      const auto json = JSON::Object::Entries {
+        {"source", "ai.llm.context.create"},
+        {"err", JSON::Object::Entries {
+          {"message", "Model is not loaded or doest not exist"},
+        }}
+      };
+
+      return reply(Result { message.seq, message, json });
+    }
+
+    options.model.id = model->id;
+
+    app->runtime.services.ai.llm.loadLoRA(
+      message.seq,
+      options,
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
+    );
+  });
+
+  /**
+   * @param id
+   * @param context
+   * @param scale
+   */
+  router->map("ai.llm.lora.attach", [](auto message, auto router, auto reply) {
+    auto app = App::sharedApplication();
+    auto err = validateMessageParameters(message, {"id", "context"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    auto options = ai::llm::LoRA::AttachOptions {};
+
+    ai::llm::ID id = 0;
+    ai::llm::ID contextId = 0;
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "context", std::stoull);
+
+    if (message.has("scale")) {
+      REQUIRE_AND_GET_MESSAGE_VALUE(options.scale, "scale", std::stof);
+    }
+
+    app->runtime.services.ai.llm.attachLoRa(
+      message.seq,
+      id,
+      contextId,
+      options,
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
+    );
+  });
+
+  /**
+   * @param id
+   * @param context
+   */
+  router->map("ai.llm.lora.detach", [](auto message, auto router, auto reply) {
+    auto app = App::sharedApplication();
+    auto err = validateMessageParameters(message, {"id", "context"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    auto options = ai::llm::LoRA::AttachOptions {};
+
+    ai::llm::ID id = 0;
+    ai::llm::ID contextId = 0;
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "context", std::stoull);
+
+    app->runtime.services.ai.llm.detachLoRa(
+      message.seq,
+      id,
+      contextId,
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
+    );
+  });
+
+  /**
+   * @param id
+   */
+  router->map("ai.llm.context.dump", [](auto message, auto router, auto reply) {
+    auto app = App::sharedApplication();
+    auto err = validateMessageParameters(message, {"id"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    ai::llm::ID id = 0;
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+    app->runtime.services.ai.llm.dumpContextState(
+      message.seq,
+      id,
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
+    );
+  });
+
+  /**
+   * @param id
+   */
+  router->map("ai.llm.context.restore", [](auto message, auto router, auto reply) {
+    auto app = App::sharedApplication();
+    auto err = validateMessageParameters(message, {"id"});
+
+    if (err.type != JSON::Type::Null) {
+      return reply(Result::Err { message, err });
+    }
+
+    ai::llm::ID id = 0;
+    REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
+    app->runtime.services.ai.llm.restoreContextState(
+      message.seq,
+      id,
+      message.buffer,
+      RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
+    );
   });
 
   /**
@@ -749,7 +1135,7 @@ static void mapIPCRoutes (Router *router) {
       router->bridge.getRuntime()->services.process.write(
         message.seq,
         id,
-        message.buffer.pointer(),
+        message.buffer.shared(),
         message.buffer.size(),
         RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
       );
@@ -1706,7 +2092,7 @@ static void mapIPCRoutes (Router *router) {
     router->bridge.getRuntime()->services.fs.write(
       message.seq,
       id,
-      message.buffer.pointer(),
+      message.buffer.shared(),
       message.buffer.size(),
       offset,
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -2703,7 +3089,7 @@ static void mapIPCRoutes (Router *router) {
         QueuedResponse {
           rand64(),
           0,
-          response.body.pointer(),
+          response.body.shared(),
           response.body.size(),
           response.headers.str()
         }
@@ -2757,7 +3143,7 @@ static void mapIPCRoutes (Router *router) {
           QueuedResponse {
             rand64(),
             0,
-            res.body.buffer.pointer(),
+            res.body.buffer.shared(),
             res.body.buffer.size(),
             res.headers.str()
           }
@@ -3266,7 +3652,7 @@ static void mapIPCRoutes (Router *router) {
 
     options.ephemeral = message.get("ephemeral") == "true";
     options.address = message.get("address", "0.0.0.0");
-    options.bytes = message.buffer.pointer();
+    options.bytes = message.buffer.shared();
     options.size = message.buffer.size();
 
     router->bridge.getRuntime()->services.udp.send(

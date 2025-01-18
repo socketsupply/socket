@@ -856,6 +856,7 @@ function _compile_llama {
     -DLLAMA_BUILD_TESTS=OFF
     -DLLAMA_BUILD_SERVER=OFF
     -DLLAMA_BUILD_EXAMPLES=OFF
+    -DBUILD_SHARED_LIBS=OFF
   )
 
   if [ "$platform" == "desktop" ]; then

@@ -2,9 +2,8 @@
 #define SOCKET_RUNTIME_CORE_H
 
 #include "queued_response.hh"
-#include "platform.hh"
+#include "concurrent.hh"
 #include "context.hh"
-#include "options.hh"
 #include "json.hh"
 #include "loop.hh"
 
@@ -187,8 +186,10 @@ namespace ssc::runtime::core {
         context::Dispatcher& dispatcher;
         loop::Loop& loop;
         Services& services;
+        concurrent::WorkerQueue::Options workerQueue;
       };
 
+      concurrent::WorkerQueue queue;
       context::RuntimeContext& context;
       context::Dispatcher& dispatcher;
       loop::Loop& loop;

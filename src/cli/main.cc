@@ -4933,6 +4933,9 @@ int main (int argc, char* argv[]) {
       files += prefixFile("lib/" + platform.arch + "-desktop/libsocket-runtime.a");
       files += prefixFile("lib/" + platform.arch + "-desktop/libuv.a");
       files += prefixFile("lib/" + platform.arch + "-desktop/libllama.a");
+      files += prefixFile("lib/" + platform.arch + "-desktop/libggml.a");
+      files += prefixFile("lib/" + platform.arch + "-desktop/libggml-base.a");
+      files += prefixFile("lib/" + platform.arch + "-desktop/libggml-cpu.a");
 
       pathResources = paths.pathBin;
 

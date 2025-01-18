@@ -259,6 +259,7 @@ namespace ssc::runtime::core::services {
     auto request = http::Request(buffer);
     request.url.hostname = "127.0.0.1";
     request.url.scheme = "ws";
+    request.url.port = std::to_string(this->port.load());
     request.scheme = "ws";
 
     if (!request.valid()) {
@@ -289,15 +290,15 @@ namespace ssc::runtime::core::services {
 
     if (request.url.pathComponents.size() >= 2) {
       try {
-        client->id = request.url.pathComponents.get<int>(0);
+        client->id = request.url.pathComponents.get<uint64_t>(0);
       } catch (...) {
-        // debug("Unable to parse socket id");
+        debug("Unable to parse socket id");
       }
 
       try {
-        client->client.id = request.url.pathComponents.get<int>(1);
+        client->client.id = request.url.pathComponents.get<uint64_t>(1);
       } catch (...) {
-        // debug("Unable to parse client id");
+        debug("Unable to parse client id");
       }
     }
 
@@ -313,6 +314,7 @@ namespace ssc::runtime::core::services {
         });
       }
 
+      debug("added client: %lu", client->id);
       this->clients.emplace(client->id, client);
 
       // std::cout << "added client " << this->clients.size() << std::endl;
@@ -441,7 +443,7 @@ namespace ssc::runtime::core::services {
     }
 
     const auto uri = URL::Builder()
-      .setProtocol("ipc")
+      .setScheme("ipc")
       .setHostname(decoded.pluck("route"))
       .setSearchParam("id", client->id)
       .setSearchParams(decoded.map())

@@ -59,6 +59,8 @@ cflags+=(
   -I"$root/build"
   -I"$root/build/llama"
   -I"$root/build/llama/common"
+  -I"$root/build/llama/include"
+  -I"$root/build/llama/ggml/include"
   -I"$root/build/include"
   -DSOCKET_RUNTIME_BUILD_TIME="$(date '+%s')"
   -DSOCKET_RUNTIME_VERSION_HASH=$(git rev-parse --short=8 HEAD)

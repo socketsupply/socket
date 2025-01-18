@@ -251,7 +251,7 @@ export * from '{{url}}'
   bool Bridge::route (const String& uri, const bytes::Buffer& buffer, const ipc::Router::ResultCallback callback) {
     return this->route(
       uri,
-      buffer.pointer(),
+      buffer.shared(),
       buffer.size(),
       callback
     );
@@ -318,7 +318,7 @@ export * from '{{url}}'
       };
 
       const auto size = request->body.size();
-      const auto invoked = this->router.invoke(message, request->body.pointer(), size, [=](ipc::Result result) {
+      const auto invoked = this->router.invoke(message, request->body.shared(), size, [=](ipc::Result result) {
         if (!request->isActive()) {
           return;
         }

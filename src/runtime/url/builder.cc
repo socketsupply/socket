@@ -1,8 +1,8 @@
 #include "../url.hh"
 
 namespace ssc::runtime::url {
-  URL::Builder& URL::Builder::setProtocol (const String& protocol) {
-    this->protocol = protocol;
+  URL::Builder& URL::Builder::setScheme (const String& scheme) {
+    this->scheme = scheme;
     return *this;
   }
 
@@ -96,11 +96,11 @@ namespace ssc::runtime::url {
   URL URL::Builder::build () const {
     StringStream stream;
 
-    if (this->protocol.size() == 0) {
+    if (this->scheme.size() == 0) {
       return String("");
     }
 
-    stream << this->protocol << ":";
+    stream << this->scheme << ":";
 
     if (this->hostname.size() > 0) {
       stream << "//";

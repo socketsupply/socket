@@ -4,8 +4,16 @@
 using ssc::runtime::string::split;
 
 namespace ssc::runtime::http {
-  Request::Request (const String& input) {
+  Request::Request (
+    const String& input,
+    const String& scheme,
+    const String& method
+  ) : scheme(scheme),
+      method(method)
+  {
     const auto crlf = input.find("\r\n");
+    this->url.scheme = scheme;
+    this->url.hostname = "127.0.0.1";
     if (crlf != String::npos) {
       auto stream = std::istringstream(input.substr(0, crlf));
       String pathname;
@@ -44,15 +52,25 @@ namespace ssc::runtime::http {
         }
       }
     }
+
+    this->url = this->url.str();
   }
 
-  Request::Request (const unsigned char* input, size_t size) {
+  Request::Request (
+    const unsigned char* input,
+    size_t size,
+    const String& scheme,
+    const String& method
+  ) : scheme(scheme),
+      method(method)
+  {
     const auto string = size >= 0
       ? String(reinterpret_cast<const char*>(input), size)
       : String(reinterpret_cast<const char*>(input));
 
     const auto crlf = string.find("\r\n");
 
+    this->url.scheme = scheme;
     if (crlf != String::npos) {
       auto stream = std::istringstream(string.substr(0, crlf));
       String pathname;
@@ -95,6 +113,8 @@ namespace ssc::runtime::http {
         }
       }
     }
+
+    this->url = this->url.str();
   }
 
   bool Request::valid () const {

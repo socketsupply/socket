@@ -1878,21 +1878,21 @@ export class IPCMessagePort extends MessagePort {
   }
 
   set onmessage (onmessage) {
-    const konmessage = Symbol.for('socket.runtime.ipc.IPCMessagePort.onmessage')
+    const current = this[Symbol.for('socket.runtime.ipc.IPCMessagePort.onmessage')]
     const port = IPCMessagePort.ports.get(this.id)
 
     if (port !== this) {
       return
     }
 
-    if (typeof this[konmessage] === 'function') {
-      this.removeEventListener('message', this[konmessage])
-      this[konmessage] = null
+    if (typeof current === 'function') {
+      this.removeEventListener('message', current)
+      this[Symbol.for('socket.runtime.ipc.IPCMessagePort.onmessage')] = null
     }
 
     if (typeof onmessage === 'function') {
       this.addEventListener('message', onmessage)
-      this[konmessage] = onmessage
+      this[Symbol.for('socket.runtime.ipc.IPCMessagePort.onmessage')] = onmessage
       if (!this.started) {
         this.start()
       }
@@ -1904,21 +1904,21 @@ export class IPCMessagePort extends MessagePort {
   }
 
   set onmessageerror (onmessageerror) {
-    const konmessageerror = Symbol.for('socket.runtime.ipc.IPCMessagePort.onmessageerror')
+    const current = this[Symbol.for('socket.runtime.ipc.IPCMessagePort.onmessageerror')]
     const port = IPCMessagePort.ports.get(this.id)
 
     if (port !== this) {
       return
     }
 
-    if (typeof this[konmessageerror] === 'function') {
-      this.removeEventListener('messageerror', this[konmessageerror])
-      this[konmessageerror] = null
+    if (typeof current === 'function') {
+      this.removeEventListener('messageerror', current)
+      this[Symbol.for('socket.runtime.ipc.IPCmessageerrorPort.onmessageerror')] = null
     }
 
     if (typeof onmessageerror === 'function') {
       this.addEventListener('messageerror', onmessageerror)
-      this[konmessageerror] = onmessageerror
+      this[Symbol.for('socket.runtime.ipc.IPCMessagePort.onmessageerror')] = onmessageerror
     }
   }
 

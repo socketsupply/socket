@@ -20,7 +20,7 @@ let defaultConduitPort = globalThis.__args.conduit?.port || 0
 
 /**
  * @typedef {{ options: object, payload: Uint8Array }} ReceiveMessage
- * @typedef {function(Error?, ReceiveCallback | undefined)} ReceiveCallback
+ * @typedef {function(Error?, ReceiveMessage | undefined)} ReceiveCallback
  * @typedef {{ isActive: boolean, handles: { ids: string[], count: number }}} ConduitDiagnostics
  * @typedef {{ isActive: boolean, port: number, sharedKey: string }} ConduitStatus
  * @typedef {{
@@ -536,6 +536,16 @@ export class Conduit extends EventTarget {
 
       const value = new TextDecoder().decode(valueBuffer)
       options[key] = value
+
+      if (value === 'null') {
+        options[key] = null
+      } else if (value === 'true') {
+        options[key] = true
+      } else if (value === 'false') {
+        options[key] = false
+      } else if (/^(([0-9]+)(\.[0-9]+)?|([0-9])+(\.[0-9]+))$/.test(value)) {
+        options[key] = parseFloat(value)
+      }
     }
 
     const bodyLength = view.getUint16(offset, false)

@@ -34,6 +34,8 @@ namespace ssc::runtime::types {
   using AtomicBool = std::atomic<bool>;
   using AtomicInt = std::atomic<int>;
   using BinarySemaphore = std::binary_semaphore;
+  using ConditionVariable = std::condition_variable;
+  using ConditionVariableAny = std::condition_variable_any;
   using String = std::string;
   using StringStream = std::stringstream;
   using WString = std::wstring;
@@ -42,6 +44,7 @@ namespace ssc::runtime::types {
   using OutputFileStream = std::ofstream;
   using Mutex = std::recursive_mutex;
   using Lock = std::lock_guard<Mutex>;
+  using UniqueLock = std::unique_lock<Mutex>;
   using ScopedLock = std::scoped_lock<Mutex, Mutex>;
   using Path = fs::path;
   using Thread = std::thread;
@@ -62,6 +65,7 @@ namespace ssc::runtime::types {
   template <typename T> using UniquePointer = std::unique_ptr<T>;
   template <typename T> using Promise = std::promise<T>;
   template <typename T> using InputStreamBufferIterator = std::istreambuf_iterator<T>;
+  template <std::ptrdiff_t k> using Semaphore = std::counting_semaphore<k>;
 
   using ExitCallback = Function<void(int code)>;
   using MessageCallback = Function<void(const String)>;

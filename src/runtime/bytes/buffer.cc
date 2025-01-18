@@ -2,24 +2,24 @@
 #include "../debug.hh"
 
 namespace ssc::runtime::bytes {
-  ArrayBuffer::ArrayBuffer (size_t byteLength)
+  ArrayBuffer::ArrayBuffer (size_type byteLength)
     : byteLength(byteLength),
       byteOffset(0),
       bytes(byteLength > 0 ? new unsigned char[byteLength]{0} : nullptr)
   {}
 
   ArrayBuffer::ArrayBuffer (
-    size_t byteLength,
-    const Pointer bytes
+    size_type byteLength,
+    const SharedPointer bytes
   ) : byteLength(byteLength),
       byteOffset(0),
       bytes(bytes)
   {}
 
   ArrayBuffer::ArrayBuffer (
-    size_t byteLength,
-    size_t byteOffset,
-    const Pointer bytes
+    size_type byteLength,
+    size_type byteOffset,
+    const SharedPointer bytes
   ) : byteLength(byteLength),
       byteOffset(byteOffset),
       bytes(bytes)
@@ -88,22 +88,22 @@ namespace ssc::runtime::bytes {
     return this->bytes.get() + this->byteOffset;
   }
 
-  const ArrayBuffer::Pointer ArrayBuffer::pointer () const {
+  const ArrayBuffer::SharedPointer ArrayBuffer::shared () const {
     return this->bytes;
   }
 
-  ArrayBuffer::Pointer ArrayBuffer::pointer () {
+  ArrayBuffer::SharedPointer ArrayBuffer::shared () {
     return this->bytes;
   }
 
-  const ArrayBuffer ArrayBuffer::slice (size_t begin, size_t end) const {
+  const ArrayBuffer ArrayBuffer::slice (size_type begin, size_type end) const {
     Lock lock(this->mutex);
     if (begin < 0) {
-      begin = this->size() -1 + begin;
+      begin = this->size() + begin;
     }
 
     if (end < 0) {
-      end = this->size() -1 + end;
+      end = this->size() + end;
     }
 
     if (end < begin) {
@@ -121,7 +121,7 @@ namespace ssc::runtime::bytes {
     );
   }
 
-  void ArrayBuffer::resize (size_t size) {
+  void ArrayBuffer::resize (size_type size) {
     if (size < 0) {
       size = this->size() - 1 + size;
     }
@@ -157,7 +157,7 @@ namespace ssc::runtime::bytes {
     return Buffer(0);
   }
 
-  template <size_t size>
+  template <Buffer::size_type size>
   Buffer Buffer::from (const ByteArray<size>& input) {
     auto buffer = Buffer(input.size());
     buffer.set(input, 0);
@@ -188,16 +188,56 @@ namespace ssc::runtime::bytes {
     return buffer;
   }
 
-  Buffer Buffer::from (const unsigned char* input, size_t size) {
+  Buffer Buffer::from (const unsigned char* input, size_type size) {
     auto buffer = Buffer(size);
     buffer.set(input, 0, size);
     return buffer;
   }
 
-  Buffer Buffer::from (const char* input, size_t size) {
+  Buffer Buffer::from (const char* input, size_type size) {
     auto buffer = Buffer(size);
     buffer.set(input, 0, size);
     return buffer;
+  }
+
+  Buffer Buffer::concat (const Vector<Buffer>& buffers) {
+    auto buffer = Buffer(0);
+    for (const auto& entry : buffers) {
+      auto tmp = Buffer(buffer.byteLength + entry.byteLength);
+      tmp.set(buffer, 0);
+      tmp.set(entry, buffer.byteLength);
+      buffer = tmp;
+    }
+    return buffer;
+  }
+
+  int Buffer::compare (const Buffer& left, const Buffer& right) {
+    if (&left == &right) {
+      return 0;
+    }
+
+    auto x = left.size();
+    auto y = right.size();
+
+    for (size_t i = 0, l = std::min(x, y); i < l; ++i) {
+      if (left[i] != right[i]) {
+        x = left[i];
+        y = right[i];
+        break;
+      }
+    }
+
+    if (x < y) {
+      return -1;
+    } else if (y < x) {
+      return 1;
+    }
+
+    return 0;
+  }
+
+  bool Buffer::equals (const Buffer& left, const Buffer& right) {
+    return Buffer::compare(left, right) == 0;
   }
 
   Buffer::Buffer (const ArrayBuffer& buffer)
@@ -207,8 +247,8 @@ namespace ssc::runtime::bytes {
   {}
 
   Buffer::Buffer (
-    size_t byteLength,
-    size_t byteOffset,
+    size_type byteLength,
+    size_type byteOffset,
     const ArrayBuffer& buffer
   ) : byteLength(byteLength),
       byteOffset(byteOffset),
@@ -239,7 +279,7 @@ namespace ssc::runtime::bytes {
     memcpy(this->buffer.data(), string.c_str(), string.size());
   }
 
-  Buffer::Buffer (size_t size)
+  Buffer::Buffer (size_type size)
     : byteLength(size),
       byteOffset(0),
       buffer(size)
@@ -295,7 +335,11 @@ namespace ssc::runtime::bytes {
     return *this;
   }
 
-  unsigned char Buffer::operator [] (size_t byteOffset) const {
+  unsigned char Buffer::operator [] (size_type byteOffset) const {
+    if (byteOffset < 0) {
+      byteOffset = this->byteLength + byteOffset;
+    }
+
     if (byteOffset >= this->byteLength) {
       throw Error("Buffer::operator[]: RangeError: 'byteOffset' exceeds 'byteLength'");
     }
@@ -303,7 +347,11 @@ namespace ssc::runtime::bytes {
     return this->at(byteOffset);
   }
 
-  unsigned char& Buffer::operator [] (size_t byteOffset) {
+  unsigned char& Buffer::operator [] (size_type byteOffset) {
+    if (byteOffset < 0) {
+      byteOffset = this->byteLength + byteOffset;
+    }
+
     if (byteOffset >= this->byteLength) {
       throw Error("Buffer::operator[]: RangeError: 'byteOffset' exceeds 'byteLength'");
     }
@@ -311,21 +359,46 @@ namespace ssc::runtime::bytes {
     return (this->buffer.bytes.get() + this->byteOffset)[byteOffset];
   }
 
+  Buffer Buffer::operator + (const Buffer& buffer) {
+    return Buffer::concat({ *this ,buffer });
+  }
+
+  Buffer Buffer::operator + (size_type byteOffset) {
+    return this->slice(byteOffset);
+  }
+
+  Buffer Buffer::operator - (size_type byteOffset) {
+    return this->slice(this->byteLength - byteOffset);
+  }
+
+  bool Buffer::operator == (const Buffer& buffer) {
+    return this == &buffer || Buffer::compare(*this, buffer) == 0;
+  }
+
+  bool Buffer::operator != (const Buffer& buffer) {
+    return !this->operator==(buffer);
+  }
+
   size_t Buffer::size () const {
     return this->byteLength.load(std::memory_order_relaxed);
   }
 
-  template <size_t size>
-  bool Buffer::set (const ByteArray<size>& input, size_t byteOffset) {
+  template <Buffer::size_type size>
+  bool Buffer::set (const ByteArray<size>& input, size_type byteOffset) {
+    if (byteOffset < 0) {
+      byteOffset = this->byteLength + byteOffset;
+    }
     if (byteOffset + size > this->byteLength) {
       throw Error("Buffer::at: RangeError: 'size' and 'byteOffset' exceeds 'byteLength'");
     }
-
     memcpy(this->buffer.data() + byteOffset, input.data(), input.size());
     return true;
   }
 
-  bool Buffer::set (const Vector<uint8_t>& input, size_t byteOffset) {
+  bool Buffer::set (const Vector<uint8_t>& input, size_type byteOffset) {
+    if (byteOffset < 0) {
+      byteOffset = this->byteLength + byteOffset;
+    }
     if (byteOffset + input.size() > this->byteLength) {
       throw Error("Buffer::at: RangeError: 'size' and 'byteOffset' exceeds 'byteLength'");
     }
@@ -333,7 +406,10 @@ namespace ssc::runtime::bytes {
     return true;
   }
 
-  bool Buffer::set (const String& input, size_t byteOffset) {
+  bool Buffer::set (const String& input, size_type byteOffset) {
+    if (byteOffset < 0) {
+      byteOffset = this->byteLength + byteOffset;
+    }
     if (byteOffset + input.size() > this->byteLength) {
       throw Error("Buffer::at: RangeError: 'size' and 'byteOffset' exceeds 'byteLength'");
     }
@@ -341,7 +417,10 @@ namespace ssc::runtime::bytes {
     return true;
   }
 
-  bool Buffer::set (const Buffer& input, size_t byteOffset) {
+  bool Buffer::set (const Buffer& input, size_type byteOffset) {
+    if (byteOffset < 0) {
+      byteOffset = this->byteLength + byteOffset;
+    }
     if (byteOffset + input.size() > this->byteLength) {
       throw Error("Buffer::at: RangeError: 'size' and 'byteOffset' exceeds 'byteLength'");
     }
@@ -349,7 +428,7 @@ namespace ssc::runtime::bytes {
     return true;
   }
 
-  bool Buffer::set (const ArrayBuffer& input, size_t byteOffset) {
+  bool Buffer::set (const ArrayBuffer& input, size_type byteOffset) {
     if (byteOffset + input.size() > this->byteLength) {
       throw Error("Buffer::at: RangeError: 'size' and 'byteOffset' exceeds 'byteLength'");
     }
@@ -357,7 +436,10 @@ namespace ssc::runtime::bytes {
     return true;
   }
 
-  bool Buffer::set (const unsigned char* input, size_t byteOffset, size_t byteLength) {
+  bool Buffer::set (const unsigned char* input, size_type byteOffset, size_type byteLength) {
+    if (byteOffset < 0) {
+      byteOffset = this->byteLength + byteOffset;
+    }
     if (byteOffset + byteLength > this->byteLength) {
       throw Error("Buffer::at: RangeError: 'size' and 'byteOffset' exceeds 'byteLength'");
     }
@@ -365,7 +447,10 @@ namespace ssc::runtime::bytes {
     return true;
   }
 
-  bool Buffer::set (const char* input, size_t byteOffset, size_t byteLength) {
+  bool Buffer::set (const char* input, size_type byteOffset, size_type byteLength) {
+    if (byteOffset < 0) {
+      byteOffset = this->byteLength + byteOffset;
+    }
     if (byteOffset + byteLength > this->byteLength) {
       throw Error("Buffer::at: RangeError: 'size' and 'byteOffset' exceeds 'byteLength'");
     }
@@ -373,7 +458,80 @@ namespace ssc::runtime::bytes {
     return true;
   }
 
-  unsigned char Buffer::at (ssize_t size) {
+  bool Buffer::set (unsigned char byte, size_type byteOffset) {
+    if (byteOffset < 0) {
+      byteOffset = this->byteLength + byteOffset;
+    }
+
+    if (byteOffset >= this->byteLength) {
+      throw Error("Buffer::at: RangeError: 'byteOffset' exceeds 'byteLength'");
+    }
+
+    this->data()[byteOffset] = byte;
+    return true;
+  }
+
+  bool Buffer::fill (unsigned char byte, size_type byteOffset, size_type endOffset) {
+    if (byteOffset < 0) {
+      byteOffset = this->byteLength + byteOffset;
+    }
+
+    if (endOffset < 0) {
+      endOffset = this->byteLength + endOffset;
+    }
+
+    if (byteOffset >= this->byteLength) {
+      throw Error("Buffer::at: RangeError: 'byteOffset' exceeds 'byteLength'");
+    } else if (endOffset >= this->byteLength) {
+      throw Error("Buffer::at: RangeError: 'endOffset' exceeds 'byteLength'");
+    } else if (endOffset < byteOffset) {
+      throw Error("Buffer::at: RangeError: 'endOffset' must exceed 'byteOffset'");
+    }
+
+    for (int i = byteOffset; i < this->byteLength; ++i) {
+      this->data()[i] = 0;
+    }
+
+    return true;
+  }
+
+  bool Buffer::contains (unsigned char value, size_type byteOffset) const {
+    if (byteOffset < 0) {
+      byteOffset = this->byteLength + byteOffset;
+    }
+
+    if (byteOffset >= this->byteLength) {
+      return false;
+    }
+
+    for (int i = byteOffset; i < this->byteLength; ++i) {
+      if (this->data()[i] == value) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  Buffer::size_type Buffer::find (unsigned char value, size_type byteOffset) const {
+    if (byteOffset < 0) {
+      byteOffset = this->byteLength + byteOffset;
+    }
+
+    if (byteOffset >= this->byteLength) {
+      return Buffer::npos;
+    }
+
+    for (Buffer::size_type i = byteOffset; i < this->byteLength; ++i) {
+      if (this->data()[i] == value) {
+        return i;
+      }
+    }
+
+    return Buffer::npos;
+  }
+
+  unsigned char Buffer::at (size_type size) {
     if (size >= this->byteLength) {
       throw Error("Buffer::at: RangeError: 'size' exceeds 'byteLength'");
     }
@@ -386,7 +544,7 @@ namespace ssc::runtime::bytes {
     return data[size];
   }
 
-  unsigned char Buffer::at (ssize_t size) const {
+  unsigned char Buffer::at (size_type size) const {
     if (size >= this->byteLength) {
       throw Error("Buffer::at: RangeError: 'size' exceeds 'byteLength'");
     }
@@ -407,20 +565,20 @@ namespace ssc::runtime::bytes {
     return this->buffer.data() + this->byteOffset;
   }
 
-  const Buffer Buffer::slice (size_t begin, size_t end, bool copy) const {
+  const Buffer Buffer::slice (size_type begin, size_type end, bool copy) const {
     if (begin < 0) {
-      begin = this->size() -1 + begin;
+      begin = this->size() + begin;
     }
 
     if (end < 0) {
-      end = this->size() -1 + end;
+      end = this->size() + end;
     }
 
     if (begin >= this->byteLength) {
       throw Error("Buffer::slice: RangeError: 'begin' exceeds 'byteLength'");
     }
 
-    if (end >= this->byteLength) {
+    if (end > this->byteLength) {
       throw Error("Buffer::slice: RangeError: 'end' exceeds 'byteLength'");
     }
 
@@ -447,33 +605,64 @@ namespace ssc::runtime::bytes {
   }
 
   String Buffer::str (const Encoding encoding) const {
-    const auto string = reinterpret_cast<const char*>(this->buffer.data());
+    const auto string = reinterpret_cast<const char*>(this->data());
 
     if (string == nullptr) {
       return "";
     }
 
     if (encoding == Encoding::HEX) {
-      return encodeHexString(string);
+      return encodeHexString(String(string, this->byteLength));
     } else if (encoding == Encoding::BASE64) {
-      return base64::encode(string);
+      return base64::encode(String(string, this->byteLength));
     }
 
-    return string;
+    return String(string, this->byteLength);
   }
 
-  const ArrayBuffer::Pointer Buffer::pointer () const {
-    return ArrayBuffer::Pointer(
-      this->buffer.pointer(),
-      this->buffer.pointer().get() + this->byteOffset
+  const ArrayBuffer::SharedPointer Buffer::shared () const {
+    return ArrayBuffer::SharedPointer(
+      this->buffer.shared(),
+      this->buffer.shared().get() + this->byteOffset
     );
   }
 
-  ArrayBuffer::Pointer Buffer::pointer () {
-    return ArrayBuffer::Pointer(
-      this->buffer.pointer(),
-      this->buffer.pointer().get() + this->byteOffset
+  ArrayBuffer::SharedPointer Buffer::shared () {
+    return ArrayBuffer::SharedPointer(
+      this->buffer.shared(),
+      this->buffer.shared().get() + this->byteOffset
     );
+  }
+
+  const Buffer::const_iterator Buffer::begin () const noexcept {
+    return this->data();
+  }
+
+  const Buffer::const_iterator Buffer::end () const noexcept {
+    return this->data() + this->size();
+  }
+
+  Buffer::iterator Buffer::begin () noexcept {
+    return this->data();
+  }
+
+  Buffer::iterator Buffer::end () noexcept {
+    return this->data() + this->size();
+  }
+
+  BufferQueue::BufferQueue (const BufferQueue& bufferQueue) {
+    this->buffer = bufferQueue.buffer;
+    this->byteLength = bufferQueue.byteLength.load(std::memory_order_relaxed   );
+    this->byteOffset = bufferQueue.byteOffset.load(std::memory_order_relaxed   );
+  }
+
+  BufferQueue::BufferQueue (BufferQueue&& bufferQueue) {
+    this->buffer = bufferQueue.buffer;
+    this->byteLength = bufferQueue.byteLength.load(std::memory_order_relaxed   );
+    this->byteOffset = bufferQueue.byteOffset.load(std::memory_order_relaxed   );
+    bufferQueue.byteOffset = 0;
+    bufferQueue.byteLength = 0;
+    bufferQueue.buffer = nullptr;
   }
 
   BufferQueue& BufferQueue::operator = (const ArrayBuffer& arrayBuffer) {
@@ -517,22 +706,7 @@ namespace ssc::runtime::bytes {
     return *this;
   }
 
-  BufferQueue::BufferQueue (const BufferQueue& bufferQueue) {
-    this->buffer = bufferQueue.buffer;
-    this->byteLength = bufferQueue.byteLength.load(std::memory_order_relaxed   );
-    this->byteOffset = bufferQueue.byteOffset.load(std::memory_order_relaxed   );
-  }
-
-  BufferQueue::BufferQueue (BufferQueue&& bufferQueue) {
-    this->buffer = bufferQueue.buffer;
-    this->byteLength = bufferQueue.byteLength.load(std::memory_order_relaxed   );
-    this->byteOffset = bufferQueue.byteOffset.load(std::memory_order_relaxed   );
-    bufferQueue.byteOffset = 0;
-    bufferQueue.byteLength = 0;
-    bufferQueue.buffer = nullptr;
-  }
-
-  template <size_t size>
+  template <Buffer::size_type size>
   bool BufferQueue::push (const ByteArray<size>& input) {
     this->buffer.resize(this->buffer.byteLength + size);
     this->byteLength = this->buffer.byteLength.load(std::memory_order_relaxed);
@@ -563,31 +737,37 @@ namespace ssc::runtime::bytes {
     return this->set(input, this->byteLength - input.size());
   }
 
-  bool BufferQueue::push (const unsigned char* input, size_t size) {
+  bool BufferQueue::push (const unsigned char* input, size_type size) {
     this->buffer.resize(this->byteLength + size);
     this->byteLength = this->buffer.byteLength.load(std::memory_order_relaxed);
     return this->set(input, this->byteLength - size, size);
   }
 
-  bool BufferQueue::push (SharedPointer<unsigned char[]> input, size_t size) {
+  bool BufferQueue::push (SharedPointer<unsigned char[]> input, size_type size) {
     this->buffer.resize(this->byteLength + size);
     this->byteLength = this->buffer.byteLength.load(std::memory_order_relaxed);
     return this->set(input.get(), this->byteLength - size, size);
   }
 
-  bool BufferQueue::push (const char* input, size_t size) {
+  bool BufferQueue::push (const char* input, size_type size) {
     this->buffer.resize(this->byteLength + size);
     this->byteLength = this->buffer.byteLength.load(std::memory_order_relaxed);
     return this->set(input, this->byteLength - size, size);
   }
 
-  bool BufferQueue::push (SharedPointer<char[]> input, size_t size) {
+  bool BufferQueue::push (SharedPointer<char[]> input, size_type size) {
     this->buffer.resize(this->byteLength + size);
     this->byteLength = this->buffer.byteLength.load(std::memory_order_relaxed);
     return this->set(input.get(), this->byteLength - size, size);
   }
 
-  template <size_t size>
+  bool BufferQueue::push (const unsigned char byte) {
+    this->buffer.resize(this->byteLength + 1);
+    this->byteLength = this->buffer.byteLength.load(std::memory_order_relaxed);
+    return this->set(byte, this->byteLength - 1);
+  }
+
+  template <BufferQueue::size_type size>
   bool BufferQueue::reset (const ByteArray<size>& input) {
     this->buffer.resize(size);
     return this->set(input.get(), 0, size);
@@ -613,22 +793,22 @@ namespace ssc::runtime::bytes {
     return this->set(input, 0);
   }
 
-  bool BufferQueue::reset (const unsigned char* input, size_t size) {
+  bool BufferQueue::reset (const unsigned char* input, size_type size) {
     this->buffer.resize(size);
     return this->set(input, 0, size);
   }
 
-  bool BufferQueue::reset (SharedPointer<unsigned char[]> input, size_t size) {
+  bool BufferQueue::reset (SharedPointer<unsigned char[]> input, size_type size) {
     this->buffer.resize(size);
     return this->set(input.get(), 0, size);
   }
 
-  bool BufferQueue::reset (const char* input, size_t size) {
+  bool BufferQueue::reset (const char* input, size_type size) {
     this->buffer.resize(size);
     return this->set(input, 0, size);
   }
 
-  bool BufferQueue::reset (SharedPointer<char[]> input, size_t size) {
+  bool BufferQueue::reset (SharedPointer<char[]> input, size_type size) {
     this->buffer.resize(size);
     return this->set(input.get(), 0, size);
   }

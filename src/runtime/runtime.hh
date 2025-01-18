@@ -5,7 +5,6 @@
 #include "config.hh"
 #include "bridge.hh"
 #include "window.hh"
-#include "webview.hh"
 #include "options.hh"
 #include "context.hh"
 #include "serviceworker.hh"
