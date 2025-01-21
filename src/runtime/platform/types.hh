@@ -3,6 +3,7 @@
 
 #include <array>
 #include <atomic>
+#include <condition_variable>
 #include <filesystem>
 #include <fstream>
 #include <functional>

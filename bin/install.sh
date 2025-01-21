@@ -160,6 +160,9 @@ if [ "$host" == "Darwin" ]; then
   die $? "not ok - missing build tools, try \"$(advice "libtool")\""
   quiet command -v curl
   die $? "not ok - missing curl, try \"$(advice "curl")\""
+  if ! brew list | grep libomp >/dev/null 2>&1; then
+    die $? "not ok - missing libomp, try \"$(advice "libomp")\""
+  fi
 fi
 
 if [ "$host" == "Linux" ]; then
@@ -286,6 +289,8 @@ function _build_cli {
     static_libs+=("$BUILD_DIR/$arch-$platform/lib/libuv.a")
     static_libs+=("$BUILD_DIR/$arch-$platform/lib/libllama.a")
     static_libs+=("$BUILD_DIR/$arch-$platform/lib/libsocket-runtime.a")
+  elif [[ "$(uname -s)" == "Darwin" ]]; then
+    cflags+=("-fopenmp")
   fi
 
   libs=($(find "$root/build/$arch-$platform/lib$d/*" 2>/dev/null))
@@ -818,7 +823,7 @@ function _compile_llama_metal {
   mkdir -p "$STAGING_DIR/build/"
   mkdir -p ../lib
 
-  xcrun -sdk $sdk metal -O3 -c ggml-metal.metal -o ggml-metal.air
+  xcrun -sdk $sdk metal -O3 -c ggml/src/ggml-metal/ggml-metal.metal -o ggml-metal.air
   xcrun -sdk $sdk metallib ggml-metal.air -o ../lib/default.metallib
   rm *.air
 
@@ -893,15 +898,26 @@ function _compile_llama {
 
     rm -f "$root/build/$(host_arch)-desktop/lib$d"/*.{so,la,dylib}*
     return
-  elif [ "$platform" == "iPhoneOS" ] || [ "$platform" == "iPhoneSimulator" ]; then
+  #elif [ "$platform" == "iPhoneOS" ] || [ "$platform" == "iPhoneSimulator" ]; then
+  elif [ "$platform" == "iPhoneOS" ]; then
     # https://github.com/ggerganov/llama.cpp/discussions/4508
 
     local ar="$(xcrun -sdk $sdk -find ar)"
     local cc="$(xcrun -sdk $sdk -find clang)"
     local cxx="$(xcrun -sdk $sdk -find clang++)"
-    local cflags="--target=$target-apple-ios -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk -m$sdk-version-min=$SDKMINVERSION -DLLAMA_METAL_EMBED_LIBRARY=ON"
+    local cflags="--target=$target-apple-ios -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk -m$sdk-version-min=$SDKMINVERSION -DLLAMA_METAL_EMBED_LIBRARY=ON -DUSE_NEON_DOTPROD -march=armv8.2-a+dotprod"
 
-    AR="$ar" CFLAGS="$cflags" CXXFLAGS="$cflags" CXX="$cxx" CC="$cc" make libllama.a
+    export AR="$ar"
+    export CFLAGS="$cflags"
+    export CXXFLAGS="$cflags"
+    export CXX="$cxx"
+    export CC="$cc"
+    export SDKROOT="$PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk"
+
+    quiet cmake -S . -B build -DCMAKE_OSX_ARCHITECTURES="$target" -DCMAKE_OSX_SYSROOT="$SDKROOT" -DCMAKE_C_COMPILER="$cc" -DCMAKE_CXX_COMPILER="$cxx" -DCMAKE_INSTALL_PREFIX="$BUILD_DIR/$target-$platform" -DLLAMA_NATIVE=OFF -DGGML_ARM_DOTPROD=ON ${cmake_args[@]} &&
+    quiet cmake --build build &&
+    quiet cmake --build build -- -j"$CPU_CORES" &&
+    quiet cmake --install build
 
     if [ ! $? = 0 ]; then
       die $? "not ok - Unable to compile libllama for '$platform'"
@@ -937,6 +953,7 @@ function _compile_llama {
   cd "$BUILD_DIR" || exit 1
   rm -f "$root/build/$target-$platform/lib$d"/*.{so,la,dylib}*
   echo "ok - built llama for $target-$platform"
+  return 0
 }
 
 function _compile_libuv {
@@ -1114,8 +1131,8 @@ if [[ "$(uname -s)" == "Darwin" ]] && [[ -z "$NO_IOS" ]]; then
   quiet xcode-select -p
   die $? "not ok - xcode needs to be installed from the mac app store: https://apps.apple.com/us/app/xcode/id497799835"
 
-  SDKMINVERSION="8.0"
-  export IPHONEOS_DEPLOYMENT_TARGET="8.0"
+  SDKMINVERSION="13.0"
+  export IPHONEOS_DEPLOYMENT_TARGET="13.0"
 
   LIPO=$(xcrun -sdk iphoneos -find lipo)
   PLATFORMPATH="/Applications/Xcode.app/Contents/Developer/Platforms"
@@ -1126,11 +1143,11 @@ if [[ "$(uname -s)" == "Darwin" ]] && [[ -z "$NO_IOS" ]]; then
   _compile_llama arm64 iPhoneOS & pids+=($!)
 
   _compile_libuv x86_64 iPhoneSimulator & pids+=($!)
-  _compile_llama x86_64 iPhoneSimulator & pids+=($!)
+  #_compile_llama x86_64 iPhoneSimulator & pids+=($!)
 
   if [[ "$arch" = "arm64" ]]; then
     _compile_libuv arm64 iPhoneSimulator & pids+=($!)
-    _compile_llama arm64 iPhoneSimulator & pids+=($!)
+    #_compile_llama arm64 iPhoneSimulator & pids+=($!)
   fi
 
   for pid in "${pids[@]}"; do wait "$pid"; done
