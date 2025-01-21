@@ -3090,6 +3090,11 @@ int main (int argc, char* argv[]) {
       flags += " -lsocket-runtime";
       flags += " -luv";
       flags += " -lllama";
+      flags += " -lggml";
+      flags += " -lggml-base";
+      flags += " -lggml-blas";
+      flags += " -lggml-cpu";
+      flags += " -lggml-metal";
       flags += " -I\"" + Path(paths.platformSpecificOutputPath / "include").string() + "\"";
       files += prefixFile("objects/" + platform.arch + "-desktop/desktop/main.o");
       files += prefixFile("src/init.cc");
