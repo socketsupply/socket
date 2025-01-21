@@ -679,19 +679,24 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 
 /* Begin PBXBuildFile section */
     {{__ios_native_extensions_build_context_sections}}
+		034B592125768A7B005D0134 /* lib/default.metallib in Resources */ = {isa = PBXBuildFile; fileRef = 034B592025768A7B005D0134 /* lib/default.metallib */; };
 		171C1C2B2AC38A70005F587F /* CoreLocation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 171C1C2A2AC38A70005F587F /* CoreLocation.framework */; };
 		179989D22A867B260041EDC1 /* UniformTypeIdentifiers.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 179989D12A867B260041EDC1 /* UniformTypeIdentifiers.framework */; };
 		17A7F8F229358D220051D146 /* init.cc in Sources */ = {isa = PBXBuildFile; fileRef = 17A7F8EE29358D180051D146 /* init.cc */; };
 		17A7F8F529358D430051D146 /* libsocket-runtime.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 17A7F8F329358D430051D146 /* libsocket-runtime.a */; };
 		17A7F8F629358D430051D146 /* libuv.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 17A7F8F429358D430051D146 /* libuv.a */; };
 		17A7F8F629358D4A0051D146 /* libllama.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 17A7F8F429358D430051D147 /* libllama.a */; };
+		17E5B4C42D40623300C40EB2 /* libggml-base.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 17E5B4BF2D40623200C40EB2 /* libggml-base.a */; };
+		17E5B4C52D40623300C40EB2 /* libggml-cpu.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 17E5B4C02D40623300C40EB2 /* libggml-cpu.a */; };
+		17E5B4C62D40623300C40EB2 /* libggml-blas.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 17E5B4C12D40623300C40EB2 /* libggml-blas.a */; };
+		17E5B4C72D40623300C40EB2 /* libggml-metal.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 17E5B4C22D40623300C40EB2 /* libggml-metal.a */; };
+		17E5B4C82D40623300C40EB2 /* libggml.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 17E5B4C32D40623300C40EB2 /* libggml.a */; };
 		17A7F8F729358D4D0051D146 /* main.o in Frameworks */ = {isa = PBXBuildFile; fileRef = 17A7F8F129358D180051D146 /* main.o */; };
 		17C230BA28E9398700301440 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 17C230B928E9398700301440 /* Foundation.framework */; };
 		290F7EBF2768C49000486988 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 294A3C792763E9C6007B5B9A /* UIKit.framework */; };
 		290F7F87276BC2B000486988 /* lib in Resources */ = {isa = PBXBuildFile; fileRef = 290F7F86276BC2B000486988 /* lib */; };
 		29124C5D2761336B001832A0 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 29124C5B2761336B001832A0 /* LaunchScreen.storyboard */; };
 		294A3C852764EAB7007B5B9A /* ui in Resources */ = {isa = PBXBuildFile; fileRef = 294A3C842764EAB7007B5B9A /* ui */; };
-    034B592125768A7B005D0134 /* default.metallib in Resources */ = {isa = PBXBuildFile; fileRef = 034B592025768A7B005D0134 /* default.metallib */; };
 		294A3CA02768C429007B5B9A /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 294A3C7B2763EA7F007B5B9A /* WebKit.framework */; };
 		2996EDB22770BC1F00C672A0 /* Accelerate.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2996EDB12770BC1F00C672B1 /* Accelerate.framework */; };
 		2996EDB22770BC1F00C672A1 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2996EDB12770BC1F00C672A1 /* Metal.framework */; };
@@ -712,12 +717,17 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 		17A7F8F429358D430051D146 /* libuv.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libuv.a; path = lib/libuv.a; sourceTree = "<group>"; };
 		17A7F8F429358D430051D147 /* libllama.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libllama.a; path = lib/libllama.a; sourceTree = "<group>"; };
 		17C230B928E9398700301440 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
+		17E5B4BF2D40623200C40EB2 /* libggml-base.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libggml-base.a"; path = "lib/libggml-base.a"; sourceTree = "<group>"; };
+		17E5B4C02D40623300C40EB2 /* libggml-cpu.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libggml-cpu.a"; path = "lib/libggml-cpu.a"; sourceTree = "<group>"; };
+		17E5B4C12D40623300C40EB2 /* libggml-blas.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libggml-blas.a"; path = "lib/libggml-blas.a"; sourceTree = "<group>"; };
+		17E5B4C22D40623300C40EB2 /* libggml-metal.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libggml-metal.a"; path = "lib/libggml-metal.a"; sourceTree = "<group>"; };
+		17E5B4C32D40623300C40EB2 /* libggml.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libggml.a; path = lib/libggml.a; sourceTree = "<group>"; };
 		17E73FEE28FCD3360087604F /* libuv-ios.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libuv-ios.a"; path = "lib/libuv-ios.a"; sourceTree = "<group>"; };
 		290F7F86276BC2B000486988 /* lib */ = {isa = PBXFileReference; lastKnownFileType = folder; path = lib; sourceTree = "<group>"; };
 		29124C4A27613369001832A0 /* {{build_name}}.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "{{build_name}}.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		29124C5C2761336B001832A0 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		29124C5E2761336B001832A0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-    034B592025768A7B005D0134 /* default.metallib */ = {isa = PBXFileReference; lastKnownFileType = "archive.metal-library"; path = "lib/default.metallib"; sourceTree = "<group>"; };
+		034B592025768A7B005D0134 /* lib/default.metallib */ = {isa = PBXFileReference; lastKnownFileType = "archive.metal-library"; path = lib/default.metallib; sourceTree = "<group>"; };
 		29124C5E2761336B001832A1 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		294A3C792763E9C6007B5B9A /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
 		294A3C7B2763EA7F007B5B9A /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
@@ -737,6 +747,11 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			buildActionMask = 2147483647;
 			files = (
         {{__ios_native_extensions_build_ids}}
+				17E5B4C42D40623300C40EB2 /* libggml-base.a in Frameworks */,
+				17E5B4C52D40623300C40EB2 /* libggml-cpu.a in Frameworks */,
+				17E5B4C62D40623300C40EB2 /* libggml-blas.a in Frameworks */,
+				17E5B4C72D40623300C40EB2 /* libggml-metal.a in Frameworks */,
+				17E5B4C82D40623300C40EB2 /* libggml.a in Frameworks */,
 				171C1C2B2AC38A70005F587F /* CoreLocation.framework in Frameworks */,
 				179989D22A867B260041EDC1 /* UniformTypeIdentifiers.framework in Frameworks */,
 				17A7F8F529358D430051D146 /* libsocket-runtime.a in Frameworks */,
@@ -810,6 +825,11 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			isa = PBXGroup;
 			children = (
         {{__ios_native_extensions_build_refs}}
+				17E5B4C32D40623300C40EB2 /* libggml.a */,
+				17E5B4BF2D40623200C40EB2 /* libggml-base.a */,
+				17E5B4C12D40623300C40EB2 /* libggml-blas.a */,
+				17E5B4C02D40623300C40EB2 /* libggml-cpu.a */,
+				17E5B4C22D40623300C40EB2 /* libggml-metal.a */,
 				171C1C2A2AC38A70005F587F /* CoreLocation.framework */,
 				179989D12A867B260041EDC1 /* UniformTypeIdentifiers.framework */,
 				17A7F8F329358D430051D146 /* libsocket-runtime.a */,

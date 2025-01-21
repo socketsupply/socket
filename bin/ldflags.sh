@@ -114,6 +114,7 @@ if [[ "$host" = "Darwin" ]]; then
   ldflags+=("-framework" "UserNotifications")
   ldflags+=("-framework" "OSLog")
   ldflags+=("-ldl")
+  ldflags+=("-lomp")
   ldflags+=("-lggml")
   ldflags+=("-lggml-cpu")
   ldflags+=("-lggml-base")

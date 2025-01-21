@@ -3066,7 +3066,7 @@ int main (int argc, char* argv[]) {
     if (platform.mac && isForDesktop) {
       log("preparing build for mac");
 
-      flags = "-std=c++2a -ObjC++ -v";
+      flags = "-std=c++2a -ObjC++ -v -fopenmp";
       flags += " -framework UniformTypeIdentifiers";
       flags += " -framework CoreBluetooth";
       flags += " -framework CoreLocation";
@@ -3088,6 +3088,7 @@ int main (int argc, char* argv[]) {
       flags += " -I" + prefixFile("include");
       flags += " -L" + prefixFile("lib/" + platform.arch + "-desktop");
       flags += " -lsocket-runtime";
+      flags += " -lomp";
       flags += " -luv";
       flags += " -lllama";
       flags += " -lggml";
