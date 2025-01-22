@@ -3084,6 +3084,7 @@ int main (int argc, char* argv[]) {
       } else {
         flags += " -DSOCKET_RUNTIME_PLATFORM_SANDBOXED=0";
       }
+      flags += " -I\"" + Path(paths.platformSpecificOutputPath / "include").string() + "\"";
       flags += " -I" + prefixFile();
       flags += " -I" + prefixFile("include");
       flags += " -L" + prefixFile("lib/" + platform.arch + "-desktop");
@@ -3096,7 +3097,6 @@ int main (int argc, char* argv[]) {
       flags += " -lggml-blas";
       flags += " -lggml-cpu";
       flags += " -lggml-metal";
-      flags += " -I\"" + Path(paths.platformSpecificOutputPath / "include").string() + "\"";
       files += prefixFile("objects/" + platform.arch + "-desktop/desktop/main.o");
       files += prefixFile("src/init.cc");
       flags += " " + getCxxFlags();
@@ -6236,12 +6236,12 @@ int main (int argc, char* argv[]) {
           #endif
             << " -fvisibility=hidden"
             << " " << trim(linkerFlags + " " + (flagDebugMode ? linkerDebugFlags : ""))
+            << " -I" + Path(paths.platformSpecificOutputPath / "include").string()
             << (" -I" + quote + trim(prefixFile("include")) + quote)
             << (" -I" + quote + trim(prefixFile("src")) + quote)
             << (" -L" + quote + trim(prefixFile("lib")) + quote)
             << " -shared"
             << " -std=c++2a"
-            <<" -I" + Path(paths.platformSpecificOutputPath / "include").string()
           #if defined(__linux__)
             << " -fPIC"
           #endif
