@@ -30,6 +30,7 @@ declare force=0
 declare pass_force=""
 declare pass_ignore_header_mtimes=""
 declare host="$(host_os)"
+declare do_link=0
 
 LIPO=""
 declare CWD=$(pwd)
@@ -55,6 +56,10 @@ while (( $# > 0 )); do
 
   if [[ "$arg" == "--no-android-fte" ]]; then
     no_android_fte=1; continue
+  fi
+
+  if [[ "$arg" == "--link" ]]; then
+    do_link=1; continue
   fi
 
   # Don't rebuild if header mtimes are newer than .o files - Be sure to manually delete affected assets as required
@@ -540,7 +545,12 @@ function _install {
 
   if [ "$platform" == "desktop" ]; then
     echo "# copying sources to $SOCKET_HOME/src"
-    cp -r "$CWD"/src/* "$SOCKET_HOME/src"
+    if (( do_link == 1 )); then
+      mkdir -p "$SOCKET_HOME/src"
+      ln -sf "$CWD"/src/* "$SOCKET_HOME/src"
+    else
+      cp -r "$CWD"/src/* "$SOCKET_HOME/src"
+    fi
     if [[ "$arch" = "aarch64" ]]; then
       arch="arm64"
     fi
@@ -552,13 +562,21 @@ function _install {
     echo "# copying objects to $SOCKET_HOME/objects/$arch-$platform"
     rm -rf "$SOCKET_HOME/objects/$arch-$platform"
     mkdir -p "$SOCKET_HOME/objects/$arch-$platform"
-    cp -rfp "$BUILD_DIR/$arch-$platform/objects"/* "$SOCKET_HOME/objects/$arch-$platform"
+    if (( do_link == 1 )); then
+      ln -sf "$BUILD_DIR/$arch-$platform/objects"/* "$SOCKET_HOME/objects/$arch-$platform"
+    else
+      cp -rfp "$BUILD_DIR/$arch-$platform/objects"/* "$SOCKET_HOME/objects/$arch-$platform"
+    fi
   fi
 
   if test -d "$BUILD_DIR/lib$d"; then
     echo "# copying libraries to $SOCKET_HOME/lib$d"
     mkdir -p "$SOCKET_HOME/lib$d"
-    cp -rfp "$BUILD_DIR"/lib$d/*.a "$SOCKET_HOME/lib$d/"
+    if (( do_link == 1 )); then
+      ln -sf "$BUILD_DIR"/lib$d/*.a "$SOCKET_HOME/lib$d/"
+    else
+      cp -rfp "$BUILD_DIR"/lib$d/*.a "$SOCKET_HOME/lib$d/"
+    fi
   fi
 
   _d=$d
@@ -574,17 +592,35 @@ function _install {
     mkdir -p "$SOCKET_HOME/lib$_d/$arch-$platform"
 
     if [[ "$platform" != "android" ]]; then
-      cp -rfp "$BUILD_DIR/$arch-$platform"/lib$_d/*.a "$SOCKET_HOME/lib$_d/$arch-$platform"
+      if (( do_link == 1 )); then
+        ln -sf "$BUILD_DIR/$arch-$platform"/lib$_d/*.a "$SOCKET_HOME/lib$_d/$arch-$platform"
+      else
+        cp -rfp "$BUILD_DIR/$arch-$platform"/lib$_d/*.a "$SOCKET_HOME/lib$_d/$arch-$platform"
+      fi
+
       if [[ "$host" == "Darwin" ]] && [[ "$platform" != "desktop" ]]; then
-        cp -rfp "$BUILD_DIR/$arch-$platform"/lib/*.metallib "$SOCKET_HOME/lib/$arch-$platform"
+        if (( do_link == 1 )); then
+          ln -sf "$BUILD_DIR/$arch-$platform"/lib/*.metallib "$SOCKET_HOME/lib/$arch-$platform"
+        else
+          cp -rfp "$BUILD_DIR/$arch-$platform"/lib/*.metallib "$SOCKET_HOME/lib/$arch-$platform"
+        fi
       fi
     fi
+
     if [[ "$host" == "Win32" ]] && [[ "$platform" == "desktop" ]]; then
-      cp -rfp "$BUILD_DIR/$arch-$platform"/lib$_d/*.lib "$SOCKET_HOME/lib$_d/$arch-$platform"
+      if (( do_link == 1 )); then
+        ln -sf "$BUILD_DIR/$arch-$platform"/lib$_d/*.lib "$SOCKET_HOME/lib$_d/$arch-$platform"
+      else
+        cp -rfp "$BUILD_DIR/$arch-$platform"/lib$_d/*.lib "$SOCKET_HOME/lib$_d/$arch-$platform"
+      fi
     fi
 
     if [[ "$platform" == "android" ]] && [[ -d "$BUILD_DIR/$arch-$platform"/lib ]]; then
-      cp -fr "$BUILD_DIR/$arch-$platform"/lib/*.a "$SOCKET_HOME/lib/$arch-$platform"
+      if (( do_link == 1 )); then
+        ln -sf "$BUILD_DIR/$arch-$platform"/lib/*.a "$SOCKET_HOME/lib/$arch-$platform"
+      else
+        cp -fr "$BUILD_DIR/$arch-$platform"/lib/*.a "$SOCKET_HOME/lib/$arch-$platform"
+      fi
     fi
   else
     echo >&2 "not ok - Missing $BUILD_DIR/$arch-$platform/lib"
@@ -596,22 +632,46 @@ function _install {
       echo "# copying pkgconfig to $SOCKET_HOME/pkgconfig"
       rm -rf "$SOCKET_HOME/pkgconfig"
       mkdir -p "$SOCKET_HOME/pkgconfig"
-      cp -rfp "$BUILD_DIR/$arch-desktop/pkgconfig"/* "$SOCKET_HOME/pkgconfig"
+      if (( do_link == 1 )); then
+        ln -sf "$BUILD_DIR/$arch-desktop/pkgconfig"/* "$SOCKET_HOME/pkgconfig"
+      else
+        cp -rfp "$BUILD_DIR/$arch-desktop/pkgconfig"/* "$SOCKET_HOME/pkgconfig"
+      fi
     fi
 
     echo "# copying js api to $SOCKET_HOME/api"
     mkdir -p "$SOCKET_HOME/api"
-    cp -frp "$root"/api/* "$SOCKET_HOME/api"
+
+    if (( do_link == 1 )); then
+      ln -sf "$root"/api/* "$SOCKET_HOME/api"
+    else
+      cp -frp "$root"/api/* "$SOCKET_HOME/api"
+    fi
 
     mkdir -p "$SOCKET_HOME/assets"
-    cp -rf "$root"/assets/* "$SOCKET_HOME/assets"
+    if (( do_link == 1 )); then
+      ln -sf "$root"/assets/* "$SOCKET_HOME/assets"
+    else
+      cp -rf "$root"/assets/* "$SOCKET_HOME/assets"
+    fi
 
     # only do this for desktop, no need to copy again for other platforms
-    rm -rf "$SOCKET_HOME/include"
     mkdir -p "$SOCKET_HOME/include"
-    cp -rfp "$BUILD_DIR"/uv/include/* "$SOCKET_HOME/include"
-    cp -rfp "$root"/include/* "$SOCKET_HOME/include"
-    rm -f "$SOCKET_HOME/include/socket/_user-config-bytes.hh"
+    if (( do_link != 1 )); then
+      rm -rf "$SOCKET_HOME/include"
+    fi
+
+    if (( do_link == 1 )); then
+      ln -sf "$BUILD_DIR"/uv/include/* "$SOCKET_HOME/include"
+      ln -sf "$root"/include/* "$SOCKET_HOME/include"
+    else
+      cp -rfp "$BUILD_DIR"/uv/include/* "$SOCKET_HOME/include"
+      cp -rfp "$root"/include/* "$SOCKET_HOME/include"
+    fi
+
+    if (( do_link != 1 )); then
+      rm -f "$SOCKET_HOME/include/socket/_user-config-bytes.hh"
+    fi
 
     mkdir -p "$SOCKET_HOME/include/llama"
     for header in $(find "$root/build/llama" -name *.h); do
@@ -622,7 +682,11 @@ function _install {
       local destination="$SOCKET_HOME/include/llama/${header/$llama_build_dir/}"
 
       mkdir -p "$(dirname "$destination")"
-      cp -f "$header" "$destination"
+      if (( do_link == 1 )); then
+        ln -sf "$header" "$destination"
+      else
+        cp -f "$header" "$destination"
+      fi
     done
 
     if [[ -f "$root/$SSC_ENV_FILENAME" ]]; then
@@ -639,16 +703,25 @@ function _install {
 
   if [ "$platform" == "desktop" ]; then
     mkdir -p "$SOCKET_HOME/bin"
-    # Required for FTE setup
-    cp -ap "$root/bin/functions.sh" "$SOCKET_HOME/bin"
-    cp -ap "$root/bin/android-functions.sh" "$SOCKET_HOME/bin"
+    if (( do_link == 1 )); then
+      ln -sf "$root/bin/functions.sh" "$SOCKET_HOME/bin"
+      ln -sf "$root/bin/android-functions.sh" "$SOCKET_HOME/bin"
+    else
+      # Required for FTE setup
+      cp -ap "$root/bin/functions.sh" "$SOCKET_HOME/bin"
+      cp -ap "$root/bin/android-functions.sh" "$SOCKET_HOME/bin"
+    fi
 
     if [[ "$(uname -s)" == *"_NT"* ]]; then
-      cp -ap "$root/bin/"*.ps1 "$SOCKET_HOME/bin"
-      cp -ap "$root/bin/".vs* "$SOCKET_HOME/bin"
+      if (( do_link == 1 )); then
+        ln -sf "$root/bin/"*.ps1 "$SOCKET_HOME/bin"
+        ln -sf "$root/bin/".vs* "$SOCKET_HOME/bin"
+      else
+        cp -ap "$root/bin/"*.ps1 "$SOCKET_HOME/bin"
+        cp -ap "$root/bin/".vs* "$SOCKET_HOME/bin"
+      fi
     fi
   fi
-
 }
 
 function _install_cli {

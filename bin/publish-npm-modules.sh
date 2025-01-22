@@ -83,8 +83,11 @@ export SOCKET_HOME
 export PREFIX
 
 if (( !only_top_level && !no_rebuild )) ; then
-  "$root/bin/install.sh" || exit $?
-
+  if (( do_global_link && !dry_run )); then
+    "$root/bin/install.sh" --link || exit $?
+  else
+    "$root/bin/install.sh" || exit $?
+  fi
 fi
 
 if (( do_global_link && !dry_run )); then
@@ -195,7 +198,9 @@ if (( !only_top_level )); then
 
       # don't copy debug files, too large
       rm -rf $SOCKET_HOME/lib/*-android/objs-debug
-      ln -sf $SOCKET_HOME/lib/*-android "$SOCKET_HOME/packages/$package/lib"
+      for file in $(`which ls` "$SOCKET_HOME/lib/"*-android 2>/dev/null); do
+        ln -sf "$file" "$SOCKET_HOME/packages/$package/lib"
+      done
 
       ln -sf "$SOCKET_HOME/lib/"$arch-* "$SOCKET_HOME/packages/$package/lib"
       ln -sf "$SOCKET_HOME/objects/"$arch-* "$SOCKET_HOME/packages/$package/objects"
@@ -260,13 +265,8 @@ if (( !only_top_level )); then
       fi
     fi
 
-      if [ "$platform" = "Win32" ]; then
-        cp -rap "$SOCKET_HOME/bin"/.vs* "$SOCKET_HOME/packages/$package/bin"
-      fi
-    if (( do_global_link )); then
-      for file in $(find "$root/src" -name *.kt); do
-        ln -sf "$file" "$SOCKET_HOME/packages/$package${file/$root/}"
-      done
+    if [ "$platform" = "Win32" ]; then
+      cp -rap "$SOCKET_HOME/bin"/.vs* "$SOCKET_HOME/packages/$package/bin"
     fi
 
     cd "$SOCKET_HOME/packages/$package" || exit $?
