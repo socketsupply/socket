@@ -535,8 +535,8 @@ function _prepare {
 }
 
 function _install {
-  declare arch="$1"
-  declare platform="$2"
+  local arch="$1"
+  local platform="$2"
 
   if [ "$platform" == "desktop" ]; then
     echo "# copying sources to $SOCKET_HOME/src"
@@ -711,27 +711,27 @@ function _compile_libuv_android {
   local platform="android"
   local arch=$1
   local host_arch="$(host_arch)"
-  clang="$(android_clang "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch")"
-  clang_target="$(android_clang_target "$arch")"
-  ar="$(android_ar "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch")"
-  android_includes=$(android_arch_includes "$arch")
+  local clang="$(android_clang "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch")"
+  local clang_target="$(android_clang_target "$arch")"
+  local ar="$(android_ar "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch")"
+  local android_includes=$(android_arch_includes "$arch")
 
   local cflags=("$clang_target" -std=gnu89 -g -pedantic -I"$root"/build/uv/include -I"$root"/build/uv/src -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -D_LARGEFILE_SOURCE -fPIC -Wall -Wextra -Wno-pedantic -Wno-sign-compare -Wno-unused-parameter -Wno-implicit-function-declaration)
   cflags+=("${android_includes[*]}")
   local objects=()
   local sources=("unix/async.c" "unix/core.c" "unix/dl.c" "unix/fs.c" "unix/getaddrinfo.c" "unix/getnameinfo.c" "unix/linux.c" "unix/loop.c" "unix/loop-watcher.c" "unix/pipe.c" "unix/poll.c" "unix/process.c" "unix/proctitle.c" "unix/random-devurandom.c" "unix/random-getentropy.c" "unix/random-getrandom.c" "unix/random-sysctl-linux.c" "unix/signal.c" "unix/stream.c" "unix/tcp.c" "unix/thread.c" "unix/tty.c" "unix/udp.c" fs-poll.c idna.c inet.c random.c strscpy.c strtok.c threadpool.c timer.c uv-common.c uv-data-getter-setters.c version.c)
 
-  declare output_directory="$root/build/$arch-$platform/uv$d"
+  local output_directory="$root/build/$arch-$platform/uv$d"
   mkdir -p "$output_directory"
 
-  declare src_directory="$root/build/uv/src"
+  local src_directory="$root/build/uv/src"
 
   trap onsignal INT TERM
   local i=0
   local max_concurrency=$CPU_CORES
-  build_static=0
-  declare base_lib="libuv"
-  declare static_library="$root/build/$arch-$platform/lib/$base_lib.a"
+  local build_static=0
+  local base_lib="libuv"
+  local static_library="$root/build/$arch-$platform/lib/$base_lib.a"
 
   for source in "${sources[@]}"; do
     if (( i++ > max_concurrency )); then
@@ -788,7 +788,7 @@ function _compile_libuv_android {
   # If an empty ${objects[@]} is provided to ar, it will still spit out a header without an error code.
   # therefore check the output size
   # This error condition should only occur after a code change
-  lib_size="$(stat_size "$static_library")"
+  local lib_size="$(stat_size "$static_library")"
   if (( lib_size < $(android_min_expected_static_lib_size "$base_lib") )); then
     echo >&2 "not ok - $static_library size looks wrong: $lib_size, renaming as .bad"
     mv "$static_library" "$static_library.bad"
@@ -797,9 +797,9 @@ function _compile_libuv_android {
 }
 
 function _compile_llama_metal {
-  target=$1
-  hosttarget=$1
-  platform=$2
+  local target=$1
+  local hosttarget=$1
+  local platform=$2
 
   if [ -z "$target" ]; then
     target="$(host_arch)"
@@ -807,7 +807,7 @@ function _compile_llama_metal {
   fi
 
   echo "# building METAL for $platform ($target) on $host..."
-  STAGING_DIR="$BUILD_DIR/$target-$platform/llama"
+  local STAGING_DIR="$BUILD_DIR/$target-$platform/llama"
 
   if [ ! -d "$STAGING_DIR" ]; then
     mkdir -p "$STAGING_DIR"
@@ -857,7 +857,7 @@ function _compile_llama {
   mkdir -p "$STAGING_DIR/build/"
   mkdir -p ../bin
 
-  declare cmake_args=(
+  local cmake_args=(
     -DLLAMA_BUILD_TESTS=OFF
     -DLLAMA_BUILD_SERVER=OFF
     -DLLAMA_BUILD_EXAMPLES=OFF
@@ -898,14 +898,20 @@ function _compile_llama {
 
     rm -f "$root/build/$(host_arch)-desktop/lib$d"/*.{so,la,dylib}*
     return
-  #elif [ "$platform" == "iPhoneOS" ] || [ "$platform" == "iPhoneSimulator" ]; then
-  elif [ "$platform" == "iPhoneOS" ]; then
+  elif [ "$platform" == "iPhoneOS" ] || [ "$platform" == "iPhoneSimulator" ]; then
     # https://github.com/ggerganov/llama.cpp/discussions/4508
-
     local ar="$(xcrun -sdk $sdk -find ar)"
+
     local cc="$(xcrun -sdk $sdk -find clang)"
     local cxx="$(xcrun -sdk $sdk -find clang++)"
-    local cflags="--target=$target-apple-ios -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk -m$sdk-version-min=$SDKMINVERSION -DLLAMA_METAL_EMBED_LIBRARY=ON -DUSE_NEON_DOTPROD -march=armv8.2-a+dotprod"
+    local cflags="--target=$target-apple-ios -isysroot $PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk -m$sdk-version-min=$SDKMINVERSION -DLLAMA_METAL_EMBED_LIBRARY=ON -DUSE_NEON_DOTPROD "
+    if [ "$platform" == "iPhoneOS" ]; then
+      cflags+="-march=armv8.2-a+dotprod"
+    elif [ "$platform" == "iPhoneSimulator" ] && [ "$target" == "arm64" ]; then
+      cflags+="-march=armv8.2-a+dotprod"
+    elif [ "$platform" == "iPhoneSimulator" ] && [ "$target" == "x86_64" ]; then
+      cflags+="-march=x86-64 -target=x86-apple-ios-simulator"
+    fi
 
     export AR="$ar"
     export CFLAGS="$cflags"
@@ -914,15 +920,16 @@ function _compile_llama {
     export CC="$cc"
     export SDKROOT="$PLATFORMPATH/$platform.platform/Developer/SDKs/$platform$SDKVERSION.sdk"
 
-    quiet cmake -S . -B build -DCMAKE_OSX_ARCHITECTURES="$target" -DCMAKE_OSX_SYSROOT="$SDKROOT" -DCMAKE_C_COMPILER="$cc" -DCMAKE_CXX_COMPILER="$cxx" -DCMAKE_INSTALL_PREFIX="$BUILD_DIR/$target-$platform" -DLLAMA_NATIVE=OFF -DGGML_ARM_DOTPROD=ON ${cmake_args[@]} &&
-    quiet cmake --build build &&
-    quiet cmake --build build -- -j"$CPU_CORES" &&
-    quiet cmake --install build
+    cmake -S . -B build -DCMAKE_SYSTEM_NAME="iOS" -DCMAKE_OSX_ARCHITECTURES="$target" -DCMAKE_OSX_SYSROOT="$SDKROOT" -DCMAKE_C_COMPILER="$cc" -DCMAKE_CXX_COMPILER="$cxx" -DCMAKE_INSTALL_PREFIX="$BUILD_DIR/$target-$platform" -DLLAMA_NATIVE=OFF -DGGML_ARM_DOTPROD=ON ${cmake_args[@]} &&
+    cmake --build build &&
+    cmake --build build -- -j"$CPU_CORES" &&
+    cmake --install build
 
-    if [ ! $? = 0 ]; then
+    if (( $? != 0 )); then
       die $? "not ok - Unable to compile libllama for '$platform'"
       return
     fi
+    return
   elif [ "$platform" == "android" ]; then
     if [[ "$host" == "Win32" ]]; then
       echo "WARN - Building libllama for Android on Windows is not yet supported"
@@ -952,14 +959,14 @@ function _compile_llama {
 
   cd "$BUILD_DIR" || exit 1
   rm -f "$root/build/$target-$platform/lib$d"/*.{so,la,dylib}*
-  echo "ok - built llama for $target-$platform"
+  echo "ok - built libllama for $target-$platform"
   return 0
 }
 
 function _compile_libuv {
-  target=$1
-  hosttarget=$1
-  platform=$2
+  local target=$1
+  local hosttarget=$1
+  local platform=$2
 
   if [ -z "$target" ]; then
     target="$(host_arch)"
@@ -967,7 +974,7 @@ function _compile_libuv {
   fi
 
   echo "# building libuv for $platform ($target) on $host..."
-  STAGING_DIR="$BUILD_DIR/$target-$platform/uv"
+  local STAGING_DIR="$BUILD_DIR/$target-$platform/uv"
 
   if [ ! -d "$STAGING_DIR" ]; then
     mkdir -p "$STAGING_DIR"
@@ -1085,7 +1092,7 @@ function _check_compiler_features {
   cflags+=("-I$root")
 
   $CXX "${cflags[@]}" "${ldflags[@]}" - -o /dev/null >/dev/null << EOF_CC
-    #include "src/runtime/runtime.hh"
+    #include "src/runtime.hh"
     int main () { return 0; }
 EOF_CC
 
@@ -1112,19 +1119,19 @@ if [[ "$(uname -s)" == "Darwin" ]] && [[ -z "$NO_IOS" ]]; then
   die $? "not ok - xcode needs to be installed from the mac app store: https://apps.apple.com/us/app/xcode/id497799835"
 
   _compile_llama_metal arm64 iPhoneOS
-  _compile_llama_metal x86_64 iPhoneSimulator
   _compile_llama_metal arm64 iPhoneSimulator
+  _compile_llama_metal x86_64 iPhoneSimulator
 fi
 
 {
   _compile_llama
-  echo "ok - built llama for $platform ($target)"
+  echo "ok - built libllama for desktop ($(host_arch))"
 } & _compile_llama_pid=$!
 
 # Although we're passing -j$CPU_CORES on non Win32, we still don't get max utiliztion on macos. Start this before fat libs.
 {
   _compile_libuv
-  echo "ok - built libuv for $platform ($target)"
+  echo "ok - built libuv for desktop ($(host_arch))"
 } & _compile_libuv_pid=$!
 
 if [[ "$(uname -s)" == "Darwin" ]] && [[ -z "$NO_IOS" ]]; then
@@ -1143,11 +1150,11 @@ if [[ "$(uname -s)" == "Darwin" ]] && [[ -z "$NO_IOS" ]]; then
   _compile_llama arm64 iPhoneOS & pids+=($!)
 
   _compile_libuv x86_64 iPhoneSimulator & pids+=($!)
-  #_compile_llama x86_64 iPhoneSimulator & pids+=($!)
+  _compile_llama x86_64 iPhoneSimulator & pids+=($!)
 
   if [[ "$arch" = "arm64" ]]; then
     _compile_libuv arm64 iPhoneSimulator & pids+=($!)
-    #_compile_llama arm64 iPhoneSimulator & pids+=($!)
+    _compile_llama arm64 iPhoneSimulator & pids+=($!)
   fi
 
   for pid in "${pids[@]}"; do wait "$pid"; done

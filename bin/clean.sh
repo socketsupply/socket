@@ -5,6 +5,7 @@ declare arch=""
 declare platform=""
 declare do_full_clean=0
 declare do_clean_env_only=0
+declare do_clean_llama=0
 
 if (( TARGET_OS_IPHONE )); then
   arch="arm64"
@@ -28,6 +29,9 @@ while (( $# > 0 )); do
   if [[ "$arg" = "--full" ]]; then
     do_full_clean=1
     do_clean_env_only=1
+    continue
+  elif [[ "$arg" = "--llama" ]]; then
+    do_clean_llama=1
     continue
   elif [[ "$arg" = "--platform" ]]; then
     if [[ "$1" = "ios" ]] || [[ "$1" = "iPhoneOS" ]] || [[ "$1" = "iphoneos" ]]; then
@@ -58,8 +62,13 @@ if (( do_full_clean )); then
   fi
 elif [ -n "$arch" ] || [ -n "$platform" ]; then
   if (( do_full_clean )); then
+    ## likely unreachable
     echo "error - cannot mix '--full' and '--arch/--platform'" >&2
     exit 1
+  fi
+
+  if (( do_clean_llama )); then
+    rm -rf "$root/build/$target-$platform/llama/build" || exit $?
   fi
 
   if [[ "$platform" = "android" ]]; then
