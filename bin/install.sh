@@ -910,7 +910,7 @@ function _compile_llama {
     elif [ "$platform" == "iPhoneSimulator" ] && [ "$target" == "arm64" ]; then
       cflags+="-march=armv8.2-a+dotprod"
     elif [ "$platform" == "iPhoneSimulator" ] && [ "$target" == "x86_64" ]; then
-      cflags+="-march=x86-64 -target=x86-apple-ios-simulator"
+      cflags+="-march=x86-64 --target=x86-apple-ios-simulator"
     fi
 
     export AR="$ar"
