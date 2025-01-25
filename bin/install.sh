@@ -665,6 +665,7 @@ function _install {
       ln -sf "$BUILD_DIR"/uv/include/* "$SOCKET_HOME/include"
       ln -sf "$root"/include/* "$SOCKET_HOME/include"
     else
+      mkdir -p $SOCKET_HOME/include
       cp -rfp "$BUILD_DIR"/uv/include/* "$SOCKET_HOME/include"
       cp -rfp "$root"/include/* "$SOCKET_HOME/include"
     fi
