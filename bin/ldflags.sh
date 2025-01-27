@@ -113,8 +113,11 @@ if [[ "$host" = "Darwin" ]]; then
   ldflags+=("-framework" "Accelerate")
   ldflags+=("-framework" "UserNotifications")
   ldflags+=("-framework" "OSLog")
+  if !(( TARGET_OS_IPHONE )) && !(( TARGET_IPHONE_SIMULATOR )); then
+    ldflags+=("-L$(brew --prefix llvm)/lib/c++")
+    ldflags+=("-L$(brew --prefix llvm)/lib")
+  fi
   ldflags+=("-ldl")
-  ldflags+=("-lomp")
   ldflags+=("-lggml")
   ldflags+=("-lggml-cpu")
   ldflags+=("-lggml-base")

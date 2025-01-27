@@ -118,6 +118,7 @@ declare sources=(
   $(find "$root"/src/runtime/filesystem/*.cc)
   $(find "$root"/src/runtime/http/*.cc)
   $(find "$root"/src/runtime/ini/*.cc)
+  $(find "$root"/src/runtime/io/*.cc)
   $(find "$root"/src/runtime/ipc/*.cc)
   $(find "$root"/src/runtime/javascript/*.cc)
   $(find "$root"/src/runtime/json/*.cc)
