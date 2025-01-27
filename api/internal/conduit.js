@@ -632,3 +632,5 @@ export class Conduit extends EventTarget {
     }
   }
 }
+
+export default Conduit
