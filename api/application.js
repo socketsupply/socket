@@ -461,7 +461,9 @@ export async function getWindow (index, options) {
   throwOnInvalidIndex(index)
   const windows = await getWindows([index], options)
   const window = windows[index]
-  await window.update()
+  if (window) {
+    await window.update()
+  }
   return window
 }
 
