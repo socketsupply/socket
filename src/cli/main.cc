@@ -5200,7 +5200,7 @@ int main (int argc, char* argv[]) {
       fs::copy(
         SOCKET_HOME_API,
         pathResources / "socket",
-        fs::copy_options::update_existing | fs::copy_options::recursive | fs::copy_options::copy_symlinks
+        fs::copy_options::update_existing | fs::copy_options::recursive
       );
 
       // XXX(@jwerle): 'node_modules/' sometimes can be found in the

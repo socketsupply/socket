@@ -314,7 +314,7 @@ namespace ssc::runtime::core::services {
         });
       }
 
-      debug("added client: %lu", client->id);
+      // debug("added client: %lu", client->id);
       this->clients.emplace(client->id, client);
 
       // std::cout << "added client " << this->clients.size() << std::endl;
