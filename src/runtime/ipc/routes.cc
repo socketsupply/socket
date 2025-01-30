@@ -2255,7 +2255,7 @@ static void mapIPCRoutes (Router *router) {
    * Log `value to stdout` with platform dependent logger.
    * @param value
    */
-  router->map("log", [](auto message, auto router, auto reply) {
+  router->map("log", [=](auto message, auto router, auto reply) {
     auto value = message.value.c_str();
     #if SOCKET_RUNTIME_PLATFORM_APPLE
       NSLog(@"%s", value);
@@ -2881,7 +2881,7 @@ static void mapIPCRoutes (Router *router) {
    * Prints incoming message value to stdout.
    * @param value
    */
-  router->map("stdout", [](auto message, auto router, auto reply) {
+  router->map("stdout", [=](auto message, auto router, auto reply) {
     if (message.value.size() > 0) {
       #if SOCKET_RUNTIME_PLATFORM_APPLE
         const auto seq = ++router->bridge.getRuntime()->counters.logSeq;
@@ -2910,7 +2910,7 @@ static void mapIPCRoutes (Router *router) {
    * Prints incoming message value to stderr.
    * @param value
    */
-  router->map("stderr", [](auto message, auto router, auto reply) {
+  router->map("stderr", [=](auto message, auto router, auto reply) {
     if (message.get("debug") == "true") {
       if (message.value.size() > 0) {
         debug("%s", message.value.c_str());
