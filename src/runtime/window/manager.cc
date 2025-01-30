@@ -463,7 +463,7 @@ namespace ssc::runtime::window {
       {"utility", this->options.utility},
       {"status", this->status},
       {"readyState", readyState},
-      {"origin", this->options.origin},
+      {"origin", this->options.origin.str()},
       {"aspectRatio", this->options.aspectRatio},
       {"titlebarStyle", this->options.titlebarStyle},
       {"windowControlOffsets", this->options.windowControlOffsets},
