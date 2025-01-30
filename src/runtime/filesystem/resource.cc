@@ -396,7 +396,8 @@ namespace ssc::runtime::filesystem {
     this->media = Path(DIRECTORY_PATH_FROM_FILE_MANAGER(NSSharedPublicDirectory));
     this->music = Path(DIRECTORY_PATH_FROM_FILE_MANAGER(NSMusicDirectory));
     this->home = Path(String(NSHomeDirectory().UTF8String));
-    this->data = Path(HOME + "/Library/Application Support/" + bundleIdentifier);
+    //this->data = Path(HOME + "/Library/Application Support/" + bundleIdentifier);
+    this->data = Path(DIRECTORY_PATH_FROM_FILE_MANAGER(NSApplicationSupportDirectory));
     this->log = Path(HOME + "/Library/Logs/" + bundleIdentifier);
     this->tmp = Path(String(NSTemporaryDirectory().UTF8String));
 

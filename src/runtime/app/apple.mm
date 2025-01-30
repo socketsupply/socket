@@ -281,7 +281,7 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
 - (void) applicationWillTerminate: (UIApplication*) application {
   dispatch_async(queue, ^{
     // TODO(@jwerle): what should we do here?
-    self.app->stop();
+    // self.app->stop();
   });
 }
 
