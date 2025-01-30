@@ -142,7 +142,7 @@ Returns the ApplicationWindow instance for the given index
 | :---         | :--- | :---        |
 | Not specified | Promise<ApplicationWindow> | the ApplicationWindow instance or null if the window does not exist |
 
-## [`getCurrentWindow()`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/application.js#L472)
+## [`getCurrentWindow()`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/application.js#L474)
 
 Returns the ApplicationWindow instance for the current window.
 
@@ -150,7 +150,7 @@ Returns the ApplicationWindow instance for the current window.
 | :---         | :--- | :---        |
 | Not specified | Promise<ApplicationWindow> |  |
 
-## [`exit(code)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/application.js#L481)
+## [`exit(code)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/application.js#L483)
 
 Quits the backend process and then quits the render process, the exit code used is the final exit code to the OS.
 
@@ -162,7 +162,7 @@ Quits the backend process and then quits the render process, the exit code used 
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-## [`setSystemMenu(options)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/application.js#L578)
+## [`setSystemMenu(options)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/application.js#L580)
 
 Set the native menu for the app.
 
@@ -257,11 +257,11 @@ Set the native menu for the app.
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-## [`setTrayMenu()`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/application.js#L585)
+## [`setTrayMenu()`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/application.js#L587)
 
 An alias to setSystemMenu for creating a tary menu
 
-## [`setSystemMenuItemEnabled(value)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/application.js#L594)
+## [`setSystemMenuItemEnabled(value)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/application.js#L596)
 
 Set the enabled state of the system menu.
 
@@ -273,7 +273,7 @@ Set the enabled state of the system menu.
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-## [`isPaused()`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/application.js#L602)
+## [`isPaused()`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/application.js#L604)
 
 Predicate function to determine if application is in a "paused" state.
 
@@ -281,23 +281,23 @@ Predicate function to determine if application is in a "paused" state.
 | :---         | :--- | :---        |
 | Not specified | boolean |  |
 
-## [runtimeVersion](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/application.js#L610)
+## [runtimeVersion](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/application.js#L612)
 
 Socket Runtime version.
 
-## [debug](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/application.js#L616)
+## [debug](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/application.js#L618)
 
 Runtime debug flag.
 
-## [config](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/application.js#L622)
+## [config](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/application.js#L624)
 
 Application configuration.
 
-## [backend](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/application.js#L627)
+## [backend](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/application.js#L629)
 
 The application's backend instance.
 
-### [`open(opts)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/application.js#L633)
+### [`open(opts)`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/application.js#L635)
 
 
 
@@ -310,7 +310,7 @@ The application's backend instance.
 | :---         | :--- | :---        |
 | Not specified | Promise<ipc.Result> |  |
 
-### [`close()`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/application.js#L641)
+### [`close()`](https://github.com/socketsupply/socket/blob/v0.6.0-rc.8/api/application.js#L643)
 
 
 
