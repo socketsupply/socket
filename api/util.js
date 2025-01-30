@@ -230,8 +230,11 @@ export function splitBuffer (buffer, highWaterMark) {
   buffer = Buffer.from(buffer)
 
   do {
-    buffers.push(buffer.slice(0, highWaterMark))
-    buffer = buffer.slice(highWaterMark)
+    const pointer = buffer.subarray(0, highWaterMark)
+    const value = Buffer.alloc(pointer.byteLength)
+    value.set(pointer)
+    buffers.push(value)
+    buffer = buffer.subarray(highWaterMark)
   } while (buffer.length > highWaterMark)
 
   if (buffer.length) {

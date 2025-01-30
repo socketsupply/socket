@@ -67,7 +67,7 @@ namespace ssc::runtime::context {
     return true;
   #elif SOCKET_RUNTIME_PLATFORM_ANDROID
     this->android.looper.dispatch([this, callback = std::move(callback)] () {
-      const auto attachment = android::JNIEnvironmentAttachment(this->jvm);
+      const auto attachment = android::JNIEnvironmentAttachment(this->android.jvm);
       callback();
     });
     return true;

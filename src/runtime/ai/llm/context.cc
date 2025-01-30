@@ -38,7 +38,7 @@ namespace ssc::runtime::ai::llm {
       }
 
       if (options.topP != 0) {
-        llama_sampler_chain_add(this->sampler, llama_sampler_init_top_k(options.topP));
+        llama_sampler_chain_add(this->sampler, llama_sampler_init_top_p(options.topP, 1));
       }
     }
 
@@ -86,7 +86,8 @@ namespace ssc::runtime::ai::llm {
         {"size", this->options.size},
         {"minP", this->options.minP},
         {"temp", this->options.temp},
-        {"topK", this->options.topK}
+        {"topK", this->options.topK},
+        {"topP", this->options.topP}
       }}
     };
   }

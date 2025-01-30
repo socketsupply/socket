@@ -1,4 +1,5 @@
 #include "../../platform.hh"
+#include "../../debug.hh"
 
 #include "looper.hh"
 
@@ -70,6 +71,9 @@ namespace ssc::runtime::android {
   }
 
   void Looper::dispatch (const DispatchCallback callback) {
+    if (!this->acquired()) {
+      this->acquire();
+    }
     while (!this->isReady) {
       msleep(2);
     }

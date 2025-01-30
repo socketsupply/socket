@@ -20,6 +20,7 @@ namespace ssc::runtime::serviceworker {
 
     const auto screen = window::Window::getScreenSize();
 
+    this->windowOptions.createServiceWorker = false;
     this->windowOptions.shouldExitApplicationOnClose = false;
     this->windowOptions.minHeight = window::Window::getSizeInPixels("30%", screen.height);
     this->windowOptions.height = window::Window::getSizeInPixels("80%", screen.height);
@@ -42,6 +43,8 @@ namespace ssc::runtime::serviceworker {
 
     if (env::get("SOCKET_RUNTIME_SERVICE_WORKER_DEBUG").size() > 0) {
       this->window->show();
+    } else {
+      this->window->hide();
     }
 
     return true;

@@ -73,7 +73,7 @@ export class Message {
 /**
  * @typedef {{
  *   id?: string,
- *   antiprompt?: Set<string>|string[]
+ *   antiprompts?: Set<string>|string[]
  * }} SessionOptions
  */
 
@@ -99,7 +99,7 @@ export class Session extends EventTarget {
   /**
    * @type {Set<string>}
    */
-  #antiprompt = new Set()
+  #antiprompts = new Set()
 
   /**
    * @param {Context} context
@@ -116,11 +116,11 @@ export class Session extends EventTarget {
     }
 
     if (
-      Array.isArray(options?.antiprompt) ||
-      options?.antiprompt instanceof Set
+      Array.isArray(options?.antiprompts) ||
+      options?.antiprompts instanceof Set
     ) {
-      for (const antiprompt of options.antiprompt) {
-        this.#antiprompt.add(antiprompt)
+      for (const antiprompt of options.antiprompts) {
+        this.#antiprompts.add(antiprompt)
       }
     }
   }
@@ -184,8 +184,8 @@ export class Session extends EventTarget {
   /**
    * @type {Set<string>}
    */
-  get antiprompt () {
-    return this.#antiprompt
+  get antiprompts () {
+    return this.#antiprompts
   }
 
   /**
@@ -221,15 +221,20 @@ export class Session extends EventTarget {
         decoded.options.source === 'ai.chat.session.generate'
       ) {
         const data = Buffer.from(decoded.payload)
+        const finished = (
+          decoded.options.eog ||
+          decoded.options.complete ||
+          decoded.options.finished
+        )
+
         this.#buffer.push(data)
-        console.log(decoded.options)
         // @ts-ignore
         this.dispatchEvent(new ChatMessageEvent('message', {
-          finished: decoded.options.eog,
+          finished,
           data
         }))
 
-        if (decoded.options.eog) {
+        if (finished) {
           const buffer = Buffer.concat(this.#buffer.splice(0, this.#buffer.length))
           if (decoded.options.source === 'ai.chat.session.message') {
             this.#messages.push(new Message({
@@ -261,9 +266,9 @@ export class Session extends EventTarget {
     ])
     const result = await ipc.write('ai.chat.session.generate', {
       id: this.#id,
-      antiprompt: Array.from(new Set(Array
-        .from(this.#antiprompt)
-        .concat(options?.antiprompt || [])
+      antiprompts: Array.from(new Set(Array
+        .from(this.#antiprompts)
+        .concat(options?.antiprompts || [])
         .filter(Boolean)
         .filter((value) => typeof value === 'string')
       )).join('\x01')
@@ -287,9 +292,9 @@ export class Session extends EventTarget {
     ])
     const result = await ipc.write('ai.chat.session.message', {
       id: this.#id,
-      antiprompt: Array.from(new Set(Array
-        .from(this.#antiprompt)
-        .concat(options?.antiprompt || [])
+      antiprompts: Array.from(new Set(Array
+        .from(this.#antiprompts)
+        .concat(options?.antiprompts || [])
         .filter(Boolean)
         .filter((value) => typeof value === 'string')
       )).join('\x01')

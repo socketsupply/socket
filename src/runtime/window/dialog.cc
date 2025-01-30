@@ -792,10 +792,10 @@ namespace ssc::runtime::window {
     });
     return true;
   #elif SOCKET_RUNTIME_PLATFORM_ANDROID
-    const auto attachment = Android::JNIEnvironmentAttachment(app->jvm);
+    const auto attachment = android::JNIEnvironmentAttachment(app->runtime.android.jvm);
     const auto dialog = CallObjectClassMethodFromAndroidEnvironment(
       attachment.env,
-      app->core->platform.activity,
+      app->runtime.android.activity,
       "getDialog",
       "()Lsocket/runtime/window/Dialog;"
     );
@@ -845,7 +845,9 @@ extern "C" {
     jlong pointer,
     jobjectArray results
   ) {
-    const auto dialog = reinterpret_cast<Dialog*>(pointer);
+    using namespace ssc::runtime;
+
+    const auto dialog = reinterpret_cast<window::Dialog*>(pointer);
 
     if (!dialog) {
       return ANDROID_THROW(
@@ -861,7 +863,7 @@ extern "C" {
       );
     }
 
-    const auto attachment = Android::JNIEnvironmentAttachment(dialog->window->bridge->jvm);
+    const auto attachment = android::JNIEnvironmentAttachment(dialog->window->bridge->context.android.jvm);
     const auto length = attachment.env->GetArrayLength(results);
 
     Vector<String> paths;
@@ -869,7 +871,7 @@ extern "C" {
     for (int i = 0; i < length; ++i) {
       const auto uri = (jstring) attachment.env->GetObjectArrayElement(results, i);
       if (uri) {
-        const auto string = Android::StringWrap(attachment.env, CallObjectClassMethodFromAndroidEnvironment(
+        const auto string = android::StringWrap(attachment.env, CallObjectClassMethodFromAndroidEnvironment(
           attachment.env,
           uri,
           "toString",

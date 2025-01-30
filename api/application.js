@@ -331,7 +331,7 @@ export async function createWindow (opts) {
 
   if ((opts.width != null && typeof opts.width !== 'number' && typeof opts.width !== 'string') ||
     (typeof opts.width === 'string' && !isValidPercentageValue(opts.width)) ||
-    (typeof opts.width === 'number' && !(Number.isInteger(opts.width) && opts.width > 0))) {
+    (typeof opts.width === 'number' && !(Number.isInteger(opts.width) && opts.width >= 0))) {
     throw new Error(`Window width must be an integer number or a string with a valid percentage value from 0 to 100 ending with %. Got ${opts.width} instead.`)
   }
 
@@ -345,7 +345,7 @@ export async function createWindow (opts) {
 
   if ((opts.height != null && typeof opts.height !== 'number' && typeof opts.height !== 'string') ||
     (typeof opts.height === 'string' && !isValidPercentageValue(opts.height)) ||
-    (typeof opts.height === 'number' && !(Number.isInteger(opts.height) && opts.height > 0))) {
+    (typeof opts.height === 'number' && !(Number.isInteger(opts.height) && opts.height >= 0))) {
     throw new Error(`Window height must be an integer number or a string with a valid percentage value from 0 to 100 ending with %. Got ${opts.height} instead.`)
   }
 
@@ -442,7 +442,9 @@ export async function getWindows (indices, options = null) {
   for (const data of result.data) {
     const max = Number.isFinite(options?.max) ? options.max : MAX_WINDOWS
     if (options?.max === false || data.index < max) {
-      windows.add(new ApplicationWindow(data))
+      const window = new ApplicationWindow(data)
+      await window.update()
+      windows.add(window)
     }
   }
 
@@ -458,7 +460,9 @@ export async function getWindows (indices, options = null) {
 export async function getWindow (index, options) {
   throwOnInvalidIndex(index)
   const windows = await getWindows([index], options)
-  return windows[index]
+  const window = windows[index]
+  await window.update()
+  return window
 }
 
 /**

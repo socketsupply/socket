@@ -85,6 +85,12 @@ namespace ssc::runtime::ai::chat {
         const ChatStreamCallback& = nullptr
       );
 
+      bool complete (
+        const Vector<Message>&,
+        const ChatOptions&,
+        const ChatStreamCallback& = nullptr
+      );
+
       size_t size () const;
       JSON::Object json () const;
   };

@@ -5,6 +5,8 @@
 #include "native.hh"
 
 namespace ssc::runtime::android {
+  using namespace types;
+
   /**
    * A container for a JNI string (jstring).
    */

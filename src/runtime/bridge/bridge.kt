@@ -1,5 +1,5 @@
 // vim: set sw=2:
-package socket.runtime.ipc
+package socket.runtime.bridge
 
 import android.content.Intent
 import android.graphics.Bitmap
@@ -9,10 +9,10 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 
 import socket.runtime.app.App
-import socket.runtime.core.console
-import socket.runtime.core.WebViewClient
-import socket.runtime.ipc.Navigator
-import socket.runtime.ipc.SchemeHandlers
+import socket.runtime.debug.console
+import socket.runtime.webview.Navigator
+import socket.runtime.webview.SchemeHandlers
+import socket.runtime.webview.WebViewClient
 import socket.runtime.window.Window
 import socket.runtime.window.WindowManagerActivity
 

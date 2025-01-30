@@ -7002,15 +7002,8 @@ declare module "socket:crypto" {
 
 declare module "socket:ai/llm" {
     /**
-     * @typedef {{
-     *   name: string,
-     * }} ModelOptions
-     */
-    /**
-     * @typedef {{
-     *   directory?: string,
-     *   gpuLayerCount?: number
-     * }} ModelLoadOptions
+     * @typedef {{ name: string, }} ModelOptions
+     * @typedef {{ directory?: string, gpuLayerCount?: number }} ModelLoadOptions
      */
     export class Model {
         /**
@@ -7029,11 +7022,105 @@ declare module "socket:ai/llm" {
          * @type {Promise}
          */
         get ready(): Promise<any>;
+        /**
+         * `true` if the model is loaded, otherwise `false`.
+         * @type {boolean}
+         */
         get loaded(): boolean;
         /**
+         * Loads the model it not already loaded.
          * @param {ModelLoadOptions=} [options]
          */
         load(options?: ModelLoadOptions | undefined): Promise<any>;
+        toJSON(): {
+            name: string;
+        };
+        #private;
+    }
+    /**
+     * @typedef {{ name: string, }} LoRAOptions
+     * @typedef {{ directory?: string, gpuLayerCount?: number }} LoRALoadOptions
+     * @typedef {{ scale?: number }} LoraAttachOptions
+     */
+    export class LoRA {
+        /**
+         * @param {Model} model
+         * @param {LoRAOptions} options
+         */
+        constructor(model: Model, options: LoRAOptions);
+        /**
+         * @type {string}
+         */
+        get id(): string;
+        /**
+         * @type {string}
+         */
+        get name(): string;
+        /**
+         * @type {Promise}
+         */
+        get ready(): Promise<any>;
+        /**
+         * @type {boolean}
+         */
+        get loaded(): boolean;
+        /**
+         * @type {Model}
+         */
+        get model(): Model;
+        /**
+         * @param {LoRALoadOptions=} [options]
+         */
+        load(options?: LoRALoadOptions | undefined): Promise<any>;
+        /**
+         * Attach a LoRA to a context.
+         * @param {Context} context
+         * @param {LoraAttachOptions=} [options]
+         * @return {Promise}
+         */
+        attach(context: Context, options?: LoraAttachOptions | undefined): Promise<any>;
+        /**
+         * @param {Context} context
+         * @return {Promise}
+         */
+        detach(context: Context): Promise<any>;
+        toJSON(): {
+            name: string;
+            model: {
+                name: string;
+            };
+        };
+        #private;
+    }
+    /**
+     * @typedef {
+     *   context: Context,
+     *   model: Model,
+     *   lora: LoRA
+     * {}} LoRAAttachmentOptions
+     */
+    export class LoRAAttachment {
+        /**
+         * @param {LoRAAttachmentOptions} options
+         */
+        constructor(options: LoRAAttachmentOptions);
+        /**
+         * @type {Context}
+         */
+        get context(): Context;
+        /**
+         * @type {Model}
+         */
+        get model(): Model;
+        /**
+         * @type {LoRA}
+         */
+        get lora(): LoRA;
+        toJSON(): {
+            context: any;
+            model: any;
+            lora: any;
+        };
         #private;
     }
     /**
@@ -7042,10 +7129,10 @@ declare module "socket:ai/llm" {
      *   minP?: number,
      *   temp?: number,
      *   topK?: number,
+     *   topP?: number,
      *   id?: string
      * }} ContextOptions
-     */
-    /**
+     *
      * @typedef {{
      *   id: string,
      *   size: number,
@@ -7082,6 +7169,14 @@ declare module "socket:ai/llm" {
          */
         get options(): ContextOptions;
         /**
+         * @type {LoRAAttachment[]}
+         */
+        get attachments(): LoRAAttachment[];
+        /**
+         * @type {LoRA[]}
+         */
+        get adapters(): LoRA[];
+        /**
          * @param {Model} model
          * @param {ContextOptions=} [options]
          * @return {Promise}
@@ -7091,10 +7186,19 @@ declare module "socket:ai/llm" {
          * @return {Promise<ContextStats>}
          */
         stats(): Promise<ContextStats>;
+        toJSON(): {
+            id: string;
+            size: number;
+            model: {
+                name: string;
+            };
+        };
         #private;
     }
     namespace _default {
         export { Model };
+        export { LoRA };
+        export { LoRAAttachment };
         export { Context };
     }
     export default _default;
@@ -7105,11 +7209,29 @@ declare module "socket:ai/llm" {
         directory?: string;
         gpuLayerCount?: number;
     };
+    export type LoRAOptions = {
+        name: string;
+    };
+    export type LoRALoadOptions = {
+        directory?: string;
+        gpuLayerCount?: number;
+    };
+    export type LoraAttachOptions = {
+        scale?: number;
+    };
+    /**
+     * : Context,
+     *   model: Model,
+     *   lora: LoRA
+     * {}} LoRAAttachmentOptions
+     */
+    export type context = any;
     export type ContextOptions = {
         size?: number;
         minP?: number;
         temp?: number;
         topK?: number;
+        topP?: number;
         id?: string;
     };
     export type ContextStats = {
@@ -7472,6 +7594,7 @@ declare module "socket:internal/conduit" {
         close(): void;
         #private;
     }
+    export default Conduit;
     export type ReceiveMessage = {
         options: object;
         payload: Uint8Array;
@@ -7538,7 +7661,7 @@ declare module "socket:ai/chat" {
     /**
      * @typedef {{
      *   id?: string,
-     *   antiprompt?: Set<string>|string[]
+     *   antiprompts?: Set<string>|string[]
      * }} SessionOptions
      */
     export class Session extends EventTarget {
@@ -7582,7 +7705,7 @@ declare module "socket:ai/chat" {
         /**
          * @type {Set<string>}
          */
-        get antiprompt(): Set<string>;
+        get antiprompts(): Set<string>;
         /**
          * @param {Model} model
          * @param {(ModelLoadOptions & ContextOptions)=} [options]
@@ -7642,7 +7765,7 @@ declare module "socket:ai/chat" {
     };
     export type SessionOptions = {
         id?: string;
-        antiprompt?: Set<string> | string[];
+        antiprompts?: Set<string> | string[];
     };
     export type ChatOptions = SessionOptions & {
         model: string | (ModelOptions & ModelLoadOptions);
@@ -8012,7 +8135,7 @@ declare module "socket:window" {
         get channel(): BroadcastChannel;
         /**
          * Get the size of the window
-         * @return {{ width: number, height: number }} - the size of the window
+         * @type {{ width: number, height: number }} - the size of the window
          */
         get size(): {
             width: number;
@@ -8021,7 +8144,7 @@ declare module "socket:window" {
         get location(): any;
         /**
          * get  the position of the window
-         * @return {{ x: number, y: number }} - the position of the window
+         * @type {{ x: number, y: number }} - the position of the window
          */
         get position(): {
             x: number;
@@ -8029,12 +8152,16 @@ declare module "socket:window" {
         };
         /**
          * get  the title of the window
-         * @return {string} - the title of the window
+         * @type {string}
          */
         get title(): string;
         /**
+         * @type {string}
+         */
+        get token(): string;
+        /**
          * get  the status of the window
-         * @return {string} - the status of the window
+         * @type {string} - the status of the window
          */
         get status(): string;
         /**
@@ -8198,10 +8325,10 @@ declare module "socket:window" {
         /**
          * Post a message to a window
          * TODO(@jwerle): research using `BroadcastChannel` instead
-         * @param {object} message
+         * @param {object} data
          * @return {Promise}
          */
-        postMessage(message: object): Promise<any>;
+        postMessage(data: object): Promise<any>;
         /**
          * Opens an URL in the default application associated with the URL protocol,
          * such as 'https:' for the default web browser.

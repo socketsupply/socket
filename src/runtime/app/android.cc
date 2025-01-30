@@ -3,7 +3,6 @@
 #include "../string.hh"
 #include "../window.hh"
 #include "../cwd.hh"
-#include "../env.hh"
 
 #include "../app.hh"
 
@@ -11,7 +10,6 @@ using namespace ssc::runtime::app;
 using namespace ssc::runtime;
 
 using ssc::runtime::config::isDebugEnabled;
-using ssc::runtime::config::getUserConfig;
 using ssc::runtime::config::getDevHost;
 using ssc::runtime::config::getDevPort;
 
@@ -287,41 +285,6 @@ extern "C" {
           .shouldExitApplicationOnClose = true
         });
 
-        if (
-          app->runtime.userConfig["webview_service_worker_mode"] != "hybrid" &&
-          app->runtime.userConfig["permissions_allow_service_worker"] != "false"
-        ) {
-          if (app->runtime.windowManager.getWindowStatus(SOCKET_RUNTIME_SERVICE_WORKER_CONTAINER_WINDOW_INDEX) == window::Manager::WINDOW_NONE) {
-            auto serviceWorkerWindowOptions = window::Window::Options {};
-            auto serviceWorkerUserConfig = app->runtime.userConfig;
-
-            serviceWorkerUserConfig["webview_watch_reload"] = "false";
-            serviceWorkerWindowOptions.shouldExitApplicationOnClose = false;
-            // serviceWorkerWindowOptions.index = SOCKET_RUNTIME_SERVICE_WORKER_CONTAINER_WINDOW_INDEX;
-            serviceWorkerWindowOptions.headless = env::get("SOCKET_RUNTIME_SERVICE_WORKER_DEBUG").size() == 0;
-            serviceWorkerWindowOptions.userConfig = serviceWorkerUserConfig;
-            serviceWorkerWindowOptions.features.useGlobalCommonJS = false;
-            serviceWorkerWindowOptions.features.useGlobalNodeJS = false;
-
-            auto serviceWorkerWindow = app->runtime.windowManager.createWindow(serviceWorkerWindowOptions);
-            // app->serviceWorkerContainer.init(&serviceWorkerWindow->bridge);
-            // serviceWorkerWindow->navigate(
-              // "https://" + app->userConfig["meta_bundle_identifier"] + "/socket/service-worker/index.html"
-            // );
-
-            app->runtime.services.timers.setTimeout(256, [=](){
-              serviceWorkerWindow->hide();
-            });
-          }
-        }
-
-        if (
-          app->runtime.userConfig["permissions_allow_service_worker"] != "false" &&
-          app->runtime.userConfig["webview_service_worker_mode"] == "hybrid"
-        ) {
-          // app->serviceWorkerContainer.init(&defaultWindow->bridge);
-        }
-
         defaultWindow->setTitle(app->runtime.userConfig["meta_title"]);
 
         static const auto port = getDevPort();
@@ -338,6 +301,9 @@ extern "C" {
             "https://" + app->runtime.userConfig["meta_bundle_identifier"] + "/index.html"
           );
         }
+
+        msleep(64);
+        defaultWindow->show();
       });
     }
   }

@@ -416,7 +416,7 @@ namespace ssc::runtime::core::services {
 
     return true;
   #elif SOCKET_RUNTIME_PLATFORM_ANDROID
-    const auto attachment = Android::JNIEnvironmentAttachment(this->dispatcher.jvm);
+    const auto attachment = android::JNIEnvironmentAttachment(this->dispatcher.context.android.jvm);
     // `activity.showNotification(
     //    id,
     //    title,
@@ -432,7 +432,7 @@ namespace ssc::runtime::core::services {
     const auto success = CallClassMethodFromAndroidEnvironment(
       attachment.env,
       Boolean,
-      this->dispatcher.activity,
+      this->dispatcher.context.android.activity,
       "showNotification",
       "("
         "Ljava/lang/String;" // id
@@ -487,7 +487,7 @@ namespace ssc::runtime::core::services {
     this->notificationResponseObservers.dispatch(json);
     return true;
   #elif SOCKET_RUNTIME_PLATFORM_ANDROID
-    const auto attachment = Android::JNIEnvironmentAttachment(this->dispatcher.jvm);
+    const auto attachment = android::JNIEnvironmentAttachment(this->dispatcher.context.android.jvm);
     // `activity.showNotification(
     //    id,
     //    tag,
@@ -495,7 +495,7 @@ namespace ssc::runtime::core::services {
     const auto success = CallClassMethodFromAndroidEnvironment(
       attachment.env,
       Boolean,
-      this->dispatcher.activity,
+      this->dispatcher.context.android.activity,
       "closeNotification",
       "("
         "Ljava/lang/String;" // id

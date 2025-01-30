@@ -1,5 +1,5 @@
 // vim: set sw=2:
-package socket.runtime.core
+package socket.runtime.webview
 
 import android.content.Context
 import android.webkit.WebResourceRequest

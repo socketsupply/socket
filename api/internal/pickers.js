@@ -43,7 +43,8 @@ export const db = new Database()
  * @param {string} which
  */
 function requireUserActivation (which) {
-  const requiresUserActivation = String(application.config[`webview_filesystem_picker_require_user_activation`]) !== 'false'
+  // eslint-disable-next-line
+  const requiresUserActivation = String(application.config['webview_filesystem_picker_require_user_activation']) !== 'false'
   if (!requiresUserActivation) {
     return
   }

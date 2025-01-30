@@ -9,7 +9,7 @@ import android.webkit.WebChromeClient
 
 import androidx.activity.result.contract.ActivityResultContracts
 
-import socket.runtime.core.console
+import socket.runtime.debug.console
 import socket.runtime.window.WindowManagerActivity
 
 /**

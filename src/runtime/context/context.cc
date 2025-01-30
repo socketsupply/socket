@@ -11,6 +11,56 @@ using ssc::runtime::crypto::rand64;
 
 namespace ssc::runtime::context {
 #if SOCKET_RUNTIME_PLATFORM_ANDROID
+  AndroidContext::AndroidContext (const AndroidContext& context)
+    : buildInformation(context.buildInformation),
+      contentResolver(context.contentResolver),
+      jvm(context.jvm),
+      activity(context.activity),
+      looper(context.looper),
+      self(context.self),
+      isEmulator(context.isEmulator.load(std::memory_order_acquire))
+  {}
+
+  AndroidContext::AndroidContext (AndroidContext&& context)
+    : buildInformation(context.buildInformation),
+      contentResolver(context.contentResolver),
+      jvm(context.jvm),
+      activity(context.activity),
+      looper(context.looper),
+      self(context.self),
+      isEmulator(context.isEmulator.load(std::memory_order_acquire))
+  {}
+
+  AndroidContext& AndroidContext::operator = (const AndroidContext& context) {
+    this->buildInformation = context.buildInformation;
+    this->contentResolver = context.contentResolver;
+    this->jvm = context.jvm;
+    this->activity = context.activity;
+    this->looper = context.looper;
+    this->self = context.self;
+    this->isEmulator = context.isEmulator.load(std::memory_order_acquire);
+    return *this;
+  }
+
+  AndroidContext& AndroidContext::operator = (AndroidContext&& context) {
+    this->buildInformation = context.buildInformation;
+    this->contentResolver = context.contentResolver;
+    this->jvm = context.jvm;
+    this->activity = context.activity;
+    this->looper = context.looper;
+    this->self = context.self;
+    this->isEmulator = context.isEmulator.load(std::memory_order_acquire);
+
+    context.buildInformation = {};
+    context.contentResolver = {};
+    context.jvm = nullptr;
+    context.activity = {};
+    context.looper = {};
+    context.self = nullptr;
+    context.isEmulator = false;
+    return *this;
+  }
+
   void AndroidContext::configure (
     android::JVMEnvironment jvm,
     android::Activity activity

@@ -122,12 +122,12 @@ namespace ssc::runtime::core::services {
           callback(seq, json, QueuedResponse{});
         }];
       #elif SOCKET_RUNTIME_PLATFORM_ANDROID
-        const auto attachment = android::JNIEnvironmentAttachment(this->core->platform.jvm);
+        const auto attachment = android::JNIEnvironmentAttachment(this->context.android.jvm);
         // `activity.checkPermission(permission)`
         const auto hasQueuedResponseNotifications = CallClassMethodFromAndroidEnvironment(
           attachment.env,
           Boolean,
-          this->core->platform.activity,
+          this->context.android.activity,
           "checkPermission",
           "(Ljava/lang/String;)Z",
           attachment.env->NewStringUTF("android.permission.POST_NOTIFICATIONS")
@@ -137,7 +137,7 @@ namespace ssc::runtime::core::services {
         const auto isNotificationManagerEnabled = CallClassMethodFromAndroidEnvironment(
           attachment.env,
           Boolean,
-          this->core->platform.activity,
+          this->context.android.activity,
           "isNotificationManagerEnabled",
           "()Z"
         );
@@ -165,12 +165,12 @@ namespace ssc::runtime::core::services {
       if (name == "camera")  {
         JSON::Object json;
       #if SOCKET_RUNTIME_PLATFORM_ANDROID
-        const auto attachment = android::JNIEnvironmentAttachment(this->core->platform.jvm);
+        const auto attachment = android::JNIEnvironmentAttachment(this->context.android.jvm);
         // `activity.checkPermission(permission)`
         const auto hasCameraPermission = CallClassMethodFromAndroidEnvironment(
           attachment.env,
           Boolean,
-          this->core->platform.activity,
+          this->context.android.activity,
           "checkPermission",
           "(Ljava/lang/String;)Z",
           attachment.env->NewStringUTF("android.permission.CAMERA")
@@ -204,12 +204,12 @@ namespace ssc::runtime::core::services {
       if (name == "microphone")  {
         JSON::Object json;
       #if SOCKET_RUNTIME_PLATFORM_ANDROID
-        const auto attachment = android::JNIEnvironmentAttachment(this->core->platform.jvm);
+        const auto attachment = android::JNIEnvironmentAttachment(this->context.android.jvm);
         // `activity.checkPermission(permission)`
         const auto hasRecordAudioPermission = CallClassMethodFromAndroidEnvironment(
           attachment.env,
           Boolean,
-          this->core->platform.activity,
+          this->context.android.activity,
           "checkPermission",
           "(Ljava/lang/String;)Z",
           attachment.env->NewStringUTF("android.permission.RECORD_AUDIO")

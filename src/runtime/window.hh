@@ -320,6 +320,8 @@ namespace ssc::runtime::window {
          * type can exist. This value is handled in the IPC routing only.
          */
         String token = std::to_string(crypto::rand64());
+
+        bool createServiceWorker = true;
       };
 
       /**
@@ -467,7 +469,7 @@ namespace ssc::runtime::window {
       void resize (HWND window);
     #elif SOCKET_RUNTIME_PLATFORM_ANDROID
       String pendingNavigationLocation;
-      jobject self;
+      jobject self = nullptr;
       Map<String, EvalCallback> evaluateJavaScriptCallbacks;
     #endif
 
@@ -598,6 +600,7 @@ namespace ssc::runtime::window {
           void exit (int code = 0);
           void kill ();
           void gc ();
+          void navigate (const URL&);
           JSON::Object json () const;
           void handleApplicationURL (const String& url);
           void onReadyStateChange (const ReadyState& readyState);

@@ -343,12 +343,11 @@ namespace ssc::runtime::filesystem {
     defaultWellKnownPaths = paths;
   }
 
-  const Resource::WellKnownPaths& Resource::getWellKnownPaths () {
-    static const auto paths = WellKnownPaths {};
-    return paths;
+  const Resource::WellKnownPaths Resource::getWellKnownPaths (const Path& prefix) {
+    return WellKnownPaths(prefix);
   }
 
-  Resource::WellKnownPaths::WellKnownPaths () {
+  Resource::WellKnownPaths::WellKnownPaths (const Path& prefix) {
     static auto userConfig = getUserConfig();
     static auto bundleIdentifier = userConfig["meta_bundle_identifier"];
 
@@ -488,6 +487,22 @@ namespace ssc::runtime::filesystem {
     this->resources = "socket://" + bundleIdentifier;
     this->tmp = !cache.empty() ? cache : storage / "tmp";
   #endif
+
+    if (!prefix.empty()) {
+      this->resources /= prefix;
+      this->downloads /= prefix;
+      this->documents /= prefix;
+      this->pictures /= prefix;
+      this->desktop /= prefix;
+      this->videos /= prefix;
+      this->config /= prefix;
+      this->music /= prefix;
+      this->media /= prefix;
+      this->home /= prefix;
+      this->data /= prefix;
+      this->log /= prefix;
+      this->tmp /= prefix;
+    }
   }
 
   JSON::Object Resource::WellKnownPaths::json () const {

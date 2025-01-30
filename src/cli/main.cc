@@ -2283,6 +2283,9 @@ int main (int argc, char* argv[]) {
         writeFile(targetPath / "src" / "index.js", gHelloWorldScript);
         log("src/index.js created in " + targetPath.string());
 
+        writeFile(targetPath / "src" / "serviceworker.js", gHelloWorldServiceWorker);
+        log("src/serviceworker.js created in " + targetPath.string());
+
         // copy icon.png
         fs::copy(trim(prefixFile("assets/icon.png")), targetPath / "src" / "icon.png", fs::copy_options::overwrite_existing);
         log("icon.png created in " + targetPath.string() + "/src");
@@ -4107,21 +4110,21 @@ int main (int argc, char* argv[]) {
 
       // Android Sources
       std::map<Path, String> sources = {
-        // user files
+        // android app package files
         {pkg / "app.kt", "src/android/app.kt"},
         {pkg / "main.kt", "src/android/main.kt"},
 
         // runtime package files
-        {runtime / "app" / "app.kt", "src/app/app.kt"},
-        {runtime / "core" / "console.kt", "src/core/console.kt"},
-        {runtime / "core" / "webview.kt", "src/core/webview.kt"},
-        {runtime / "ipc" / "bridge.kt", "src/ipc/bridge.kt"},
-        {runtime / "ipc" / "message.kt", "src/ipc/message.kt"},
-        {runtime / "ipc" / "navigator.kt", "src/ipc/navigator.kt"},
-        {runtime / "ipc" / "scheme_handlers.kt", "src/ipc/scheme_handlers.kt"},
-        {runtime / "window" / "dialog.kt", "src/window/dialog.kt"},
-        {runtime / "window" / "manager.kt", "src/window/manager.kt"},
-        {runtime / "window" / "window.kt", "src/window/window.kt"},
+        {runtime / "app" / "app.kt", "src/runtime/app/app.kt"},
+        {runtime / "bridge" / "bridge.kt", "src/runtime/bridge/bridge.kt"},
+        {runtime / "debug" / "console.kt", "src/runtime/debug/console.kt"},
+        {runtime / "ipc" / "message.kt", "src/runtime/ipc/message.kt"},
+        {runtime / "webview.kt", "src/runtime/webview.kt"},
+        {runtime / "webview" / "navigator.kt", "src/runtime/webview/navigator.kt"},
+        {runtime / "webview" / "scheme_handlers.kt", "src/runtime/webview/scheme_handlers.kt"},
+        {runtime / "window" / "dialog.kt", "src/runtime/window/dialog.kt"},
+        {runtime / "window" / "manager.kt", "src/runtime/window/manager.kt"},
+        {runtime / "window" / "window.kt", "src/runtime/window/window.kt"},
       };
 
       for (const auto& entry : sources) {
@@ -5197,7 +5200,7 @@ int main (int argc, char* argv[]) {
       fs::copy(
         SOCKET_HOME_API,
         pathResources / "socket",
-        fs::copy_options::update_existing | fs::copy_options::recursive
+        fs::copy_options::update_existing | fs::copy_options::recursive | fs::copy_options::copy_symlinks
       );
 
       // XXX(@jwerle): 'node_modules/' sometimes can be found in the

@@ -198,12 +198,19 @@ if (( !only_top_level )); then
 
       # don't copy debug files, too large
       rm -rf $SOCKET_HOME/lib/*-android/objs-debug
-      for file in $(`which ls` "$SOCKET_HOME/lib/"*-android 2>/dev/null); do
-        ln -sf "$file" "$SOCKET_HOME/packages/$package/lib"
-      done
 
       ln -sf "$SOCKET_HOME/lib/"$arch-* "$SOCKET_HOME/packages/$package/lib"
       ln -sf "$SOCKET_HOME/objects/"$arch-* "$SOCKET_HOME/packages/$package/objects"
+
+      for abi in $(android_supported_abis); do
+        if test -d "$SOCKET_HOME/lib/$abi-android"; then
+          ln -sf "$SOCKET_HOME/lib/$abi-android" "$SOCKET_HOME/packages/$package/lib"
+        fi
+
+        if test -d "$SOCKET_HOME/objects/$abi-android"; then
+          ln -sf "$SOCKET_HOME/objects/$abi-android" "$SOCKET_HOME/packages/$package/objects"
+        fi
+      done
 
       if [ "$platform" = "darwin" ]; then
         ## Install x86_64-iPhoneSimulator files for arm64 too

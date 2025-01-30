@@ -22,6 +22,7 @@ namespace ssc::runtime::window {
     auto userConfig = options.userConfig;
     const auto attachment = android::JNIEnvironmentAttachment(this->bridge->context.getRuntime()->android.jvm);
 
+    this->self = nullptr;
     this->index = this->options.index;
     this->bridge->configureNavigatorMounts();
 
@@ -101,6 +102,7 @@ namespace ssc::runtime::window {
   }
 
   void Window::eval (const String& source, const EvalCallback callback) {
+    if (this->self == nullptr) return;
     const auto app = App::sharedApplication();
     const auto attachment = android::JNIEnvironmentAttachment(app->runtime.android.jvm);
     const auto token = std::to_string(rand64());
@@ -121,6 +123,7 @@ namespace ssc::runtime::window {
   }
 
   void Window::show () {
+    if (this->self == nullptr) return;
     const auto app = App::sharedApplication();
     const auto attachment = android::JNIEnvironmentAttachment(app->runtime.android.jvm);
 
@@ -136,6 +139,7 @@ namespace ssc::runtime::window {
   }
 
   void Window::hide () {
+    if (this->self == nullptr) return;
     const auto app = App::sharedApplication();
     const auto attachment = android::JNIEnvironmentAttachment(app->runtime.android.jvm);
 
@@ -159,6 +163,7 @@ namespace ssc::runtime::window {
   }
 
   void Window::close (int code) {
+    if (this->self == nullptr) return;
     const auto app = App::sharedApplication();
     const auto attachment = android::JNIEnvironmentAttachment(app->runtime.android.jvm);
     JSON::Object json = JSON::Object::Entries {
@@ -191,6 +196,11 @@ namespace ssc::runtime::window {
   }
 
   void Window::navigate (const String& url) {
+    if (this->self == nullptr) {
+      this->pendingNavigationLocation = url;
+      return;
+    }
+
     const auto app = App::sharedApplication();
     const auto attachment = android::JNIEnvironmentAttachment(app->runtime.android.jvm);
 
@@ -211,6 +221,10 @@ namespace ssc::runtime::window {
   }
 
   const String Window::getTitle () const {
+    if (this->self == nullptr) {
+      return "";
+    }
+
     const auto app = App::sharedApplication();
     const auto attachment = android::JNIEnvironmentAttachment(app->runtime.android.jvm);
     // `activity.getWindowTitle(index): String`
@@ -226,6 +240,7 @@ namespace ssc::runtime::window {
   }
 
   void Window::setTitle (const String& title) {
+    if (this->self == nullptr) return;
     const auto app = App::sharedApplication();
     const auto attachment = android::JNIEnvironmentAttachment(app->runtime.android.jvm);
     // `activity.setWindowTitle(index, url): Boolean`
@@ -241,6 +256,10 @@ namespace ssc::runtime::window {
   }
 
   Window::Size Window::getSize () {
+    if (this->self == nullptr) {
+      return Size {0, 0};
+    }
+
     const auto app = App::sharedApplication();
     const auto attachment = android::JNIEnvironmentAttachment(app->runtime.android.jvm);
     // `activity.getWindowWidth(index): String`
@@ -267,6 +286,10 @@ namespace ssc::runtime::window {
   }
 
   const Window::Size Window::getSize () const {
+    if (this->self == nullptr) {
+      return Size { 0, 0 };
+    }
+
     const auto app = App::sharedApplication();
     const auto attachment = android::JNIEnvironmentAttachment(app->runtime.android.jvm);
     // `activity.getWindowWidth(index): Int`
@@ -292,6 +315,7 @@ namespace ssc::runtime::window {
   }
 
   void Window::setSize (int width, int height, int _) {
+    if (this->self == nullptr) return;
     const auto app = App::sharedApplication();
     const auto attachment = android::JNIEnvironmentAttachment(app->runtime.android.jvm);
     // `activity.setWindowSize(index, w): Int`
@@ -307,11 +331,12 @@ namespace ssc::runtime::window {
   }
 
   void Window::setPosition (float x, float y) {
+    if (this->self == nullptr) return;
     const auto app = App::sharedApplication();
     const auto attachment = android::JNIEnvironmentAttachment(app->runtime.android.jvm);
     this->position.x = x;
     this->position.y = y;
-    // `activity.setWindowBackgroundColor(index, color)`
+    // `activity.setWindowPosition(index, x, y)`
     CallVoidClassMethodFromAndroidEnvironment(
       attachment.env,
       app->runtime.android.activity,
@@ -336,6 +361,7 @@ namespace ssc::runtime::window {
   }
 
   void Window::setBackgroundColor (int r, int g, int b, float a) {
+    if (this->self == nullptr) return;
     const auto app = App::sharedApplication();
     const auto color = Color(r, g, b, a);
     const auto attachment = android::JNIEnvironmentAttachment(app->runtime.android.jvm);
@@ -351,6 +377,7 @@ namespace ssc::runtime::window {
   }
 
   void Window::setBackgroundColor (const String& rgba) {
+    if (this->self == nullptr) return;
     const auto app = App::sharedApplication();
     const auto color = Color(rgba);
     const auto attachment = android::JNIEnvironmentAttachment(app->runtime.android.jvm);
@@ -366,6 +393,7 @@ namespace ssc::runtime::window {
   }
 
   void Window::setBackgroundColor (const Color& color) {
+    if (this->self == nullptr) return;
     const auto app = App::sharedApplication();
     const auto attachment = android::JNIEnvironmentAttachment(app->runtime.android.jvm);
     // `activity.setWindowBackgroundColor(index, color)`
@@ -380,6 +408,10 @@ namespace ssc::runtime::window {
   }
 
   String Window::getBackgroundColor () {
+    if (this->self == nullptr) {
+      return "";
+    }
+
     const auto app = App::sharedApplication();
     const auto attachment = android::JNIEnvironmentAttachment(app->runtime.android.jvm);
     // `activity.getWindowBackgroundColor(index): Int`
@@ -449,7 +481,7 @@ extern "C" {
     const auto size = byteArray != nullptr ? attachment.env->GetArrayLength(byteArray) : 0;
 
     if (byteArray && size > 0) {
-      auto bytes = std::make_shared<char[]>(size);
+      auto bytes = std::make_shared<unsigned char[]>(size);
       attachment.env->GetByteArrayRegion(byteArray, 0, size, (jbyte*) bytes.get());
       window->bridge->route(message, bytes, size);
     } else {
@@ -475,6 +507,12 @@ extern "C" {
     }
 
     window->self = env->NewGlobalRef(self);
+
+    if (!window->options.headless) {
+      app->dispatch([window]() {
+        window->show();
+      });
+    }
   }
 
   void ANDROID_EXTERNAL(window, Window, onEvaluateJavascriptResult) (

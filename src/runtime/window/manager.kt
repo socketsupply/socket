@@ -3,9 +3,13 @@ package socket.runtime.window
 
 import android.content.Context
 import android.content.Intent
+import android.content.res.AssetManager
 import android.graphics.drawable.ColorDrawable
+import android.graphics.Insets
 import android.net.Uri
 import android.os.Bundle
+import android.util.DisplayMetrics
+import android.view.WindowInsets
 import android.view.WindowManager
 
 import androidx.appcompat.app.AppCompatActivity
@@ -13,7 +17,7 @@ import androidx.fragment.app.commit
 import androidx.fragment.app.FragmentManager
 
 import socket.runtime.app.App
-import socket.runtime.core.console
+import socket.runtime.debug.console
 import socket.runtime.window.WindowFragment
 import socket.runtime.window.WindowOptions
 
@@ -36,8 +40,8 @@ open class WindowFragmentManager (
     val manager = this.manager
     if (!this.hasWindowFragment(options.index)) {
       val fragment = WindowFragment.newInstance(options)
+      fragment.index = options.index
       this.fragments.add(fragment)
-      this.activity.runOnUiThread {
         manager.commit {
           // .setCustomAnimations(android.R.anim.slide_in_left, android.R.anim.slide_out_right)
           setReorderingAllowed(true)
@@ -47,7 +51,6 @@ open class WindowFragmentManager (
           } else {
             addToBackStack("window#${options.index}")
           }
-        }
       }
     }
   }
@@ -61,12 +64,10 @@ open class WindowFragmentManager (
     val fragment = this.fragments.find { it.index == index }
 
     if (fragment != null) {
-      this.activity.runOnUiThread {
-        this.manager.beginTransaction()
-          // .setCustomAnimations(android.R.anim.slide_in_left, android.R.anim.slide_out_right)
-          .show(fragment)
-          .commit()
-      }
+      this.manager.beginTransaction()
+        // .setCustomAnimations(android.R.anim.slide_in_left, android.R.anim.slide_out_right)
+        .show(fragment)
+        .commit()
       return true
     }
 
@@ -258,7 +259,11 @@ open class WindowFragmentManager (
    */
   fun getWindowFragmentBackgroundColor (index: Int): Int {
     val fragment = this.fragments.find { it.index == index } ?: return 0
-    val drawable = fragment.webview.background as ColorDrawable
+    val background = fragment.webview.background
+    if (background == null) {
+      return 0
+    }
+    val drawable = background as ColorDrawable
     val color = drawable.color
     return 0xFFFFFF and color
   }
@@ -398,5 +403,52 @@ open class WindowManagerActivity : AppCompatActivity(R.layout.window_container_v
    */
   fun evaluateJavaScript (index: Int, source: String, token: String): Boolean {
     return this.windowFragmentManager.evaluateJavaScriptInWindowFragmentView(index, source, token)
+  }
+
+  /**
+   * Gets the current screen `Insets`.
+   */
+  fun getScreenInsets (): Insets {
+    val windowManager = this.applicationContext.getSystemService(
+      Context.WINDOW_SERVICE
+    ) as WindowManager
+    val metrics = windowManager.getCurrentWindowMetrics()
+    val windowInsets = metrics.windowInsets
+    return windowInsets.getInsetsIgnoringVisibility(
+      WindowInsets.Type.navigationBars() or
+      WindowInsets.Type.displayCutout()
+    )
+  }
+
+  /**
+   * Gets the current screen display metrics
+   */
+  fun getScreenDisplayMetrics (): DisplayMetrics {
+    return this.applicationContext.resources.displayMetrics
+  }
+
+  /**
+   * Gets the screen width size.
+   */
+  fun getScreenSizeWidth (): Int {
+    val insets = this.getScreenInsets()
+    val metrics = this.getScreenDisplayMetrics()
+    return ((insets.right + insets.left).toFloat() * metrics.density).toInt()
+  }
+
+  /**
+   * Gets the screen height size.
+   */
+  fun getScreenSizeHeight (): Int {
+    val insets = this.getScreenInsets()
+    val metrics = this.getScreenDisplayMetrics()
+    return ((insets.top + insets.bottom).toFloat() * metrics.density).toInt()
+  }
+
+  /**
+   * Gets the Android asset manager for the application.
+   */
+  fun getAssetManager (): AssetManager {
+    return this.applicationContext.resources.assets
   }
 }

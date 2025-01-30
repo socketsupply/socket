@@ -1,6 +1,8 @@
 // vim: set sw=2:
 package socket.runtime.webview
 
+import socket.runtime.bridge.Bridge
+
 open class Navigator (val bridge: Bridge) {
   fun isNavigationRequestAllowed (
     currentURL: String,

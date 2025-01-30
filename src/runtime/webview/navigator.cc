@@ -432,7 +432,7 @@ namespace ssc::runtime::webview {
 
 #if SOCKET_RUNTIME_PLATFORM_ANDROID
 extern "C" {
-  jboolean ANDROID_EXTERNAL(ipc, Navigator, isNavigationRequestAllowed) (
+  jboolean ANDROID_EXTERNAL(webview, Navigator, isNavigationRequestAllowed) (
     JNIEnv* env,
     jobject self,
     jint index,

@@ -17,7 +17,6 @@ import android.content.res.AssetManager
 import android.content.res.AssetFileDescriptor
 import android.content.ContentResolver
 import android.database.Cursor
-import android.graphics.Insets
 import android.graphics.drawable.Icon
 import android.net.Uri
 import android.os.Build
@@ -25,7 +24,6 @@ import android.os.Bundle
 import android.os.Environment
 import android.provider.DocumentsContract
 import android.provider.MediaStore
-import android.view.WindowInsets
 import android.view.WindowManager
 import android.webkit.MimeTypeMap
 import android.webkit.WebView
@@ -40,7 +38,7 @@ import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 
-import socket.runtime.core.console
+import socket.runtime.debug.console
 import socket.runtime.window.WindowManagerActivity
 
 import __BUNDLE_IDENTIFIER__.R
@@ -278,32 +276,6 @@ open class AppActivity : WindowManagerActivity() {
     this.startActivity(intent)
   }
 
-  fun getScreenInsets (): Insets {
-    val windowManager = this.applicationContext.getSystemService(
-      Context.WINDOW_SERVICE
-    ) as WindowManager
-    val metrics = windowManager.getCurrentWindowMetrics()
-    val windowInsets = metrics.windowInsets
-    return windowInsets.getInsetsIgnoringVisibility(
-      WindowInsets.Type.navigationBars() or
-      WindowInsets.Type.displayCutout()
-    )
-  }
-
-  fun getScreenSizeWidth (): Int {
-    val insets = this.getScreenInsets()
-    return insets.right + insets.left
-  }
-
-  fun getScreenSizeHeight (): Int {
-    val insets = this.getScreenInsets()
-    return insets.top + insets.bottom
-  }
-
-  fun getAssetManager (): AssetManager {
-    return this.applicationContext.resources.assets
-  }
-
   fun isNotificationManagerEnabled (): Boolean {
     return NotificationManagerCompat.from(this).areNotificationsEnabled()
   }
@@ -508,6 +480,7 @@ open class AppActivity : WindowManagerActivity() {
       )
     }
 
+    app.activity = this
     app.onCreateAppActivity(this)
 
     if (app.hasRuntimePermission("notifications")) {
@@ -552,6 +525,7 @@ open class AppActivity : WindowManagerActivity() {
 
   override fun onDestroy () {
     super.onDestroy()
+    App.getInstance().activity = null
     App.getInstance().onDestroyAppActivity(this)
   }
 
@@ -682,6 +656,7 @@ open class AppLifecycleObserver : DefaultLifecycleObserver {
 
 open class App : Application() {
   val pointer = alloc()
+  var activity: AppActivity? = null
 
   protected val lifecycleListener: AppLifecycleObserver by lazy {
     AppLifecycleObserver()

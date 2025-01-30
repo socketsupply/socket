@@ -6,6 +6,7 @@ namespace ssc::runtime::android {
   JVMEnvironment::JVMEnvironment (JNIEnv* env) {
     if (env != nullptr) {
       this->jniVersion = env->GetVersion();
+      this->env = env;
       env->GetJavaVM(&this->jvm);
     }
   }
@@ -25,6 +26,7 @@ namespace ssc::runtime::android {
   JVMEnvironment& JVMEnvironment::operator = (const JVMEnvironment& input) {
     if (input.env != nullptr) {
       this->jniVersion = input.env->GetVersion();
+      this->env = input.env;
       input.env->GetJavaVM(&this->jvm);
     }
     return *this;
@@ -33,6 +35,7 @@ namespace ssc::runtime::android {
   JVMEnvironment& JVMEnvironment::operator = (JVMEnvironment&& input) {
     if (input.env != nullptr) {
       this->jniVersion = input.env->GetVersion();
+      this->env = input.env;
       input.env->GetJavaVM(&this->jvm);
     }
     input.env = nullptr;
@@ -51,6 +54,7 @@ namespace ssc::runtime::android {
   JVMEnvironment& JVMEnvironment::operator = (JNIEnv* env) {
     if (env != nullptr) {
       this->jniVersion = env->GetVersion();
+      this->env = env;
       env->GetJavaVM(&this->jvm);
     }
     return *this;

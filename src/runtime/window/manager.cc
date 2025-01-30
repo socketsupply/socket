@@ -381,7 +381,13 @@ namespace ssc::runtime::window {
 
   void Manager::ManagedWindow::show () {
     auto index = std::to_string(this->index);
+  #if SOCKET_RUNTIME_PLATFORM_ANDROID
+    if (this->self) {
+      this->backgroundColor = Color(Window::getBackgroundColor());
+    }
+  #else
     this->backgroundColor = Color(Window::getBackgroundColor());
+  #endif
     status = WindowStatus::WINDOW_SHOWING;
     Window::show();
     status = WindowStatus::WINDOW_SHOWN;
@@ -425,6 +431,7 @@ namespace ssc::runtime::window {
     const auto id = this->bridge->client.id;
     const auto size = this->getSize();
     const auto index = this->index;
+    const auto screen = Window::getScreenSize();
     const auto readyState = String(
       this->readyState == Window::ReadyState::Loading
         ? "loading"
@@ -439,13 +446,22 @@ namespace ssc::runtime::window {
       {"id", std::to_string(id)},
       {"index", index},
       {"title", this->getTitle()},
+      {"token", this->options.token},
       {"url", this->bridge->navigator.location.str()},
       {"location", this->bridge->navigator.location.json()},
-      {"width", size.width},
-      {"height", size.height},
+      {"width", this->options.headless ? screen.width : size.width},
+      {"height", this->options.headless ? screen.height : size.height},
       {"status", this->status},
       {"readyState", readyState},
       {"backgroundColor", this->backgroundColor.json()},
+      {"screen", JSON::Object::Entries {
+        {"width", screen.width},
+        {"height", screen.height}
+      }},
+      {"size", JSON::Object::Entries {
+        {"width", this->options.headless ? screen.width : size.width},
+        {"height", this->options.headless ? screen.height : size.height},
+      }},
       {"position", JSON::Object::Entries {
         {"x", this->position.x},
         {"y", this->position.y}
@@ -547,5 +563,10 @@ namespace ssc::runtime::window {
     }
 
     return -1;
+  }
+
+  void Manager::ManagedWindow::navigate (const URL& url) {
+    this->bridge->navigator.location.set(url.str());
+    return Window::navigate(url.str());
   }
 }

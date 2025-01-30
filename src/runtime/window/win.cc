@@ -595,14 +595,9 @@ namespace SSC {
     };
   };
 
-  Window::Window (SharedPointer<Core> core, const Window::Options& options)
-    : core(core),
-      options(options),
-      bridge(core, IPC::Bridge::Options {
-        options.index,
-        options.userConfig,
-        options.as<IPC::Preload::Options>()
-      }),
+  Window::Window (SharedPointer<bridge::Bridge> bridge, const Window::Options& options)
+    : options(options),
+      bridge(bridge),
       hotkey(this),
       dialog(this)
   {
@@ -616,11 +611,11 @@ namespace SSC {
       const auto value = replace(string, "\\\\", "\\\\");
       // inject the `EDGE_RUNTIME_DIRECTORY` environment variable directly into
       // the userConfig so it is available as an env var in the webview runtime
-      this->bridge.userConfig["env_EDGE_RUNTIME_DIRECTORY"] = value;
+      this->bridge->userConfig["env_EDGE_RUNTIME_DIRECTORY"] = value;
       debug("Microsoft Edge Runtime directory set to '%ls'", edgeRuntimePath.c_str());
     }
 
-    auto userConfig = this->bridge.userConfig;
+    auto userConfig = this->bridge->userConfig;
     // only the root window can handle "agent" tasks
     const bool isAgent = (
       userConfig["application_agent"] == "true" &&
@@ -693,26 +688,23 @@ namespace SSC {
     webviewEnvironmentOptions->put_AdditionalBrowserArguments(L"--enable-features=msWebView2EnableDraggableRegions");
 
     this->drop = std::make_shared<DragDrop>(this);
-    this->bridge.navigateFunction = [this] (const auto url) {
+    this->bridge->navigateFunction = [this] (const auto url) {
       this->navigate(url);
     };
 
-    this->bridge.evaluateJavaScriptFunction = [this] (const auto source) {
+    this->bridge->evaluateJavaScriptFunction = [this] (const auto source) {
       this->eval(source);
     };
 
-    this->bridge.client.preload = IPC::Preload::compile({
-      .client = UniqueClient {
-        .id = this->bridge.client.id,
-        .index = this->bridge.client.index
-      },
+    this->bridge->client.preload = webview::Preload::compile({
+      .client = this->bridge->client,
       .index = options.index,
       .userScript = options.userScript,
       .userConfig = options.userConfig,
       .conduit = {
-        {"port", this->core->conduit.port},
-        {"hostname", this->core->conduit.hostname},
-        {"sharedKey", this->core->conduit.sharedKey}
+        {"port", static_cast<runtime::Runtime&>(this->bridge->context).services.conduit.port},
+        {"hostname", static_cast<runtime::Runtime&>(this->bridge->context).services.conduit.hostname},
+        {"sharedKey", static_cast<runtime::Runtime&>(this->bridge->context).services.conduit.sharedKey}
       }
     });
 
@@ -750,7 +742,7 @@ namespace SSC {
     SetWindowLongPtr(this->window, GWLP_USERDATA, (LONG_PTR) this);
 
     this->hotkey.init();
-    this->bridge.init();
+    this->bridge->init();
 
     static const auto APPDATA = Path(convertStringToWString(Env::get("APPDATA")));
 
@@ -770,7 +762,7 @@ namespace SSC {
       APPDATA / filename;
     });
 
-    this->bridge.configureSchemeHandlers({
+    this->bridge->configureSchemeHandlers({
       .webview = webviewEnvironmentOptions
     });
 
@@ -807,7 +799,7 @@ namespace SSC {
               this->controller->put_Bounds(bounds);
               this->controller->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
               this->controller->AddRef();
-              this->bridge.configureWebView(this->webview);
+              this->bridge->configureWebView(this->webview);
             } while (0);
 
             // configure the webview settings
@@ -844,7 +836,7 @@ namespace SSC {
 
               settings6->put_IsPinchZoomEnabled(false);
               settings6->put_IsSwipeNavigationEnabled(
-                this->bridge.userConfig["webview_navigator_enable_navigation_destures"] == "true"
+                this->bridge->userConfig["webview_navigator_enable_navigation_destures"] == "true"
               );
 
               settings9->put_IsNonClientRegionSupportEnabled(true);
@@ -884,7 +876,7 @@ namespace SSC {
               this->webview->AddWebResourceRequestedFilter(L"*", COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL);
 
               if (webview22 != nullptr) {
-                this->bridge.userConfig["env_COREWEBVIEW2_22_AVAILABLE"] = "true";
+                this->bridge->userConfig["env_COREWEBVIEW2_22_AVAILABLE"] = "true";
 
                 webview22->AddWebResourceRequestedFilterWithRequestSourceKinds(
                   L"*",
@@ -902,8 +894,8 @@ namespace SSC {
 
             // configure the user script preload
             do {
-              auto preloadUserScriptSource = IPC::Preload::compile({
-                .features = IPC::Preload::Options::Features {
+              auto preloadUserScriptSource = webview::Preload::compile({
+                .features = webview::Preload::Options::Features {
                   .useGlobalCommonJS = false,
                   .useGlobalNodeJS = false,
                   .useTestScript = false,
@@ -911,17 +903,14 @@ namespace SSC {
                   .useESM = false,
                   .useGlobalArgs = true
                 },
-                .client = UniqueClient {
-                  .id = this->bridge.client.id,
-                  .index = this->bridge.client.index
-                },
-                .index = this->options.index,
-                .userScript = this->options.userScript,
-                .userConfig = this->options.userConfig,
+                .client = this->bridge->client,
+                .index = options.index,
+                .userScript = options.userScript,
+                .userConfig = options.userConfig,
                 .conduit = {
-                  {"port", this->core->conduit.port},
-                  {"hostname", this->core->conduit.hostname},
-                  {"sharedKey", this->core->conduit.sharedKey}
+                  {"port", static_cast<runtime::Runtime&>(this->bridge->context).services.conduit.port},
+                  {"hostname", static_cast<runtime::Runtime&>(this->bridge->context).services.conduit.hostname},
+                  {"sharedKey", static_cast<runtime::Runtime&>(this->bridge->context).services.conduit.sharedKey}
                 }
               });
 
@@ -1056,7 +1045,7 @@ namespace SSC {
 
                   LPWSTR string;
                   args->TryGetWebMessageAsString(&string);
-                  const auto message = IPC::Message(convertWStringToString(string));
+                  const auto message = ipc::Message(convertWStringToString(string));
                   CoTaskMemFree(string);
 
                   this->webview->QueryInterface(IID_PPV_ARGS(&webview2));
@@ -1064,7 +1053,7 @@ namespace SSC {
                   webview2->get_Environment(&environment);
                   environment->QueryInterface(IID_PPV_ARGS(&environment12));
 
-                  if (!this->bridge.route(message.str(), nullptr, 0)) {
+                  if (!this->bridge->route(message.str(), nullptr, 0)) {
                     onMessage(message.str());
                   }
 
@@ -1102,8 +1091,8 @@ namespace SSC {
                     }
                   } while (0);
 
-                  auto request = IPC::SchemeHandlers::Request::Builder(
-                    &this->bridge.schemeHandlers,
+                  auto request = webview::SchemeHandlers::Request::Builder(
+                    &this->bridge->schemeHandlers,
                     platformRequest,
                     env
                   );
@@ -1153,7 +1142,7 @@ namespace SSC {
                       if (size > 0) {
                         auto buffer = std::make_shared<char[]>(size);
                         if (content->Read(buffer.get(), size, nullptr) == S_OK) {
-                          request.setBody(IPC::SchemeHandlers::Body {
+                          request.setBody(webview::SchemeHandlers::Body {
                             size,
                             std::move(buffer)
                           });
@@ -1167,13 +1156,13 @@ namespace SSC {
                     return E_FAIL;
                   }
 
-                  const auto handled = this->bridge.schemeHandlers.handleRequest(req, [=](const auto& response) mutable {
+                  const auto handled = this->bridge->schemeHandlers.handleRequest(req, [=](const auto& response) mutable {
                     args->put_Response(response.platformResponse);
                     deferral->Complete();
                   });
 
                   if (!handled) {
-                    auto response = IPC::SchemeHandlers::Response(req, 404);
+                    auto response = webview::SchemeHandlers::Response(req, 404);
                     response.finish();
                     args->put_Response(response.platformResponse);
                     deferral->Complete();
@@ -1207,10 +1196,10 @@ namespace SSC {
   void Window::about () {
     auto app = App::sharedApplication();
     auto text = String(
-      this->bridge.userConfig["build_name"] + " " +
-      "v" + this->bridge.userConfig["meta_version"] + "\n" +
+      this->bridge->userConfig["build_name"] + " " +
+      "v" + this->bridge->userConfig["meta_version"] + "\n" +
       "Built with ssc v" + VERSION_FULL_STRING + "\n" +
-      this->bridge.userConfig["meta_copyright"]
+      this->bridge->userConfig["meta_copyright"]
     );
 
     MSGBOXPARAMS mbp;
@@ -1218,7 +1207,7 @@ namespace SSC {
     mbp.hwndOwner = this->window;
     mbp.hInstance = app->hInstance;
     mbp.lpszText = text.c_str();
-    mbp.lpszCaption = this->bridge.userConfig["build_name"].c_str();
+    mbp.lpszCaption = this->bridge->userConfig["build_name"].c_str();
     mbp.dwStyle = MB_USERICON;
     mbp.dwLanguageId = MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT);
     mbp.lpfnMsgBoxCallback = nullptr;
@@ -1766,6 +1755,6 @@ namespace SSC {
       "url", url
     }};
 
-    this->bridge.emit("applicationurl", json.str());
+    this->bridge->emit("applicationurl", json.str());
   }
 }

@@ -90,10 +90,10 @@ namespace ssc::runtime::ai::llm {
       struct Options {
         size_t size = 2048;
         uint32_t dist = LLAMA_DEFAULT_SEED;
+        float topP = 0.95;
         float minP = 0.05f;
-        float temp = 0.8f;
-        int topK = 0;
-        int topP = 0;
+        float temp = 0.80f;
+        int topK = 40;
         ID id = 0;
       };
 

@@ -94,7 +94,6 @@ done
 
 declare objects=()
 declare sources=(
-  ## app entry
   $(find "$root"/src/app/*.cc)
   ## extension API
   $(find "$root"/src/extension/*.cc)
@@ -135,6 +134,7 @@ declare sources=(
   $(find "$root"/src/runtime/window/manager.cc)
 
   ## deps
+  "$root/build/llama/common/log.cpp"
   "$root/build/llama/common/common.cpp"
   "$root/build/llama/common/sampling.cpp"
   "$root/build/llama/common/json-schema-to-grammar.cpp"
@@ -156,8 +156,8 @@ if [[ "$platform" = "android" ]]; then
   clang_target="$(android_clang_target "$arch")"
   sources+=("$root/src/runtime/app/android.cc")
   sources+=("$root/src/runtime/process/unix.cc")
-  sources+=($(find "$root/src/platform/android"/*.cc))
-  sources+=("$root/src/window/android.cc")
+  sources+=("$root/src/runtime/window/android.cc")
+  sources+=($(find "$root/src/runtime/platform/android"/*.cc))
 elif [[ "$host" = "Darwin" ]]; then
   sources+=("$root/src/runtime/app/apple.mm")
   sources+=("$root/src/runtime/window/apple.mm")

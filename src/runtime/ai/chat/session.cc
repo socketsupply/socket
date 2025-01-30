@@ -74,10 +74,10 @@ namespace ssc::runtime::ai::chat {
     }
 
     batch = llama_batch_get_one(tokens.data(), tokens.size());
+    llama_sampler_init_penalties(64, 1.00f, 0, 0);
 
     while (!options.signal.aborted()) {
       if (this->context->used() + batch.n_tokens > this->context->size()) {
-        debug("context size is too small");
         return false;
       }
 
@@ -170,7 +170,9 @@ namespace ssc::runtime::ai::chat {
       batch = llama_batch_get_one(&token, 1);
 
       if (!isDetectingAntiprompt && callback != nullptr) {
-        callback(std::move(bytes::Buffer::from(piece, size)), false);
+        const auto buffer = bytes::Buffer::from(piece, size);
+        const auto eog = buffer.size() == 0 || (buffer.size() == 1 && buffer[0] == 0);
+        callback(std::move(buffer), false);
       }
     }
 

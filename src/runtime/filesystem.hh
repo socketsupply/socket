@@ -30,7 +30,7 @@ namespace ssc::runtime::filesystem {
 
         static void setDefaults (const WellKnownPaths& paths);
 
-        WellKnownPaths ();
+        WellKnownPaths (const Path& = "");
         const Vector<Path> entries () const;
         JSON::Object json () const;
       };
@@ -116,7 +116,7 @@ namespace ssc::runtime::filesystem {
       static bool isDirectory (const String& resourcePath);
       static bool isDirectory (const Path& resourcePath);
       static bool isMountedPath (const Path& path);
-      static const WellKnownPaths& getWellKnownPaths ();
+      static const WellKnownPaths getWellKnownPaths (const Path& = "");
       static const Map<String, String> getMountedPaths ();
 
     #if SOCKET_RUNTIME_PLATFORM_WINDOWS

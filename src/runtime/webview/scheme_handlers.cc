@@ -159,7 +159,7 @@ static void onURISchemeRequest (WebKitURISchemeRequest* schemeRequest, gpointer 
 }
 #elif SOCKET_RUNTIME_PLATFORM_ANDROID
 extern "C" {
-  jboolean ANDROID_EXTERNAL(ipc, SchemeHandlers, handleRequest) (
+  jboolean ANDROID_EXTERNAL(webview, SchemeHandlers, handleRequest) (
     JNIEnv* env,
     jobject self,
     jint index,
@@ -208,7 +208,7 @@ extern "C" {
       : 0;
 
     const auto bytes = requestBodySize > 0
-      ? new char[requestBodySize]{0}
+      ? new unsigned char[requestBodySize]{0}
       : nullptr;
 
     if (requestBodyByteArray) {
@@ -248,7 +248,7 @@ extern "C" {
     return handled;
   }
 
-  jboolean ANDROID_EXTERNAL(ipc, SchemeHandlers, hasHandlerForScheme) (
+  jboolean ANDROID_EXTERNAL(webview, SchemeHandlers, hasHandlerForScheme) (
     JNIEnv* env,
     jobject self,
     jint index,
@@ -1042,7 +1042,7 @@ namespace ssc::runtime::webview {
         Object,
         this->request->platformRequest,
         "getResponse",
-        "()Lsocket/runtime/ipc/SchemeHandlers$Response;"
+        "()Lsocket/runtime/webview/SchemeHandlers$Response;"
       )
     );
 

@@ -1,5 +1,8 @@
 #include "../../extension/extension.hh"
+
+#if SOCKET_RUNTIME_PLATFORM_APPLE
 #include "../../cli.hh"
+#endif
 
 #include "../serviceworker.hh"
 #include "../filesystem.hh"
@@ -26,6 +29,7 @@ using namespace ssc::runtime::javascript;
 
 using ssc::extension::Extension;
 using ssc::runtime::app::App;
+using ssc::runtime::config::getUserConfig;
 using ssc::runtime::url::encodeURIComponent;
 using ssc::runtime::string::replace;
 using ssc::runtime::string::trim;
@@ -295,14 +299,14 @@ static void mapIPCRoutes (Router *router) {
     }
 
     const auto prompt = trim(message.get("prompt", message.buffer.str()));
-    const auto antiprompt = split(trim(message.get("antiprompt")), '\x01');
+    const auto antiprompts = split(trim(message.get("antiprompts")), '\x01');
 
     ai::llm::ID id = 0;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
     app->runtime.services.ai.chat.generate(
       message.seq,
       id,
-      { prompt, antiprompt },
+      { prompt, antiprompts },
       [=](auto seq, auto json, auto queuedResponse) {
         if (seq == "-1" && app->runtime.services.conduit.has(id)) {
           auto client = app->runtime.services.conduit.get(id);
@@ -362,6 +366,12 @@ static void mapIPCRoutes (Router *router) {
   });
 
   /**
+   */
+  router->map("ai.chat.completions", [](auto message, auto router, auto reply) {
+    // auto app = App::sharedApplication();
+  });
+
+  /**
    * @param model
    * @param name
    * @param directory
@@ -402,7 +412,7 @@ static void mapIPCRoutes (Router *router) {
 
     if (model == nullptr) {
       const auto json = JSON::Object::Entries {
-        {"source", "ai.llm.context.create"},
+        {"source", "ai.llm.model.load"},
         {"err", JSON::Object::Entries {
           {"message", "Model is not loaded or doest not exist"},
         }}
@@ -525,7 +535,7 @@ static void mapIPCRoutes (Router *router) {
    * Attemps to exit the application
    * @param value The exit code
    */
-  router->map("application.exit", [=](auto message, auto router, auto reply) {
+  router->map("application.exit", [](auto message, auto router, auto reply) {
     const auto app = App::sharedApplication();
     const auto err = validateMessageParameters(message, {"value"});
 
@@ -562,7 +572,7 @@ static void mapIPCRoutes (Router *router) {
   /**
    * Get the screen size available to the application
    */
-  router->map("application.getScreenSize", [=](auto message, auto router, auto reply) {
+  router->map("application.getScreenSize", [](auto message, auto router, auto reply) {
     const auto app = App::sharedApplication();
 
     if (app == nullptr) {
@@ -588,7 +598,7 @@ static void mapIPCRoutes (Router *router) {
    * Get all active application windows
    * @param value - A list of window indexes to filter on
    */
-  router->map("application.getWindows", [=](auto message, auto router, auto reply) {
+  router->map("application.getWindows", [](auto message, auto router, auto reply) {
     const auto app = App::sharedApplication();
 
     if (app == nullptr) {
@@ -628,7 +638,7 @@ static void mapIPCRoutes (Router *router) {
    * Set the application tray menu
    * @param value - The DSL for the system tray menu
    */
-  router->map("application.setTrayMenu", [=](auto message, auto router, auto reply) {
+  router->map("application.setTrayMenu", [](auto message, auto router, auto reply) {
   #if SOCKET_RUNTIME_PLATFORM_DESKTOP
     const auto app = App::sharedApplication();
     const auto err = validateMessageParameters(message, {"value"});
@@ -666,7 +676,7 @@ static void mapIPCRoutes (Router *router) {
    * Set the application system menu
    * @param value - The DSL for the system tray menu
    */
-  router->map("application.setSystemMenu", [=](auto message, auto router, auto reply) {
+  router->map("application.setSystemMenu", [](auto message, auto router, auto reply) {
   #if SOCKET_RUNTIME_PLATFORM_DESKTOP
     const auto app = App::sharedApplication();
     const auto err = validateMessageParameters(message, {"value"});
@@ -707,7 +717,7 @@ static void mapIPCRoutes (Router *router) {
    * @param indexMain
    * @param indexSub
    */
-  router->map("application.setSystemMenuItemEnabled", [=](auto message, auto router, auto reply) {
+  router->map("application.setSystemMenuItemEnabled", [](auto message, auto router, auto reply) {
   #if SOCKET_RUNTIME_PLATFORM_DESKTOP
     const auto app = App::sharedApplication();
     const auto err = validateMessageParameters(message, {"value", "enabled", "indexMain", "indexSub"});
@@ -753,7 +763,7 @@ static void mapIPCRoutes (Router *router) {
    * Starts a bluetooth service
    * @param serviceId
    */
-  router->map("bluetooth.start", [=](auto message, auto router, auto reply) {
+  router->map("bluetooth.start", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"serviceId"});
 
     if (err.type != JSON::Type::Null) {
@@ -782,7 +792,7 @@ static void mapIPCRoutes (Router *router) {
    * @param serviceId
    * @param characteristicId
    */
-  router->map("bluetooth.subscribe", [=](auto message, auto router, auto reply) {
+  router->map("bluetooth.subscribe", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {
       "characteristicId",
       "serviceId"
@@ -815,7 +825,7 @@ static void mapIPCRoutes (Router *router) {
    * @param serviceId
    * @param characteristicId
    */
-  router->map("bluetooth.publish", [=](auto message, auto router, auto reply) {
+  router->map("bluetooth.publish", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {
       "characteristicId",
       "serviceId"
@@ -853,7 +863,7 @@ static void mapIPCRoutes (Router *router) {
     );
   });
 
-  router->map("broadcast_channel.subscribe", [=](auto message, auto router, auto reply) {
+  router->map("broadcast_channel.subscribe", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {
       "name",
       "origin"
@@ -882,7 +892,7 @@ static void mapIPCRoutes (Router *router) {
     reply(Result::Data { message, subscription.json() });
   });
 
-  router->map("broadcast_channel.unsubscribe", [=](auto message, auto router, auto reply) {
+  router->map("broadcast_channel.unsubscribe", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, { "id" });
 
     if (err.type != JSON::Type::Null) {
@@ -903,7 +913,7 @@ static void mapIPCRoutes (Router *router) {
     reply(Result { message.seq, message, JSON::Object {} });
   });
 
-  router->map("broadcast_channel.queuedResponseMessage", [=](auto message, auto router, auto reply) {
+  router->map("broadcast_channel.queuedResponseMessage", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {
       "origin",
       "token",
@@ -947,7 +957,7 @@ static void mapIPCRoutes (Router *router) {
    * @param id
    * @param signal
    */
-  router->map("child_process.kill", [=](auto message, auto router, auto reply) {
+  router->map("child_process.kill", [](auto message, auto router, auto reply) {
   #if SOCKET_RUNTIME_PLATFORM_IOS
     auto err = JSON::Object::Entries {
       {"type", "NotSupportedError"},
@@ -983,7 +993,7 @@ static void mapIPCRoutes (Router *router) {
    * @param id
    * @param args (command, ...args)
    */
-  router->map("child_process.spawn", [=](auto message, auto router, auto reply) {
+  router->map("child_process.spawn", [](auto message, auto router, auto reply) {
     #if SOCKET_RUNTIME_PLATFORM_IOS
       auto err = JSON::Object::Entries {
         {"type", "NotSupportedError"},
@@ -1040,7 +1050,7 @@ static void mapIPCRoutes (Router *router) {
     #endif
   });
 
-  router->map("child_process.exec", [=](auto message, auto router, auto reply) {
+  router->map("child_process.exec", [](auto message, auto router, auto reply) {
     #if SOCKET_RUNTIME_PLATFORM_IOS
       auto err = JSON::Object::Entries {
         {"type", "NotSupportedError"},
@@ -1114,7 +1124,7 @@ static void mapIPCRoutes (Router *router) {
    *
    * @param id
    */
-  router->map("child_process.write", [=](auto message, auto router, auto reply) {
+  router->map("child_process.write", [](auto message, auto router, auto reply) {
     #if SOCKET_RUNTIME_PLATFORM_IOS
       auto err = JSON::Object::Entries {
         {"type", "NotSupportedError"},
@@ -1145,7 +1155,7 @@ static void mapIPCRoutes (Router *router) {
   /**
    * Query diagnostics information about the runtime core.
    */
-  router->map("diagnostics.query", [=](auto message, auto router, auto reply) {
+  router->map("diagnostics.query", [](auto message, auto router, auto reply) {
     router->bridge.getRuntime()->services.diagnostics.query(
       message.seq,
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -1158,7 +1168,7 @@ static void mapIPCRoutes (Router *router) {
    * @param family IP address family to resolve [default = 0 (AF_UNSPEC)]
    * @see getaddrinfo(3)
    */
-  router->map("dns.lookup", [=](auto message, auto router, auto reply) {
+  router->map("dns.lookup", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"hostname"});
 
     if (err.type != JSON::Type::Null) {
@@ -1175,7 +1185,7 @@ static void mapIPCRoutes (Router *router) {
     );
   });
 
-  router->map("extension.stats", [=](auto message, auto router, auto reply) {
+  router->map("extension.stats", [](auto message, auto router, auto reply) {
     auto extensions = Extension::all();
     auto name = message.get("name");
 
@@ -1223,7 +1233,7 @@ static void mapIPCRoutes (Router *router) {
    * Query for type of extension ('shared', 'wasm32', 'unknown')
    * @param name
    */
-  router->map("extension.type", [=](auto message, auto router, auto reply) {
+  router->map("extension.type", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"name"});
 
     if (err.type != JSON::Type::Null) {
@@ -1248,7 +1258,7 @@ static void mapIPCRoutes (Router *router) {
    * @param name
    * @param allow
    */
-  router->map("extension.load", [=](auto message, auto router, auto reply) {
+  router->map("extension.load", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"name"});
 
     if (err.type != JSON::Type::Null) {
@@ -1329,7 +1339,7 @@ static void mapIPCRoutes (Router *router) {
    * Unload a named native extension.
    * @param name
    */
-  router->map("extension.unload", [=](auto message, auto router, auto reply) {
+  router->map("extension.unload", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"name"});
 
     if (err.type != JSON::Type::Null) {
@@ -1393,7 +1403,7 @@ static void mapIPCRoutes (Router *router) {
    * @param mode
    * @see access(2)
    */
-  router->map("fs.access", [=](auto message, auto router, auto reply) {
+  router->map("fs.access", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path", "mode"});
 
     if (err.type != JSON::Type::Null) {
@@ -1414,7 +1424,7 @@ static void mapIPCRoutes (Router *router) {
   /**
    * Returns a mapping of file system constants.
    */
-  router->map("fs.constants", [=](auto message, auto router, auto reply) {
+  router->map("fs.constants", [](auto message, auto router, auto reply) {
     router->bridge.getRuntime()->services.fs.constants(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
@@ -1424,7 +1434,7 @@ static void mapIPCRoutes (Router *router) {
    * @param mode
    * @see chmod(2)
    */
-  router->map("fs.chmod", [=](auto message, auto router, auto reply) {
+  router->map("fs.chmod", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path", "mode"});
 
     if (err.type != JSON::Type::Null) {
@@ -1449,7 +1459,7 @@ static void mapIPCRoutes (Router *router) {
    * @param gid
    * @see chown(2)
    */
-  router->map("fs.chown", [=](auto message, auto router, auto reply) {
+  router->map("fs.chown", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path", "uid", "gid"});
 
     if (err.type != JSON::Type::Null) {
@@ -1477,7 +1487,7 @@ static void mapIPCRoutes (Router *router) {
    * @param gid
    * @see lchown(2)
    */
-  router->map("fs.lchown", [=](auto message, auto router, auto reply) {
+  router->map("fs.lchown", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path", "uid", "gid"});
 
     if (err.type != JSON::Type::Null) {
@@ -1503,7 +1513,7 @@ static void mapIPCRoutes (Router *router) {
    * @param id
    * @see close(2)
    */
-  router->map("fs.close", [=](auto message, auto router, auto reply) {
+  router->map("fs.close", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -1521,7 +1531,7 @@ static void mapIPCRoutes (Router *router) {
    * @param id
    * @see closedir(3)
    */
-  router->map("fs.closedir", [=](auto message, auto router, auto reply) {
+  router->map("fs.closedir", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -1540,7 +1550,7 @@ static void mapIPCRoutes (Router *router) {
    * @see close(2)
    * @see closedir(3)
    */
-  router->map("fs.closeOpenDescriptor", [=](auto message, auto router, auto reply) {
+  router->map("fs.closeOpenDescriptor", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -1564,7 +1574,7 @@ static void mapIPCRoutes (Router *router) {
    * @see close(2)
    * @see closedir(3)
    */
-  router->map("fs.closeOpenDescriptors", [=](auto message, auto router, auto reply) {
+  router->map("fs.closeOpenDescriptors", [](auto message, auto router, auto reply) {
     router->bridge.getRuntime()->services.fs.closeOpenDescriptor(
       message.seq,
       message.get("preserveRetained") != "false",
@@ -1579,7 +1589,7 @@ static void mapIPCRoutes (Router *router) {
    * @param flags
    * @see copyfile(3)
    */
-  router->map("fs.copyFile", [=](auto message, auto router, auto reply) {
+  router->map("fs.copyFile", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"src", "dest", "flags"});
 
     if (err.type != JSON::Type::Null) {
@@ -1604,7 +1614,7 @@ static void mapIPCRoutes (Router *router) {
    * @param dest
    * @see link(2)
    */
-  router->map("fs.link", [=](auto message, auto router, auto reply) {
+  router->map("fs.link", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"src", "dest"});
 
     if (err.type != JSON::Type::Null) {
@@ -1626,7 +1636,7 @@ static void mapIPCRoutes (Router *router) {
    * @param flags
    * @see symlink(2)
    */
-  router->map("fs.symlink", [=](auto message, auto router, auto reply) {
+  router->map("fs.symlink", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"src", "dest", "flags"});
 
     if (err.type != JSON::Type::Null) {
@@ -1651,7 +1661,7 @@ static void mapIPCRoutes (Router *router) {
    * @see stat(2)
    * @see fstat(2)
    */
-  router->map("fs.fstat", [=](auto message, auto router, auto reply) {
+  router->map("fs.fstat", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -1669,7 +1679,7 @@ static void mapIPCRoutes (Router *router) {
    * @param id
    * @see fsync(2)
    */
-  router->map("fs.fsync", [=](auto message, auto router, auto reply) {
+  router->map("fs.fsync", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -1692,7 +1702,7 @@ static void mapIPCRoutes (Router *router) {
    * @param offset
    * @see ftruncate(2)
    */
-  router->map("fs.ftruncate", [=](auto message, auto router, auto reply) {
+  router->map("fs.ftruncate", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id", "offset"});
 
     if (err.type != JSON::Type::Null) {
@@ -1716,7 +1726,7 @@ static void mapIPCRoutes (Router *router) {
   /**
    * Returns all open file or directory descriptors.
    */
-  router->map("fs.getOpenDescriptors", [=](auto message, auto router, auto reply) {
+  router->map("fs.getOpenDescriptors", [](auto message, auto router, auto reply) {
     router->bridge.getRuntime()->services.fs.getOpenDescriptors(
       message.seq,
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
@@ -1729,7 +1739,7 @@ static void mapIPCRoutes (Router *router) {
    * @see stat(2)
    * @see lstat(2)
    */
-  router->map("fs.lstat", [=](auto message, auto router, auto reply) {
+  router->map("fs.lstat", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path"});
 
     if (err.type != JSON::Type::Null) {
@@ -1750,7 +1760,7 @@ static void mapIPCRoutes (Router *router) {
    * @param recursive
    * @see mkdir(2)
    */
-  router->map("fs.mkdir", [=](auto message, auto router, auto reply) {
+  router->map("fs.mkdir", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path", "mode"});
 
     if (err.type != JSON::Type::Null) {
@@ -1778,7 +1788,7 @@ static void mapIPCRoutes (Router *router) {
    * @param mode
    * @see open(2)
    */
-  router->map("fs.open", [=](auto message, auto router, auto reply) {
+  router->map("fs.open", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {
       "id",
       "path",
@@ -1813,7 +1823,7 @@ static void mapIPCRoutes (Router *router) {
    * @param path
    * @see opendir(3)
    */
-  router->map("fs.opendir", [=](auto message, auto router, auto reply) {
+  router->map("fs.opendir", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id", "path"});
 
     if (err.type != JSON::Type::Null) {
@@ -1838,7 +1848,7 @@ static void mapIPCRoutes (Router *router) {
    * @param offset
    * @see read(2)
    */
-  router->map("fs.read", [=](auto message, auto router, auto reply) {
+  router->map("fs.read", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id", "size", "offset"});
 
     if (err.type != JSON::Type::Null) {
@@ -1866,7 +1876,7 @@ static void mapIPCRoutes (Router *router) {
    * @param id
    * @param entries (default: 256)
    */
-  router->map("fs.readdir", [=](auto message, auto router, auto reply) {
+  router->map("fs.readdir", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -1891,7 +1901,7 @@ static void mapIPCRoutes (Router *router) {
    * @param path
    * @see readlink(2)
    */
-  router->map("fs.readlink", [=](auto message, auto router, auto reply) {
+  router->map("fs.readlink", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path"});
 
     if (err.type != JSON::Type::Null) {
@@ -1910,7 +1920,7 @@ static void mapIPCRoutes (Router *router) {
    * @param path
    * @see realpath(2)
    */
-  router->map("fs.realpath", [=](auto message, auto router, auto reply) {
+  router->map("fs.realpath", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path"});
 
     if (err.type != JSON::Type::Null) {
@@ -1928,7 +1938,7 @@ static void mapIPCRoutes (Router *router) {
    * Marks a file or directory descriptor as retained.
    * @param id
    */
-  router->map("fs.retainOpenDescriptor", [=](auto message, auto router, auto reply) {
+  router->map("fs.retainOpenDescriptor", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -1951,7 +1961,7 @@ static void mapIPCRoutes (Router *router) {
    * @param dest
    * @see rename(2)
    */
-  router->map("fs.rename", [=](auto message, auto router, auto reply) {
+  router->map("fs.rename", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"src", "dest"});
 
     if (err.type != JSON::Type::Null) {
@@ -1971,7 +1981,7 @@ static void mapIPCRoutes (Router *router) {
    * @param path
    * @see rmdir(2)
    */
-  router->map("fs.rmdir", [=](auto message, auto router, auto reply) {
+  router->map("fs.rmdir", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path"});
 
     if (err.type != JSON::Type::Null) {
@@ -1990,7 +2000,7 @@ static void mapIPCRoutes (Router *router) {
    * @param path
    * @see stat(2)
    */
-  router->map("fs.stat", [=](auto message, auto router, auto reply) {
+  router->map("fs.stat", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path"});
 
     if (err.type != JSON::Type::Null) {
@@ -2007,7 +2017,7 @@ static void mapIPCRoutes (Router *router) {
   /**
    * Stops a already started watcher
    */
-  router->map("fs.stopWatch", [=](auto message, auto router, auto reply) {
+  router->map("fs.stopWatch", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -2030,7 +2040,7 @@ static void mapIPCRoutes (Router *router) {
    * @param path
    * @see unlink(2)
    */
-  router->map("fs.unlink", [=](auto message, auto router, auto reply) {
+  router->map("fs.unlink", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"path"});
 
     if (err.type != JSON::Type::Null) {
@@ -2047,7 +2057,7 @@ static void mapIPCRoutes (Router *router) {
   /**
    * TODO
    */
-  router->map("fs.watch", [=](auto message, auto router, auto reply) {
+  router->map("fs.watch", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id", "path"});
 
     if (err.type != JSON::Type::Null) {
@@ -2072,7 +2082,7 @@ static void mapIPCRoutes (Router *router) {
    * @param offset The offset to start writing at
    * @see write(2)
    */
-  router->map("fs.write", [=](auto message, auto router, auto reply) {
+  router->map("fs.write", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id", "offset"});
 
     if (err.type != JSON::Type::Null) {
@@ -2099,14 +2109,14 @@ static void mapIPCRoutes (Router *router) {
     );
   });
 
-  router->map("geolocation.getCurrentPosition", [=](auto message, auto router, auto reply) {
+  router->map("geolocation.getCurrentPosition", [](auto message, auto router, auto reply) {
     router->bridge.getRuntime()->services.geolocation.getCurrentPosition(
       message.seq,
       RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply)
     );
   });
 
-  router->map("geolocation.watchPosition", [=](auto message, auto router, auto reply) {
+  router->map("geolocation.watchPosition", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -2123,7 +2133,7 @@ static void mapIPCRoutes (Router *router) {
     );
   });
 
-  router->map("geolocation.clearWatch", [=](auto message, auto router, auto reply) {
+  router->map("geolocation.clearWatch", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -2146,7 +2156,7 @@ static void mapIPCRoutes (Router *router) {
    * This is only useful on platforms that need to set this value from an
    * external source, like Android or ChromeOS.
    */
-  router->map("internal.setcwd", [=](auto message, auto router, auto reply) {
+  router->map("internal.setcwd", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"value"});
 
     if (err.type != JSON::Type::Null) {
@@ -2160,7 +2170,7 @@ static void mapIPCRoutes (Router *router) {
   /**
    * A private API for starting the Runtime `ssc::runtime::core::services::Conduit`, if it isn't running.
    */
-  router->map("internal.conduit.start", [=](auto message, auto router, auto reply) {
+  router->map("internal.conduit.start", [](auto message, auto router, auto reply) {
     router->bridge.getRuntime()->services.conduit.start([=]() {
       if (router->bridge.getRuntime()->services.conduit.isActive()) {
         reply(Result::Data {
@@ -2180,7 +2190,7 @@ static void mapIPCRoutes (Router *router) {
   /**
    * A private API for stopping the Runtime `ssc::runtime::core::services::Conduit`, if it is running.
    */
-  router->map("internal.conduit.stop", [=](auto message, auto router, auto reply) {
+  router->map("internal.conduit.stop", [](auto message, auto router, auto reply) {
     router->bridge.getRuntime()->services.conduit.stop();
     reply(Result { message.seq, message, JSON::Object{} });
   });
@@ -2188,7 +2198,7 @@ static void mapIPCRoutes (Router *router) {
   /**
    * A private API for getting the status of the Runtime `ssc::runtime::core::services::Conduit.
    */
-  router->map("internal.conduit.status", [=](auto message, auto router, auto reply) {
+  router->map("internal.conduit.status", [](auto message, auto router, auto reply) {
     reply(Result::Data {
       message,
       JSON::Object::Entries {
@@ -2202,7 +2212,7 @@ static void mapIPCRoutes (Router *router) {
   /**
    * A private API for setting the shared key of the Runtime `ssc::runtime::core::services::Conduit.
    */
-  router->map("internal.conduit.setSharedKey", [=](auto message, auto router, auto reply) {
+  router->map("internal.conduit.setSharedKey", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"sharedKey"});
 
     if (err.type != JSON::Type::Null) {
@@ -2232,7 +2242,7 @@ static void mapIPCRoutes (Router *router) {
   /**
    * A private API for getting the shared key of the Runtime `ssc::runtime::core::services::Conduit.
    */
-  router->map("internal.conduit.getSharedKey", [=](auto message, auto router, auto reply) {
+  router->map("internal.conduit.getSharedKey", [](auto message, auto router, auto reply) {
     reply(Result::Data {
       message,
       JSON::Object::Entries {
@@ -2245,7 +2255,7 @@ static void mapIPCRoutes (Router *router) {
    * Log `value to stdout` with platform dependent logger.
    * @param value
    */
-  router->map("log", [=](auto message, auto router, auto reply) {
+  router->map("log", [](auto message, auto router, auto reply) {
     auto value = message.value.c_str();
     #if SOCKET_RUNTIME_PLATFORM_APPLE
       NSLog(@"%s", value);
@@ -2257,7 +2267,7 @@ static void mapIPCRoutes (Router *router) {
     #endif
   });
 
-  router->map("mime.lookup", [=](auto message, auto router, auto reply) {
+  router->map("mime.lookup", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, { "value" });
 
     if (err.type != JSON::Type::Null) {
@@ -2274,7 +2284,7 @@ static void mapIPCRoutes (Router *router) {
     }});
   });
 
-  router->map("notification.show", [=](auto message, auto router, auto reply) {
+  router->map("notification.show", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {
       "id",
       "title"
@@ -2313,7 +2323,7 @@ static void mapIPCRoutes (Router *router) {
     });
   });
 
-  router->map("notification.close", [=](auto message, auto router, auto reply) {
+  router->map("notification.close", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, { "id" });
 
     if (err.type != JSON::Type::Null) {
@@ -2333,7 +2343,7 @@ static void mapIPCRoutes (Router *router) {
     }});
   });
 
-  router->map("notification.list", [=](auto message, auto router, auto reply) {
+  router->map("notification.list", [](auto message, auto router, auto reply) {
     router->bridge.getRuntime()->services.notifications.list([=](const auto notifications) {
       JSON::Array entries;
       for (const auto& notification : notifications) {
@@ -2350,7 +2360,7 @@ static void mapIPCRoutes (Router *router) {
    * @param size If given, the size to set in the buffer [default = 0]
    * @param buffer The buffer to read/modify (SEND_BUFFER, RECV_BUFFER) [default = 0 (SEND_BUFFER)]
    */
-  router->map("os.bufferSize", [=](auto message, auto router, auto reply) {
+  router->map("os.bufferSize", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -2376,50 +2386,57 @@ static void mapIPCRoutes (Router *router) {
   /**
    * Returns a mapping of operating  system constants.
    */
-  router->map("os.constants", [=](auto message, auto router, auto reply) {
+  router->map("os.constants", [](auto message, auto router, auto reply) {
     router->bridge.getRuntime()->services.os.constants(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   /**
    * Returns a mapping of network interfaces.
    */
-  router->map("os.networkInterfaces", [=](auto message, auto router, auto reply) {
+  router->map("os.networkInterfaces", [](auto message, auto router, auto reply) {
     router->bridge.getRuntime()->services.os.networkInterfaces(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
   /**
    * Returns an array of CPUs available to the process.
    */
-  router->map("os.cpus", [=](auto message, auto router, auto reply) {
+  router->map("os.cpus", [](auto message, auto router, auto reply) {
     router->bridge.getRuntime()->services.os.cpus(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
-  router->map("os.rusage", [=](auto message, auto router, auto reply) {
+  router->map("os.rusage", [](auto message, auto router, auto reply) {
     router->bridge.getRuntime()->services.os.rusage(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
-  router->map("os.uptime", [=](auto message, auto router, auto reply) {
+  router->map("os.uptime", [](auto message, auto router, auto reply) {
     router->bridge.getRuntime()->services.os.uptime(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
-  router->map("os.uname", [=](auto message, auto router, auto reply) {
+  router->map("os.uname", [](auto message, auto router, auto reply) {
     router->bridge.getRuntime()->services.os.uname(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
-  router->map("os.hrtime", [=](auto message, auto router, auto reply) {
+  router->map("os.hrtime", [](auto message, auto router, auto reply) {
     router->bridge.getRuntime()->services.os.hrtime(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
-  router->map("os.availableMemory", [=](auto message, auto router, auto reply) {
+  router->map("os.availableMemory", [](auto message, auto router, auto reply) {
     router->bridge.getRuntime()->services.os.availableMemory(message.seq, RESULT_CALLBACK_FROM_CORE_CALLBACK(message, reply));
   });
 
-  router->map("os.paths", [=](auto message, auto router, auto reply) {
-    const auto json = filesystem::Resource::getWellKnownPaths().json();
-    return reply(Result::Data { message, json });
+  router->map("os.paths", [](auto message, auto router, auto reply) {
+    static auto userConfig = getUserConfig();
+
+    if (userConfig["meta_bundle_identifier"] != router->bridge.userConfig["meta_bundle_identifier"]) {
+      const auto json = filesystem::Resource::getWellKnownPaths(router->bridge.userConfig["meta_bundle_identifier"]).json();
+      return reply(Result::Data { message, json });
+    } else {
+      const auto json = filesystem::Resource::getWellKnownPaths().json();
+      return reply(Result::Data { message, json });
+    }
   });
 
-  router->map("permissions.query", [=](auto message, auto router, auto reply) {
+  router->map("permissions.query", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"name"});
 
     if (err.type != JSON::Type::Null) {
@@ -2433,7 +2450,7 @@ static void mapIPCRoutes (Router *router) {
     );
   });
 
-  router->map("permissions.request", [=](auto message, auto router, auto reply) {
+  router->map("permissions.request", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"name"});
 
     if (err.type != JSON::Type::Null) {
@@ -2451,7 +2468,7 @@ static void mapIPCRoutes (Router *router) {
   /**
    * Simply returns `pong`.
    */
-  router->map("ping", [=](auto message, ipc::Router* router, auto reply) {
+  router->map("ping", [](auto message, ipc::Router* router, auto reply) {
     auto result = Result { message.seq, message };
     result.data = "pong";
     reply(result);
@@ -2462,7 +2479,7 @@ static void mapIPCRoutes (Router *router) {
    * @param value The event name [domcontentloaded]
    * @param data Optional data associated with the platform event.
    */
-  router->map("platform.event", [=](auto message, auto router, auto reply) {
+  router->map("platform.event", [](auto message, auto router, auto reply) {
     const auto err = validateMessageParameters(message, {"value"});
     const auto app = App::sharedApplication();
     const auto window = app->runtime.windowManager.getWindowForBridge(&router->bridge);
@@ -2545,7 +2562,7 @@ static void mapIPCRoutes (Router *router) {
    * Reveal a file in the native operating system file system explorer.
    * @param value
    */
-  router->map("platform.revealFile", [=](auto message, auto router, auto reply) mutable {
+  router->map("platform.revealFile", [](auto message, auto router, auto reply) mutable {
     auto err = validateMessageParameters(message, {"value"});
 
     if (err.type != JSON::Type::Null) {
@@ -2563,7 +2580,7 @@ static void mapIPCRoutes (Router *router) {
    * Requests a URL to be opened externally.
    * @param value
    */
-  router->map("platform.openExternal", [=](auto message, auto router, auto reply) mutable {
+  router->map("platform.openExternal", [](auto message, auto router, auto reply) mutable {
     const auto applicationProtocol = router->bridge.userConfig["meta_application_protocol"];
     const auto app = App::sharedApplication();
     auto err = validateMessageParameters(message, {"value"});
@@ -2603,7 +2620,7 @@ static void mapIPCRoutes (Router *router) {
   /**
    * Return Socket Runtime primordials.
    */
-  router->map("platform.primordials", [=](auto message, auto router, auto reply) {
+  router->map("platform.primordials", [](auto message, auto router, auto reply) {
     std::regex platform_pattern("^mac$", std::regex_constants::icase);
     auto platformRes = std::regex_replace(platform.os, platform_pattern, "darwin");
     auto arch = std::regex_replace(platform.arch, std::regex("x86_64"), "x64");
@@ -2636,7 +2653,7 @@ static void mapIPCRoutes (Router *router) {
              "macosx"
           #endif
         #elif SOCKET_RUNTIME_PLATFORM_ANDROID
-             (router->bridge.isAndroidEmulator ? "android-emulator" : "android")
+             (router->bridge.context.android.isEmulator ? "android-emulator" : "android")
         #elif SOCKET_RUNTIME_PLATFORM_WINDOWS
              "win32"
         #elif SOCKET_RUNTIME_PLATFORM_LINUX
@@ -2657,7 +2674,7 @@ static void mapIPCRoutes (Router *router) {
    * `ipc://queuedResponse` IPC call intercepted by an XHR request.
    * @param id The id of the queuedResponse data.
    */
-  router->map("queuedResponse", false, [=](auto message, auto router, auto reply) {
+  router->map("queuedResponse", false, [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -2686,7 +2703,7 @@ static void mapIPCRoutes (Router *router) {
    * @param scheme
    * @param data
    */
-  router->map("protocol.register", [=](auto message, auto router, auto reply) {
+  router->map("protocol.register", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"scheme"});
 
     if (err.type != JSON::Type::Null) {
@@ -2709,7 +2726,7 @@ static void mapIPCRoutes (Router *router) {
    * Unregister a custom protocol handler scheme.
    * @param scheme
    */
-  router->map("protocol.unregister", [=](auto message, auto router, auto reply) {
+  router->map("protocol.unregister", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"scheme"});
 
     if (err.type != JSON::Type::Null) {
@@ -2733,7 +2750,7 @@ static void mapIPCRoutes (Router *router) {
    * Gets protocol handler data
    * @param scheme
    */
-  router->map("protocol.getData", [=](auto message, auto router, auto reply) {
+  router->map("protocol.getData", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"scheme"});
 
     if (err.type != JSON::Type::Null) {
@@ -2758,7 +2775,7 @@ static void mapIPCRoutes (Router *router) {
    * @param scheme
    * @param data
    */
-  router->map("protocol.setData", [=](auto message, auto router, auto reply) {
+  router->map("protocol.setData", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"scheme", "data"});
 
     if (err.type != JSON::Type::Null) {
@@ -2783,7 +2800,7 @@ static void mapIPCRoutes (Router *router) {
    * Gets service worker registration info by scheme
    * @param scheme
    */
-  router->map("protocol.getServiceWorkerRegistration", [=](auto message, auto router, auto reply) {
+  router->map("protocol.getServiceWorkerRegistration", [](auto message, auto router, auto reply) {
     const auto err = validateMessageParameters(message, {"scheme"});
 
     if (err.type != JSON::Type::Null) {
@@ -2817,7 +2834,7 @@ static void mapIPCRoutes (Router *router) {
    * @param key
    * @param value
    */
-  router->map("process.env.set", [=](auto message, auto router, auto reply) {
+  router->map("process.env.set", [](auto message, auto router, auto reply) {
     const auto err = validateMessageParameters(message, {"key", "value"});
 
     if (err.type != JSON::Type::Null) {
@@ -2841,7 +2858,7 @@ static void mapIPCRoutes (Router *router) {
    * Gets an evironment variable
    * @param key
    */
-  router->map("process.env.get", [=](auto message, auto router, auto reply) {
+  router->map("process.env.get", [](auto message, auto router, auto reply) {
     const auto err = validateMessageParameters(message, {"key"});
 
     if (err.type != JSON::Type::Null) {
@@ -2864,7 +2881,7 @@ static void mapIPCRoutes (Router *router) {
    * Prints incoming message value to stdout.
    * @param value
    */
-  router->map("stdout", [=](auto message, auto router, auto reply) {
+  router->map("stdout", [](auto message, auto router, auto reply) {
     if (message.value.size() > 0) {
       #if SOCKET_RUNTIME_PLATFORM_APPLE
         const auto seq = ++router->bridge.getRuntime()->counters.logSeq;
@@ -2893,7 +2910,7 @@ static void mapIPCRoutes (Router *router) {
    * Prints incoming message value to stderr.
    * @param value
    */
-  router->map("stderr", [=](auto message, auto router, auto reply) {
+  router->map("stderr", [](auto message, auto router, auto reply) {
     if (message.get("debug") == "true") {
       if (message.value.size() > 0) {
         debug("%s", message.value.c_str());
@@ -2927,7 +2944,7 @@ static void mapIPCRoutes (Router *router) {
    * @param scriptURL
    * @param scope
    */
-  router->map("serviceWorker.register", [=](auto message, auto router, auto reply) {
+  router->map("serviceWorker.register", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"scriptURL", "scope"});
     auto app = App::sharedApplication();
 
@@ -2981,7 +2998,7 @@ static void mapIPCRoutes (Router *router) {
   /**
    * Resets the service worker container state.
    */
-  router->map("serviceWorker.reset", [=](auto message, auto router, auto reply) {
+  router->map("serviceWorker.reset", [](auto message, auto router, auto reply) {
     router->bridge.navigator.serviceWorkerServer->container.reset();
     reply(Result::Data { message, JSON::Object {}});
   });
@@ -2990,7 +3007,7 @@ static void mapIPCRoutes (Router *router) {
    * Unregisters a service worker for given scoep.
    * @param scope
    */
-  router->map("serviceWorker.unregister", [=](auto message, auto router, auto reply) {
+  router->map("serviceWorker.unregister", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -3008,7 +3025,7 @@ static void mapIPCRoutes (Router *router) {
    * Gets registration information for a service worker scope.
    * @param scope
    */
-  router->map("serviceWorker.getRegistration", [=](auto message, auto router, auto reply) {
+  router->map("serviceWorker.getRegistration", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"scope"});
 
     if (err.type != JSON::Type::Null) {
@@ -3039,7 +3056,7 @@ static void mapIPCRoutes (Router *router) {
   /**
    * Gets all service worker scope registrations.
    */
-  router->map("serviceWorker.getRegistrations", [=](auto message, auto router, auto reply) {
+  router->map("serviceWorker.getRegistrations", [](auto message, auto router, auto reply) {
     const auto origin = webview::Origin(message.get("origin"));
     auto serviceWorkerServer = router->bridge.getRuntime()->serviceWorkerManager.get(origin.name());
 
@@ -3166,7 +3183,7 @@ static void mapIPCRoutes (Router *router) {
    * Informs container that a service worker will skip waiting.
    * @param id
    */
-  router->map("serviceWorker.skipWaiting", [=](auto message, auto router, auto reply) {
+  router->map("serviceWorker.skipWaiting", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -3186,7 +3203,7 @@ static void mapIPCRoutes (Router *router) {
    * @param id
    * @param state
    */
-  router->map("serviceWorker.updateState", [=](auto message, auto router, auto reply) {
+  router->map("serviceWorker.updateState", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id", "state"});
 
     if (err.type != JSON::Type::Null) {
@@ -3213,7 +3230,7 @@ static void mapIPCRoutes (Router *router) {
    * @param key
    * @param value
    */
-  router->map("serviceWorker.storage.set", [=](auto message, auto router, auto reply) {
+  router->map("serviceWorker.storage.set", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id", "key", "value"});
 
     if (err.type != JSON::Type::Null) {
@@ -3245,7 +3262,7 @@ static void mapIPCRoutes (Router *router) {
    * @param id
    * @param key
    */
-  router->map("serviceWorker.storage.get", [=](auto message, auto router, auto reply) {
+  router->map("serviceWorker.storage.get", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id", "key"});
 
     if (err.type != JSON::Type::Null) {
@@ -3281,7 +3298,7 @@ static void mapIPCRoutes (Router *router) {
    * @param id
    * @param key
    */
-  router->map("serviceWorker.storage.remove", [=](auto message, auto router, auto reply) {
+  router->map("serviceWorker.storage.remove", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id", "key"});
 
     if (err.type != JSON::Type::Null) {
@@ -3312,7 +3329,7 @@ static void mapIPCRoutes (Router *router) {
    * Clears all storage values for a service worker.
    * @param id
    */
-  router->map("serviceWorker.storage.clear", [=](auto message, auto router, auto reply) {
+  router->map("serviceWorker.storage.clear", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -3343,7 +3360,7 @@ static void mapIPCRoutes (Router *router) {
    * Gets all storage values for a service worker.
    * @param id
    */
-  router->map("serviceWorker.storage", [=](auto message, auto router, auto reply) {
+  router->map("serviceWorker.storage", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -3369,7 +3386,7 @@ static void mapIPCRoutes (Router *router) {
     });
   });
 
-  router->map("timers.setTimeout", [=](auto message, auto router, auto reply) {
+  router->map("timers.setTimeout", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"timeout"});
 
     if (err.type != JSON::Type::Null) {
@@ -3390,7 +3407,7 @@ static void mapIPCRoutes (Router *router) {
     }
   });
 
-  router->map("timers.clearTimeout", [=](auto message, auto router, auto reply) {
+  router->map("timers.clearTimeout", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -3412,7 +3429,7 @@ static void mapIPCRoutes (Router *router) {
    * @param address The address to bind the UDP socket to (default: 0.0.0.0)
    * @param reuseAddr Reuse underlying UDP socket address (default: false)
    */
-  router->map("udp.bind", [=](auto message, auto router, auto reply) {
+  router->map("udp.bind", [](auto message, auto router, auto reply) {
     ssc::runtime::core::services::UDP::BindOptions options;
     auto err = validateMessageParameters(message, {"id", "port"});
 
@@ -3439,7 +3456,7 @@ static void mapIPCRoutes (Router *router) {
    * Close socket handle and underlying UDP socket.
    * @param id Handle ID of underlying socket
    */
-  router->map("udp.close", [=](auto message, auto router, auto reply) {
+  router->map("udp.close", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -3459,7 +3476,7 @@ static void mapIPCRoutes (Router *router) {
    * @param port Port to connect the UDP socket to
    * @param address The address to connect the UDP socket to (default: 0.0.0.0)
    */
-  router->map("udp.connect", [=](auto message, auto router, auto reply) {
+  router->map("udp.connect", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id", "port"});
 
     if (err.type != JSON::Type::Null) {
@@ -3485,7 +3502,7 @@ static void mapIPCRoutes (Router *router) {
    * Disconnects a connected socket handle and underlying UDP socket.
    * @param id Handle ID of underlying socket
    */
-  router->map("udp.disconnect", [=](auto message, auto router, auto reply) {
+  router->map("udp.disconnect", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -3506,7 +3523,7 @@ static void mapIPCRoutes (Router *router) {
    * Returns connected peer socket address information.
    * @param id Handle ID of underlying socket
    */
-  router->map("udp.getPeerName", [=](auto message, auto router, auto reply) {
+  router->map("udp.getPeerName", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -3527,7 +3544,7 @@ static void mapIPCRoutes (Router *router) {
    * Returns local socket address information.
    * @param id Handle ID of underlying socket
    */
-  router->map("udp.getSockName", [=](auto message, auto router, auto reply) {
+  router->map("udp.getSockName", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -3548,7 +3565,7 @@ static void mapIPCRoutes (Router *router) {
    * Returns socket state information.
    * @param id Handle ID of underlying socket
    */
-  router->map("udp.getState", [=](auto message, auto router, auto reply) {
+  router->map("udp.getState", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -3570,7 +3587,7 @@ static void mapIPCRoutes (Router *router) {
    * socket and route through the IPC bridge to the WebView.
    * @param id Handle ID of underlying socket
    */
-  router->map("udp.readStart", [=](auto message, auto router, auto reply) {
+  router->map("udp.readStart", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -3609,7 +3626,7 @@ static void mapIPCRoutes (Router *router) {
    * socket and routing through the IPC bridge to the WebView.
    * @param id Handle ID of underlying socket
    */
-  router->map("udp.readStop", [=](auto message, auto router, auto reply) {
+  router->map("udp.readStop", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id"});
 
     if (err.type != JSON::Type::Null) {
@@ -3638,7 +3655,7 @@ static void mapIPCRoutes (Router *router) {
    * @param address The address to send to (default: 0.0.0.0)
    * @param ephemeral Indicates that the socket handle, if created is ephemeral and should eventually be destroyed
    */
-  router->map("udp.send", [=](auto message, auto router, auto reply) {
+  router->map("udp.send", [](auto message, auto router, auto reply) {
     auto err = validateMessageParameters(message, {"id", "port"});
 
     if (err.type != JSON::Type::Null) {
@@ -3674,7 +3691,7 @@ static void mapIPCRoutes (Router *router) {
    * @param defaultPath
    * @param title
    */
-  router->map("window.showFileSystemPicker", [=](auto message, auto router, auto reply) {
+  router->map("window.showFileSystemPicker", [](auto message, auto router, auto reply) {
     const auto allowMultiple = message.get("allowMultiple") == "true";
     const auto allowFiles = message.get("allowFiles") == "true";
     const auto allowDirs = message.get("allowDirs") == "true";
@@ -3754,7 +3771,7 @@ static void mapIPCRoutes (Router *router) {
    * Closes a target window
    * @param targetWindowIndex
    */
-  router->map("window.close", [=](auto message, auto router, auto reply) {
+  router->map("window.close", [](auto message, auto router, auto reply) {
     const auto app = App::sharedApplication();
     auto err = validateMessageParameters(message, {"targetWindowIndex"});
 
@@ -3818,7 +3835,7 @@ static void mapIPCRoutes (Router *router) {
    * @param userConfig
    * @param targetWindowIndex
    */
-  router->map("window.create", [=](auto message, auto router, auto reply) {
+  router->map("window.create", [](auto message, auto router, auto reply) {
     const auto app = App::sharedApplication();
     const auto err = validateMessageParameters(message, {"targetWindowIndex"});
 
@@ -3968,7 +3985,9 @@ static void mapIPCRoutes (Router *router) {
           createdWindow->navigate(message.get("url"));
         }
 
+      #if !SOCKET_RUNTIME_PLATFORM_ANDROID
         createdWindow->show();
+      #endif
 
         reply(Result::Data { message, createdWindow->json() });
       } else {
@@ -3984,7 +4003,7 @@ static void mapIPCRoutes (Router *router) {
    * Gets the background color of a target window window
    * @param targetWindowIndex
    */
-  router->map("window.getBackgroundColor", [=](auto message, auto router, auto reply) {
+  router->map("window.getBackgroundColor", [](auto message, auto router, auto reply) {
     const auto app = App::sharedApplication();
     auto err = validateMessageParameters(message, {"targetWindowIndex"});
 
@@ -4022,7 +4041,7 @@ static void mapIPCRoutes (Router *router) {
    * Gets the title of a target window
    * @param targetWindowIndex
    */
-  router->map("window.getTitle", [=](auto message, auto router, auto reply) {
+  router->map("window.getTitle", [](auto message, auto router, auto reply) {
     const auto app = App::sharedApplication();
     auto err = validateMessageParameters(message, {"targetWindowIndex"});
 
@@ -4060,7 +4079,7 @@ static void mapIPCRoutes (Router *router) {
    * Gets the current state of a window
    * @param index
    */
-  router->map("window", [=](auto message, auto router, auto reply) {
+  router->map("window", [](auto message, auto router, auto reply) {
     const auto app = App::sharedApplication();
     auto err = validateMessageParameters(message, {"index"});
 
@@ -4097,7 +4116,7 @@ static void mapIPCRoutes (Router *router) {
    * Hides a target window
    * @param targetWindowIndex
    */
-  router->map("window.hide", [=](auto message, auto router, auto reply) {
+  router->map("window.hide", [](auto message, auto router, auto reply) {
     const auto app = App::sharedApplication();
     auto err = validateMessageParameters(message, {"targetWindowIndex"});
 
@@ -4136,7 +4155,7 @@ static void mapIPCRoutes (Router *router) {
    * Maximize a target window
    * @param targetWindowIndex
    */
-  router->map("window.maximize", [=](auto message, auto router, auto reply) {
+  router->map("window.maximize", [](auto message, auto router, auto reply) {
     const auto app = App::sharedApplication();
     auto err = validateMessageParameters(message, {"targetWindowIndex"});
 
@@ -4185,7 +4204,7 @@ static void mapIPCRoutes (Router *router) {
    * Minimize a target window
    * @param targetWindowIndex
    */
-  router->map("window.minimize", [=](auto message, auto router, auto reply) {
+  router->map("window.minimize", [](auto message, auto router, auto reply) {
     const auto app = App::sharedApplication();
     auto err = validateMessageParameters(message, {"targetWindowIndex"});
 
@@ -4228,7 +4247,7 @@ static void mapIPCRoutes (Router *router) {
    * Navigate a targetbnnb
    * @param targetWindowIndex
    */
-  router->map("window.navigate", [=](auto message, auto router, auto reply) {
+  router->map("window.navigate", [](auto message, auto router, auto reply) {
     const auto app = App::sharedApplication();
     auto err = validateMessageParameters(message, {"targetWindowIndex", "url"});
 
@@ -4268,8 +4287,7 @@ static void mapIPCRoutes (Router *router) {
     }
 
     app->dispatch([=]() {
-      window->bridge->navigator.location.set(requestedURL);
-      window->bridge->navigate(requestedURL);
+      window->navigate(requestedURL);
       reply(Result::Data { message, window->json() });
     });
   });
@@ -4278,7 +4296,7 @@ static void mapIPCRoutes (Router *router) {
    * Restore a target window
    * @param targetWindowIndex
    */
-  router->map("window.restore", [=](auto message, auto router, auto reply) {
+  router->map("window.restore", [](auto message, auto router, auto reply) {
     const auto app = App::sharedApplication();
     auto err = validateMessageParameters(message, {"targetWindowIndex"});
 
@@ -4324,7 +4342,7 @@ static void mapIPCRoutes (Router *router) {
    * @param index
    * @param value
    */
-  router->map("window.eval", [=](auto message, auto router, auto reply) {
+  router->map("window.eval", [](auto message, auto router, auto reply) {
     const auto app = App::sharedApplication();
 
     if (app == nullptr) {
@@ -4361,7 +4379,7 @@ static void mapIPCRoutes (Router *router) {
    * @param targetWindowIndex (DEPRECATED) use `index` instead
    * @param index
    */
-  router->map("window.send", [=](auto message, auto router, auto reply) {
+  router->map("window.send", [](auto message, auto router, auto reply) {
     const auto app = App::sharedApplication();
 
     if (app == nullptr) {
@@ -4410,7 +4428,7 @@ static void mapIPCRoutes (Router *router) {
    * @param alpha
    *
    */
-  router->map("window.setBackgroundColor", [=](auto message, auto router, auto reply) {
+  router->map("window.setBackgroundColor", [](auto message, auto router, auto reply) {
     const auto app = App::sharedApplication();
     auto err = validateMessageParameters(message, {"targetWindowIndex"});
 
@@ -4479,7 +4497,7 @@ static void mapIPCRoutes (Router *router) {
    * Creates and displays a context menu at the current mouse position (desktop only)
    * @param value
    */
-  router->map("window.setContextMenu", [=](auto message, auto router, auto reply) {
+  router->map("window.setContextMenu", [](auto message, auto router, auto reply) {
   #if SOCKET_RUNTIME_PLATFORM_DESKTOP
     const auto app = App::sharedApplication();
     auto err = validateMessageParameters(message, {"index", "value"});
@@ -4526,7 +4544,7 @@ static void mapIPCRoutes (Router *router) {
    * @param height
    * @param width
    */
-  router->map("window.setPosition", [=](auto message, auto router, auto reply) {
+  router->map("window.setPosition", [](auto message, auto router, auto reply) {
     const auto app = App::sharedApplication();
     auto err = validateMessageParameters(message, {"targetWindowIndex", "x", "y"});
 
@@ -4571,7 +4589,7 @@ static void mapIPCRoutes (Router *router) {
    * @param height
    * @param width
    */
-  router->map("window.setSize", [=](auto message, auto router, auto reply) {
+  router->map("window.setSize", [](auto message, auto router, auto reply) {
     const auto app = App::sharedApplication();
     auto err = validateMessageParameters(message, {"targetWindowIndex", "height", "width"});
 
@@ -4615,7 +4633,7 @@ static void mapIPCRoutes (Router *router) {
    * @param targetWindowIndex
    * @param value
    */
-  router->map("window.setTitle", [=](auto message, auto router, auto reply) {
+  router->map("window.setTitle", [](auto message, auto router, auto reply) {
     const auto app = App::sharedApplication();
     auto err = validateMessageParameters(message, {"targetWindowIndex", "value"});
 
@@ -4654,7 +4672,7 @@ static void mapIPCRoutes (Router *router) {
    * Shows a target window
    * @param targetWindowIndex
    */
-  router->map("window.show", [=](auto message, auto router, auto reply) {
+  router->map("window.show", [](auto message, auto router, auto reply) {
     const auto app = App::sharedApplication();
     auto err = validateMessageParameters(message, {"targetWindowIndex"});
 
@@ -4696,7 +4714,7 @@ static void mapIPCRoutes (Router *router) {
    * Shows the target window web inspector (desktop only)
    * @param targetWindowIndex
    */
-  router->map("window.showInspector", [=](auto message, auto router, auto reply) {
+  router->map("window.showInspector", [](auto message, auto router, auto reply) {
     const auto app = App::sharedApplication();
     auto err = validateMessageParameters(message, {"targetWindowIndex"});
 

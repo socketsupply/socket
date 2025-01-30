@@ -1,5 +1,5 @@
 // vim: set sw=2:
-package socket.runtime.ipc
+package socket.runtime.webview
 
 import java.io.PipedInputStream
 import java.io.PipedOutputStream
@@ -13,7 +13,8 @@ import android.webkit.WebResourceResponse
 
 import socket.runtime.app.App
 import socket.runtime.app.AppActivity
-import socket.runtime.core.console
+import socket.runtime.bridge.Bridge
+import socket.runtime.debug.console
 import socket.runtime.ipc.Message
 
 open class SchemeHandlers (val bridge: Bridge) {
@@ -159,12 +160,19 @@ open class SchemeHandlers (val bridge: Bridge) {
         val stream = this.stream
         val buffers = this.buffers
         thread {
-          for (bytes in buffers) {
-            stream.write(bytes)
-          }
+          try {
+            for (bytes in buffers) {
+              stream.write(bytes)
+            }
+          } catch (_: Exception) {}
 
-          stream.flush()
-          stream.close()
+          try {
+            stream.flush()
+          } catch (_: Exception) {}
+
+          try {
+            stream.close()
+          } catch (_: Exception) {}
         }
       }
     }

@@ -25,22 +25,29 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.commit
 
 import socket.runtime.app.App
-import socket.runtime.core.console
-import socket.runtime.core.WebChromeClient
-import socket.runtime.ipc.Bridge
+import socket.runtime.bridge.Bridge
+import socket.runtime.debug.console
 import socket.runtime.ipc.Message
-import socket.runtime.window.WindowManagerActivity
+import socket.runtime.webview.WebChromeClient
 import socket.runtime.window.Dialog
+import socket.runtime.window.WindowManagerActivity
 
 import __BUNDLE_IDENTIFIER__.R
 
 /**
+ * Represents the width and height of a frame, such as the webview
  */
 data class Size (val width: Int, val height: Int);
 
 /**
+ * Represents the actual width of a screen
  */
 data class ScreenSize (val width: Int, val height: Int);
+
+/**
+ * Represents a position a window may be located at
+ */
+data class Position (val top: Int, val left: Int);
 
 /**
  * A container for configuring a `Window`
@@ -158,6 +165,9 @@ open class Window (val fragment: WindowFragment) {
   val index = fragment.index
   var title = ""
 
+  var position = Position(0, 0)
+  var frame = Size(0, 0)
+
   init {
     val userMessageHandler = this.userMessageHandler
     val bridge = this.bridge
@@ -210,8 +220,9 @@ open class Window (val fragment: WindowFragment) {
     val fragment = this.fragment
     val activity = fragment.activity
     val webview = fragment.webview
+    val bundleIdentifier = this.getBundleIdentifier()
     activity?.runOnUiThread {
-      if (url.startsWith("socket://${this.bundleIdentifier}")) {
+      if (url.startsWith("socket://${bundleIdentifier}")) {
         webview.loadUrl(url.replace("socket:", "https:"))
       } else {
         webview.loadUrl(url)
@@ -227,9 +238,15 @@ open class Window (val fragment: WindowFragment) {
     return this.getPreloadUserScript(this.index)
   }
 
+  fun getScreen (): ScreenSize {
+    return ScreenSize(
+      this.bridge.activity.getScreenSizeWidth(),
+      this.bridge.activity.getScreenSizeHeight()
+    )
+  }
+
   fun getSize (): Size {
-    val webview = this.fragment.webview
-    return Size(webview.measuredWidth, webview.measuredHeight)
+    return this.frame
   }
 
   fun setSize (width: Int, height: Int) {
@@ -271,11 +288,11 @@ open class Window (val fragment: WindowFragment) {
   @Throws(Exception::class)
   external fun getPreloadUserScript (index: Int): String
 
-  @throws(Exception::class)
-  external fun getBundleIdentifier (index: Int): String
-
   @Throws(Exception::class)
   external fun handleApplicationURL (index: Int, url: String): Unit
+
+  @Throws(Exception::class)
+  external fun getBundleIdentifier (index: Int): String
 }
 
 /**
@@ -321,7 +338,9 @@ open class WindowFragment : Fragment(R.layout.web_view) {
   /**
    * XXX(@jwerle)
    */
-  open val index: Int get () = this.options.index
+  open var index: Int
+    get () = this.options.index
+    set (index) { this.options.index = index }
 
   /**
    * A reference to the child `WebView` owned by this `WindowFragment`
@@ -379,6 +398,7 @@ open class WindowFragment : Fragment(R.layout.web_view) {
       )
     }
 
+    val fragment = this
     this.webview = view.findViewById<WebView>(R.id.webview)
     this.webview.apply {
       // features
@@ -392,9 +412,33 @@ open class WindowFragment : Fragment(R.layout.web_view) {
       settings.allowFileAccess = true
 
       settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+
+      addOnLayoutChangeListener { v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom ->
+        val activity = fragment.requireActivity() as WindowManagerActivity
+        val metrics = activity.getScreenDisplayMetrics()
+
+        fragment.window?.frame = Size(
+          ((right - left).toFloat() * metrics.density).toInt(),
+          ((bottom - top).toFloat() * metrics.density).toInt()
+        )
+
+        fragment.window?.position = Position(
+          (top.toFloat() * metrics.density).toInt(),
+          (left.toFloat() * metrics.density).toInt()
+        )
+      }
     }
 
+    val webview = this.webview
     this.window = Window(this).apply {
+      val activity = fragment.requireActivity() as WindowManagerActivity
+      val metrics = activity.getScreenDisplayMetrics()
+
+      frame = Size(
+        (webview.width.toFloat() * metrics.density).toInt(),
+        (webview.height.toFloat() * metrics.density).toInt()
+      )
+
       onReady()
     }
   }

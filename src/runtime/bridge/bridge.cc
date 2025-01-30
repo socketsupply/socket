@@ -1,13 +1,11 @@
 #include "../serviceworker.hh"
 #include "../filesystem.hh"
 #include "../javascript.hh"
-#include "../platform.hh"
 #include "../runtime.hh"
 #include "../version.hh"
 #include "../webview.hh"
 #include "../string.hh"
 #include "../window.hh"
-#include "../cwd.hh"
 #include "../env.hh"
 #include "../ipc.hh"
 #include "../url.hh"
@@ -455,9 +453,13 @@ export * from '{{url}}'
       }
 
       // the location of static application resources
-      const auto applicationResources = window->options.resourcesDirectory.size() > 0
+      const auto applicationResources = (
+        (!request->pathname.starts_with("/socket") && request->hostname.size() > 0) &&
+        window->options.resourcesDirectory.size() > 0
+      )
         ? fs::absolute(window->options.resourcesDirectory).string()
         : filesystem::Resource::getResourcesPath().string();
+
       // default response is 404
       auto response = SchemeHandlers::Response(request, 404);
 
@@ -1265,7 +1267,7 @@ export * from '{{url}}'
 
 #if SOCKET_RUNTIME_PLATFORM_ANDROID
 extern "C" {
-  jboolean ANDROID_EXTERNAL(ipc, Bridge, emit) (
+  jboolean ANDROID_EXTERNAL(bridge, Bridge, emit) (
     JNIEnv* env,
     jobject self,
     jint index,
@@ -1289,7 +1291,7 @@ extern "C" {
 
     const auto event = android::StringWrap(env, eventString).str();
     const auto data = android::StringWrap(env, dataString).str();
-    return window->bridge.emit(event, data);
+    return window->bridge->emit(event, data);
   }
 }
 #endif

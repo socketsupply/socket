@@ -99,7 +99,7 @@ export class ApplicationWindow {
 
   /**
    * Get the size of the window
-   * @return {{ width: number, height: number }} - the size of the window
+   * @type {{ width: number, height: number }} - the size of the window
    */
   get size () {
     return {
@@ -114,26 +114,33 @@ export class ApplicationWindow {
 
   /**
    * get  the position of the window
-   * @return {{ x: number, y: number }} - the position of the window
+   * @type {{ x: number, y: number }} - the position of the window
    */
   get position () {
     return {
-      x: this.#state.x,
-      y: this.#state.y
+      x: this.#state.position.x,
+      y: this.#state.position.y
     }
   }
 
   /**
    * get  the title of the window
-   * @return {string} - the title of the window
+   * @type {string}
    */
   get title () {
     return this.#state.title
   }
 
   /**
+   * @type {string}
+   */
+  get token () {
+    return this.#state.token
+  }
+
+  /**
    * get  the status of the window
-   * @return {string} - the status of the window
+   * @type {string} - the status of the window
    */
   get status () {
     return this.#state.status
@@ -494,18 +501,18 @@ export class ApplicationWindow {
   /**
    * Post a message to a window
    * TODO(@jwerle): research using `BroadcastChannel` instead
-   * @param {object} message
+   * @param {object} data
    * @return {Promise}
    */
-  async postMessage (message) {
+  async postMessage (data) {
     if (this.#index === this.#senderWindowIndex) {
-      globalThis.dispatchEvent(new MessageEvent('message', message))
+      globalThis.dispatchEvent(new MessageEvent('message', { data }))
     } else {
       return await ipc.request('window.send', {
         index: this.#senderWindowIndex,
         targetWindowIndex: this.#index,
         event: 'message',
-        value: encodeURIComponent(message.data)
+        value: encodeURIComponent(data)
       })
     }
   }

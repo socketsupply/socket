@@ -10,6 +10,7 @@ using ssc::runtime::config::getDevPort;
 using ssc::runtime::string::parseStringList;
 using ssc::runtime::string::split;
 using ssc::runtime::string::trim;
+using ssc::runtime::msleep;
 
 static dispatch_queue_attr_t qos = dispatch_queue_attr_make_with_qos_class(
   DISPATCH_QUEUE_CONCURRENT,
@@ -228,6 +229,10 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
 
   defaultWindow->setTitle(self.app->runtime.userConfig["meta_title"]);
 
+  self.app->runtime.serviceWorkerManager.init("socket://" + self.app->runtime.userConfig["meta_bundle_identifier"], {
+    .userConfig = self.app->runtime.userConfig
+  });
+
   if (isDebugEnabled() && port > 0 && host.size() > 0) {
     defaultWindow->navigate(host + ":" + std::to_string(port));
   } else if (self.app->runtime.userConfig["webview_root"].size() != 0) {
@@ -241,6 +246,7 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
   }
 
   self.app->dispatch([defaultWindow](){
+    msleep(64);
     defaultWindow->show();
   });
 
@@ -287,7 +293,8 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
 
 - (void) applicationWillResignActive: (UIApplication*) application {
   dispatch_async(queue, ^{
-    self.app->pause();
+    // XXX(@jwerle): on iOS, we do not pause the runtime
+    // self.app->pause();
   });
 }
 

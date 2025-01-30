@@ -1,9 +1,7 @@
 #ifndef SOCKET_RUNTIME_CONTEXT_H
 #define SOCKET_RUNTIME_CONTEXT_H
 
-#include "webview/webview.hh"
 #include "queued_response.hh"
-#include "platform.hh"
 #include "loop.hh"
 
 namespace ssc::runtime {
@@ -21,17 +19,24 @@ namespace ssc::runtime::context {
     jobject self = nullptr;
 
     Atomic<bool> isEmulator = false;
+
+    AndroidContext () = default;
+    AndroidContext (const AndroidContext&);
+    AndroidContext (AndroidContext&&);
+
+    AndroidContext& operator = (const AndroidContext&);
+    AndroidContext& operator = (AndroidContext&&);
+
     void configure (android::JVMEnvironment, android::Activity);
   };
 
   #endif
   struct Context {
-    Mutex mutex;
-
   #if SOCKET_RUNTIME_PLATFORM_ANDROID
     AndroidContext android;
   #endif
 
+    Mutex mutex;
     Context () = default;
     Context (const Context&) = delete;
     Context (Context&&) = delete;

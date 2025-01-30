@@ -55,10 +55,10 @@ namespace ssc::runtime::core::services {
 
   FS::Descriptor::Descriptor (FS* fs, ID id, const String& filename)
   #if SOCKET_RUNTIME_PLATFORM_ANDROID
-    : resource(filename, { false, fs->}),
+    : resource(filename, { false, &fs->context.android.contentResolver}),
   #else
-  #endif
     : resource(filename, { false }),
+  #endif
       fs(fs),
       id(id)
   {}
@@ -178,10 +178,10 @@ namespace ssc::runtime::core::services {
             name = name.substr(2);
           }
 
-          const auto attachment = Android::JNIEnvironmentAttachment(desc->fs->core->platform.jvm);
+          const auto attachment = android::JNIEnvironmentAttachment(desc->fs->context.android.jvm);
           const auto assetManager = CallObjectClassMethodFromAndroidEnvironment(
             attachment.env,
-            this->core->platform.activity,
+            this->context.android.activity,
             "getAssetManager",
             "()Landroid/content/res/AssetManager;"
           );
@@ -213,7 +213,7 @@ namespace ssc::runtime::core::services {
         desc->resource.url.scheme == "content" ||
         desc->resource.url.scheme == "android.resource"
       ) {
-        if (this->core->platform.contentResolver.hasAccess(desc->resource.url.str())) {
+        if (this->context.android.contentResolver.hasAccess(desc->resource.url.str())) {
           const auto json = JSON::Object::Entries {
             {"source", "fs.access"},
             {"data", JSON::Object::Entries {
@@ -469,7 +469,7 @@ namespace ssc::runtime::core::services {
         desc->resource.url.scheme == "android.resource"
       ) {
         Lock lock(this->mutex);
-        this->core->platform.contentResolver.closeFileDescriptor(
+        this->context.android.contentResolver.closeFileDescriptor(
           desc->androidContent
         );
 
@@ -549,7 +549,7 @@ namespace ssc::runtime::core::services {
 
     #if SOCKET_RUNTIME_PLATFORM_ANDROID
       if (desc->resource.url.scheme == "socket") {
-        auto assetManager = FileResource::getSharedAndroidAssetManager();
+        auto assetManager = filesystem::Resource::getSharedAndroidAssetManager();
         desc->androidAsset = AAssetManager_open(
           assetManager,
           desc->resource.name.c_str(),
@@ -578,7 +578,7 @@ namespace ssc::runtime::core::services {
         desc->resource.url.scheme == "content" ||
         desc->resource.url.scheme == "android.resource"
       ) {
-        auto fileDescriptor = this->core->platform.contentResolver.openFileDescriptor(
+        auto fileDescriptor = this->context.android.contentResolver.openFileDescriptor(
           desc->resource.url.str(),
           &desc->androidContentOffset,
           &desc->androidContentLength
@@ -597,7 +597,7 @@ namespace ssc::runtime::core::services {
           return callback(seq, json, QueuedResponse{});
         }
 
-        desc->fd = this->core->platform.contentResolver.getFileDescriptorFD(
+        desc->fd = this->context.android.contentResolver.getFileDescriptorFD(
           fileDescriptor
         );
 
@@ -629,7 +629,7 @@ namespace ssc::runtime::core::services {
         if (uv_fs_get_result(req) < 0) {
         #if SOCKET_RUNTIME_PLATFORM_ANDROID
           if (ctx->descriptor->resource.isAndroidLocalAsset()) {
-            auto assetManager = FileResource::getSharedAndroidAssetManager();
+            auto assetManager = filesystem::Resource::getSharedAndroidAssetManager();
             desc->androidAsset = AAssetManager_open(
               assetManager,
               ctx->descriptor->resource.name.c_str(),
@@ -718,10 +718,10 @@ namespace ssc::runtime::core::services {
           name = name.substr(2);
         }
 
-        const auto attachment = Android::JNIEnvironmentAttachment(desc->fs->core->platform.jvm);
+        const auto attachment = android::JNIEnvironmentAttachment(desc->fs->context.android.jvm);
         const auto assetManager = CallObjectClassMethodFromAndroidEnvironment(
           attachment.env,
-          desc->fs->core->platform.activity,
+          desc->fs->context.android.activity,
           "getAssetManager",
           "()Landroid/content/res/AssetManager;"
         );
@@ -763,7 +763,7 @@ namespace ssc::runtime::core::services {
         desc->resource.url.scheme == "content" ||
         desc->resource.url.scheme == "android.resource"
       ) {
-        const auto entries = this->core->platform.contentResolver.getPathnameEntriesFromContentURI(
+        const auto entries = this->context.android.contentResolver.getPathnameEntriesFromContentURI(
           desc->resource.url.str()
         );
 
@@ -806,10 +806,10 @@ namespace ssc::runtime::core::services {
             name = name.substr(2);
           }
 
-          const auto attachment = Android::JNIEnvironmentAttachment(ctx->descriptor->fs->core->platform.jvm);
+          const auto attachment = android::JNIEnvironmentAttachment(ctx->descriptor->fs->context.android.jvm);
           const auto assetManager = CallObjectClassMethodFromAndroidEnvironment(
             attachment.env,
-            ctx->descriptor->fs->core->platform.activity,
+            ctx->descriptor->fs->context.android.activity,
             "getAssetManager",
             "()Landroid/content/res/AssetManager;"
           );
@@ -1276,7 +1276,7 @@ namespace ssc::runtime::core::services {
         const auto length = AAsset_getLength(desc->androidAsset);
 
         if (offset >= static_cast<size_t>(length)) {
-          const auto headers = Headers {{
+          const auto headers = http::Headers {{
             {"content-type" ,"application/octet-stream"},
             {"content-length", 0}
           }};
@@ -1298,7 +1298,7 @@ namespace ssc::runtime::core::services {
         const auto length = desc->androidContentLength;
 
         if (offset >= static_cast<size_t>(length)) {
-          const auto headers = Headers {{
+          const auto headers = http::Headers {{
             {"content-type" ,"application/octet-stream"},
             {"content-length", 0}
           }};

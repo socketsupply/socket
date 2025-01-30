@@ -512,7 +512,7 @@ function _prepare {
 
   if [[ -n $BUILD_ANDROID ]]; then
     for abi in $(android_supported_abis); do
-      mkdir -p "$SOCKET_HOME"/{lib$d,objects}/"$abi"
+      mkdir -p "$SOCKET_HOME"/{lib$d,objects}/"$abi-android"
     done
   fi
 
@@ -690,16 +690,8 @@ function _install {
       fi
     done
 
-    if [[ -f "$root/$SSC_ENV_FILENAME" ]]; then
-      if [[ -f "$SOCKET_HOME/$SSC_ENV_FILENAME" ]]; then
-        echo "# warn - Won't overwrite $SOCKET_HOME/$SSC_ENV_FILENAME"
-      else
-        echo "# copying $SSC_ENV_FILENAME to $SOCKET_HOME"
-        cp -fp "$root/$SSC_ENV_FILENAME" "$SOCKET_HOME/$SSC_ENV_FILENAME"
-      fi
-    else
-      echo "warn - $SSC_ENV_FILENAME not created."
-    fi
+    echo "# copying $SSC_ENV_FILENAME to $SOCKET_HOME"
+    cp -fp "$root/$SSC_ENV_FILENAME" "$SOCKET_HOME/$SSC_ENV_FILENAME"
   fi
 
   if [ "$platform" == "desktop" ]; then
@@ -1001,29 +993,55 @@ function _compile_llama {
 
     if (( $? != 0 )); then
       die $? "not ok - Unable to compile libllama for '$platform'"
-      return
     fi
+
     return
   elif [ "$platform" == "android" ]; then
-    if [[ "$host" == "Win32" ]]; then
-      echo "WARN - Building libllama for Android on Windows is not yet supported"
-      return
-    else
-      local android_includes=$(android_arch_includes "$1")
-      local host_arch="$(host_arch)"
-      local cc="$(android_clang "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch")"
-      local cxx="$(android_clang "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch" "++")"
-      local clang_target="$(android_clang_target "$target")"
-      local ar="$(android_ar "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch")"
-      local cflags=("$clang_target" -std=c++2a -g -pedantic "${android_includes[*]}")
+    local android_includes=$(android_arch_includes "$1")
+    local host_arch="$(host_arch)"
+    local cc="$(android_clang "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch")"
+    local cxx="$(android_clang "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch" "++")"
+    local ar="$(android_ar "$ANDROID_HOME" "$NDK_VERSION" "$host" "$host_arch")"
+    local cflags=""
 
-      AR="$ar" CFLAGS="$cflags" CXXFLAGS="$cflags" CXX="$cxx" CC="$cc" make UNAME_S="Android" UNAME_M=".." UNAME_P="$1" LLAMA_FAST=1 libllama.a
+    export ANDROID_NDK="$ANDROID_HOME/ndk/$NDK_VERSION"
 
-      if [ ! $? = 0 ]; then
-        die $? "not ok - Unable to compile libllama for '$platform'"
-        return
-      fi
+    if [ "$target" == "arm64-v8a" ]; then
+      cflags+="-march=armv8.7a+dotprod"
+    elif [ "$target" == "x86_64" ]; then
+      cflags+="-march=x86-64"
     fi
+
+    export AR="$ar"
+    export CFLAGS="$cflags"
+    export CXXFLAGS="$cflags"
+    export CXX="$cxx"
+    export CC="$cc"
+
+    cmake -S . -B build \
+      -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK/build/cmake/android.toolchain.cmake" \
+      -DCMAKE_INSTALL_PREFIX="$BUILD_DIR/$target-$platform" \
+      -DCMAKE_SYSTEM_NAME=Android \
+      -DCMAKE_CXX_COMPILER="$cxx" \
+      -DCMAKE_C_COMPILER="$cc" \
+      -DCMAKE_C_FLAGS="$cflags" \
+      -DCMAKE_CXX_FLAGS="$cflags" \
+      -DCMAKE_ANDROID_NDK="$ANDROID_NDK" \
+      -DCMAKE_ANDROID_ARCH_ABI="$target" \
+      -DANDROID_PLATFORM="android-$ANDROID_PLATFORM" \
+      -DANDROID_ABI="$target" \
+      -DGGML_ARM_DOTPROD=ON \
+      -DGGML_LLAMAFILE=OFF \
+      -DGGML_OPENMP=OFF \
+      ${cmake_args[*]} &&
+    cmake --build build --config Release -j"$CPU_CORES" &&
+    cmake --install build --config Release
+
+    if (( $? != 0 )); then
+      die $? "not ok - Unable to compile libllama for '$platform'"
+    fi
+
+    return
   fi
 
   if [[ "$host" != "Win32" ]]; then

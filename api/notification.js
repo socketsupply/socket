@@ -366,16 +366,16 @@ export class NotificationOptions {
         this.#vibrate = [0]
       }
 
-      if (this.#vibrate.length) {
-        throw new TypeError(
-          'Silent notifications must not specify vibration patterns.'
-        )
-      }
-
       this.#vibrate = this.#vibrate
         .map((v) => parseInt(v) || 0)
         .map((v) => Math.min(v, 10000))
         .map((v) => v < 0 ? 10000 : v)
+    }
+
+    if (this.#silent && this.#vibrate.length) {
+      throw new TypeError(
+        'Silent notifications must not specify vibration patterns.'
+      )
     }
   }
 
@@ -541,6 +541,11 @@ export class Notification extends EventTarget {
    * @type {'prompt'|'granted'|'denied'}
    */
   static get permission () {
+    if (typeof globalThis.__native_Notification?.permission === 'string') {
+      if (state.permission === 'default') {
+        state.permission = globalThis.__native_Notification.permission || state.permission
+      }
+    }
     return state.permission
   }
 

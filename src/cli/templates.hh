@@ -232,6 +232,24 @@ constexpr auto gHelloWorldScript = R"JavaScript(//
 //
 import process from 'socket:process'
 console.log(`Hello, ${process.platform}!`)
+
+await navigator.serviceWorker.register('/serviceworker.js')
+await navigator.serviceWorker.ready
+
+const response = await fetch('/hello.json')
+
+console.log(await response.json())
+)JavaScript";
+
+constexpr auto gHelloWorldServiceWorker = R"JavaScript(import process from 'socket:process'
+export default async function (request) {
+  const url = new URL(request.url)
+  if (url.pathname === '/hello.json') {
+    return Response.json({ hello: `world from service worker on ${process.platform}!` })
+  }
+
+  return null // 404
+}
 )JavaScript";
 
 //
@@ -865,7 +883,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
 			dependencies = (
 			);
 			name = "{{build_name}}";
-			productName = "{{build_name}}";
+			productName = "{{meta_title}}";
 			productReference = 29124C4A27613369001832A0 /* {{build_name}}.app */;
 			productType = "com.apple.product-type.application";
 		};
@@ -1559,6 +1577,27 @@ LOCAL_MODULE := libuv
 LOCAL_SRC_FILES = ../libs/$(TARGET_ARCH_ABI)/libuv.a
 include $(PREBUILT_STATIC_LIBRARY)
 
+## libggml.a
+include $(CLEAR_VARS)
+LOCAL_MODULE := libggml
+
+LOCAL_SRC_FILES = ../libs/$(TARGET_ARCH_ABI)/libggml.a
+include $(PREBUILT_STATIC_LIBRARY)
+
+## libggml-base.a
+include $(CLEAR_VARS)
+LOCAL_MODULE := libggml-base
+
+LOCAL_SRC_FILES = ../libs/$(TARGET_ARCH_ABI)/libggml-base.a
+include $(PREBUILT_STATIC_LIBRARY)
+
+## libggml-cpu.a
+include $(CLEAR_VARS)
+LOCAL_MODULE := libggml-cpu
+
+LOCAL_SRC_FILES = ../libs/$(TARGET_ARCH_ABI)/libggml-cpu.a
+include $(PREBUILT_STATIC_LIBRARY)
+
 ## libllama.a
 include $(CLEAR_VARS)
 LOCAL_MODULE := libllama
@@ -1599,6 +1638,9 @@ LOCAL_SRC_FILES =                                                              \
   init.cc
 
 LOCAL_STATIC_LIBRARIES :=                                                      \
+  libggml                                                                      \
+  libggml-base                                                                 \
+  libggml-cpu                                                                  \
   libllama                                                                     \
 
 LOCAL_WHOLE_STATIC_LIBRARIES :=                                                \
