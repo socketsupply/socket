@@ -139,7 +139,9 @@ namespace ssc::runtime::filesystem {
            isDirectory: &isDirectory
     ];
 
-    return fileExistsAtPath && !isDirectory;
+    if (fileExistsAtPath && !isDirectory) {
+      return true;
+    }
   #endif
 
     return fs::is_regular_file(resourcePath);
@@ -171,7 +173,9 @@ namespace ssc::runtime::filesystem {
            isDirectory: &isDirectory
     ];
 
-    return fileExistsAtPath && isDirectory;
+    if (fileExistsAtPath && isDirectory) {
+      return true;
+    }
   #endif
 
     return fs::is_directory(resourcePath);
@@ -682,7 +686,17 @@ namespace ssc::runtime::filesystem {
     }
 
   #if SOCKET_RUNTIME_PLATFORM_APPLE
-    if (!this->path.string().starts_with(resourcesPath.string())) {
+    static const auto wellKnownPaths = Resource::getWellKnownPaths();
+    bool isWellKnownPath = false;
+
+    for (const auto& entry : wellKnownPaths.entries()) {
+      if (this->path.string().starts_with(entry.string())) {
+        isWellKnownPath = true;
+        break;
+      }
+    }
+
+    if (!isWellKnownPath) {
       if (![this->nsURL startAccessingSecurityScopedResource]) {
         this->nsURL = nullptr;
         return false;
@@ -708,16 +722,14 @@ namespace ssc::runtime::filesystem {
   }
 
   bool Resource::exists () const noexcept {
-    if (!this->accessing) {
-      return false;
-    }
-
   #if SOCKET_RUNTIME_PLATFORM_APPLE
     static auto fileManager = [[NSFileManager alloc] init];
-    return [fileManager
+    if ([fileManager
       fileExistsAtPath: @(this->path.string().c_str())
            isDirectory: NULL
-    ];
+    ]) {
+      return true;
+    }
   #elif SOCKET_RUNTIME_PLATFORM_ANDROID
     if (sharedAndroidAssetManager) {
       const auto assetPath = getRelativeAndroidAssetManagerPath(this->path);
@@ -732,11 +744,9 @@ namespace ssc::runtime::filesystem {
         return true;
       }
     }
+  #endif
 
     return fs::exists(this->path);
-  #else
-    return fs::exists(this->path);
-  #endif
   }
 
   int Resource::access (int mode) const noexcept {
