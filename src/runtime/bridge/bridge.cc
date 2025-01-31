@@ -584,7 +584,11 @@ export * from '{{url}}'
 
                   if (request->method == "GET") {
                     if (resource.mimeType() != "text/html") {
-                      response.setHeader("cache-control", "public");
+                      if (!userConfig["webview_cache-control"].empty()) {
+                        response.setHeader("cache-control", userConfig["webview_cache-control"]);
+                      } else {
+                        response.setHeader("cache-control", "public");
+                      }
                       response.send(resource);
                     } else {
                       const auto html = request->headers["runtime-preload-injection"] == "disabled"
@@ -595,7 +599,11 @@ export * from '{{url}}'
 
                       response.setHeader("content-type", "text/html");
                       response.setHeader("content-length", html.size());
-                      response.setHeader("cache-control", "public");
+                      if (!userConfig["webview_cache-control"].empty()) {
+                        response.setHeader("cache-control", userConfig["webview_cache-control"]);
+                      } else {
+                        response.setHeader("cache-control", "public");
+                      }
                       response.writeHead(200);
                       response.write(html);
                     }
@@ -697,7 +705,11 @@ export * from '{{url}}'
 
               if (request->method == "GET") {
                 if (resource.mimeType() != "text/html") {
-                  response.setHeader("cache-control", "public");
+                  if (!userConfig["webview_cache-control"].empty()) {
+                    response.setHeader("cache-control", userConfig["webview_cache-control"]);
+                  } else {
+                    response.setHeader("cache-control", "public");
+                  }
                   response.send(resource);
                 } else {
                   const auto html = request->headers["runtime-preload-injection"] == "disabled"
@@ -710,7 +722,11 @@ export * from '{{url}}'
 
                   response.setHeader("content-type", "text/html");
                   response.setHeader("content-length", html.size());
-                  response.setHeader("cache-control", "public");
+                  if (!userConfig["webview_cache-control"].empty()) {
+                    response.setHeader("cache-control", userConfig["webview_cache-control"]);
+                  } else {
+                    response.setHeader("cache-control", "public");
+                  }
                   response.writeHead(200);
                   response.write(html);
                 }
