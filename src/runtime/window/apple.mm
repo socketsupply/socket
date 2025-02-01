@@ -55,17 +55,6 @@ CGFloat MACOS_TRAFFIC_LIGHT_BUTTON_SIZE = 16;
   }
 
   - (void) sendEvent: (NSEvent*) event {
-    if (event.type == NSEventTypeLeftMouseDown || event.type == NSEventTypeLeftMouseDragged) {
-      if (event.type == NSEventTypeLeftMouseDown) {
-        [self.webview mouseDown: event];
-      }
-
-      if (event.type == NSEventTypeLeftMouseDragged) {
-        [self.webview mouseDragged: event];
-        return;
-      }
-    }
-
     [super sendEvent: event];
   }
 #endif
