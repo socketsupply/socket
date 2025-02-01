@@ -135,9 +135,9 @@ if ((globalThis.window) === globalThis) {
 
     for (const handle of handles) {
       if (typeof handle.getFile === 'function') {
-        const file = handle.getFile()
+        const file = await handle.getFile()
         const buffer = new Uint8Array(await file.arrayBuffer())
-        files.push(new File(buffer, file.name, {
+        files.push(new File([buffer], file.name, {
           lastModified: file.lastModified,
           type: file.type
         }))
