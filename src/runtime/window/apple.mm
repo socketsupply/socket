@@ -158,7 +158,7 @@ CGFloat MACOS_TRAFFIC_LIGHT_BUTTON_SIZE = 16;
 
   for (auto window : app->runtime.windowManager.windows) {
     if (window != nullptr && window->index != index) {
-      window->eval(getEmitToRenderProcessJavaScript("window-closed", json.str()));
+      window->eval(getEmitToRenderProcessJavaScript("windowclosed", json.str()));
     }
   }
 
@@ -829,7 +829,10 @@ namespace ssc::runtime::window {
       this->window.hidden = YES;
     }
   #endif
-    this->eval(getEmitToRenderProcessJavaScript("window-hidden", "{}"));
+    JSON::Object json = JSON::Object::Entries {
+      {"data", index}
+    };
+    this->eval(getEmitToRenderProcessJavaScript("windowhidden", json.str()));
   }
 
   void Window::eval (const String& source, const EvalCallback callback) {

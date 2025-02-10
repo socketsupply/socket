@@ -152,6 +152,11 @@ namespace ssc::runtime::window {
       "(I)Z",
       this->index
     );
+
+    JSON::Object json = JSON::Object::Entries {
+      {"data", this->index}
+    };
+    this->eval(getEmitToRenderProcessJavaScript("windowhidden", json.str()));
   }
 
   void Window::kill () {
@@ -166,11 +171,18 @@ namespace ssc::runtime::window {
     if (this->self == nullptr) return;
     const auto app = App::sharedApplication();
     const auto attachment = android::JNIEnvironmentAttachment(app->runtime.android.jvm);
-    JSON::Object json = JSON::Object::Entries {
-      {"data", this->index}
-    };
 
-    this->eval(getEmitToRenderProcessJavaScript("window-closed", json.str()));
+    for (auto window : app->runtime.windowManager.windows) {
+      if (window == nullptr || window->index == this->index) {
+        continue;
+      }
+
+      JSON::Object json = JSON::Object::Entries {
+        {"data", this->index}
+      };
+
+      window->eval(getEmitToRenderProcessJavaScript("windowclosed", json.str()));
+    }
 
     // `activity.closeWindow(index): Boolean`
     CallClassMethodFromAndroidEnvironment(
@@ -513,6 +525,26 @@ extern "C" {
         window->show();
       });
     }
+  }
+
+  void ANDROID_EXTERNAL(window, Window, onClose) (
+    JNIEnv* env,
+    jobject self,
+    jint index
+  ) {
+    const auto app = App::sharedApplication();
+
+    if (!app) {
+      return ANDROID_THROW(env, "Missing 'App' in environment");
+    }
+
+    const auto window = app->runtime.windowManager.getWindow(index);
+
+    if (!window) {
+      return ANDROID_THROW(env, "Invalid window index (%d) requested", index);
+    }
+
+    app->runtime.windowManager.destroyWindow(index);
   }
 
   void ANDROID_EXTERNAL(window, Window, onEvaluateJavascriptResult) (

@@ -186,7 +186,7 @@ namespace ssc::runtime::app {
 
         for (auto window : app->runtime.windowManager.windows) {
           if (window != nullptr && window->index != index) {
-            window->eval(getEmitToRenderProcessJavaScript("window-closed", json.str()));
+            window->eval(getEmitToRenderProcessJavaScript("windowclosed", json.str()));
           }
         }
 

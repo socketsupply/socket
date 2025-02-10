@@ -12,12 +12,15 @@ import android.util.DisplayMetrics
 import android.view.WindowInsets
 import android.view.WindowManager
 
+import androidx.activity.addCallback
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.commit
 import androidx.fragment.app.FragmentManager
 
 import socket.runtime.app.App
 import socket.runtime.debug.console
+import socket.runtime.window.IWindowFragment
 import socket.runtime.window.WindowFragment
 import socket.runtime.window.WindowOptions
 
@@ -42,15 +45,15 @@ open class WindowFragmentManager (
       val fragment = WindowFragment.newInstance(options)
       fragment.index = options.index
       this.fragments.add(fragment)
-        manager.commit {
-          // .setCustomAnimations(android.R.anim.slide_in_left, android.R.anim.slide_out_right)
-          setReorderingAllowed(true)
-          add(R.id.window, fragment)
-          if (options.headless) {
-            hide(fragment)
-          } else {
-            addToBackStack("window#${options.index}")
-          }
+      manager.commit {
+        // .setCustomAnimations(android.R.anim.slide_in_left, android.R.anim.slide_out_right)
+        setReorderingAllowed(true)
+        add(R.id.window, fragment)
+        if (options.headless) {
+          hide(fragment)
+        } else {
+          addToBackStack("window#${options.index}")
+        }
       }
     }
   }
@@ -179,7 +182,13 @@ open class WindowFragmentManager (
           fragment?.webview?.evaluateJavascript(source, { result ->
             val window = fragment.window
             if (window != null) {
-              window.onEvaluateJavascriptResult(index, token, result)
+              if (this.hasWindowFragment(index)) {
+                try {
+                  window.onEvaluateJavascriptResult(index, token, result)
+                } catch (e: Exception) {
+                  console.debug("evaluateJavaScriptInWindowFragmentView: ${e.toString()}")
+                }
+              }
             }
           })
         }
@@ -287,16 +296,29 @@ open class WindowManagerActivity : AppCompatActivity(R.layout.window_container_v
   open val windowFragmentManager = WindowFragmentManager(this)
   open val dialog = Dialog(this)
 
-  override fun onBackPressed () {
-    // this.windowFragmentManager.popWindowFragment()
-  }
-
   override fun onActivityResult (
     requestCode: Int,
     resultCode: Int,
     intent: Intent?
   ) {
     super.onActivityResult(requestCode, resultCode, intent)
+  }
+
+  override fun onCreate (savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    this.onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+      override fun handleOnBackPressed () {
+        val fragment = supportFragmentManager.findFragmentById(R.id.window)
+        if (fragment is IWindowFragment && fragment.onBackPressed()) {
+          return
+        }
+
+        if (!windowFragmentManager.popWindowFragment()) {
+          isEnabled = false
+          onBackPressedDispatcher.onBackPressed()
+        }
+      }
+    })
   }
 
   /**

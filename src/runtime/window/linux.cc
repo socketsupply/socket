@@ -961,7 +961,7 @@ namespace ssc::runtime::window {
               {"data", index}
             };
 
-            window->eval(getEmitToRenderProcessJavaScript("window-closed", json.str()));
+            window->eval(getEmitToRenderProcessJavaScript("windowclosed", json.str()));
           }
 
           app->runtime.windowManager.destroyWindow(index);
@@ -1266,7 +1266,10 @@ namespace ssc::runtime::window {
   void Window::hide () {
     gtk_widget_realize(this->window);
     gtk_widget_hide(this->window);
-    this->eval(getEmitToRenderProcessJavaScript("window-hidden", "{}"));
+    JSON::Object json = JSON::Object::Entries {
+      {"data", this->index}
+    };
+    this->eval(getEmitToRenderProcessJavaScript("windowhidden", json.str()));
   }
 
   void Window::setBackgroundColor (const String& rgba) {

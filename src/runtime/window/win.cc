@@ -1238,11 +1238,29 @@ namespace SSC {
   }
 
   void Window::close (int code) {
+    auto app = App::sharedApplication();
+
+    if (this->window) {
+      DestroyWindow(this->window);
+      this->window = nullptr;
+    }
+
+    for (auto window : app->runtime.windowManager.windows) {
+      if (window == nullptr || window->index == this->index) {
+        continue;
+      }
+
+      JSON::Object json = JSON::Object::Entries {
+        {"data", this->index}
+      };
+
+      window->eval(getEmitToRenderProcessJavaScript("windowclosed", json.str()));
+    }
+
     if (options.shouldExitApplicationOnClose) {
       this->exit(0);
-      DestroyWindow(window);
     } else {
-      this->hide();
+      DestroyWindow(this->window);
     }
   }
 
@@ -1296,7 +1314,10 @@ namespace SSC {
   void Window::hide () {
     ShowWindow(window, SW_HIDE);
     UpdateWindow(window);
-    this->eval(getEmitToRenderProcessJavaScript("window-hidden", "{}"));
+    JSON::Object json = JSON::Object::Entries {
+      {"data", this->index}
+    };
+    this->eval(getEmitToRenderProcessJavaScript("windowhidden", json.str()));
   }
 
   void Window::resize (HWND window) {

@@ -110,9 +110,14 @@ open class Bridge (
     favicon: Bitmap?
   ) {
     val uri = Uri.parse(url)
-    if (uri.authority != "__BUNDLE_IDENTIFIER__") {
-      val preloadUserScript = this.window.getPreloadUserScript()
-      view.evaluateJavascript(preloadUserScript, { _ -> })
+    if (uri.scheme != "about" && uri.authority != "__BUNDLE_IDENTIFIER__") {
+      val preloadUserScript =
+        try { this.window.getPreloadUserScript() }
+        catch (_: Exception){ null }
+
+      if (preloadUserScript != null) {
+        view.evaluateJavascript(preloadUserScript, { _ -> })
+      }
     }
 
     super.onPageStarted(view, url, favicon)

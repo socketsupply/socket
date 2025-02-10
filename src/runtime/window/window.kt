@@ -213,7 +213,9 @@ open class Window (val fragment: WindowFragment) {
   }
 
   fun close () {
-    // TODO
+    this.bridge.activity.runOnUiThread {
+      this.onClose(this.index)
+    }
   }
 
   fun navigate (url: String) {
@@ -277,6 +279,9 @@ open class Window (val fragment: WindowFragment) {
   external fun onReady (index: Int): Unit
 
   @Throws(Exception::class)
+  external fun onClose (index: Int): Unit
+
+  @Throws(Exception::class)
   external fun onMessage (index: Int, value: String, bytes: ByteArray? = null): Unit
 
   @Throws(Exception::class)
@@ -295,12 +300,16 @@ open class Window (val fragment: WindowFragment) {
   external fun getBundleIdentifier (index: Int): String
 }
 
+interface IWindowFragment {
+  fun onBackPressed (): Boolean;
+}
+
 /**
  * A fragment that contains a single `WebView`. A `WindowFragment` is managed
  * by a `WindowFragmentManager` and holds a reference to a `SSC::ManagedWindow`
  * instance managed by `SSC::WindowManager` in the native runtime.
  */
-open class WindowFragment : Fragment(R.layout.web_view) {
+open class WindowFragment : Fragment(R.layout.web_view), IWindowFragment {
   companion object {
     /**
      * Factory for creating new `WindowFragment` instances from a `Bundle`
@@ -355,6 +364,15 @@ open class WindowFragment : Fragment(R.layout.web_view) {
     super.onCreate(savedInstanceState)
   }
 
+  override fun onDestroy () {
+    super.onDestroy()
+    this.webview.clearHistory()
+    this.webview.clearCache(false)
+    this.webview.onPause()
+    //this.webview.removeAllViews()
+    this.webview.destroy()
+  }
+
   override fun onCreateView (
     inflater: LayoutInflater,
     container: ViewGroup?,
@@ -377,6 +395,20 @@ open class WindowFragment : Fragment(R.layout.web_view) {
 
   override fun onPause () {
     super.onPause()
+  }
+
+  override fun onBackPressed (): Boolean {
+    val window = this.window
+
+    if (this.webview.canGoBack()) {
+      this.webview.goBack()
+      return true
+    }
+
+    if (window != null) {
+      window.close()
+    }
+    return false
   }
 
   /**

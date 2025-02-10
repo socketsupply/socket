@@ -571,8 +571,10 @@ namespace ssc::runtime::filesystem {
       const auto resourcesPath = Resource::getResourcesPath();
       this->path = fs::absolute(resourcesPath / url.pathname);
     #if SOCKET_RUNTIME_PLATFORM_ANDROID
-      this->path = Path(url.pathname);
-      this->name = getRelativeAndroidAssetManagerPath(this->path).string();
+      if (!fs::exists(this->path)) {
+        this->path = Path(url.pathname);
+        this->name = getRelativeAndroidAssetManagerPath(this->path).string();
+      }
     #endif
     } else if (url.scheme == "content" || url.scheme == "android.resource") {
       this->path = resourcePath;
@@ -1035,7 +1037,7 @@ namespace ssc::runtime::filesystem {
     }
   #elif SOCKET_RUNTIME_PLATFORM_ANDROID
     bool success = false;
-    if (sharedAndroidAssetManager) {
+    if (sharedAndroidAssetManager && !fs::exists(this->path)) {
       const auto assetPath = getRelativeAndroidAssetManagerPath(this->path);
       const auto asset = AAssetManager_open(
         sharedAndroidAssetManager,
@@ -1065,14 +1067,18 @@ namespace ssc::runtime::filesystem {
       auto buffer = std::istreambuf_iterator<char>(stream);
       auto size = fs::file_size(this->path);
       auto end = std::istreambuf_iterator<char>();
+      if (size == 0) {
+        this->bytes = nullptr;
+      } else {
+        auto bytes = new unsigned char[size]{0};
+        String content;
 
-      auto bytes = new unsigned char[size]{0};
-      String content;
+        content.assign(buffer, end);
+        memcpy(bytes, content.data(), size);
 
-      content.assign(buffer, end);
-      memcpy(bytes, content.data(), size);
+        this->bytes.reset(bytes);
+      }
 
-      this->bytes.reset(bytes);
       this->cache.size = size;
     }
   #endif
@@ -1382,7 +1388,7 @@ namespace ssc::runtime::filesystem {
 
 #if SOCKET_RUNTIME_PLATFORM_ANDROID
   bool Resource::isAndroidLocalAsset () const noexcept {
-    if (sharedAndroidAssetManager) {
+    if (sharedAndroidAssetManager && !fs::exists(this->path)) {
       const auto assetPath = getRelativeAndroidAssetManagerPath(this->path);
       const auto asset = AAssetManager_open(
         sharedAndroidAssetManager,

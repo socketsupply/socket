@@ -187,6 +187,10 @@ namespace ssc::runtime::webview {
     this->navigator.bridge.navigate(url);
   }
 
+  void Navigator::Location::set (const URL& url) {
+    URL::set(url.href());
+  }
+
   Navigator::Navigator (bridge::Bridge& bridge)
     : bridge(bridge),
       location(*this)
@@ -243,6 +247,7 @@ namespace ssc::runtime::webview {
 
         const auto navigation = WEBKIT_NAVIGATION_POLICY_DECISION(decision);
         const auto action = webkit_navigation_policy_decision_get_navigation_action(navigation);
+        const auto type = webkit_navigation_action_get_navigation_type(action);
         const auto request = webkit_navigation_action_get_request(action);
         const auto currentURL = String(webkit_web_view_get_uri(webview));
         const auto requestedURL = String(webkit_uri_request_get_uri(request));

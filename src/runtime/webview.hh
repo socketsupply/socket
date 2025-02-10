@@ -1,8 +1,10 @@
 #ifndef SOCKET_RUNTIME_WEBVIEW_H
 #define SOCKET_RUNTIME_WEBVIEW_H
 
+#include "concurrent.hh"
 #include "filesystem.hh"
 #include "platform.hh"
+#include "uuid.hh"
 #include "ipc.hh"
 
 #include "webview/preload.hh"
@@ -23,6 +25,8 @@ namespace ssc::runtime::webview {
   // forward
   class IBridge;
   class Navigator;
+
+  using ID = uint64_t;
 
   class Origin : public URL {
     public:
@@ -63,6 +67,7 @@ namespace ssc::runtime::webview {
 
         void init ();
         void assign (const String& url);
+        void set (const URL&);
 
         const Resolution resolve (
           const Path& pathname,

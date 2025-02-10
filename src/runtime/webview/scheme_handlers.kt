@@ -181,9 +181,13 @@ open class SchemeHandlers (val bridge: Bridge) {
   fun handleRequest (webResourceRequest: WebResourceRequest): WebResourceResponse? {
     val request = Request(this.bridge, webResourceRequest)
 
-    if (this.handleRequest(this.bridge.index, request)) {
-      request.waitForFinishedResponse()
-      return request.getWebResourceResponse()
+    try {
+      if (this.handleRequest(this.bridge.index, request)) {
+        request.waitForFinishedResponse()
+        return request.getWebResourceResponse()
+      }
+    } catch (e: Exception) {
+      console.debug(e.toString())
     }
 
     return null

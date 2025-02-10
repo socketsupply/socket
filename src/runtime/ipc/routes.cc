@@ -2089,15 +2089,21 @@ static void mapIPCRoutes (Router *router) {
       return reply(Result::Err { message, err });
     }
 
-    if (message.buffer.data() == nullptr || message.buffer.size() == 0) {
-      auto err = JSON::Object::Entries {{ "message", "Missing buffer in message" }};
-      return reply(Result::Err { message, err });
-    }
-
     uint64_t id;
     int offset = 0;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
     REQUIRE_AND_GET_MESSAGE_VALUE(offset, "offset", std::stoi);
+
+    if (message.buffer.data() == nullptr || message.buffer.size() == 0) {
+      const auto json = JSON::Object::Entries {
+        {"source", "fs.write"},
+        {"data", JSON::Object::Entries {
+          {"id", message.get("id")},
+          {"result", 0}
+        }}
+      };
+      return reply(Result::Data { message, json });
+    }
 
     router->bridge.getRuntime()->services.fs.write(
       message.seq,

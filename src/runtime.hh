@@ -20,6 +20,7 @@
 #include "runtime/runtime.hh"
 #include "runtime/string.hh"
 #include "runtime/udp.hh"
+#include "runtime/uuid.hh"
 #include "runtime/url.hh"
 #include "runtime/version.hh"
 #include "runtime/webview.hh"
