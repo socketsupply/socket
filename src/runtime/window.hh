@@ -43,6 +43,7 @@ namespace ssc::runtime::bridge {
     UIScrollViewDelegate,
     WKScriptMessageHandler
   >
+- (void) handleEdgePanGesture: (UIScreenEdgePanGestureRecognizer*) gesture;
 #else
   NSObject <
     NSWindowDelegate,

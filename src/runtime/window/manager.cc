@@ -153,11 +153,13 @@ namespace ssc::runtime::window {
 
       this->windows[index] = nullptr;
       if (window->options.shouldExitApplicationOnClose) {
-        static_cast<runtime::Runtime&>(this->context).dispatch([window]() {
+        static_cast<runtime::Runtime&>(this->context).dispatch([this, index, window]() {
           window->exit(0);
+          static_cast<runtime::Runtime&>(this->context).bridgeManager.remove(index);
         });
       } else {
         window->kill();
+        static_cast<runtime::Runtime&>(this->context).bridgeManager.remove(index);
       }
     }
   }

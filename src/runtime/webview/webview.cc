@@ -732,6 +732,21 @@ int lastY = 0;
 
 #if SOCKET_RUNTIME_PLATFORM_IOS
 @implementation SSCWebViewController
+-                         (BOOL) gestureRecognizer: (UIGestureRecognizer*) gestureRecognizer
+shouldRecognizeSimultaneouslyWithGestureRecognizer: (UIGestureRecognizer*) otherGestureRecognizer
+{
+  return YES;
+}
+
+- (BOOL) gestureRecognizer: (UIGestureRecognizer*) gestureRecognizer
+        shouldReceiveTouch: (UITouch*) touch
+{
+  if ([touch.view isDescendantOfView: self.webview]) {
+    return NO;
+  }
+
+  return YES;
+}
 @end
 #endif
 #endif

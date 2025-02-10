@@ -93,6 +93,12 @@ namespace ssc::runtime::webview {
 #if SOCKET_RUNTIME_PLATFORM_IOS
 @interface SSCWebViewController : UIViewController<UIGestureRecognizerDelegate>
   @property (nonatomic, strong) SSCWebView* webview;
+
+-                         (BOOL) gestureRecognizer: (UIGestureRecognizer*) gestureRecognizer
+shouldRecognizeSimultaneouslyWithGestureRecognizer: (UIGestureRecognizer*) otherGestureRecognizer;
+
+- (BOOL) gestureRecognizer: (UIGestureRecognizer*) gestureRecognizer
+        shouldReceiveTouch: (UITouch*) touch;
 @end
 #endif
 #endif

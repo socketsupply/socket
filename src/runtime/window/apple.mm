@@ -175,8 +175,11 @@ CGFloat MACOS_TRAFFIC_LIGHT_BUTTON_SIZE = 16;
 
 - (void) handleEdgePanGesture: (UIScreenEdgePanGestureRecognizer*) gesture {
   auto window = (Window*) objc_getAssociatedObject(self, "window");
-  CGPoint translation = [gesture translationInView:self.view];
-  CGFloat progress = translation.x / self.view.bounds.size.width;
+  if (!window) {
+    return;
+  }
+  CGPoint translation = [gesture translationInView: window->viewController.view];
+  CGFloat progress = translation.x / window->viewController.view.bounds.size.width;
   progress = fmin(fmax(progress, 0.0), 1.0);
   if (
     gesture.state == UIGestureRecognizerStateEnded ||
@@ -184,10 +187,13 @@ CGFloat MACOS_TRAFFIC_LIGHT_BUTTON_SIZE = 16;
   ) {
     if (progress > 0.3) {
       if (window && window->webview.canGoBack) {
-        [window->webview.goBack];
+        [window->webview goBack];
       } else {
-        window->close();
-        // [self.navigationController popViewControllerAnimated:YES];
+        const auto app = App::sharedApplication();
+        const auto index = window->index;
+        app->dispatch([index, app](){
+          app->runtime.windowManager.destroyWindow(index);
+        });
       }
     }
   }
@@ -452,14 +458,15 @@ namespace ssc::runtime::window {
 
   #if SOCKET_RUNTIME_PLATFORM_IOS
     this->webview.allowsBackForwardNavigationGestures = NO;
-    if (userConfig["webview_navigator_enable_navigation_gestures"] == "true") {
+    if (!this->options.headless && userConfig["webview_navigator_enable_navigation_gestures"] == "true") {
       auto edgePanGesture = [[UIScreenEdgePanGestureRecognizer alloc]
         initWithTarget: this->windowDelegate
-               action: @selector(handleEdgePanGesture:)
+                action: @selector(handleEdgePanGesture:)
       ];
       edgePanGesture.edges = UIRectEdgeLeft;
-      edgePanGesture.delegate = self;
+      edgePanGesture.delegate = this->viewController;
       [this->viewController.view addGestureRecognizer: edgePanGesture];
+      [this->webview addGestureRecognizer: edgePanGesture];
     }
   #else
     this->webview.allowsBackForwardNavigationGestures = userConfig["webview_navigator_enable_navigation_gestures"] == "true";
@@ -798,6 +805,17 @@ namespace ssc::runtime::window {
     }
 
     if (this->webview != nullptr) {
+    #if SOCKET_RUNTIME_PLATFORM_IOS
+      const auto managedWindow = app->runtime.windowManager.getWindow(this->index);
+      if (managedWindow) {
+        const auto json = managedWindow->json();
+        for (auto window : app->runtime.windowManager.windows) {
+          if (window != nullptr && window->index != this->index) {
+            window->eval(getEmitToRenderProcessJavaScript("windowclosed", json.str()));
+          }
+        }
+      }
+    #endif
       objc_removeAssociatedObjects(this->webview);
       [this->webview stopLoading];
       [this->webview.configuration.userContentController removeAllScriptMessageHandlers];
@@ -833,9 +851,13 @@ namespace ssc::runtime::window {
       }
 
       this->window.titleBarView = nullptr;
-      this->window = nullptr;
     #endif
+      this->window = nullptr;
     }
+
+   #if SOCKET_RUNTIME_PLATFORM_IOS
+    this->viewController = nullptr;
+   #endif
   }
 
   void Window::maximize () {
