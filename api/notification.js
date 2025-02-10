@@ -606,6 +606,7 @@ export class Notification extends EventTarget {
 
     if (request.state === 'granted') {
       controller.abort()
+      state.permission = request.state
       return request.state
     }
 

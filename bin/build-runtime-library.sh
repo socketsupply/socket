@@ -127,6 +127,7 @@ declare sources=(
   $(find "$root"/src/runtime/serviceworker/*.cc)
   $(find "$root"/src/runtime/string/*.cc)
   $(find "$root"/src/runtime/udp/*.cc)
+  $(find "$root"/src/runtime/uuid/*.cc)
   $(find "$root"/src/runtime/url/*.cc)
   $(find "$root"/src/runtime/webview/*.cc)
   $(find "$root"/src/runtime/window/dialog.cc)

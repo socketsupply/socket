@@ -7416,7 +7416,7 @@ declare module "socket:application/client" {
     };
 }
 
-declare module "socket:internal/conduit" {
+declare module "socket:conduit" {
     /**
      * @typedef {{ options: object, payload: Uint8Array }} ReceiveMessage
      * @typedef {function(Error?, ReceiveMessage | undefined)} ReceiveCallback
@@ -7772,7 +7772,7 @@ declare module "socket:ai/chat" {
         context?: ContextOptions;
     };
     import { Context } from "socket:ai/llm";
-    import { Conduit } from "socket:internal/conduit";
+    import { Conduit } from "socket:conduit";
     import { Model } from "socket:ai/llm";
 }
 
@@ -8104,7 +8104,7 @@ declare module "socket:window" {
      * @class ApplicationWindow
      * Represents a window in the application
      */
-    export class ApplicationWindow {
+    export class ApplicationWindow extends EventTarget {
         static constants: typeof statuses;
         static hotkey: import("socket:window/hotkey").Bindings;
         constructor({ index, ...state }: {
@@ -10220,7 +10220,7 @@ declare module "socket:dgram" {
     export default exports;
     export type SocketOptions = any;
     import { EventEmitter } from "socket:events";
-    import { Conduit } from "socket:internal/conduit";
+    import { Conduit } from "socket:conduit";
     import { InternalError } from "socket:errors";
     import * as exports from "socket:dgram";
     
@@ -16471,6 +16471,14 @@ declare module "socket:module" {
     import builtins from "socket:commonjs/builtins";
     import { isBuiltin } from "socket:commonjs/builtins";
     export { createRequire, Module, builtins, isBuiltin };
+}
+
+declare module "socket:navigation/navigation" {
+    export function setSerializer(serializer: any): void;
+}
+
+declare module "socket:navigation" {
+    export {};
 }
 
 declare module "socket:node-esm-loader" {

@@ -1,6 +1,6 @@
 import { Context, Model } from './llm.js'
 import { MessageEvent } from '../events.js'
-import { Conduit } from '../internal/conduit.js'
+import { Conduit } from '../conduit.js'
 import { Buffer } from '../buffer.js'
 import { rand64 } from '../crypto.js'
 import process from '../process.js'

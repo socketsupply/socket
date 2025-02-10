@@ -882,6 +882,13 @@ export class FileHandle extends EventEmitter {
 
     buffer = Buffer.from(buffer).subarray(offset, offset + length)
 
+    if (buffer.byteLength === 0) {
+      return {
+        buffer,
+        bytesWritten: 0
+      }
+    }
+
     const params = { id: this.id, offset: position }
     const result = await ipc.write('fs.write', params, buffer, {
       timeout,

@@ -1,3 +1,4 @@
+/* global CloseEvent */
 // @ts-check
 /**
  * @module window
@@ -32,7 +33,7 @@ export function formatURL (url) {
  * @class ApplicationWindow
  * Represents a window in the application
  */
-export class ApplicationWindow {
+export class ApplicationWindow extends EventTarget {
   #id = null
   #index
   #state
@@ -45,10 +46,38 @@ export class ApplicationWindow {
   static hotkey = hotkey
 
   constructor ({ index, ...state }) {
+    super()
     this.#id = state?.id
     this.#index = index
     this.#state = state
     this.#channel = new BroadcastChannel(`socket.runtime.window.${this.#index}`)
+
+    const window = this
+
+    this.#channel.addEventListener('message', onMessage)
+    globalThis.addEventListener('windowclosed', onWindowClosed)
+    globalThis.addEventListener('windowhidden', onWindowHidden)
+
+    function onMessage (e) {
+      window.dispatchEvent(new MessageEvent('message', e))
+    }
+
+    function onWindowClosed (e) {
+      // @ts-ignore
+      if (e.detail?.index === window.#index) {
+        window.dispatchEvent(new CloseEvent('close'))
+        window.channel.removeEventListener('message', onMessage)
+        globalThis.removeEventListener('windowclosed', onWindowClosed)
+        globalThis.removeEventListener('windowhidden', onWindowHidden)
+      }
+    }
+
+    function onWindowHidden (e) {
+      // @ts-ignore
+      if (e.detail?.index === window.#index) {
+        window.dispatchEvent(new CloseEvent('hide'))
+      }
+    }
   }
 
   #updateState (response) {

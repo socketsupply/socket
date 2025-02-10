@@ -1,10 +1,10 @@
 /* global CloseEvent, ErrorEvent, MessageEvent, WebSocket */
-import diagnostics from '../diagnostics.js'
-import { sleep } from '../timers.js'
-import client from '../application/client.js'
-import hooks from '../hooks.js'
-import ipc from '../ipc.js'
-import gc from '../gc.js'
+import diagnostics from './diagnostics.js'
+import { sleep } from './timers.js'
+import client from './application/client.js'
+import hooks from './hooks.js'
+import ipc from './ipc.js'
+import gc from './gc.js'
 
 /**
  * Predicate state to determine if application is paused.

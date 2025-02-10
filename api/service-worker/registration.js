@@ -112,8 +112,7 @@ export class ServiceWorkerRegistration {
     }
   }
 
-  async update () {
-  }
+  async update () {}
 }
 
 if (typeof globalThis.ServiceWorkerRegistration === 'function') {

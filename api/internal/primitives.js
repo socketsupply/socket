@@ -17,6 +17,8 @@ import scheduler from './scheduler.js'
 import Promise from './promise.js'
 import symbols from './symbols.js'
 
+import '../navigation/navigation.js'
+
 import {
   ReadableStream,
   ReadableStreamBYOBReader,
@@ -85,11 +87,11 @@ export function init () {
     return { natives, patches }
   }
 
-  function install (implementations, target = globalThis, prefix) {
+  function install (implementations, target = globalThis, prefix = null) {
     for (let name in implementations) {
       const implementation = implementations[name]
 
-      if (typeof prefix === 'string') {
+      if (typeof prefix === 'string' && prefix.length) {
         name = `${prefix}.${name}`
       }
 
@@ -202,10 +204,12 @@ export function init () {
   }
 
   try {
+    // @ts-ignore
     globalThis.Symbol.dispose = symbols.dispose
   } catch {}
 
   try {
+    // @ts-ignore
     globalThis.Symbol.serialize = symbols.serialize
   } catch {}
 
@@ -302,7 +306,15 @@ export function init () {
 
   if (globalThis.navigator) {
     if (globalThis.window) {
-      install({ geolocation, close }, globalThis.navigator, 'geolocation')
+      // @ts-ignore
+      install({ geolocation }, globalThis.navigator, 'geolocation')
+
+      if (!globalThis.navigation) {
+        navigation.apply
+      }
+
+      install({ close })
+
       async function close () {
         // eventually handle windows from `window.open()`
         const currentWindow = await application.getCurrentWindow()
@@ -310,6 +322,7 @@ export function init () {
       }
     }
 
+    // @ts-ignore
     install({ permissions, serviceWorker }, globalThis.navigator, 'navigator')
 
     // manually install 'navigator.serviceWorker' accessors from prototype
@@ -329,7 +342,7 @@ export function init () {
     // globalThis.addEventListener('popstate', (event) => { })
   }
 
-  // WebAssembly
+  // @ts-ignore
   install(WebAssembly, globalThis.WebAssembly, 'WebAssembly')
 
   // quirks
@@ -343,9 +356,11 @@ export function init () {
           if ( // check for 'File'
             typeof value === 'object' &&
             value instanceof Blob &&
+            // @ts-ignore
             typeof value.name === 'string'
           ) {
             if (!filename) {
+              // @ts-ignore
               filename = value.name
             }
 
@@ -367,9 +382,11 @@ export function init () {
           if ( // check for 'File'
             typeof value === 'object' &&
             value instanceof Blob &&
+            // @ts-ignore
             typeof value.name === 'string'
           ) {
             if (!filename) {
+              // @ts-ignore
               filename = value.name
             }
 
@@ -388,10 +405,13 @@ export function init () {
 
   applied = true
 
+  // @ts-ignore
   if (!Error.captureStackTrace) {
+    // @ts-ignore
     Error.captureStackTrace = function () {}
   }
 
+  // @ts-ignore
   if (globalThis.document && globalThis.top === globalThis) {
     // create <title> tag in document if it doesn't exist
     globalThis.document.title ||= ''
