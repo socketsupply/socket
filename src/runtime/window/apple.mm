@@ -172,6 +172,26 @@ CGFloat MACOS_TRAFFIC_LIGHT_BUTTON_SIZE = 16;
     scrollView.bounds = window->webview.bounds;
   }
 }
+
+- (void) handleEdgePanGesture: (UIScreenEdgePanGestureRecognizer*) gesture {
+  auto window = (Window*) objc_getAssociatedObject(self, "window");
+  CGPoint translation = [gesture translationInView:self.view];
+  CGFloat progress = translation.x / self.view.bounds.size.width;
+  progress = fmin(fmax(progress, 0.0), 1.0);
+  if (
+    gesture.state == UIGestureRecognizerStateEnded ||
+    gesture.state == UIGestureRecognizerStateCancelled
+  ) {
+    if (progress > 0.3) {
+      if (window && window->webview.canGoBack) {
+        [window->webview.goBack];
+      } else {
+        window->close();
+        // [self.navigationController popViewControllerAnimated:YES];
+      }
+    }
+  }
+}
 #endif
 @end
 
@@ -424,9 +444,26 @@ namespace ssc::runtime::window {
     ];
   #endif
 
+    /*
     this->webview.allowsBackForwardNavigationGestures = (
       userConfig["webview_navigator_enable_navigation_gestures"] == "true"
     );
+    */
+
+  #if SOCKET_RUNTIME_PLATFORM_IOS
+    this->webview.allowsBackForwardNavigationGestures = NO;
+    if (userConfig["webview_navigator_enable_navigation_gestures"] == "true") {
+      auto edgePanGesture = [[UIScreenEdgePanGestureRecognizer alloc]
+        initWithTarget: this->windowDelegate
+               action: @selector(handleEdgePanGesture:)
+      ];
+      edgePanGesture.edges = UIRectEdgeLeft;
+      edgePanGesture.delegate = self;
+      [this->viewController.view addGestureRecognizer: edgePanGesture];
+    }
+  #else
+    this->webview.allowsBackForwardNavigationGestures = userConfig["webview_navigator_enable_navigation_gestures"] == "true";
+  #endif
 
     this->webview.UIDelegate = webview;
     this->webview.layer.opaque = NO;
@@ -663,7 +700,7 @@ namespace ssc::runtime::window {
       this->viewController.webview.opaque = NO;
     }
 
-    [this->viewController.view addSubview:this->webview];
+    [this->viewController.view addSubview: this->webview];
 
     this->window.rootViewController = this->viewController;
     this->window.rootViewController.view.frame = frame;

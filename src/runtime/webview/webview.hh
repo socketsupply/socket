@@ -91,7 +91,7 @@ namespace ssc::runtime::webview {
 @end
 
 #if SOCKET_RUNTIME_PLATFORM_IOS
-@interface SSCWebViewController : UIViewController
+@interface SSCWebViewController : UIViewController<UIGestureRecognizerDelegate>
   @property (nonatomic, strong) SSCWebView* webview;
 @end
 #endif
