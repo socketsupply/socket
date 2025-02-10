@@ -25,8 +25,9 @@ namespace ssc::runtime::uuid {
     part2 |= 0x8000000000000000ull;
 
 
-    sprintf(
+    snprintf(
       buffer,
+      37,
       "%08x-%04x-%04x-%02x%02x-%012llx",
       (uint32_t) (part1 >> 32),
       (uint16_t) (part1 >> 16),
@@ -39,7 +40,7 @@ namespace ssc::runtime::uuid {
 
   String v7 () {
     String output;
-    output.resize(36);
+    output.resize(37);
     v7(output.data());
     return output;
   }
