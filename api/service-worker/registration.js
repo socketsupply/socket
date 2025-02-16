@@ -1,7 +1,7 @@
 import { showNotification, getNotifications } from './notification.js'
 import ipc from '../ipc.js'
 
-export class ServiceWorkerRegistration {
+export class ServiceWorkerRegistration extends EventTarget {
   #info = null
   #active = null
   #waiting = null
@@ -9,6 +9,7 @@ export class ServiceWorkerRegistration {
   #onupdatefound = null
 
   constructor (info, serviceWorker) {
+    super()
     this.#info = info
 
     serviceWorker[Symbol.for('socket.runtime.serviceWorker.state')] = info.registration.state
@@ -110,6 +111,8 @@ export class ServiceWorkerRegistration {
     if (result.err) {
       throw result.err
     }
+
+    return true
   }
 
   async update () {}

@@ -49,7 +49,7 @@ static dispatch_queue_t queue = dispatch_queue_create(
   if (!w) return;
 
   [w makeKeyAndOrderFront: nil];
-  [NSApp activateIgnoringOtherApps:YES];
+  [NSApp activateIgnoringOtherApps: YES];
 
   if (app != nullptr) {
     for (auto window : self.app->runtime.windowManager.windows) {

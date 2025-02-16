@@ -22,7 +22,17 @@ namespace ssc::runtime::bridge {
       });
     }
 
-    return this->entries[index];
+    return this->entries.at(index);
+  }
+
+  SharedPointer<Bridge> Manager::get (int index) {
+    Lock lock(this->mutex);
+
+    if (index >= this->entries.size()) {
+      return nullptr;
+    }
+
+    return this->entries.at(index);
   }
 
   bool Manager::has (int index) const {

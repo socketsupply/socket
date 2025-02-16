@@ -92,6 +92,7 @@ namespace ssc::runtime::bridge {
       Manager& operator = (Manager&&) = delete;
 
       SharedPointer<Bridge> get (int, const BridgeOptions&);
+      SharedPointer<Bridge> get (int);
       bool has (int) const;
       bool remove (int);
   };

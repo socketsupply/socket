@@ -30,11 +30,19 @@ namespace ssc::runtime::webview {
 -                    (void) webView: (WKWebView*) webView
   decidePolicyForNavigationResponse: (WKNavigationResponse*) navigationResponse
                     decisionHandler: (void (^)(WKNavigationResponsePolicy)) decisionHandler;
+
+-      (void) webView: (WKWebView*) webView
+  didFinishNavigation: (WKNavigation*) navigation;
 @end
 @interface SSCWebView :
 #if SOCKET_RUNTIME_PLATFORM_IOS
   WKWebView<WKUIDelegate>
-  @property (strong, nonatomic) NSLayoutConstraint *keyboardHeightConstraint;
+  @property (strong, nonatomic) NSLayoutConstraint* keyboardHeightConstraint;
+  @property (strong, nonatomic) UIRefreshControl* refreshControl;
+  - (void) handlePullToRefresh: (UIRefreshControl*) refreshControl;
+  - (instancetype) initWithFrame: (CGRect) frame
+                   configuration: (WKWebViewConfiguration*) configuration
+       withRefreshControlEnabled: (BOOL) refreshControlEnabled;
 #else
   WKWebView<
     WKUIDelegate,
@@ -100,6 +108,7 @@ shouldRecognizeSimultaneouslyWithGestureRecognizer: (UIGestureRecognizer*) other
 - (BOOL) gestureRecognizer: (UIGestureRecognizer*) gestureRecognizer
         shouldReceiveTouch: (UITouch*) touch;
 @end
+
 #endif
 #endif
 

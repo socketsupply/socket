@@ -16478,7 +16478,10 @@ declare module "socket:navigation/navigation" {
 }
 
 declare module "socket:navigation" {
-    export {};
+    export const Navigation: any;
+    export const NavigationHistoryEntry: any;
+    const _default: any;
+    export default _default;
 }
 
 declare module "socket:node-esm-loader" {
@@ -17587,7 +17590,7 @@ declare module "socket:service-worker/notification" {
 }
 
 declare module "socket:service-worker/registration" {
-    export class ServiceWorkerRegistration {
+    export class ServiceWorkerRegistration extends EventTarget {
         constructor(info: any, serviceWorker: any);
         get scope(): any;
         get updateViaCache(): string;
@@ -17599,7 +17602,7 @@ declare module "socket:service-worker/registration" {
         get navigationPreload(): any;
         getNotifications(): Promise<any>;
         showNotification(title: any, options: any): Promise<void>;
-        unregister(): Promise<void>;
+        unregister(): Promise<boolean>;
         update(): Promise<void>;
         #private;
     }

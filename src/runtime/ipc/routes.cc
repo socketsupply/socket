@@ -3807,7 +3807,7 @@ static void mapIPCRoutes (Router *router) {
 
     reply(Result::Data { message, window->json() });
 
-    app->runtime.services.timers.setTimeout(16, [=] () {
+    app->dispatch([app, targetWindowIndex]() {
       app->runtime.windowManager.destroyWindow(targetWindowIndex);
     });
   });

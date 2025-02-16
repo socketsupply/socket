@@ -38,8 +38,19 @@ export const DEFAULT_MAX_RECONNECT_TIMEOUT = 256
 export const pool = new Set()
 
 // reconnect when application resumes
-hooks.onApplicationResume(() => {
+hooks.onApplicationResume(async () => {
   isApplicationPaused = false
+  let result
+  result = await ipc.request('internal.conduit.stop')
+  if (result.err) {
+    console.warn(result.err)
+  }
+
+  result = await ipc.request('internal.conduit.start')
+  if (result.err) {
+    console.warn(result.err)
+  }
+
   for (const conduit of pool) {
     // @ts-ignore
     if (conduit?.shouldReconnect) {
@@ -51,8 +62,13 @@ hooks.onApplicationResume(() => {
   }
 })
 
-hooks.onApplicationPause(() => {
+hooks.onApplicationPause(async () => {
   isApplicationPaused = true
+  const result = await ipc.request('internal.conduit.stop')
+  if (result.err) {
+    console.warn(result.err)
+  }
+
   for (const conduit of pool) {
     if (conduit) {
       // @ts-ignore

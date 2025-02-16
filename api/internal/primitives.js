@@ -309,10 +309,6 @@ export function init () {
       // @ts-ignore
       install({ geolocation }, globalThis.navigator, 'geolocation')
 
-      if (!globalThis.navigation) {
-        navigation.apply
-      }
-
       install({ close })
 
       async function close () {

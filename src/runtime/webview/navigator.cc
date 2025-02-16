@@ -61,6 +61,28 @@ using ssc::runtime::app::App;
 {
   decisionHandler(WKNavigationResponsePolicyAllow);
 }
+
+#if SOCKET_RUNTIME_PLATFORM_IOS
+-      (void) webView: (WKWebView*) webview
+  didFinishNavigation: (WKNavigation*) navigation
+{
+  auto app = App::sharedApplication();
+  if (webview.scrollView.refreshControl && webview.scrollView.refreshControl.refreshing) {
+    app->dispatch([webview](){
+      [webview.scrollView.refreshControl endRefreshing];
+      [UIView animateWithDuration: 0.25 animations: ^{
+        const auto topInset = webview.superview.safeAreaInsets.top;
+        auto insets = webview.scrollView.contentInset;
+        auto offset = webview.scrollView.contentOffset;
+        insets.top = topInset;
+        offset.y = -topInset;
+        webview.scrollView.contentInset = insets;
+        webview.scrollView.contentOffset = offset;
+      }];
+    });
+  }
+}
+#endif
 @end
 #endif
 

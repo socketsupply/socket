@@ -26,7 +26,7 @@ static os_log_t SOCKET_RUNTIME_OS_LOG_DEBUG = nullptr;
   }                                                                            \
                                                                                \
   auto string = [NSString stringWithFormat: @fmt, ##__VA_ARGS__];              \
-  os_log_error(                                                                \
+  os_log_debug(                                                                \
     SOCKET_RUNTIME_OS_LOG_DEBUG,                                               \
     "%{public}s",                                                              \
     string.UTF8String                                                          \

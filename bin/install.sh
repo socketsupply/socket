@@ -165,9 +165,6 @@ if [ "$host" == "Darwin" ]; then
   die $? "not ok - missing build tools, try \"$(advice "libtool")\""
   quiet command -v curl
   die $? "not ok - missing curl, try \"$(advice "curl")\""
-  if ! brew list | grep libomp >/dev/null 2>&1; then
-    die $? "not ok - missing libomp, try \"$(advice "libomp")\""
-  fi
 fi
 
 if [ "$host" == "Linux" ]; then
@@ -598,11 +595,47 @@ function _install {
         cp -rfp "$BUILD_DIR/$arch-$platform"/lib$_d/*.a "$SOCKET_HOME/lib$_d/$arch-$platform"
       fi
 
-      if [[ "$host" == "Darwin" ]] && [[ "$platform" != "desktop" ]]; then
-        if (( do_link == 1 )); then
-          ln -sf "$BUILD_DIR/$arch-$platform"/lib/*.metallib "$SOCKET_HOME/lib/$arch-$platform"
+      if [[ "$host" == "Darwin" ]]; then
+        if [[ "$platform" == "desktop" ]]; then
+          echo "# locating 'libomp.dylib...'"
+          local llvms=()
+          local libomp_path=""
+
+          llvms+=($(find /opt/homebrew/opt/llvm* 2>/dev/null))
+          llvms+=($(echo $LLVM_PATHS | tr ':' ' '))
+
+          for path in ${llvms[@]}; do
+            local libomp="$(find -L "$path" -path '*/lib/libomp.dylib' 2>/dev/null | head -n1)"
+            if [ -n "$libomp" ] && [ -f "$libomp" ]; then
+              libomp_path="$libomp"
+              echo "# found LLVM libomp at: '$libomp_path'"
+              break
+            fi
+          done
+
+          if [ -z "$libomp_path" ] || ! [ -f "$libomp_path" ]; then
+            # Fallback: try to locate a libomp from the standalone libomp package via Homebrew
+            local fallback_prefix=$(brew --prefix libomp 2>/dev/null || true)
+            if [ -n "$fallback_prefix" ] && [ -f "$fallback_prefix/lib/libomp.dylib" ]; then
+              libomp_path="$fallback_prefix/lib/libomp.dylib"
+              echo "# found standalone libomp at: '$libomp_path'"
+            else
+              die 1 "not ok - could not locate 'libomp.dylib'. Please install an LLVM package (preferred) or the libomp package: \"$(advice "libomp")\""
+            fi
+          fi
+
+          cp -f "$libomp" "$SOCKET_HOME/lib/$arch-desktop/$(basename "$libomp")"
+          echo "# copied '$libomp_path'"
+
+          echo "# modifying the install name of the copied 'libomp.dylib'"
+          quiet install_name_tool -id "@rpath/$(basename "$libomp_path")" "$SOCKET_HOME/lib/$arch-desktop/$(basename "$libomp")"
+          die $? "not ok - failed to modify the install name of copied 'libomp.dylib'"
         else
-          cp -rfp "$BUILD_DIR/$arch-$platform"/lib/*.metallib "$SOCKET_HOME/lib/$arch-$platform"
+          if (( do_link == 1 )); then
+            ln -sf "$BUILD_DIR/$arch-$platform"/lib/*.metallib "$SOCKET_HOME/lib/$arch-$platform"
+          else
+            cp -rfp "$BUILD_DIR/$arch-$platform"/lib/*.metallib "$SOCKET_HOME/lib/$arch-$platform"
+          fi
         fi
       fi
     fi
@@ -934,6 +967,9 @@ function _compile_llama {
     if [[ "$host" != "Win32" ]]; then
       quiet command -v cmake
       die $? "not ok - missing cmake, \"$(advice 'cmake')\""
+      local cflags="-fPIC"
+      export CFLAGS="$cflags"
+      export CXXFLAGS="$cflags"
 
       quiet cmake -S . -B build -DCMAKE_INSTALL_PREFIX="$BUILD_DIR/$target-$platform" ${cmake_args[@]}
       die $? "not ok - libllama.a (desktop)"

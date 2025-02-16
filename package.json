@@ -33,6 +33,7 @@
   "standard": {
     "ignore": [
       "/api/external/",
+      "/api/navigation/navigation.js",
       "/api/test/fast-deep-equal.js",
       "/api/crypto/sodium.js",
       "/api/url/urlpattern/urlpattern.js",

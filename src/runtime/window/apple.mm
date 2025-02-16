@@ -162,14 +162,18 @@ CGFloat MACOS_TRAFFIC_LIGHT_BUTTON_SIZE = 16;
     }
   }
 
-  app->runtime.windowManager.destroyWindow(index);
+  app->dispatch([app, index]() {
+    app->runtime.windowManager.destroyWindow(index);
+  });
   return true;
 }
 #elif SOCKET_RUNTIME_PLATFORM_IOS
 - (void) scrollViewDidScroll: (UIScrollView*) scrollView {
   auto window = (Window*) objc_getAssociatedObject(self, "window");
   if (window) {
-    scrollView.bounds = window->webview.bounds;
+    if (!scrollView.refreshControl) {
+      scrollView.bounds = window->webview.bounds;
+    }
   }
 }
 
@@ -180,12 +184,21 @@ CGFloat MACOS_TRAFFIC_LIGHT_BUTTON_SIZE = 16;
   }
   CGPoint translation = [gesture translationInView: window->viewController.view];
   CGFloat progress = translation.x / window->viewController.view.bounds.size.width;
+  CGFloat threshold = 0.3f;
   progress = fmin(fmax(progress, 0.0), 1.0);
+  if (window->bridge->userConfig.contains("webview_navigator_navigation_gestures_pan_threshold")) {
+    try {
+      threshold = std::stof(window->bridge->userConfig.at("webview_navigator_navigation_gestures_pan_threshold"));
+    } catch (...) {
+      debug("Invalid value for '[webview.navigator.navigation_gestures] pan_threshold'");
+    }
+  }
+
   if (
     gesture.state == UIGestureRecognizerStateEnded ||
     gesture.state == UIGestureRecognizerStateCancelled
   ) {
-    if (progress > 0.3) {
+    if (progress >= threshold) {
       if (window && window->webview.canGoBack) {
         [window->webview goBack];
       } else {
@@ -417,8 +430,6 @@ namespace ssc::runtime::window {
              margin: (CGFloat) options.margin
     ];
 
-    this->webview.wantsLayer = YES;
-    this->webview.layer.backgroundColor = NSColor.clearColor.CGColor;
     this->webview.customUserAgent = [NSString
       stringWithFormat: @("Mozilla/5.0 (Macintosh; Intel Mac OS X %d_%d_%d) AppleWebKit/605.1.15 (KHTML, like Gecko) SocketRuntime/%s"),
         processInfo.operatingSystemVersion.majorVersion,
@@ -429,17 +440,12 @@ namespace ssc::runtime::window {
     [this->webview setValue: @(0) forKey: @"drawsBackground"];
   #elif SOCKET_RUNTIME_PLATFORM_IOS
     this->webview = [SSCWebView.alloc
-      initWithFrame: frame
-      configuration: configuration
+                  initWithFrame: frame
+                  configuration: configuration
+      withRefreshControlEnabled: !this->options.headless && userConfig["webview_navigator_enable_navigation_gestures"] == "true"
     ];
 
     this->webview.scrollView.delegate = this->windowDelegate;
-    this->webview.scrollView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
-
-    this->webview.autoresizingMask = (
-      UIViewAutoresizingFlexibleWidth |
-      UIViewAutoresizingFlexibleHeight
-    );
 
     this->webview.customUserAgent = [NSString
       stringWithFormat: @("Mozilla/5.0 (iPhone; CPU iPhone OS %d_%d_%d like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1 SocketRuntime/%s"),
@@ -448,16 +454,21 @@ namespace ssc::runtime::window {
       processInfo.operatingSystemVersion.patchVersion,
       ssc::runtime::VERSION_STRING.c_str()
     ];
+
+    if (this->webview.refreshControl) {
+      const auto pullToRefreshTitle = userConfig["webview_navigator_navigation_gestures_pull_to_refresh_title"];
+      if (!pullToRefreshTitle.empty()) {
+        this->webview.refreshControl.attributedTitle = [NSAttributedString.alloc
+          initWithString: @(pullToRefreshTitle.c_str())
+          attributes: @{
+            NSForegroundColorAttributeName: UIColor.grayColor
+          }
+        ];
+      }
+    }
   #endif
 
-    /*
-    this->webview.allowsBackForwardNavigationGestures = (
-      userConfig["webview_navigator_enable_navigation_gestures"] == "true"
-    );
-    */
-
   #if SOCKET_RUNTIME_PLATFORM_IOS
-    this->webview.allowsBackForwardNavigationGestures = NO;
     if (!this->options.headless && userConfig["webview_navigator_enable_navigation_gestures"] == "true") {
       auto edgePanGesture = [[UIScreenEdgePanGestureRecognizer alloc]
         initWithTarget: this->windowDelegate
@@ -471,9 +482,6 @@ namespace ssc::runtime::window {
   #else
     this->webview.allowsBackForwardNavigationGestures = userConfig["webview_navigator_enable_navigation_gestures"] == "true";
   #endif
-
-    this->webview.UIDelegate = webview;
-    this->webview.layer.opaque = NO;
 
     objc_setAssociatedObject(
       this->webview,
@@ -704,10 +712,18 @@ namespace ssc::runtime::window {
     } else {
       this->viewController.webview.backgroundColor = [UIColor systemBackgroundColor];
       this->window.backgroundColor = [UIColor systemBackgroundColor];
+      this->webview.backgroundColor = [UIColor systemBackgroundColor];
+      this->webview.scrollView.backgroundColor = [UIColor systemBackgroundColor];
       this->viewController.webview.opaque = NO;
     }
 
     [this->viewController.view addSubview: this->webview];
+    [NSLayoutConstraint activateConstraints:@[
+      [this->webview.topAnchor constraintEqualToAnchor: this->viewController.view.topAnchor],
+      [this->webview.leadingAnchor constraintEqualToAnchor: this->viewController.view.leadingAnchor],
+      [this->webview.trailingAnchor constraintEqualToAnchor: this->viewController.view.trailingAnchor],
+      [this->webview.bottomAnchor constraintEqualToAnchor: this->viewController.view.bottomAnchor]
+    ]];
 
     this->window.rootViewController = this->viewController;
     this->window.rootViewController.view.frame = frame;
@@ -718,28 +734,70 @@ namespace ssc::runtime::window {
   }
 
   Window::~Window () {
-  #if !__has_feature(objc_arc)
     if (this->processPool) {
+    #if !__has_feature(objc_arc)
       [this->processPool release];
+    #endif
     }
 
     if (this->webview) {
+      objc_removeAssociatedObjects(this->webview);
+    #if SOCKET_RUNTIME_PLATFORM_IOS
+      this->webview.scrollView.delegate = nullptr;
+    #endif
+      this->webview.navigationDelegate = nullptr;
+      this->webview.UIDelegate = nullptr;
+      [this->webview removeFromSuperview];
+    #if !__has_feature(objc_arc)
       [this->webview release];
+    #endif
     }
 
     if (this->windowDelegate) {
+      objc_removeAssociatedObjects(this->windowDelegate);
+    #if !__has_feature(objc_arc)
       [this->windowDelegate release];
+    #endif
     }
 
     if (this->window) {
+    #if SOCKET_RUNTIME_PLATFORM_MACOS
+      auto contentView = this->window.contentView;
+      auto subviews = NSMutableArray.array;
+
+      for (NSView* view in contentView.subviews) {
+        if (view == this->webview) {
+          continue;
+        }
+        [view removeFromSuperview];
+        [view release];
+      }
+
+      this->window.delegate = nullptr;
+      this->window.contentView = nullptr;
+
+      if (this->window.titleBarView) {
+        [this->window.titleBarView removeFromSuperview];
+      #if !__has_feature(objc_arc)
+        [this->window.titleBarView release];
+      #endif
+      }
+
+      this->window.titleBarView = nullptr;
+    #endif
+    #if !__has_feature(objc_arc)
       [this->window release];
+    #endif
     }
-  #endif
 
     this->window = nullptr;
     this->webview = nullptr;
     this->processPool = nullptr;
     this->windowDelegate = nullptr;
+
+   #if SOCKET_RUNTIME_PLATFORM_IOS
+    this->viewController = nullptr;
+   #endif
   }
 
   ScreenSize Window::getScreenSize () {
@@ -800,9 +858,6 @@ namespace ssc::runtime::window {
 
   void Window::close (int code) {
     const auto app = App::sharedApplication();
-    if (this->windowDelegate != nullptr) {
-      objc_removeAssociatedObjects(this->windowDelegate);
-    }
 
     if (this->webview != nullptr) {
     #if SOCKET_RUNTIME_PLATFORM_IOS
@@ -816,48 +871,28 @@ namespace ssc::runtime::window {
         }
       }
     #endif
-      objc_removeAssociatedObjects(this->webview);
+
+      if (@available(macOS 13.3, iOS 16.4, tvOS 16.4, *)) {
+        this->webview.inspectable = NO;
+      }
+
+      if (@available(iOS 15.0, macOS 12.0, *)) {
+        [this->webview pauseAllMediaPlaybackWithCompletionHandler: nullptr];
+      } else if (@available(iOS 14.5, macOS 11.3, *)) {
+        [this->webview setAllMediaPlaybackSuspended: YES completionHandler: nullptr];
+      }
+
       [this->webview stopLoading];
       [this->webview.configuration.userContentController removeAllScriptMessageHandlers];
-      [this->webview removeFromSuperview];
-      this->webview.navigationDelegate = nullptr;
-      this->webview.UIDelegate = nullptr;
-      this->webview = nullptr;
+      [this->webview.configuration.userContentController removeAllContentRuleLists];
+      [this->webview.configuration.userContentController removeAllUserScripts];
     }
 
     if (this->window != nullptr) {
     #if SOCKET_RUNTIME_PLATFORM_MACOS
-      auto contentView = this->window.contentView;
-      auto subviews = NSMutableArray.array;
-
-      for (NSView* view in contentView.subviews) {
-        if (view == this->webview) {
-          this->webview = nullptr;
-        }
-        [view removeFromSuperview];
-        [view release];
-      }
-
       [this->window performClose: nullptr];
-      this->window.webview = nullptr;
-      this->window.delegate = nullptr;
-      this->window.contentView = nullptr;
-
-      if (this->window.titleBarView) {
-        [this->window.titleBarView removeFromSuperview];
-      #if !__has_feature(objc_arc)
-        [this->window.titleBarView release];
-      #endif
-      }
-
-      this->window.titleBarView = nullptr;
     #endif
-      this->window = nullptr;
     }
-
-   #if SOCKET_RUNTIME_PLATFORM_IOS
-    this->viewController = nullptr;
-   #endif
   }
 
   void Window::maximize () {
@@ -1098,22 +1133,24 @@ namespace ssc::runtime::window {
   }
 
   void Window::setBackgroundColor (const String& rgbaString) {
-    NSString *rgba = @(rgbaString.c_str());
-    NSRegularExpression *regex =
-      [NSRegularExpression regularExpressionWithPattern: @"rgba\\((\\d+),\\s*(\\d+),\\s*(\\d+),\\s*([\\d.]+)\\)"
-                                                options: NSRegularExpressionCaseInsensitive
-                                                  error: nil];
+    const auto rgba = @(rgbaString.c_str());
+    const auto regex = [NSRegularExpression
+      regularExpressionWithPattern: @"rgba\\((\\d+),\\s*(\\d+),\\s*(\\d+),\\s*([\\d.]+)\\)"
+                           options: NSRegularExpressionCaseInsensitive
+                             error: nil
+    ];
 
-    NSTextCheckingResult *rgbaMatch =
-      [regex firstMatchInString: rgba
-                        options: 0
-                          range: NSMakeRange(0, [rgba length])];
+    const auto rgbaMatch = [regex
+      firstMatchInString: rgba
+                 options: 0
+                   range: NSMakeRange(0, rgba.length)
+    ];
 
     if (rgbaMatch) {
-      int r = [[rgba substringWithRange:[rgbaMatch rangeAtIndex:1]] intValue];
-      int g = [[rgba substringWithRange:[rgbaMatch rangeAtIndex:2]] intValue];
-      int b = [[rgba substringWithRange:[rgbaMatch rangeAtIndex:3]] intValue];
-      float a = [[rgba substringWithRange:[rgbaMatch rangeAtIndex:4]] floatValue];
+      const auto r = [[rgba substringWithRange: [rgbaMatch rangeAtIndex: 1]] intValue];
+      const auto g = [[rgba substringWithRange: [rgbaMatch rangeAtIndex: 2]] intValue];
+      const auto b = [[rgba substringWithRange: [rgbaMatch rangeAtIndex: 3]] intValue];
+      const auto a = [[rgba substringWithRange: [rgbaMatch rangeAtIndex: 4]] floatValue];
 
       this->setBackgroundColor(r, g, b, a);
     } else {
@@ -1123,7 +1160,7 @@ namespace ssc::runtime::window {
 
   void Window::setBackgroundColor (int r, int g, int b, float a) {
     if (this->window) {
-      CGFloat rgba[4] = { r / 255.0, g / 255.0, b / 255.0, a };
+      const CGFloat rgba[4] = { r / 255.0, g / 255.0, b / 255.0, a };
     #if SOCKET_RUNTIME_PLATFORM_MACOS
       [this->window setBackgroundColor: [NSColor
         colorWithColorSpace: NSColorSpace.sRGBColorSpace
@@ -1131,7 +1168,7 @@ namespace ssc::runtime::window {
                       count: 4
       ]];
     #elif SOCKET_RUNTIME_PLATFORM_IOS
-      auto color = [UIColor
+      const auto color = [UIColor
         colorWithRed: rgba[0]
                green: rgba[1]
                 blue: rgba[2]
@@ -1140,6 +1177,7 @@ namespace ssc::runtime::window {
 
       [this->window setBackgroundColor: color];
       [this->webview setBackgroundColor: color];
+      [this->webview.scrollView setBackgroundColor: color];
     #endif
     }
   }
@@ -1157,18 +1195,13 @@ namespace ssc::runtime::window {
       [rgba getRed: &r green: &g blue: &b alpha: &a];
 
       const auto string  = [NSString
-        stringWithFormat: @"rgba(%.0f,%.0f,%.0f,%.1f)",
-                          r * 255,
-                          g * 255,
-                          b * 255,
-                          a
+        stringWithFormat: @"rgba(%.0f,%.0f,%.0f,%.1f)", r * 255, g * 255, b * 255, a
       ];
 
       return string.UTF8String;
     }
 
     return "";
-
   }
 
   void Window::setContextMenu (const String& instanceId, const String& menuSource) {
@@ -1212,7 +1245,7 @@ namespace ssc::runtime::window {
       if (pair.size() > 1) {
         menuItem.representedObject = @((String("context:") + trim(pair[1])).c_str());
       } else {
-        menuItem.representedObject = @((String("context")).c_str());
+        menuItem.representedObject = @("context");
       }
 
       // use menu item tag to store the promise resolution sequence index

@@ -1,7 +1,9 @@
-#include "../webview.hh"
-#include "../window.hh"
-#include "../string.hh"
+#include "../app.hh"
 #include "../crypto.hh"
+#include "../string.hh"
+#include "../window.hh"
+
+#include "../webview.hh"
 
 using namespace ssc::runtime;
 using ssc::runtime::javascript::getEmitToRenderProcessJavaScript;
@@ -10,6 +12,7 @@ using ssc::runtime::window::Dialog;
 using ssc::runtime::window::Window;
 using ssc::runtime::crypto::rand64;
 using ssc::runtime::string::trim;
+using ssc::runtime::app::App;
 
 #if SOCKET_RUNTIME_PLATFORM_APPLE
 #if SOCKET_RUNTIME_PLATFORM_MACOS
@@ -72,8 +75,12 @@ int lastY = 0;
                         margin: (CGFloat) margin
 {
   self = [super initWithFrame: frameRect configuration: configuration];
+  self.wantsLayer = YES;
+  self.UIDelegate = self;
+  self.layer.backgroundColor = NSColor.clearColor.CGColor;
+  self.layer.opaque = NO;
 
-  if (self && radius > 0.0) {
+  if (radius > 0.0) {
     self.radius = radius;
     self.margin = margin;
     self.layer.cornerRadius = radius;
@@ -87,7 +94,8 @@ int lastY = 0;
   [super layout];
   auto window = (Window*) objc_getAssociatedObject(self, "window");
 
-  #if SOCKET_RUNTIME_PLATFORM_MACOS
+#if SOCKET_RUNTIME_PLATFORM_MACOS
+  self.translatesAutoresizingMaskIntoConstraints = YES;
   self.autoresizesSubviews = YES;
   self.autoresizingMask = (
     NSViewHeightSizable |
@@ -95,8 +103,7 @@ int lastY = 0;
     NSViewMaxXMargin |
     NSViewMinYMargin
   );
-  self.translatesAutoresizingMaskIntoConstraints = YES;
-  #endif
+#endif
 
   NSRect bounds = self.superview.bounds;
 
@@ -554,6 +561,63 @@ int lastY = 0;
     return;
   }
 }
+#elif SOCKET_RUNTIME_PLATFORM_IOS
+- (instancetype) initWithFrame: (CGRect) frame
+                 configuration: (WKWebViewConfiguration*) configuration
+     withRefreshControlEnabled: (BOOL) refreshControlEnabled
+{
+  self = [super initWithFrame: frame configuration: configuration];
+  self.UIDelegate = self;
+  self.allowsBackForwardNavigationGestures = NO;
+  self.translatesAutoresizingMaskIntoConstraints = NO;
+  self.autoresizingMask = (
+    UIViewAutoresizingFlexibleWidth |
+    UIViewAutoresizingFlexibleHeight
+  );
+
+  self.layer.opaque = NO;
+
+  self.scrollView.backgroundColor = UIColor.blackColor;
+  self.scrollView.alwaysBounceVertical = NO;
+  self.scrollView.bounces = NO;
+  self.scrollView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
+  self.scrollView.scrollEnabled = YES;
+
+  if (refreshControlEnabled) {
+    String title = "Pull to Refresh";
+    self.refreshControl = [UIRefreshControl new];
+    self.refreshControl.tintColor = UIColor.grayColor;
+    self.refreshControl.attributedTitle = [NSAttributedString.alloc
+      initWithString: @(title.c_str())
+      attributes: @{
+        NSForegroundColorAttributeName: UIColor.grayColor
+      }
+    ];
+
+    [self.refreshControl layoutIfNeeded];
+    [self.refreshControl
+             addTarget: self
+                action: @selector(handlePullToRefresh:)
+      forControlEvents: UIControlEventValueChanged
+    ];
+
+    if (@available(iOS 17.4, *)) {
+      self.scrollView.bouncesVertically = YES;
+    }
+
+    self.scrollView.alwaysBounceVertical = YES;
+    self.scrollView.bounces = YES;
+    self.scrollView.userInteractionEnabled = YES;
+
+    self.scrollView.refreshControl =  self.refreshControl;
+  }
+
+  return self;
+}
+
+- (void) handlePullToRefresh: (UIRefreshControl*) refreshControl {
+  [self reload];
+}
 #endif
 
 #if (!SOCKET_RUNTIME_PLATFORM_IOS_SIMULATOR) || (SOCKET_RUNTIME_PLATFORM_IOS && __IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_15)
@@ -746,6 +810,39 @@ shouldRecognizeSimultaneouslyWithGestureRecognizer: (UIGestureRecognizer*) other
   }
 
   return YES;
+}
+
+- (void) viewSafeAreaInsetsDidChange {
+  [super viewSafeAreaInsetsDidChange];
+  const auto topInset = self.view.safeAreaInsets.top;
+  auto contentInset = self.webview.scrollView.contentInset;
+  auto offset = self.webview.scrollView.contentOffset;
+  contentInset.top = topInset;
+  contentInset.bottom -= topInset;
+  offset.y = -topInset;
+  self.webview.scrollView.contentInset = contentInset;
+  self.webview.scrollView.contentOffset = offset;
+}
+
+- (void) viewDidLayoutSubviews {
+  [super viewDidLayoutSubviews];
+  const auto topInset = self.view.safeAreaInsets.top;
+  auto contentInset = self.webview.scrollView.contentInset;
+  auto offset = self.webview.scrollView.contentOffset;
+  contentInset.top = topInset;
+  contentInset.bottom -= topInset;
+  offset.y = -topInset;
+  self.webview.scrollView.contentInset = contentInset;
+  self.webview.scrollView.contentOffset = offset;
+}
+
+- (void) viewWillDisappear: (BOOL) animated {
+  [super viewWillDisappear: animated];
+  const auto window = (Window*) objc_getAssociatedObject(self.webview, "window");
+  auto app = App::sharedApplication();
+  if (window) {
+    app->runtime.windowManager.destroyWindow(window->index);
+  }
 }
 @end
 #endif

@@ -3069,7 +3069,10 @@ int main (int argc, char* argv[]) {
     if (platform.mac && isForDesktop) {
       log("preparing build for mac");
 
-      flags = "-std=c++2a -ObjC++ -v -fopenmp";
+      flags = "-std=c++2a -ObjC++ -v";
+      if (!flagCodeSign) {
+        flags += " -fopenmp";
+      }
       flags += " -framework UniformTypeIdentifiers";
       flags += " -framework CoreBluetooth";
       flags += " -framework CoreLocation";
@@ -3091,6 +3094,10 @@ int main (int argc, char* argv[]) {
       flags += " -I" + prefixFile();
       flags += " -I" + prefixFile("include");
       flags += " -L" + prefixFile("lib/" + platform.arch + "-desktop");
+      if (flagCodeSign) {
+        flags += " -Wl,-rpath,@executable_path";
+      }
+      flags += " -fPIC";
       flags += " -lsocket-runtime";
       flags += " -lomp";
       flags += " -luv";
@@ -3243,6 +3250,13 @@ int main (int argc, char* argv[]) {
       auto credits = tmpl(gCredits, defaultTemplateAttrs);
 
       writeFile(paths.pathResourcesRelativeToUserBuild / "Credits.html", credits);
+
+      fs::create_directories(paths.pathPackage / pathBase / "MacOS");
+      fs::copy(
+        trim(prefixFile("lib/" + platform.arch + "-desktop/libomp.dylib")),
+        paths.pathPackage / pathBase / "MacOS" / "libomp.dylib",
+        fs::copy_options::overwrite_existing
+       );
     }
 
     if (platform.mac && isForDesktop) {
@@ -5243,6 +5257,13 @@ int main (int argc, char* argv[]) {
 
       entitlementSettings["configured_entitlements"] = "";
 
+      if (settings["permissions_allow_unvalidated_native_libraries"] == "true") {
+        entitlementSettings["configured_entitlements"] += (
+          "  <key>com.apple.security.cs.disable-library-validation</key>\n"
+          "  <true/>\n"
+        );
+      }
+
       if (settings["permissions_allow_push_notifications"] == "true") {
         entitlementSettings["configured_entitlements"] += (
           "  <key>com.apple.developer.usernotifications.filtering</key>\n"
@@ -6623,9 +6644,13 @@ int main (int argc, char* argv[]) {
 
         << " && codesign"
         << commonFlags.str()
-        << paths.pathPackage.string();
+        << paths.pathPackage.string()
 
-      if (flagDebugMode) {
+        << " && codesign"
+        << commonFlags.str()
+        << (paths.pathPackage / "Contents" / "MacOS" / "libomp.dylib").string();
+
+      if (flagDebugMode || flagVerboseMode) {
         log(signCommand.str());
       }
 
@@ -6634,7 +6659,7 @@ int main (int argc, char* argv[]) {
       if (r.output.size() > 0) {
         if (r.exitCode != 0) {
           log("ERROR: Unable to sign application with 'codesign'");
-          if (flagDebugMode) {
+          if (flagDebugMode || flagVerboseMode) {
             log(r.output);
           }
           exit(r.exitCode);

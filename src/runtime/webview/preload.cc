@@ -557,7 +557,9 @@ namespace ssc::runtime::webview {
         buffers.push_back(";(() => {");
         buffers.push_back(tmpl(
           R"JAVASCRIPT(
+            let userScriptExecuted = false
             async function userScriptCallback () {
+              if (userScriptExecuted) return; else userScriptExecuted = true;
               {{userScript}}
             }
 
