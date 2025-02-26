@@ -3250,13 +3250,11 @@ int main (int argc, char* argv[]) {
       writeFile(paths.pathResourcesRelativeToUserBuild / "Credits.html", credits);
 
       fs::create_directories(paths.pathPackage / pathBase / "MacOS");
-      if (flagCodeSign) {
-        fs::copy(
-          trim(prefixFile("lib/" + platform.arch + "-desktop/libomp.dylib")),
-          paths.pathPackage / pathBase / "MacOS" / "libomp.dylib",
-          fs::copy_options::overwrite_existing
-         );
-      }
+      fs::copy(
+        trim(prefixFile("lib/" + platform.arch + "-desktop/libomp.dylib")),
+        paths.pathPackage / pathBase / "MacOS" / "libomp.dylib",
+        fs::copy_options::overwrite_existing
+       );
     }
 
     if (platform.mac && isForDesktop) {
