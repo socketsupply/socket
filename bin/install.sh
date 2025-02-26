@@ -624,11 +624,12 @@ function _install {
             fi
           fi
 
-          cp -f "$libomp" "$SOCKET_HOME/lib/$arch-desktop/$(basename "$libomp")"
+          mkdir -p "$SOCKET_HOME/lib/$arch-desktop/codesign"
+          cp -f "$libomp" "$SOCKET_HOME/lib/$arch-desktop/codesign/$(basename "$libomp")"
           echo "# copied '$libomp_path'"
 
           echo "# modifying the install name of the copied 'libomp.dylib'"
-          quiet install_name_tool -id "@rpath/$(basename "$libomp_path")" "$SOCKET_HOME/lib/$arch-desktop/$(basename "$libomp")"
+          quiet install_name_tool -id "@rpath/$(basename "$libomp_path")" "$SOCKET_HOME/lib/$arch-desktop/codesign/$(basename "$libomp")"
           die $? "not ok - failed to modify the install name of copied 'libomp.dylib'"
         else
           if (( do_link == 1 )); then

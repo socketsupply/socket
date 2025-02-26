@@ -3094,7 +3094,10 @@ int main (int argc, char* argv[]) {
       flags += " -I" + prefixFile();
       flags += " -I" + prefixFile("include");
       flags += " -L" + prefixFile("lib/" + platform.arch + "-desktop");
-      flags += " -Wl,-rpath,@executable_path";
+      if (flagCodeSign) {
+        flags += " -Wl,-rpath,@executable_path";
+        flags += " -L" + prefixFile("lib/" + platform.arch + "-desktop/codesign");
+      }
       flags += " -fPIC";
       flags += " -lsocket-runtime";
       flags += " -lomp";
@@ -3251,7 +3254,7 @@ int main (int argc, char* argv[]) {
 
       fs::create_directories(paths.pathPackage / pathBase / "MacOS");
       fs::copy(
-        trim(prefixFile("lib/" + platform.arch + "-desktop/libomp.dylib")),
+        trim(prefixFile("lib/" + platform.arch + "-desktop/codesign/libomp.dylib")),
         paths.pathPackage / pathBase / "MacOS" / "libomp.dylib",
         fs::copy_options::overwrite_existing
        );
