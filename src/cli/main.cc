@@ -3094,9 +3094,7 @@ int main (int argc, char* argv[]) {
       flags += " -I" + prefixFile();
       flags += " -I" + prefixFile("include");
       flags += " -L" + prefixFile("lib/" + platform.arch + "-desktop");
-      if (flagCodeSign) {
-        flags += " -Wl,-rpath,@executable_path";
-      }
+      flags += " -Wl,-rpath,@executable_path";
       flags += " -fPIC";
       flags += " -lsocket-runtime";
       flags += " -lomp";
@@ -3252,11 +3250,13 @@ int main (int argc, char* argv[]) {
       writeFile(paths.pathResourcesRelativeToUserBuild / "Credits.html", credits);
 
       fs::create_directories(paths.pathPackage / pathBase / "MacOS");
-      fs::copy(
-        trim(prefixFile("lib/" + platform.arch + "-desktop/libomp.dylib")),
-        paths.pathPackage / pathBase / "MacOS" / "libomp.dylib",
-        fs::copy_options::overwrite_existing
-       );
+      if (flagCodeSign) {
+        fs::copy(
+          trim(prefixFile("lib/" + platform.arch + "-desktop/libomp.dylib")),
+          paths.pathPackage / pathBase / "MacOS" / "libomp.dylib",
+          fs::copy_options::overwrite_existing
+         );
+      }
     }
 
     if (platform.mac && isForDesktop) {
