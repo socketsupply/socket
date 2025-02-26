@@ -161,7 +161,30 @@ CGFloat MACOS_TRAFFIC_LIGHT_BUTTON_SIZE = 16;
       window->eval(getEmitToRenderProcessJavaScript("windowclosed", json.str()));
     }
   }
+  auto contentView = window->window.contentView;
+  auto subviews = NSMutableArray.array;
 
+  for (NSView* view in contentView.subviews) {
+    if (view == window->webview) {
+      continue;
+    }
+    [view removeFromSuperview];
+    [view release];
+  }
+
+  window->window.delegate = nullptr;
+  window->window.contentView = nullptr;
+
+  if (window->window.titleBarView) {
+    [window->window.titleBarView removeFromSuperview];
+  #if !__has_feature(objc_arc)
+    [window->window.titleBarView release];
+  #endif
+  }
+
+  window->window.titleBarView = nullptr;
+
+  window->window = nullptr;
   app->dispatch([app, index]() {
     app->runtime.windowManager.destroyWindow(index);
   });
