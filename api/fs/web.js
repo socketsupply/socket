@@ -7,9 +7,9 @@ import mime from '../mime.js'
 import path from '../path.js'
 import fs from './promises.js'
 
-export const kFileSystemHandleFullName = Symbol.for('socket.runtune.fs.web.FileSystemHandleFullName')
-export const kFileDescriptor = Symbol.for('socket.runtune.fs.web.FileDescriptor')
-export const kFileFullName = Symbol.for('socket.runtune.fs.web.FileFullName')
+export const kFileSystemHandleFullName = Symbol.for('socket.runtime.fs.web.FileSystemHandleFullName')
+export const kFileDescriptor = Symbol.for('socket.runtime.fs.web.FileDescriptor')
+export const kFileFullName = Symbol.for('socket.runtime.fs.web.FileFullName')
 
 // @ts-ignore
 export const File = globalThis.File ??

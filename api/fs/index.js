@@ -42,7 +42,7 @@ import fds from './fds.js'
 
 import * as exports from './index.js'
 
-const kFileDescriptor = Symbol.for('socket.runtune.fs.web.FileDescriptor')
+const kFileDescriptor = Symbol.for('socket.runtime.fs.web.FileDescriptor')
 
 /**
  * @typedef {import('../buffer.js').Buffer} Buffer

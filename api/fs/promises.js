@@ -50,7 +50,7 @@ export {
   WriteStream
 }
 
-const kFileDescriptor = Symbol.for('socket.runtune.fs.web.FileDescriptor')
+const kFileDescriptor = Symbol.for('socket.runtime.fs.web.FileDescriptor')
 
 function normalizePath (path) {
   if (path instanceof URL) {

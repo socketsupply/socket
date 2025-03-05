@@ -23,7 +23,7 @@ import gc from '../gc.js'
 
 import * as exports from './handle.js'
 
-const kFileDescriptor = Symbol.for('socket.runtune.fs.web.FileDescriptor')
+const kFileDescriptor = Symbol.for('socket.runtime.fs.web.FileDescriptor')
 
 /**
  * @typedef {Uint8Array|Int8Array} TypedArray
