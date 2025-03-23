@@ -630,7 +630,10 @@ function _install {
 
           echo "# modifying the install name of the copied 'libomp.dylib'"
           quiet install_name_tool -id "@rpath/$(basename "$libomp_path")" "$SOCKET_HOME/lib/$arch-desktop/codesign/$(basename "$libomp")"
-          die $? "not ok - failed to modify the install name of copied 'libomp.dylib'"
+          if (( $? != 0 )); then
+            sudo install_name_tool -id "@rpath/$(basename "$libomp_path")" "$SOCKET_HOME/lib/$arch-desktop/codesign/$(basename "$libomp")"
+            die $? "not ok - failed to modify the install name of copied 'libomp.dylib'"
+          fi
         else
           if (( do_link == 1 )); then
             ln -sf "$BUILD_DIR/$arch-$platform"/lib/*.metallib "$SOCKET_HOME/lib/$arch-$platform"
