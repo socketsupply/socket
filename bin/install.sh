@@ -625,13 +625,13 @@ function _install {
           fi
 
           mkdir -p "$SOCKET_HOME/lib/$arch-desktop/codesign"
-          cp -f "$libomp" "$SOCKET_HOME/lib/$arch-desktop/codesign/$(basename "$libomp")"
+          cp -f "$libomp_path" "$SOCKET_HOME/lib/$arch-desktop/codesign/$(basename "$libomp_path")"
           echo "# copied '$libomp_path'"
 
           echo "# modifying the install name of the copied 'libomp.dylib'"
-          quiet install_name_tool -id "@rpath/$(basename "$libomp_path")" "$SOCKET_HOME/lib/$arch-desktop/codesign/$(basename "$libomp")"
+          quiet install_name_tool -id "@rpath/$(basename "$libomp_path")" "$SOCKET_HOME/lib/$arch-desktop/codesign/$(basename "$libomp_path")"
           if (( $? != 0 )); then
-            sudo install_name_tool -id "@rpath/$(basename "$libomp_path")" "$SOCKET_HOME/lib/$arch-desktop/codesign/$(basename "$libomp")"
+            sudo install_name_tool -id "@rpath/$(basename "$libomp_path")" "$SOCKET_HOME/lib/$arch-desktop/codesign/$(basename "$libomp_path")"
             die $? "not ok - failed to modify the install name of copied 'libomp.dylib'"
           fi
         else
