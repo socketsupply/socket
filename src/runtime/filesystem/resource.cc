@@ -167,7 +167,7 @@ namespace ssc::runtime::filesystem {
     }
   #elif SOCKET_RUNTIME_PLATFORM_APPLE
     static auto fileManager = [[NSFileManager alloc] init];
-    bool isDirectory = false;
+    BOOL isDirectory = false;
     const auto fileExistsAtPath = [fileManager
       fileExistsAtPath: @(resourcePath.string().c_str())
            isDirectory: &isDirectory
