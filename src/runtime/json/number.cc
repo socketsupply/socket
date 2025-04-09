@@ -48,11 +48,11 @@ namespace ssc::runtime::JSON {
     // trim trailing zeros
     if (decimal >= 0) {
       auto i = output.size() - 1;
-      while (output[i] == '0' && i >= decimal) {
+      while ((output[i] == '0' || output[i] == '.') && i >= decimal) {
         i--;
       }
 
-      return output.substr(0, i);
+      return output.substr(0, i + 1);
     }
 
     return output;
