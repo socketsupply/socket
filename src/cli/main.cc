@@ -2954,7 +2954,7 @@ int main (int argc, char* argv[]) {
     auto compileIconAssets = [&]() {
       auto src = paths.platformSpecificOutputPath;
 
-      Vector<Tuple<int, int>> types = {};
+      Vector<Tuple<double, double>> types = {};
       JSON::Array images;
 
       const String prefix = isForDesktop ? "mac" : "ios";
@@ -2971,14 +2971,36 @@ int main (int argc, char* argv[]) {
         const String size = pair[0];
         const String scale = pair[1];
 
-        images.push(JSON::Object::Entries {
-          { "size", size + "x" + size },
-          { "idiom", isForDesktop ? "mac" : "iphone" },
-          { "filename", "Icon-" + size + "x" + size + "@" + scale + ".png" },
-          { "scale", scale }
-        });
+        if (size == "1024") {
+         images.push(JSON::Object::Entries {
+            { "size", size + "x" + size },
+            { "idiom", isForDesktop ? "mac" : "ios-marketing" },
+            { "filename", "Icon-" + size + "x" + size + "@" + scale + ".png" },
+            { "scale", scale }
+          });
+        } else if (isForDesktop) {
+          images.push(JSON::Object::Entries {
+            { "size", size + "x" + size },
+            { "idiom", "mac" },
+            { "filename", "Icon-" + size + "x" + size + "@" + scale + ".png" },
+            { "scale", scale }
+          });
+        } else {
+         images.push(JSON::Object::Entries {
+            { "size", size + "x" + size },
+            { "idiom", "iphone" },
+            { "filename", "Icon-" + size + "x" + size + "@" + scale + ".png" },
+            { "scale", scale }
+          });
+         images.push(JSON::Object::Entries {
+            { "size", size + "x" + size },
+            { "idiom", "ipad" },
+            { "filename", "Icon-" + size + "x" + size + "@" + scale + ".png" },
+            { "scale", scale }
+          });
+        }
 
-        types.push_back(std::make_tuple(stoi(pair[0]), stoi(pair[1])));
+        types.push_back(std::make_tuple(std::stof(pair[0]), std::stof(pair[1])));
       }
 
       auto assetsPath = fs::path { src / "Assets.xcassets" };
@@ -3002,9 +3024,9 @@ int main (int argc, char* argv[]) {
       for (const auto& type : types) {
         const auto size = std::get<0>(type);
         const auto scale = std::get<1>(type);
-        const auto scaled = std::to_string(size * scale);
-        const auto destFileName = "Icon-" + std::to_string(size) + "x" + std::to_string(size) + "@" + std::to_string(scale) + "x.png";
-        const auto destFilePath = Path { iconsPath / destFileName };
+        const auto scaled = JSON::Number(size * scale).str();
+        const auto destFileName = "Icon-" + JSON::Number(size).str() + "x" + JSON::Number(size).str() + "@" + JSON::Number(scale).str() + "x.png";
+        const auto destFilePath = iconsPath.string() + "/" + destFileName;
 
         const auto src = isForDesktop ? settings["mac_icon"] : settings["ios_icon"];
 
@@ -3026,6 +3048,11 @@ int main (int argc, char* argv[]) {
           log(r.output);
           exit(1);
         }
+
+	if (flagBuildForIOS) {
+          const auto resources = paths.platformSpecificOutputPath;
+          fs::copy(destFilePath, resources / destFileName, fs::copy_options::overwrite_existing);
+        }
       }
 
       const auto dest = isForDesktop
@@ -3036,9 +3063,10 @@ int main (int argc, char* argv[]) {
       compileAssetsCommand
         << "xcrun "
         << "actool \"" << assetsPath.string() << "\" "
+        << "--include-all-app-icons "
         << "--compile \"" << dest.string() << "\" "
         << "--platform " << (targetPlatform == "ios" || targetPlatform == "ios-simulator" ? "iphoneos" : "macosx") << " "
-        << "--minimum-deployment-target 10.15 "
+        << "--minimum-deployment-target " << (targetPlatform == "ios" || targetPlatform == "ios-simulator" ? "15.0" : "10.15") << " "
         << "--app-icon AppIcon "
         << "--output-partial-info-plist "
           << "\""
@@ -4812,6 +4840,10 @@ int main (int argc, char* argv[]) {
       }
 
       settings["ios_info_plist_data"] += (
+        String("  </array>\n") +
+        "  <key>BGTaskSchedulerPermittedIdentifiers</key>\n" +
+        "  <array>\n" +
+        "     <string>" + settings["meta_bundle_identifier"] + "</string>\n" +
         "  </array>\n"
       );
 
@@ -5295,11 +5327,8 @@ int main (int argc, char* argv[]) {
         );
       }
 
-      if (flagDebugMode) {
-        entitlementSettings["configured_entitlements"] += (
-          "  <key>get-task-allow</key>\n"
-          "  <true/>\n "
-        );
+      if (flagDebugMode && settings["ios_distribution_method"] == "debugging") {
+        entitlementSettings["configured_entitlements"] += ("  <key>get-task-allow</key>\n" "  <true/>\n ");
       }
 
       writeFile(
