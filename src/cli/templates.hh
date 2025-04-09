@@ -1016,7 +1016,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
         MTL_FAST_MATH = YES;
         ONLY_ACTIVE_ARCH = YES;
         SDKROOT = {{ios_sdkroot}};
-        SUPPORTED_PLATFORMS = "iphonesimulator iphoneos";
+        SUPPORTED_PLATFORMS = "iphonesimulator iphoneos ipados ipadsimulator";
       };
       name = Debug;
     };
@@ -1075,7 +1075,7 @@ constexpr auto gXCodeProject = R"ASCII(// !$*UTF8*$!
         MTL_ENABLE_DEBUG_INFO = NO;
         MTL_FAST_MATH = YES;
         SDKROOT = {{ios_sdkroot}};
-        SUPPORTED_PLATFORMS = "iphonesimulator iphoneos";
+        SUPPORTED_PLATFORMS = "iphonesimulator iphoneos ipados ipadsimulator";
         VALIDATE_PRODUCT = YES;
       };
       name = Release;
