@@ -111,15 +111,14 @@ npm link @socketsupply/socket   # link socket and you'll be ready to go.
 `Socket` provides a built-in `test runner` similar to `node:test` which outputs the test results in [TAP](https://testanything.org/) format.
  You can also check [`test/`](test/) for the unit and integration test suite.
 
+### Project Leads / Contacts
+
+[@heapwolf][0], [@jwerle][1],
+
 
 ### Contributing
 
 We welcome contributions from everyone! Please check our [Contribution Guide](CONTRIBUTING.md) to learn more.
-Don't hesitate to stop by [Discord](https://discord.com/invite/YPV32gKCsH) and ask the team about your issue and if someone is already working on it.  
-Please connect with any current project contributors: [@heapwolf][0], [@jwerle][1], and [@chicoxyzzy][2] if you want to contribute to the `Socket Runtime` project itself.  
-Thank you for your interest in reporting/fixing issues and contributing to `Socket`!  
 
 [0]:https://github.com/heapwolf
 [1]:https://github.com/jwerle
-[2]:https://github.com/chicoxyzzy
-
