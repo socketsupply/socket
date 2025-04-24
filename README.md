@@ -71,11 +71,6 @@ Socket Supports both ESM and CommonJS
 | ☀︎      | Use `crypto.randomUUID()` instead                                           |
 
 
-### FAQ
-
-Check the FAQs on our [Website](https://socketsupply.co/guides/#faq) to learn more.
-
-
 ### Building your first Socket app!
 
 `Create Socket App` is similar to React's `Create React App`, we provide a few basic boilerplates and some strong opinions so you can get coding on a production-quality app as quickly as possible.  
