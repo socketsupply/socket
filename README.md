@@ -83,11 +83,6 @@ Please check [create-socket-app Repo](https://github.com/socketsupply/create-soc
 You can also check our `Examples` in the [Examples Repo](https://github.com/socketsupply/socket-examples).  
 §§§
 
-### Documentation
-
-The full documentation can be found on the [Socket Runtime](https://socketsupply.co/) website.  
-The `Socket Runtime` documentation covers Socket APIs, includes examples, multiple guides (`Apple`, `Desktop`, and `Mobile`), `P2P` documentation, and more.
-
 
 ### Development
 
