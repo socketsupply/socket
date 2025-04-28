@@ -393,7 +393,7 @@ export function Request(input, options) {
   if ((this.method === 'GET' || this.method === 'HEAD') && body) {
     throw new TypeError('Body not allowed for GET or HEAD requests')
   }
-  this._initBody(body)
+  this._initBody(body, options)
 
   if (this.method === 'GET' || this.method === 'HEAD') {
     if (options.cache === 'no-store' || options.cache === 'no-cache') {
@@ -478,7 +478,7 @@ export function Response(bodyInit, options) {
   this.statusText = options.statusText === undefined ? '' : '' + options.statusText
   this.headers = new Headers(options.headers)
   this.url = options.url || ''
-  this._initBody(bodyInit)
+  this._initBody(bodyInit, options)
 }
 
 Body.call(Response.prototype)
@@ -573,6 +573,10 @@ export function fetch(input, init) {
       setTimeout(function() {
         reject(new DOMException('Aborted', 'AbortError'))
       }, 0)
+    }
+
+    if (init?.onxhr) {
+      init.onxhr(xhr)
     }
 
     function fixUrl(url) {

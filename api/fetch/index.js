@@ -97,7 +97,7 @@ async function initBody (body) {
     if (this._bodyArrayBuffer) {
       const arrayBuffer = this._bodyArrayBuffer
       this.body = new ReadableStream({
-        start (controller) {
+        async start (controller) {
           controller.enqueue(arrayBuffer)
           controller.close()
         }
@@ -105,16 +105,42 @@ async function initBody (body) {
     } else if (this._bodyBlob) {
       const blob = this._bodyBlob
       this.body = new ReadableStream({
+        type: 'bytes',
         async start (controller) {
-          controller.enqueue(await blob.arrayBuffer())
+          const stream = await blob.stream()
+          if (controller.byobRequest) {
+            const reader = stream.getReader({ mode: 'byob' })
+            while (true) {
+              const { done, value } = await reader.read(controller.byobRequest.view)
+              if (done) {
+                break
+              }
+
+              if (value?.byteLength > 0) {
+                controller.byobRequest.respond(value.byteLength)
+              }
+            }
+          } else {
+            const reader = stream.getReader()
+            while (true) {
+              const { done, value } = await reader.read()
+              if (done) {
+                break
+              }
+
+              controller.enqueue(value)
+            }
+          }
+
           controller.close()
         }
       })
     } else if (this._bodyText) {
       const text = this._bodyText
+      const encoded = textEncoder.encode(text)
       this.body = new ReadableStream({
-        start (controller) {
-          controller.enqueue(textEncoder.encode(text))
+        async start (controller) {
+          controller.enqueue(encoded)
           controller.close()
         }
       })
