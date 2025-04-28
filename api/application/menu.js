@@ -2,6 +2,7 @@
 import { MenuItemEvent } from '../internal/events.js'
 import { Deferred } from '../async.js'
 import ipc from '../ipc.js'
+import os from '../os.js'
 
 let contextMenuDeferred = null
 
@@ -450,6 +451,7 @@ export default container
  * @ignore
  */
 export async function setMenu (options, type) {
+  options = { ...options }
   const menu = options.value
 
   // validate the menu
@@ -536,6 +538,10 @@ export async function setMenu (options, type) {
       ? 'application.setTrayMenu'
       : 'application.setSystemMenu'
   )
+
+  if (os.platform() === 'linux') {
+    options.value = encodeURIComponent(options.value)
+  }
 
   return await ipc.send(command, options)
 }
