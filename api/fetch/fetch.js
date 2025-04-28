@@ -348,7 +348,7 @@ function normalizeMethod(method) {
   return methods.indexOf(upcased) > -1 ? upcased : method
 }
 
-export function Request(input, options) {
+export function Request(input, options, xhr) {
   if (!(this instanceof Request)) {
     throw new TypeError('Please use the "new" operator, this DOM object constructor cannot be called as a function.')
   }
@@ -393,7 +393,7 @@ export function Request(input, options) {
   if ((this.method === 'GET' || this.method === 'HEAD') && body) {
     throw new TypeError('Body not allowed for GET or HEAD requests')
   }
-  this._initBody(body, options)
+  this._initBody(body, options, xhr)
 
   if (this.method === 'GET' || this.method === 'HEAD') {
     if (options.cache === 'no-store' || options.cache === 'no-cache') {
@@ -461,7 +461,7 @@ function parseHeaders(rawHeaders) {
 
 Body.call(Request.prototype)
 
-export function Response(bodyInit, options) {
+export function Response(bodyInit, options, xhr) {
   if (!(this instanceof Response)) {
     throw new TypeError('Please use the "new" operator, this DOM object constructor cannot be called as a function.')
   }
@@ -478,7 +478,7 @@ export function Response(bodyInit, options) {
   this.statusText = options.statusText === undefined ? '' : '' + options.statusText
   this.headers = new Headers(options.headers)
   this.url = options.url || ''
-  this._initBody(bodyInit, options)
+  this._initBody(bodyInit, options, xhr)
 }
 
 Body.call(Response.prototype)
@@ -526,13 +526,13 @@ try {
 
 export function fetch(input, init) {
   return new Promise(function(resolve, reject) {
-    var request = new Request(input, init)
+    var xhr = new XMLHttpRequest()
+    var sent = false
+    var request = new Request(input, init, xhr)
 
     if (request.signal && request.signal.aborted) {
       return reject(new DOMException('Aborted', 'AbortError'))
     }
-
-    var xhr = new XMLHttpRequest()
 
     function abortXhr() {
       xhr.abort()
@@ -553,7 +553,9 @@ export function fetch(input, init) {
       options.url = 'responseURL' in xhr ? xhr.responseURL : options.headers.get('X-Request-URL')
       var body = 'response' in xhr ? xhr.response : xhr.responseText
       setTimeout(function() {
-        resolve(new Response(body, options))
+        if (sent) return
+        sent = true
+        resolve(new Response(body, options, xhr))
       }, 0)
     }
 
@@ -573,10 +575,6 @@ export function fetch(input, init) {
       setTimeout(function() {
         reject(new DOMException('Aborted', 'AbortError'))
       }, 0)
-    }
-
-    if (init?.onxhr) {
-      init.onxhr(xhr)
     }
 
     function fixUrl(url) {
@@ -631,6 +629,26 @@ export function fetch(input, init) {
           request.signal.removeEventListener('abort', abortXhr)
         }
       }
+    }
+
+    // XXX(@jwerle): introduced to support 'text/event-stream' or any other streaming text sources
+    xhr.addEventListener('progress', () => {
+      if (sent) return
+      var options = {
+        statusText: xhr.statusText,
+        headers: parseHeaders(xhr.getAllResponseHeaders() || ''),
+        status: xhr.status,
+        url: ''
+      }
+      if ((options.headers.get('content-type') || '').startsWith('text/')) {
+        options.url = 'responseURL' in xhr ? xhr.responseURL : options.headers.get('X-Request-URL')
+        sent = true
+        resolve(new Response(null, options, xhr))
+      }
+    }, { once: true })
+
+    if (init?.onxhr) {
+      init.onxhr(xhr)
     }
 
     xhr.send(typeof request._bodyInit === 'undefined' ? null : request._bodyInit)

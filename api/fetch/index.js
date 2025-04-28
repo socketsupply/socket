@@ -30,7 +30,7 @@ const textEncoder = new TextEncoder()
 Response.prototype._initBody = initBody
 Request.prototype._initBody = initBody
 
-async function initBody (body) {
+async function initBody (body, options, xhr) {
   this.body = null
 
   if (
@@ -97,7 +97,7 @@ async function initBody (body) {
     if (this._bodyArrayBuffer) {
       const arrayBuffer = this._bodyArrayBuffer
       this.body = new ReadableStream({
-        async start (controller) {
+        start (controller) {
           controller.enqueue(arrayBuffer)
           controller.close()
         }
@@ -105,47 +105,58 @@ async function initBody (body) {
     } else if (this._bodyBlob) {
       const blob = this._bodyBlob
       this.body = new ReadableStream({
-        type: 'bytes',
         async start (controller) {
-          const stream = await blob.stream()
-          if (controller.byobRequest) {
-            const reader = stream.getReader({ mode: 'byob' })
-            while (true) {
-              const { done, value } = await reader.read(controller.byobRequest.view)
-              if (done) {
-                break
-              }
-
-              if (value?.byteLength > 0) {
-                controller.byobRequest.respond(value.byteLength)
-              }
-            }
-          } else {
-            const reader = stream.getReader()
-            while (true) {
-              const { done, value } = await reader.read()
-              if (done) {
-                break
-              }
-
-              controller.enqueue(value)
-            }
-          }
-
+          controller.enqueue(await blob.arrayBuffer())
           controller.close()
         }
       })
     } else if (this._bodyText) {
       const text = this._bodyText
-      const encoded = textEncoder.encode(text)
       this.body = new ReadableStream({
-        async start (controller) {
-          controller.enqueue(encoded)
+        start (controller) {
+          controller.enqueue(textEncoder.encode(text))
           controller.close()
         }
       })
     } else {
       this.body = null
+    }
+  }
+
+  if (this instanceof Request) {
+    options.onxhr = (xhr) => {
+      const accept = this.headers.get('accept') || ''
+      if (accept.startsWith('text/')) {
+        try {
+          xhr.responseType = 'text'
+        } catch {}
+      }
+    }
+  }
+
+  const contentType = this.headers.get('content-type') || ''
+  if (xhr && contentType.startsWith('text/')) {
+    let controller
+    let byteOffset = 0
+    this.body = new ReadableStream({
+      type: 'bytes',
+      start (c) {
+        controller = c
+      }
+    })
+    xhr.addEventListener('load', () => {
+      if (controller) {
+        controller.close()
+      }
+    }, { once: true })
+    xhr.onprogress = () => {
+      try {
+        if (controller) {
+          const buffer = textEncoder.encode(xhr.responseText.slice(byteOffset))
+          byteOffset = xhr.responseText.length
+          controller.enqueue(buffer)
+        }
+      } catch {}
     }
   }
 }
