@@ -12,4 +12,15 @@ export const NavigationHistoryEntry = currentEntry
   ? Object.getPrototypeOf(currentEntry).constructor
   : class NavigationHistoryEntry extends EventTarget {}
 
-export default globalThis.navigation ? globalThis.navigation : new Navigation()
+export const navigation = globalThis.navigation ? globalThis.navigation : new Navigation()
+export default navigation
+
+if (!('activation' in navigation) && globalThis.window) {
+  globalThis.addEventListener('pageswap', (e) => {
+    if (e.activation) {
+      try {
+        navigation.activation = e.activation
+      } catch {}
+    }
+  })
+}
