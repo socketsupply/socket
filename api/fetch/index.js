@@ -126,7 +126,7 @@ async function initBody (body, options, xhr) {
   if (this instanceof Request) {
     options.onxhr = (xhr) => {
       const accept = this.headers.get('accept') || ''
-      if (accept.startsWith('text/')) {
+      if (accept.startsWith('text/event-stream')) {
         try {
           xhr.responseType = 'text'
         } catch {}
@@ -135,7 +135,7 @@ async function initBody (body, options, xhr) {
   }
 
   const contentType = this.headers.get('content-type') || ''
-  if (xhr && contentType.startsWith('text/')) {
+  if (xhr && contentType.startsWith('text/event-stream')) {
     let controller
     let byteOffset = 0
     this.body = new ReadableStream({
@@ -145,15 +145,36 @@ async function initBody (body, options, xhr) {
       }
     })
     xhr.addEventListener('load', () => {
+      while (controller && byteOffset < xhr.responseText.length) {
+        xhr.onprogress()
+      }
+
       if (controller) {
         controller.close()
+        controller = null
       }
     }, { once: true })
     xhr.onprogress = () => {
       try {
-        if (controller) {
-          const buffer = textEncoder.encode(xhr.responseText.slice(byteOffset))
-          byteOffset = xhr.responseText.length
+        if (controller?.byobRequest) {
+          const byteLength = controller.byobRequest.view.byteLength
+          const bytesRead = Math.min(byteLength, xhr.responseText.length - byteOffset)
+          const text = xhr.responseText.slice(byteOffset, byteOffset + bytesRead)
+          const buffer = textEncoder.encode(text)
+
+          if (bytesRead === 0) {
+            controller.close()
+            controller = null
+          } else {
+            byteOffset += bytesRead
+            controller.byobRequest.view.set(buffer)
+            controller.byobRequest.respond(bytesRead)
+          }
+        } else if (controller) {
+          const bytesRead = xhr.responseText.length - byteOffset
+          const text = xhr.responseText.slice(byteOffset, byteOffset + bytesRead)
+          const buffer = textEncoder.encode(text)
+          byteOffset += bytesRead
           controller.enqueue(buffer)
         }
       } catch {}
