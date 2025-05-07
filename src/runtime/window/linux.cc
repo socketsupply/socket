@@ -172,7 +172,6 @@ namespace ssc::runtime::window {
     webkit_settings_set_enable_webaudio(this->settings, true);
     webkit_settings_set_enable_mediasource(this->settings, true);
     webkit_settings_set_enable_encrypted_media(this->settings, true);
-    webkit_settings_set_enable_dns_prefetching(this->settings, true);
     webkit_settings_set_enable_smooth_scrolling(this->settings, true);
     webkit_settings_set_enable_developer_extras(this->settings, options.debug);
 
@@ -1593,14 +1592,7 @@ namespace ssc::runtime::window {
                 continue;
               }
 
-              auto modifier = trim(accelerator[1]);
-              // normalize modifier to lower case
-              std::transform(
-                modifier.begin(),
-                modifier.end(),
-                modifier.begin(),
-                [](auto ch) { return std::tolower(ch); }
-              );
+              auto modifier = toLowerCase(trim(accelerator[1]));
               key = trim(parts[1]) == "_" ? "" : trim(accelerator[0]);
 
               GdkModifierType mask = (GdkModifierType)(0);
