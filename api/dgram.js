@@ -21,7 +21,7 @@ import { Buffer } from './buffer.js'
 import { isIPv4 } from './ip.js'
 import process from './process.js'
 import ipc from './ipc.js'
-import dns from './dns.js'
+import dns from './dns/promises.js'
 import gc from './gc.js'
 
 import * as exports from './dgram.js'
@@ -61,6 +61,7 @@ function defaultCallback (socket, resource) {
 
 function createDataListener (socket, resource) {
   // subscribe this socket to the firehose
+  // @ts-ignore
   globalThis.addEventListener('data', ondata)
   return ondata
 
@@ -74,7 +75,9 @@ function createDataListener (socket, resource) {
       })
     }
 
-    if (!data || BigInt(data.id) !== socket.id) return
+    if (!data || data.id !== socket.id) {
+      return
+    }
 
     if (source === 'udp.readStart') {
       if (buffer && buffer instanceof ArrayBuffer) {
@@ -98,6 +101,7 @@ function createDataListener (socket, resource) {
     }
 
     if (data.EOF) {
+      // @ts-ignore
       globalThis.removeEventListener('data', ondata)
     }
   }
@@ -142,6 +146,7 @@ function getAddressFamily (address) {
 function getSocketState (socket) {
   const result = ipc.sendSync('udp.getState', { id: socket.id })
 
+  // @ts-ignore
   if (result.err && result.err.code !== 'NOT_FOUND_ERR') {
     throw result.err
   }
@@ -154,7 +159,12 @@ function healhCheck (socket) {
   // @TODO(jwerle)
 }
 
-async function startReading (socket, callback) {
+/**
+ * @param {Socket} socket
+ * @param {function(Error?,object?)|undefined} [callback]
+ * @return {object}
+ */
+async function startReading (socket, callback = undefined) {
   let result = null
 
   if (!isFunction(callback)) {
@@ -184,7 +194,12 @@ async function startReading (socket, callback) {
   return result
 }
 
-async function stopReading (socket, callback) {
+/**
+ * @param {Socket} socket
+ * @param {function(Error?,object?)|undefined} [callback]
+ * @return {object}
+ */
+async function stopReading (socket, callback = undefined) {
   let result = null
 
   if (!isFunction(callback)) {
@@ -204,7 +219,12 @@ async function stopReading (socket, callback) {
   return result
 }
 
-async function getRecvBufferSize (socket, callback) {
+/**
+ * @param {Socket} socket
+ * @param {function(Error?,object?)|undefined} [callback]
+ * @return {object}
+ */
+async function getRecvBufferSize (socket, callback = undefined) {
   let result = null
 
   if (!isFunction(callback)) {
@@ -226,7 +246,12 @@ async function getRecvBufferSize (socket, callback) {
   return result
 }
 
-async function getSendBufferSize (socket, callback) {
+/**
+ * @param {Socket} socket
+ * @param {function(Error?,object?)|undefined} [callback]
+ * @return {object}
+ */
+async function getSendBufferSize (socket, callback = undefined) {
   let result = null
 
   if (!isFunction(callback)) {
@@ -248,7 +273,7 @@ async function getSendBufferSize (socket, callback) {
   return result
 }
 
-async function bind (socket, options, callback) {
+async function bind (socket, options = undefined, callback = undefined) {
   let result = null
 
   options = { ...options }
@@ -257,7 +282,7 @@ async function bind (socket, options, callback) {
     callback = noop
   }
 
-  if (typeof options.address !== 'string') {
+  if (!options.address || typeof options.address !== 'string') {
     options.address = getDefaultAddress(socket)
   }
 
@@ -326,7 +351,7 @@ async function bind (socket, options, callback) {
   return result
 }
 
-async function connect (socket, options, callback) {
+async function connect (socket, options = undefined, callback = undefined) {
   let result = null
 
   options = { ...options }
@@ -335,7 +360,7 @@ async function connect (socket, options, callback) {
     callback = noop
   }
 
-  if (typeof options.address !== 'string') {
+  if (!options.address || typeof options.address !== 'string') {
     options.address = getDefaultAddress(socket)
   }
 
@@ -408,7 +433,7 @@ async function connect (socket, options, callback) {
   return result
 }
 
-function disconnect (socket, callback) {
+function disconnect (socket, callback = undefined) {
   let result = null
 
   if (!isFunction(callback)) {
@@ -436,6 +461,12 @@ function disconnect (socket, callback) {
   return result
 }
 
+/**
+ * @param {Socket} socket
+ * @param {object} options
+ * @param {function(Error?)} callback
+ * @return {object|null}
+ */
 async function send (socket, options, callback) {
   let result = null
 
@@ -448,8 +479,10 @@ async function send (socket, options, callback) {
   if (socket.state.connectState === CONNECT_STATE_DISCONNECTED) {
     // wait for bind to finish
     if (socket.state.bindState === BIND_STATE_BINDING) {
-      const { err } = await new Promise((resolve, reject) => {
+      // @ts-ignore
+      const { err } = await new Promise((resolve) => {
         socket.once('listening', () => resolve({}))
+        // @ts-ignore
         socket.once('error', (err) => resolve({ err }))
       })
 
@@ -458,6 +491,7 @@ async function send (socket, options, callback) {
         return { err }
       }
     } else if (socket.state.bindState === BIND_STATE_UNBOUND) {
+      // @ts-ignore
       const { err } = await bind(socket, { port: 0 })
       if (err) {
         callback(err)
@@ -468,8 +502,10 @@ async function send (socket, options, callback) {
 
   // wait for connect to finish
   if (socket.state.connectState === CONNECT_STATE_CONNECTING) {
-    const { err } = await new Promise((resolve, reject) => {
+    // @ts-ignore
+    const { err } = await new Promise((resolve) => {
       socket.once('connect', () => resolve({}))
+      // @ts-ignore
       socket.once('error', (err) => resolve({ err }))
     })
 
@@ -485,6 +521,7 @@ async function send (socket, options, callback) {
     socket.state.connectState !== CONNECT_STATE_CONNECTED
   ) {
     try {
+      // @ts-ignore
       options.address = await dns.lookup(options.address, 4)
     } catch (err) {
       callback(err)
@@ -667,18 +704,35 @@ export const createSocket = (options, callback) => new Socket(options, callback)
  */
 export class Socket extends EventEmitter {
   #resource = null
+  knownIdWasGivenInSocketConstruction = false
+  dataListener
+  conduit
+  signal = null
+  legacy = false
+  type = 'udp4'
+  id
+
+  state = {
+    recvBufferSize: 0,
+    sendBufferSize: 0,
+    bindState: BIND_STATE_UNBOUND,
+    connectState: CONNECT_STATE_DISCONNECTED,
+    reuseAddr: false,
+    ipv6Only: false,
+    remoteAddress: {},
+  }
 
   constructor (options, callback) {
     super()
-
-    this.id = options?.id || rand64()
-    this.knownIdWasGivenInSocketConstruction = Boolean(options?.id)
 
     if (typeof options === 'string') {
       options = { type: options }
     }
 
     options = { ...options }
+
+    this.id = String(options.id || rand64())
+    this.knownIdWasGivenInSocketConstruction = Boolean(options.id)
 
     if (!['udp4', 'udp6'].includes(options.type)) {
       throw new ERR_SOCKET_BAD_TYPE()
@@ -690,14 +744,10 @@ export class Socket extends EventEmitter {
     this.type = options.type
     this.signal = options?.signal ?? null
 
-    this.state = {
-      recvBufferSize: options.recvBufferSize,
-      sendBufferSize: options.sendBufferSize,
-      bindState: BIND_STATE_UNBOUND,
-      connectState: CONNECT_STATE_DISCONNECTED,
-      reuseAddr: options.reuseAddr === true,
-      ipv6Only: options.ipv6Only === true
-    }
+    this.state.recvBufferSize = options.recvBufferSize
+    this.state.sendBufferSize = options.sendBufferSize
+    this.state.reuseAddr = options.reuseAddr === true
+    this.state.ipv6Only = options.ipv6Only === true
 
     if (isFunction(callback)) {
       this.on('message', callback)
@@ -750,7 +800,7 @@ export class Socket extends EventEmitter {
    * @see {@link https://nodejs.org/api/dgram.html#socketbindport-address-callback}
    */
   bind (arg1, arg2, arg3) {
-    const options = {}
+    const options = { port: 0, address: '0.0.0.0' }
     const cb = isFunction(arg2)
       ? arg2
       : isFunction(arg3)
@@ -775,7 +825,7 @@ export class Socket extends EventEmitter {
       const index = globalThis.__args?.index || 0
       const a = murmur3(options.address + options.port)
       const b = murmur3(options.address + options.port, index)
-      this.id = BigInt(a) * BigInt(b)
+      this.id = String(BigInt(a) * BigInt(b))
       this.knownIdWasGivenInSocketConstruction = true
     }
 
@@ -838,17 +888,19 @@ export class Socket extends EventEmitter {
         return
       }
 
-      startReading(this, (err) => {
-        this.#resource.runInAsyncScope(() => {
-          if (err) {
-            cb(err)
-          } else {
-            this.dataListener = createDataListener(this, this.#resource)
-            cb(null)
-            this.emit('listening')
-          }
+      if (!this.dataListener) {
+        startReading(this, (err) => {
+          this.#resource.runInAsyncScope(() => {
+            if (err) {
+              cb(err)
+            } else {
+              this.dataListener = createDataListener(this, this.#resource)
+              cb(null)
+              this.emit('listening')
+            }
+          })
         })
-      })
+      }
     })
 
     return this
@@ -967,7 +1019,7 @@ export class Socket extends EventEmitter {
    * @see {@link https://nodejs.org/api/dgram.html#socketsendmsg-offset-length-port-address-callback}
    */
   send (buffer, ...args) {
-    const id = this.id || rand64()
+    const id = String(this.id || rand64())
     let offset = 0
     let length
     let port
@@ -1060,11 +1112,11 @@ export class Socket extends EventEmitter {
    * Close the underlying socket and stop listening for data on it. If a
    * callback is provided, it is added as a listener for the 'close' event.
    *
-   * @param {function=} callback - Called when the connection is completed or on error.
+   * @param {function(Error?)} callback - Called when the connection is completed or on error.
    *
    * @see {@link https://nodejs.org/api/dgram.html#socketclosecallback}
    */
-  close (cb) {
+  close (cb = undefined) {
     const state = getSocketState(this)
 
     if (
@@ -1319,24 +1371,36 @@ export class SocketError extends InternalError {
  * Thrown when a socket is already bound.
  */
 export class ERR_SOCKET_ALREADY_BOUND extends SocketError {
-  get message () { return 'Socket is already bound' }
+  constructor () {
+    super('Socket is already bound')
+  }
 }
 
 /**
  * @ignore
  */
-export class ERR_SOCKET_BAD_BUFFER_SIZE extends SocketError {}
+export class ERR_SOCKET_BAD_BUFFER_SIZE extends SocketError {
+  constructor (message) {
+    super (message || '')
+  }
+}
 
 /**
  * @ignore
  */
-export class ERR_SOCKET_BUFFER_SIZE extends SocketError {}
+export class ERR_SOCKET_BUFFER_SIZE extends SocketError {
+  constructor (message) {
+    super (message || '')
+  }
+}
 
 /**
  * Thrown when the socket is already connected.
  */
 export class ERR_SOCKET_DGRAM_IS_CONNECTED extends SocketError {
-  get message () { return 'Alread connected' }
+  constructor () {
+    super('Alread connected')
+  }
 }
 
 /**
@@ -1344,14 +1408,18 @@ export class ERR_SOCKET_DGRAM_IS_CONNECTED extends SocketError {
  */
 export class ERR_SOCKET_DGRAM_NOT_CONNECTED extends SocketError {
   syscall = 'getpeername'
-  get message () { return 'Not connected' }
+  constructor () {
+    super('Not connected')
+  }
 }
 
 /**
  * Thrown when the socket is not running (not bound or connected).
  */
 export class ERR_SOCKET_DGRAM_NOT_RUNNING extends SocketError {
-  get message () { return 'Not running' }
+  constructor () {
+    super('Not running')
+  }
 }
 
 /**
@@ -1359,8 +1427,8 @@ export class ERR_SOCKET_DGRAM_NOT_RUNNING extends SocketError {
  */
 export class ERR_SOCKET_BAD_TYPE extends TypeError {
   code = 'ERR_SOCKET_BAD_TYPE'
-  get message () {
-    return 'Bad socket type specified. Valid types are: udp4, udp6'
+  constructor () {
+    super('Bad socket type specified. Valid types are: udp4, udp6')
   }
 }
 
@@ -1369,6 +1437,9 @@ export class ERR_SOCKET_BAD_TYPE extends TypeError {
  */
 export class ERR_SOCKET_BAD_PORT extends RangeError {
   code = 'ERR_SOCKET_BAD_PORT'
+  constructor (message) {
+    super (message || '')
+  }
 }
 
 export default exports
