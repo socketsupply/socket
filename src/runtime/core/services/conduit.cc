@@ -445,7 +445,7 @@ namespace ssc::runtime::core::services {
     const auto uri = URL::Builder()
       .setScheme("ipc")
       .setHostname(decoded.pluck("route"))
-      .setSearchParam("id", client->id)
+      .setSearchParam("id", std::to_string(client->id))
       .setSearchParams(decoded.map())
       .build()
       .str();
