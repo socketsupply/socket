@@ -356,8 +356,10 @@ namespace ssc::runtime::JSON {
       Number (const Number&);
       Number (double);
       Number (char);
-      Number (int);
+      Number (int32_t);
       Number (int64_t);
+      Number (uint32_t);
+      Number (uint64_t);
       Number (bool);
       Number (const String&);
 

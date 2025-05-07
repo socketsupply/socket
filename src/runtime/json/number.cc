@@ -20,11 +20,19 @@ namespace ssc::runtime::JSON {
     this->data = (double) number;
   }
 
-  Number::Number (int number) {
+  Number::Number (int32_t number) {
     this->data = (double) number;
   }
 
   Number::Number (int64_t number) {
+    this->data = (double) number;
+  }
+
+  Number::Number (uint32_t number) {
+    this->data = (double) number;
+  }
+
+  Number::Number (uint64_t number) {
     this->data = (double) number;
   }
 
