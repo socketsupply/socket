@@ -104,7 +104,7 @@ namespace ssc::runtime::udp {
       struct sockaddr_in addr;
 
       // callbacks
-      UDPReceiveCallback receiveCallback;
+      UDPReceiveCallback receiveCallback = nullptr;
       Vector<Function<void()>> onclose;
 
       // instance state

@@ -31,7 +31,7 @@ namespace ssc::runtime::udp {
 
   bool SocketManager::has (ID id) {
     Lock lock(this->mutex);
-    return this->sockets.find(id) != this->sockets.end();
+    return this->sockets.contains(id);
   }
 
   void SocketManager::remove (ID id) {
