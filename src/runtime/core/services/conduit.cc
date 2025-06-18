@@ -976,25 +976,35 @@ namespace ssc::runtime::core::services {
           closeHandle();
         }
       } else {
-        for (const auto& entry : this->clients) {
-          auto client = entry.second;
+        auto closed_counter = std::make_shared<std::atomic<size_t>>(this->clients.size());
 
-          client->close([=, this] () {
+        std::vector<uint64_t> client_ids;
+        client_ids.reserve(this->clients.size());
+        for (const auto& entry : this->clients) {
+          client_ids.push_back(entry.first);
+        }
+
+        auto on_client_closed = [this, closed_counter, closeHandle, client_ids]() {
+          if (--(*closed_counter) == 0) {
             Lock lock(this->mutex);
 
-            for (auto& entry : this->clients) {
-              if (entry.second && !entry.second->isClosed) {
-                return;
+            // Delete all the client objects.
+            for (const auto id : client_ids) {
+              if (this->clients.count(id)) {
+                delete this->clients.at(id);
               }
-            }
-
-            for (auto& entry : this->clients) {
-              delete entry.second;
             }
 
             this->clients.clear();
             closeHandle();
-          });
+          }
+        };
+
+        for (const auto id : client_ids) {
+          if (this->clients.count(id)) {
+            auto client = this->clients.at(id);
+            client->close(on_client_closed);
+          }
         }
       }
     });
