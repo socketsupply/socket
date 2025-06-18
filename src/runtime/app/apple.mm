@@ -31,7 +31,7 @@ static dispatch_queue_t queue = dispatch_queue_create(
 
 - (void) applicationWillBecomeActive: (NSNotification*) notification {
   dispatch_async(queue, ^{
-    self.app->resume();
+    self.app->resume(); // TODO(@heapwolf): Might not be called because of pause condition check.
   });
 }
 
@@ -254,6 +254,10 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
 }
 
 - (void) applicationDidEnterBackground: (UIApplication*) application {
+  dispatch_async(queue, ^{
+    self.app->pause();
+  });
+
   for (const auto& window : self.app->runtime.windowManager.windows) {
     if (window != nullptr) {
       window->eval("window.blur()");
@@ -262,6 +266,10 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
 }
 
 - (void) applicationWillEnterForeground: (UIApplication*) application {
+  dispatch_async(queue, ^{
+    self.app->resume();
+  });
+
   for (const auto& window : self.app->runtime.windowManager.windows) {
     if (window != nullptr) {
       if (!window->webview.isHidden) {
@@ -286,16 +294,12 @@ didFailToContinueUserActivityWithType: (NSString*) userActivityType
 }
 
 - (void) applicationDidBecomeActive: (UIApplication*) application {
-  dispatch_async(queue, ^{
-    self.app->resume();
-  });
+}
+
+- (void) handleAppDidBecomeActive:(NSNotification *)notification {
 }
 
 - (void) applicationWillResignActive: (UIApplication*) application {
-  dispatch_async(queue, ^{
-    // XXX(@jwerle): on iOS, we do not pause the runtime
-    // self.app->pause();
-  });
 }
 
 -  (BOOL) application: (UIApplication*) application
