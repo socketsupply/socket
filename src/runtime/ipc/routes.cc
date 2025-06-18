@@ -3607,16 +3607,26 @@ static void mapIPCRoutes (Router *router) {
       message.seq,
       id,
       [id, router, message, reply](auto seq, auto json, auto queuedResponse) {
-        if (seq == "-1" && router->bridge.getRuntime()->services.conduit.has(id)) {
-          auto data = json["data"];
+        auto hasId = router->bridge.getRuntime()->services.conduit.has(id);
 
-          ssc::runtime::core::services::Conduit::Message::Options options = {
-            { "port", data["port"].str() },
-            { "address", data["address"].template as<JSON::String>().data }
-          };
+        debug(">>> <- RESPONSE RECEIVED (id=%llu, seq=%s, hasId=%i)", id, seq.c_str(), hasId);
 
+        if (seq == "") { // wtf
+          debug(">>> XXXX (json=%s)", json.str().c_str());
+        }
+
+        // conduit must have garbage collected the client with that id or the ID is wrong
+        if (seq == "-1" && hasId) {
           auto client = router->bridge.getRuntime()->services.conduit.get(id);
+
           if (client) {
+            auto data = json["data"];
+            ssc::runtime::core::services::Conduit::Message::Options options = {
+              { "port", data["port"].str() },
+              { "address", data["address"].template as<JSON::String>().data }
+            };
+
+            debug(">>> <- RESPONSE FOR CLIENT (id=%llu", id); // Never reached
             client->send(options, queuedResponse.body, queuedResponse.length);
             return;
           }
@@ -3638,6 +3648,8 @@ static void mapIPCRoutes (Router *router) {
     if (err.type != JSON::Type::Null) {
       return reply(Result::Err { message, err });
     }
+    
+    debug(">>> --- UDP SHOULD READ STOP");
 
     uint64_t id;
     REQUIRE_AND_GET_MESSAGE_VALUE(id, "id", std::stoull);
@@ -3677,6 +3689,8 @@ static void mapIPCRoutes (Router *router) {
     options.address = message.get("address", "0.0.0.0");
     options.bytes = message.buffer.shared();
     options.size = message.buffer.size();
+
+    // debug(">>> --- UDP SHOULD SEND");
 
     router->bridge.getRuntime()->services.udp.send(
       message.seq,
