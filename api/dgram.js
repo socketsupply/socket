@@ -829,7 +829,7 @@ export class Socket extends EventEmitter {
       this.knownIdWasGivenInSocketConstruction = true
     }
 
-    bind(this, options, (err, info) => {
+    bind (this, options, (err, info) => {
       if (err) {
         return this.#resource.runInAsyncScope(() => {
           if (
@@ -878,6 +878,12 @@ export class Socket extends EventEmitter {
             })
           })
         }
+
+        this.conduit.addEventListener('reopen', () => {
+          startReading(this, err => {
+            if (err) this.emit('error', err)
+          })
+        })
 
         if (!this.conduit.isActive) {
           this.conduit.addEventListener('open', onopen, { once: true })
@@ -1134,7 +1140,7 @@ export class Socket extends EventEmitter {
       }
     }
 
-    close(this, (err) => {
+    close (this, (err) => {
       if (err) {
         // gc might have already closed this
         if (!gc.finalizers.has(this)) {
