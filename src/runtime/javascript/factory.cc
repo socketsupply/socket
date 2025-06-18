@@ -56,6 +56,7 @@ namespace ssc::runtime::javascript {
       "if (typeof value === 'string') {                                      \n"
       "  try {                                                               \n"
       "    detail = decodeURIComponent(value);                               \n"
+      "    if (detail === '') detail = '{}';                                 \n"
       "    detail = JSON.parse(detail);                                      \n"
       "  } catch (err) {                                                     \n"
       "    if (!detail) {                                                    \n"
