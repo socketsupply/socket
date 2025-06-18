@@ -28,8 +28,9 @@ let defaultConduitPort = globalThis.__args.conduit?.port || 0
  *   sharedKey?: string
  *}} ConduitOptions
  */
-export const DEFALUT_MAX_RECONNECT_RETRIES = 32
-export const DEFAULT_MAX_RECONNECT_TIMEOUT = 256
+export const DEFAULT_MAX_RECONNECT_RETRIES = 32
+export const DEFAULT_INITIAL_RECONNECT_TIMEOUT = 500
+export const DEFAULT_MAX_RECONNECT_TIMEOUT = 30000
 
 /**
  * A pool of known `Conduit` instances.
@@ -37,22 +38,32 @@ export const DEFAULT_MAX_RECONNECT_TIMEOUT = 256
  */
 export const pool = new Set()
 
-// reconnect when application resumes
 hooks.onApplicationResume(async () => {
   isApplicationPaused = false
+
+  const status = await Conduit.status()
+  
   let result
-  result = await ipc.request('internal.conduit.stop')
-  if (result.err) {
-    console.warn(result.err)
+
+  if (status?.isActive) {
+    result = await ipc.request('internal.conduit.stop')
+
+    if (result.err) {
+      console.warn(result.err)
+    }
   }
 
   result = await ipc.request('internal.conduit.start')
+  console.log('HOOKS_CONDUIT_STARTING', result?.data)
+
   if (result.err) {
     console.warn(result.err)
+    return
   }
 
   for (const conduit of pool) {
-    // @ts-ignore
+    conduit.port = result.data.port
+
     if (conduit?.shouldReconnect) {
       // @ts-ignore
       conduit.reconnect()
@@ -65,6 +76,8 @@ hooks.onApplicationResume(async () => {
 hooks.onApplicationPause(async () => {
   isApplicationPaused = true
   const result = await ipc.request('internal.conduit.stop')
+  console.log('HOOKS_CONDUIT_SHOULD_STOP', result)
+
   if (result.err) {
     console.warn(result.err)
   }
@@ -248,6 +261,7 @@ export class Conduit extends EventTarget {
     super()
 
     this.id = String(options.id || '0')
+    console.log('INTERNAL_CREATE CONDUIT CLIENT', this.id)
     this.sharedKey = options.sharedKey || this.sharedKey
     // @ts-ignore
     this.port = this.constructor.port
@@ -379,6 +393,8 @@ export class Conduit extends EventTarget {
     }
 
     this.port = result.data.port
+    console.log('INTERNAL_STARTED_CONDUIT', { port: this.port })
+    this.isErroring = false
 
     this.socket = new WebSocket(this.url)
     this.socket.binaryType = 'arraybuffer'
@@ -386,6 +402,7 @@ export class Conduit extends EventTarget {
       this.socket = null
       this.isActive = false
       this.isConnecting = false
+      this.isErroring = true
       this.dispatchEvent(new ErrorEvent('error', e))
 
       if (typeof callback === 'function') {
@@ -399,6 +416,8 @@ export class Conduit extends EventTarget {
     }
 
     this.socket.onclose = (e) => {
+      if (this.isErroring) return
+
       this.socket = null
       this.isConnecting = false
       this.isActive = false
@@ -436,31 +455,50 @@ export class Conduit extends EventTarget {
    * @param {{retries?: number, timeout?: number}} [options]
    * @return {Promise<Conduit>}
    */
-  async reconnect (options = null) {
+
+  // In the reconnect() method:
+  async reconnect (options = {}) {
+    console.log('INTERNAL_WILL_RECONNECT')
+
     if (this.isConnecting) {
-      return this
+      return Promise.resolve(this)
     }
 
-    const retries = options?.retries ?? DEFALUT_MAX_RECONNECT_RETRIES
-    const timeout = options?.timeout ?? DEFAULT_MAX_RECONNECT_TIMEOUT
+    const {
+      retries = DEFAULT_MAX_RECONNECT_RETRIES,
+      // Use an initial timeout that will be increased
+      timeout = DEFAULT_INITIAL_RECONNECT_TIMEOUT
+    } = options
 
-    return await new Promise((resolve, reject) => {
-      queueMicrotask(() => {
-        const promise = this.connect((err) => {
-          if (err) {
-            this.isActive = false
-            if (retries > 0) {
-              setTimeout(() => this.reconnect({
-                retries: retries - 1,
-                timeout
-              }), timeout)
-            }
-          }
-        })
+    try {
+      console.log('INTERNAL_RECONNECTING')
+      await this.connect()
+      // other modules like dgram will need to know when the conduit has
+      // reconnected, the reopen event is the correct way to handle it.
+      console.log('INTERNAL_DID_RECONNECT')
+      this.dispatchEvent(new CustomEvent('reopen'))
+      return this
+    } catch (err) {
+      // this.isActive = false
 
-        return promise.then(resolve, reject)
+      if (retries <= 0) {
+        console.error('Failed to reconnect after all retries. Stopping.');
+        throw new Error('Failed to reconnect after multiple retries.')
+      }
+
+      // Calculate next timeout with backoff and jitter
+      const nextTimeout = Math.min(timeout * 2, DEFAULT_MAX_RECONNECT_TIMEOUT);
+      const jitter = Math.random() * 250; // 250ms of randomness
+      const waitTime = nextTimeout + jitter;
+
+      console.log(`Waiting ${Math.round(waitTime)}ms before next reconnect...`);
+      await new Promise(resolve => setTimeout(resolve, waitTime))
+
+      return this.reconnect({
+        retries: retries - 1,
+        timeout: nextTimeout
       })
-    })
+    }
   }
 
   /**
