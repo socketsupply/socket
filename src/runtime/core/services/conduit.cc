@@ -421,6 +421,7 @@ namespace ssc::runtime::core::services {
             const auto payload = std::make_shared<unsigned char[]>(size);
 
             memcpy(payload.get(), bytes.get(), size);
+
             this->dispatch([this, options, size, payload, from, to] () {
               Lock lock(this->mutex);
               auto recipient = this->clients[to];
@@ -429,6 +430,7 @@ namespace ssc::runtime::core::services {
                 Lock lock(client->mutex);
                 do {
                   Lock lock(recipient->mutex);
+                  debug(">>>>>>>>>>>>>>>>>>>>> PROCESSED FRAME (PAYLOAD)");
                   recipient->send(options, payload, size);
                 } while (0);
               }
@@ -495,6 +497,8 @@ namespace ssc::runtime::core::services {
       return;
     }
 
+    debug(">>> FRAME WITH URI %s", uri.c_str());
+
     bool invoked = false;
     if (window != nullptr) {
       invoked = window->bridge->router.invoke(uri, bytes, size);
@@ -553,6 +557,8 @@ namespace ssc::runtime::core::services {
     if (!this->conduit) {
       return false;
     }
+
+    debug(">>> CLIENT SEND BYTES FROM UDP TO WEBSOCKET");
 
     Vector<uint8_t> payload(bytes.get(), bytes.get() + length);
     Vector<uint8_t> encodedMessage;
@@ -620,6 +626,7 @@ namespace ssc::runtime::core::services {
           const auto data = uv_handle_get_data(reinterpret_cast<uv_handle_t*>(req));
           const auto context = static_cast<ClientWriteContext*>(data);
 
+          debug(">>> CLIENT DID SEND BYTES FROM UDP TO WEBSOCKET");
           delete req;
 
           if (context != nullptr) {
@@ -770,14 +777,23 @@ namespace ssc::runtime::core::services {
   }
 
   bool Conduit::start (const StartCallback callback) {
-    if (this->isActive() || this->isStarting) {
+    if (this->isActive()) {
       if (callback != nullptr) {
         this->loop.dispatch(callback);
       }
       return true;
     }
 
-    this->isStarting = true;
+    bool expected = false;
+    if (!this->isStarting.compare_exchange_strong(expected, true)) {
+      if (callback != nullptr) {
+        this->loop.dispatch(callback);
+      }
+      return true;
+    }
+
+    this->isStarting.store(true);
+
     this->hostname = runtime::env::get("SOCKET_RUNTIME_CONDUIT_HOSTNAME", this->hostname);
 
     auto port = this->port.load();
@@ -810,6 +826,9 @@ namespace ssc::runtime::core::services {
     );
 
     this->port = ntohs(sockname.sin_port);
+
+    debug(">>> STARTING CONDUIT (%i)", this->port.load());
+
     const auto result = uv_listen(reinterpret_cast<uv_stream_t*>(&this->socket), 128, [](uv_stream_t* stream, int status) {
       if (status < 0) {
         return;
@@ -903,7 +922,7 @@ namespace ssc::runtime::core::services {
       debug("Conduit: Listen error %s\n", uv_strerror(result));
     }
 
-    this->isStarting = false;
+    this->isStarting.store(false);
 
     if (callback != nullptr) {
       this->loop.dispatch(callback);
@@ -913,11 +932,15 @@ namespace ssc::runtime::core::services {
   }
 
   bool Conduit::stop () {
+    this->port = 0;
+    this->isStarting.store(false);
+
     if (!this->isActive()) {
       return false;
     }
 
     return this->loop.dispatch([this]() {
+      debug(">>> STOPPING CONDUIT");
       Lock lock(this->mutex);
       auto handle = reinterpret_cast<uv_handle_t*>(&this->socket);
       const auto closeHandle = [=, this] () {
