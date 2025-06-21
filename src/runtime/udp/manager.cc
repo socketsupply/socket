@@ -12,7 +12,7 @@ namespace ssc::runtime::udp {
     this->loop.dispatch([=, this]() {
       for (const auto& entry : this->sockets) {
         auto& socket = entry.second;
-        if (socket != nullptr && (socket->isBound() || socket->isConnected())) {
+        if (socket != nullptr /* && (socket->isBound() || socket->isConnected()) */) {
           socket->resume();
         }
       }
@@ -23,7 +23,7 @@ namespace ssc::runtime::udp {
     Lock lock(this->mutex);
     for (const auto& entry : this->sockets) {
       auto& socket = entry.second;
-      if (socket != nullptr) {
+      if (socket != nullptr /* && (socket->isBound() || socket->isConnected()) */) {
         socket->pause();
       }
     }

@@ -936,7 +936,8 @@ namespace ssc::runtime::core::services {
     this->isStarting.store(false);
 
     if (!this->isActive()) {
-      return false;
+      debug(">>> CONDUIT::STOP::IS_NOT_ACTIVE");
+      return true;
     }
 
     return this->loop.dispatch([this]() {
@@ -1007,6 +1008,8 @@ namespace ssc::runtime::core::services {
           }
         }
       }
+
+      debug(">>> STOPPING CONDUIT -- STOPPED");
     });
   }
 

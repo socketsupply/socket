@@ -68,6 +68,7 @@ namespace ssc::runtime::app {
   #elif SOCKET_RUNTIME_PLATFORM_MACOS
     [NSApp run];
   #elif SOCKET_RUNTIME_PLATFORM_IOS
+    debug(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
     @autoreleasepool {
       return UIApplicationMain(
         argc,
@@ -105,22 +106,28 @@ namespace ssc::runtime::app {
   }
 
   void App::resume () {
+    debug(">>> QQQ RESUME");
+
     if (this->paused()) {
       this->isPaused = false;
       this->runtime.windowManager.emit("applicationresume");
 
       this->dispatch([this]() {
+        debug(">>> QQQ RESUME (RUNTIME0");
         this->runtime.resume();
       });
     }
   }
 
   void App::pause () {
+    debug(">>> QQQ PAUSE");
+
     if (!this->paused()) {
       this->isPaused = true;
       this->runtime.windowManager.emit("applicationpause");
 
       this->dispatch([this]() {
+        debug(">>> QQQ PAUSE (RUNTIME0");
         this->runtime.pause();
       });
     }

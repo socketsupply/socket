@@ -49,6 +49,9 @@ namespace ssc::runtime::core {
         return false;
       }
     }
+    
+    debug(">>> ALL SERVICES STARTED >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
+
     return true;
   }
 
@@ -70,7 +73,7 @@ namespace ssc::runtime::core {
       &this->platform,
       &this->process,
       &this->timers,
-      &this->udp
+      // &this->udp
     };
 
     for (const auto& service : services) {
@@ -78,6 +81,9 @@ namespace ssc::runtime::core {
         return false;
       }
     }
+
+    debug(">>> ALL SERVICES STOPPED >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
+
     return true;
   }
 }

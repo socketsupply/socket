@@ -37,7 +37,7 @@ static dispatch_queue_t queue = dispatch_queue_create(
 
 - (void) applicationWillResignActive: (NSNotification*) notification {
   dispatch_async(queue, ^{
-    // self.app->pause();
+    self.app->pause();
   });
 }
 

@@ -55,13 +55,13 @@ namespace ssc::runtime {
   }
 
   bool Runtime::pause () {
-    if (!this->services.stop()) {
-      return false;
-    }
+    // if (!this->services.stop()) {
+    //  return false;
+    // }
 
-  #if !SOCKET_RUNTIME_PLATFORM_ANDROID
-    return this->loop.pause();
-  #endif
+    #if !SOCKET_RUNTIME_PLATFORM_ANDROID
+      return this->loop.pause();
+    #endif
 
     return true;
   }

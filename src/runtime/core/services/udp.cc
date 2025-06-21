@@ -451,11 +451,17 @@ namespace ssc::runtime::core::services {
     if (socket->hasState(udp::SOCKET_STATE_UDP_RECV_STARTED)) {
       auto json = JSON::Object::Entries {
         {"source", "udp.readStart"},
+        {"data", JSON::Object::Entries {
+          {"id", std::to_string(id)}
+        }}
+      };
+      /* auto json = JSON::Object::Entries {
+        {"source", "udp.readStart"},
         {"err", JSON::Object::Entries {
           {"id", std::to_string(id)},
           {"message", "Socket is already receiving"}
         }}
-      };
+      }; */
 
       return callback(seq, json, QueuedResponse{});
     }

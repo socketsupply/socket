@@ -393,7 +393,7 @@ export class Conduit extends EventTarget {
     }
 
     this.port = result.data.port
-    console.log('INTERNAL_STARTED_CONDUIT', { port: this.port })
+    console.log('>>> INTERNAL_STARTED_CONDUIT', { id: this.id, port: this.port })
     this.isErroring = false
 
     this.socket = new WebSocket(this.url)
@@ -418,6 +418,8 @@ export class Conduit extends EventTarget {
     this.socket.onclose = (e) => {
       if (this.isErroring) return
 
+      console.log('>>> INTERNAL_ONCLOSE', { id: this.id })
+
       this.socket = null
       this.isConnecting = false
       this.isActive = false
@@ -432,6 +434,7 @@ export class Conduit extends EventTarget {
       this.isConnecting = false
       this.dispatchEvent(new Event('open', e))
 
+      console.log('>>> INTERNAL_ONOPEN', { id: this.id })
       if (typeof callback === 'function') {
         callback(null)
         callback = null
@@ -458,8 +461,6 @@ export class Conduit extends EventTarget {
 
   // In the reconnect() method:
   async reconnect (options = {}) {
-    console.log('INTERNAL_WILL_RECONNECT')
-
     if (this.isConnecting) {
       return Promise.resolve(this)
     }
@@ -471,11 +472,11 @@ export class Conduit extends EventTarget {
     } = options
 
     try {
-      console.log('INTERNAL_RECONNECTING')
+      console.log('>>> INTERNAL_RECONNECTING', { id: this.id })
       await this.connect()
       // other modules like dgram will need to know when the conduit has
       // reconnected, the reopen event is the correct way to handle it.
-      console.log('INTERNAL_DID_RECONNECT')
+      console.log('>>> INTERNAL_RECONNECTED', { id: this.id })
       this.dispatchEvent(new CustomEvent('reopen'))
       return this
     } catch (err) {

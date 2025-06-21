@@ -232,6 +232,7 @@ namespace ssc::runtime::udp {
     auto info = this->getLocalPeerInfo();
 
     if (info->err) {
+      debug(">>> XXX SOCKET:BIND - NO PEER INFO");
       return info->err;
     }
 
@@ -250,17 +251,20 @@ namespace ssc::runtime::udp {
 
     this->options.udp.reuseAddr = reuseAddr;
 
-    if (reuseAddr) {
+    // if (reuseAddr) {
       flags |= UV_UDP_REUSEADDR;
-    }
+      debug(">>> XXX SOCKET::BIND - SHOULD REUSE ADDR");
+    // }
 
     if (this->isUDP()) {
       if ((err = uv_ip4_addr((char *) address.c_str(), port, &this->addr))) {
+        debug(">>> XXX SOCKET::BIND - NO ADDR");
         return err;
       }
 
       // @TODO(jwerle): support flags in `bind()`
       if ((err = uv_udp_bind((uv_udp_t *) &this->handle, sockaddr, flags))) {
+        debug(">>> XXX SOCKET::BIND(%i) - %s: %s", reuseAddr, uv_err_name(err), uv_strerror(err));
         return err;
       }
 
@@ -292,6 +296,7 @@ namespace ssc::runtime::udp {
 
     if (this->isUDP()) {
       if ((err = this->recvstart())) {
+        debug(">>> XXX REBIND COULD NOT START");
         return err;
       }
     }
@@ -437,9 +442,12 @@ namespace ssc::runtime::udp {
   }
 
   int Socket::recvstop () {
+    debug(">>> RECVSTOP");
+
     if (this->hasState(SOCKET_STATE_UDP_RECV_STARTED)) {
+      debug(">>> RECVSTOP REMOVE STATE");
       this->removeState(SOCKET_STATE_UDP_RECV_STARTED);
-      return uv_udp_recv_stop((uv_udp_t *) &this->handle);
+      return 0; // uv_udp_recv_stop((uv_udp_t *) &this->handle);
     }
 
     return 0;
@@ -447,30 +455,41 @@ namespace ssc::runtime::udp {
 
   int Socket::resume () {
     int err = 0;
+    debug(">>> XXX SOCKET RESUME");
 
-    if (this->isPaused()) {
-      if ((err = this->init())) {
+    this->removeState(SOCKET_STATE_UDP_PAUSED);
+    this->removeState(SOCKET_STATE_TCP_PAUSED);
+
+    // if (this->isPaused()) {
+    if ((err = this->init())) {
+      return err;
+    }
+
+    if (this->isBound()) {
+      debug(">>> XXX IS_BOUND;REBINDING");
+      this->removeState(SOCKET_STATE_UDP_RECV_STARTED);
+
+      if ((err = this->rebind())) {
+        debug(">>> XXX REBINDING FAILED");
         return err;
       }
-
-      if (this->isBound()) {
-        if ((err = this->rebind())) {
-          return err;
-        }
-      } else if (this->isConnected()) {
-        // @TODO
-      }
-
-      this->removeState(SOCKET_STATE_UDP_PAUSED);
+    } else if (this->isConnected()) {
+      debug(">>> XXX ALREADY CONNECTED");
+      // @TODO
     }
+    
+    debug(">>> XXX REMOVE PAUSED STATE");
+    // }
 
     return err;
   }
 
   int Socket::pause () {
     int err = 0;
+    debug(">>> SOCKET::PAUSE");
 
     if ((err = this->recvstop())) {
+      debug(">>> XXX SOCKET::RECVSTOP %s: %s", uv_err_name(err), uv_strerror(err));
       return err;
     }
 
@@ -478,10 +497,9 @@ namespace ssc::runtime::udp {
       this->addState(SOCKET_STATE_UDP_PAUSED);
       if (this->isBound()) {
         Lock lock(this->mutex);
-        if (
-          !uv_is_closing(reinterpret_cast<uv_handle_t*>(&this->handle))
-        ) {
+        if (!uv_is_closing(reinterpret_cast<uv_handle_t*>(&this->handle))) {
           uv_close((uv_handle_t *) &this->handle, nullptr);
+          debug(">>> SOCKET::PAUSE::RECVSTOP::STOPPED --------------------------------------------------------");
         }
       } else if (this->isConnected()) {
         // TODO

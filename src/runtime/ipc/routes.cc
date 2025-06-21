@@ -3450,6 +3450,8 @@ static void mapIPCRoutes (Router *router) {
     options.reuseAddr = message.get("reuseAddr") == "true";
     options.address = message.get("address", "0.0.0.0");
 
+    debug(">>> UDP.BIND ROUTE CALLED %s", message.str().c_str());
+
     router->bridge.getRuntime()->services.udp.bind(
       message.seq,
       id,

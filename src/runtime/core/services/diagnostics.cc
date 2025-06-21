@@ -19,6 +19,7 @@ namespace ssc::runtime::core::services {
 
       // queued responses diagnostics
       do {
+        debug(">>> ACQUIRE SERVICES");
         Lock lock(this->services.mutex);
         query.queuedResponses.handles.count = this->context.queuedResponses.size();
         for (const auto& entry : this->context.queuedResponses) {
@@ -29,6 +30,7 @@ namespace ssc::runtime::core::services {
     #if !SOCKET_RUNTIME_PLATFORM_IOS
       // `childProcess` diagnostics
       do {
+        debug(">>> ACQUIRE PROCESS HANDLES");
         Lock lock(this->services.process.mutex);
         query.childProcess.handles.count = this->services.process.handles.size();
         for (const auto& entry : this->services.process.handles) {
@@ -50,6 +52,7 @@ namespace ssc::runtime::core::services {
 
       // fs diagnostics
       do {
+        debug(">>> ACQUIRE PROCESS FS");
         Lock lock(this->services.fs.mutex);
         query.fs.descriptors.handles.count = this->services.fs.descriptors.size();
         query.fs.watchers.handles.count = this->services.fs.watchers.size();
@@ -65,6 +68,7 @@ namespace ssc::runtime::core::services {
 
       // timers diagnostics
       do {
+        debug(">>> ACQUIRE PROCESS TIMERS");
         Lock lock(this->services.timers.mutex);
         for (const auto& entry : this->services.timers.handles) {
           const auto id = entry.first;
@@ -84,6 +88,7 @@ namespace ssc::runtime::core::services {
 
       // udp
       do {
+        debug(">>> ACQUIRE PROCESS UDP HANDLES");
         Lock lock(this->services.udp.mutex);
         query.udp.handles.count = this->services.udp.manager.sockets.size();
         for (const auto& entry : this->services.udp.manager.sockets) {
@@ -93,6 +98,7 @@ namespace ssc::runtime::core::services {
 
       // conduit
       do {
+        debug(">>> ACQUIRE PROCESS CONDUIT HANDLES");
         Lock lock(this->services.conduit.mutex);
         query.conduit.handles.count = this->services.conduit.clients.size();
         query.conduit.isActive = this->services.conduit.isActive();
@@ -103,6 +109,7 @@ namespace ssc::runtime::core::services {
 
       // uv
       do {
+        debug(">>> ACQUIRE PROCESS UV HANDLES");
         Lock lock(this->loop.mutex);
         uv_metrics_info(this->loop.get(), &query.uv.metrics);
         query.uv.idleTime = uv_metrics_idle_time(this->loop.get());
